@@ -46,7 +46,7 @@ func (c *ChatConfig) Validate() error {
 	}
 
 	// Validate ShardCount matches gateway queue URIs
-	if len(c.QueueGatewayEventDeliveryURI) != c.ShardCount {
+	if len(c.QueueGatewayEventDeliveryURI) != c.ShardCount && !c.DoDatabaseMigrate() {
 		errs = append(errs, fmt.Errorf("QueueGatewayEventDeliveryURI count (%d) must match ShardCount (%d)",
 			len(c.QueueGatewayEventDeliveryURI), c.ShardCount))
 	}
