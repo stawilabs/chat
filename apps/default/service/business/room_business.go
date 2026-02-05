@@ -10,34 +10,39 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
+	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/apps/default/service"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
+	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
 	chattel "github.com/antinvestor/service-chat/internal/telemetry"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/data"
+	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
 )
 
 // proposalExpiryHours is the number of hours before a proposal expires.
 const proposalExpiryHours = 72
+const defaultGroupType = "group"
 
 type roomBusiness struct {
-	service         *frame.Service
-	roomRepo        repository.RoomRepository
-	eventRepo       repository.RoomEventRepository
-	subRepo         repository.RoomSubscriptionRepository
-	proposalRepo    repository.ProposalRepository
-	subscriptionSvc SubscriptionService
-	messageBusiness MessageBusiness
-	profileCli      profilev1connect.ProfileServiceClient
-	authzMiddleware authz.Middleware
+	service          *frame.Service
+	roomRepo         repository.RoomRepository
+	eventRepo        repository.RoomEventRepository
+	eventsManager    frevents.Manager
+	subscriptionRepo repository.RoomSubscriptionRepository
+	proposalRepo     repository.ProposalRepository
+	subscriptionSvc  SubscriptionService
+	messageBusiness  MessageBusiness
+	profileCli       profilev1connect.ProfileServiceClient
+	authzMiddleware  authz.Middleware
 }
 
 // NewRoomBusiness creates a new instance of RoomBusiness.
@@ -53,29 +58,31 @@ func NewRoomBusiness(
 	authzMiddleware authz.Middleware,
 ) RoomBusiness {
 	return &roomBusiness{
-		service:         service,
-		roomRepo:        roomRepo,
-		eventRepo:       eventRepo,
-		subRepo:         subRepo,
-		proposalRepo:    proposalRepo,
-		subscriptionSvc: subscriptionSvc,
-		messageBusiness: messageBusiness,
-		profileCli:      profileCli,
-		authzMiddleware: authzMiddleware,
+		service:          service,
+		roomRepo:         roomRepo,
+		eventRepo:        eventRepo,
+		subscriptionRepo: subRepo,
+		proposalRepo:     proposalRepo,
+		subscriptionSvc:  subscriptionSvc,
+		messageBusiness:  messageBusiness,
+		profileCli:       profileCli,
+		authzMiddleware:  authzMiddleware,
 	}
 }
 
-//nolint:nonamedreturns // named return required for deferred tracing
+// CreateRoom named return required for deferred tracing.
 func (rb *roomBusiness) CreateRoom(
 	ctx context.Context,
 	req *chatv1.CreateRoomRequest,
 	createdBy *commonv1.ContactLink,
-) (_ *chatv1.Room, err error) {
+) (*chatv1.Room, error) {
+	var err error
 	ctx, span := chattel.RoomTracer.Start(ctx, "CreateRoom")
 	defer func() { chattel.RoomTracer.End(ctx, span, err) }()
 
-	if validErr := internal.IsValidContactLink(createdBy); validErr != nil {
-		return nil, validErr
+	err = internal.IsValidContactLink(createdBy)
+	if err != nil {
+		return nil, err
 	}
 
 	// Validate request
@@ -85,7 +92,7 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Create the room
 	createdRoom := &models.Room{
-		RoomType:    "group",
+		RoomType:    defaultGroupType,
 		Name:        req.GetName(),
 		Description: req.GetDescription(),
 		IsPublic:    !req.GetIsPrivate(),
@@ -101,59 +108,59 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, fmt.Errorf("failed to save room: %w", err)
 	}
 
+	// Owner subscription
+	ownerSubscription := &chatv1.RoomSubscription{
+		Id:     util.IDString(),
+		RoomId: createdRoom.GetID(),
+		Member: &commonv1.ContactLink{
+			ProfileId: createdBy.GetProfileId(),
+			ContactId: createdBy.GetContactId(),
+		},
+		Roles: []string{roleOwner},
+	}
+
+	subscriptionList := []*chatv1.RoomSubscription{ownerSubscription}
+	for _, member := range req.GetMembers() {
+		if member != nil {
+			subscriptionList = append(subscriptionList, &chatv1.RoomSubscription{
+				Id:     util.IDString(),
+				RoomId: createdRoom.GetID(),
+				Member: member,
+			})
+		}
+	}
+
 	// Add creator as owner
-	ownerSubList, err := rb.addRoomMembers(
+	err = rb.addRoomMembersWithRoles(
 		ctx,
 		createdRoom.GetID(),
-		[]*commonv1.ContactLink{createdBy},
-		roleOwner,
-		"",
+		subscriptionList, ownerSubscription.GetId(),
 		createdBy,
 	)
 	if err != nil {
-		// Rollback: delete the orphaned room
-		_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
-		return nil, fmt.Errorf("failed to add creator to room: %w", err)
-	}
-
-	ownerSub := ownerSubList[0]
-
-	var memberSubscriptionIDLIst []string
-	// Add other members (excluding the creator)
-	members := req.GetMembers()
-	if len(members) > 0 {
-		newSubs, newSubErr := rb.addRoomMembers(
-			ctx,
-			createdRoom.GetID(),
-			members,
-			roleMember,
-			ownerSub.GetID(),
-			createdBy,
-		)
-		if newSubErr != nil {
-			// Rollback: deactivate owner subscription and delete the room
-			_ = rb.subRepo.Deactivate(ctx, ownerSub.GetID())
+		partErr, ok := service.IsPartialBatchError(err)
+		if !ok {
+			// Rollback: delete the orphaned room
 			_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
-			return nil, fmt.Errorf("failed to add members to room: %w", newSubErr)
+
+			return nil, fmt.Errorf("failed to create room: %w", err)
 		}
 
-		for _, sub := range newSubs {
-			memberSubscriptionIDLIst = append(memberSubscriptionIDLIst, sub.GetID())
-		}
+		return nil, fmt.Errorf(
+			"partial failure, with %d invalid contact (s), %d succeeded: %w",
+			partErr.Failed,
+			partErr.Succeeded,
+			err,
+		)
 	}
 
-	// Send room created event
-	if err = rb.sendRoomChangeEvent(ctx, createdRoom.GetID(), createdBy,
-		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_CREATED,
-		ownerSub.GetID(), "Room created",
-		memberSubscriptionIDLIst...); err != nil {
-		util.Log(ctx).WithError(err).WithField("room_id", createdRoom.GetID()).
-			Warn("failed to emit room created event")
-	}
+	util.Log(ctx).
+		WithField("room_id", createdRoom.GetID()).
+		Debug("successfully create a room with event")
 
 	chattel.RoomsCreatedCounter.Add(ctx, 1)
 
-	// Return the created room as proto
+	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
 }
 
@@ -426,26 +433,18 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 	}
 
 	// Extract ContactLinks and roles from members, preserving request order
-	var membersWithRoles []memberWithRole
-
-	for _, member := range req.GetMembers() {
-		// Use first role or default to "member"
-		role := "member"
-		if len(member.GetRoles()) > 0 {
-			role = member.GetRoles()[0]
-		}
-		if member.GetMember() != nil {
-			membersWithRoles = append(membersWithRoles, memberWithRole{
-				Link: member.GetMember(),
-				Role: role,
-			})
+	subscriptionList := req.GetMembers()
+	for _, member := range subscriptionList {
+		// Use first roles or default to "member"
+		if len(member.GetRoles()) == 0 {
+			member.Roles = []string{roleMember}
 		}
 	}
 
 	// Add members with their respective roles.
 	// PartialBatchError is returned when some members were added successfully
 	// but others failed validation. Propagate it so the handler can report details.
-	_, err = rb.addRoomMembersWithRoles(ctx, req.GetRoomId(), membersWithRoles, admin.GetID(), addedBy)
+	err = rb.addRoomMembersWithRoles(ctx, req.GetRoomId(), subscriptionList, admin.GetID(), addedBy)
 	if err != nil {
 		if _, ok := service.IsPartialBatchError(err); ok {
 			return err
@@ -531,7 +530,7 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 	}
 
 	// Update the member's role by subscription ID
-	sub, err := rb.subRepo.GetByID(ctx, req.GetSubscriptionId())
+	sub, err := rb.subscriptionRepo.GetByID(ctx, req.GetSubscriptionId())
 	if err != nil {
 		if data.ErrorIsNoRows(err) {
 			return service.ErrRoomMemberNotFound
@@ -554,7 +553,7 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		sub.Role = strings.Join(req.GetRoles(), ",")
 	}
 
-	if _, updateErr := rb.subRepo.Update(ctx, sub, "role"); updateErr != nil {
+	if _, updateErr := rb.subscriptionRepo.Update(ctx, sub, "role"); updateErr != nil {
 		return fmt.Errorf("failed to update member role: %w", updateErr)
 	}
 
@@ -620,7 +619,7 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 	}
 
 	// Get all active subscriptions for the room
-	subscriptions, err := rb.subRepo.GetByRoomID(ctx, req.GetRoomId(), nil)
+	subscriptions, err := rb.subscriptionRepo.GetByRoomID(ctx, req.GetRoomId(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get room members: %w", err)
 	}
@@ -634,119 +633,58 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 	return protoSubs, nil
 }
 
-// memberWithRole pairs a contact link with a role, preserving request order.
-type memberWithRole struct {
-	Link *commonv1.ContactLink
-	Role string
-}
-
 // Helper function to add members to a room with specific roles.
-func (rb *roomBusiness) addRoomMembersWithRoles(
-	ctx context.Context,
-	roomID string,
-	members []memberWithRole,
-	actorSubscriptionID string,
-	actor *commonv1.ContactLink,
-) ([]*models.RoomSubscription, error) {
-	// Get existing subscriptions to avoid duplicates
-	existingSubs, err := rb.subRepo.GetByRoomID(ctx, roomID, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check existing subscriptions: %w", err)
-	}
-
-	// Create a map of existing profile IDs
-	existingProfileMap := make(map[string]bool)
-	for _, sub := range existingSubs {
-		existingProfileMap[sub.ProfileID] = true
-	}
-
-	// Create new subscriptions for profiles that don't exist.
+func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
+	roomID string, subscriptionList []*chatv1.RoomSubscription,
+	actorSubscriptionID string, actorLink *commonv1.ContactLink) error {
+	// Create new subscriptions for profiles that via event service.
 	// Continue processing after individual validation failures so that
-	// valid members are still added (partial success).
-	var newSubs []*models.RoomSubscription
+	// valid subscriptionList are still added (partial success).
 	var itemErrors []service.ItemError
-	for idx, mwr := range members {
+	var roomActionList []*eventsv1.RoomAction
+	for idx, subscription := range subscriptionList {
 		// Validate Contact and Profile ID via Profile Service
-		if validateErr := rb.validateContactProfile(ctx, mwr.Link); validateErr != nil {
+		if validateErr := rb.validateContactProfile(ctx, subscription.GetMember()); validateErr != nil {
 			itemErrors = append(itemErrors, service.ItemError{
 				Index:   idx,
-				ItemID:  mwr.Link.GetProfileId(),
+				ItemID:  subscription.GetMember().GetProfileId(),
 				Message: validateErr.Error(),
 			})
 			continue
 		}
 
-		if !existingProfileMap[mwr.Link.GetProfileId()] {
-			sub := &models.RoomSubscription{
-				RoomID:            roomID,
-				ProfileID:         mwr.Link.GetProfileId(),
-				ContactID:         mwr.Link.GetContactId(),
-				SubscriptionState: models.RoomSubscriptionStateActive,
-				Role:              mwr.Role,
-			}
-			newSubs = append(newSubs, sub)
+		action := &eventsv1.RoomAction{
+			RoomId: roomID,
+			Action: chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED,
+			Actor: &eventsv1.Subscription{
+				SubscriptionId: actorSubscriptionID,
+				ContactLink:    actorLink,
+			},
+			Targets: []*eventsv1.Subscription{
+				{
+					ContactLink: subscription.GetMember(),
+				},
+			},
+			Roles: subscription.GetRoles(),
 		}
+
+		roomActionList = append(roomActionList, action)
 	}
 
-	// Save new subscriptions individually
-	if len(newSubs) > 0 {
-		err = rb.subRepo.BulkCreate(ctx, newSubs)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create subscription: %w", err)
-		}
-
-		var newMembers []string
-		for _, sub := range newSubs {
-			newMembers = append(newMembers, sub.GetID())
-
-			// Sync authorization tuple to Keto
-			if rb.authzMiddleware != nil {
-				if authzErr := rb.authzMiddleware.AddRoomMember(ctx, roomID, sub.ProfileID, sub.Role); authzErr != nil {
-					util.Log(ctx).WithError(authzErr).
-						WithField("room_id", roomID).
-						WithField("profile_id", sub.ProfileID).
-						WithField("role", sub.Role).
-						Warn("failed to sync authorization tuple for new room member")
-				}
-			}
-		}
-
-		_ = rb.sendRoomChangeEvent(ctx, roomID, actor,
-			chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED,
-			actorSubscriptionID, "Member(s) added to room",
-			newMembers...)
+	err := rb.eventsManager.Emit(ctx, events.RoomCreatedEventName, roomActionList)
+	if err != nil {
+		return fmt.Errorf("failed to emit subscription add event: %w", err)
 	}
 
-	// If some members failed validation, return partial batch error
-	// alongside the successfully added subscriptions
 	if len(itemErrors) > 0 {
-		return newSubs, &service.PartialBatchError{
-			Succeeded: len(newSubs),
+		return &service.PartialBatchError{
+			Succeeded: len(subscriptionList) - len(itemErrors),
 			Failed:    len(itemErrors),
 			Errors:    itemErrors,
 		}
 	}
 
-	return newSubs, nil
-}
-
-// Helper function to add members to a room (legacy support).
-func (rb *roomBusiness) addRoomMembers(
-	ctx context.Context,
-	roomID string,
-	members []*commonv1.ContactLink,
-	role string,
-
-	actorSubscriptionID string,
-	actor *commonv1.ContactLink,
-) ([]*models.RoomSubscription, error) {
-	var membersWithRoles []memberWithRole
-	for _, member := range members {
-		if member != nil {
-			membersWithRoles = append(membersWithRoles, memberWithRole{Link: member, Role: role})
-		}
-	}
-	return rb.addRoomMembersWithRoles(ctx, roomID, membersWithRoles, actorSubscriptionID, actor)
+	return nil
 }
 
 // validateContactProfile validates contact and profile ID via Profile Service.
@@ -790,7 +728,7 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 	var profileIDsToRemove []string
 	var lookupErrors []service.ItemError
 	for i, subID := range subscriptionIDs {
-		sub, subErr := rb.subRepo.GetByID(ctx, subID)
+		sub, subErr := rb.subscriptionRepo.GetByID(ctx, subID)
 		if subErr != nil || sub == nil {
 			msg := "subscription not found"
 			if subErr != nil {
@@ -807,7 +745,7 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 	}
 
 	// Deactivate subscriptions directly
-	err := rb.subRepo.Deactivate(ctx, subscriptionIDs...)
+	err := rb.subscriptionRepo.Deactivate(ctx, subscriptionIDs...)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate subscription: %w", err)
 	}
@@ -844,7 +782,7 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 
 // deactivateAllRoomSubscriptions deactivates all subscriptions for a room and removes authz tuples.
 func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, roomID string) error {
-	allSubs, subErr := rb.subRepo.GetByRoomID(ctx, roomID, nil)
+	allSubs, subErr := rb.subscriptionRepo.GetByRoomID(ctx, roomID, nil)
 	if subErr != nil {
 		return fmt.Errorf("failed to get room subscriptions for cleanup: %w", subErr)
 	}
@@ -857,7 +795,7 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 	for _, sub := range allSubs {
 		subIDs = append(subIDs, sub.GetID())
 	}
-	if deactivateErr := rb.subRepo.Deactivate(ctx, subIDs...); deactivateErr != nil {
+	if deactivateErr := rb.subscriptionRepo.Deactivate(ctx, subIDs...); deactivateErr != nil {
 		return fmt.Errorf("failed to deactivate room subscriptions: %w", deactivateErr)
 	}
 

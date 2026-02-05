@@ -26,7 +26,7 @@ type messageBusiness struct {
 	eventRepo       repository.RoomEventRepository
 	subRepo         repository.RoomSubscriptionRepository
 	subscriptionSvc SubscriptionService
-	evtsManager     frevents.Manager
+	eventsManager   frevents.Manager
 
 	payloadConverter *models.PayloadConverter
 }
@@ -40,7 +40,7 @@ func NewMessageBusiness(
 ) MessageBusiness {
 	return &messageBusiness{
 
-		evtsManager:     evtsManager,
+		eventsManager:   evtsManager,
 		eventRepo:       eventRepo,
 		subRepo:         subRepo,
 		subscriptionSvc: subscriptionSvc,
@@ -271,7 +271,7 @@ func (mb *messageBusiness) SendEvents(
 			CreatedAt: timestamppb.New(event.CreatedAt),
 		}
 
-		emitErr := mb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &outboxEventLink)
+		emitErr := mb.eventsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &outboxEventLink)
 		if emitErr != nil {
 			responses[responseIdx] = &chatv1.AckEvent{
 				EventId: []string{event.GetID()},

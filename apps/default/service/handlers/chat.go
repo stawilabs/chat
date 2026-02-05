@@ -61,7 +61,7 @@ func NewChatServer(
 	authzMiddleware authz.Middleware,
 ) *ChatServer {
 	workMan := service.WorkManager()
-	evtsMan := service.EventsManager()
+	eventsMan := service.EventsManager()
 	dbPool := service.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
@@ -71,8 +71,8 @@ func NewChatServer(
 
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
-	connectBusiness := business.NewConnectBusiness(evtsMan, subRepo, eventRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(eventsMan, eventRepo, subRepo, subscriptionSvc)
+	connectBusiness := business.NewConnectBusiness(eventsMan, subRepo, eventRepo, subscriptionSvc)
 	roomBusiness := business.NewRoomBusiness(
 		service,
 		roomRepo,

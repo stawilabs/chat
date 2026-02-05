@@ -128,6 +128,9 @@ func runService(ctx context.Context) error {
 	// Register queue handlers and event handlers
 	serviceOptions = append(serviceOptions,
 		frame.WithRegisterEvents(
+			events.NewRoomCreatedQueue(ctx, eventsMan),
+			events.NewSubscriptionAddQueue(ctx, dbPool, workMan, eventsMan),
+			events.NewSubscriptionAuthorizeQueue(ctx, dbPool, workMan, eventsMan, authzMiddleware),
 			events.NewRoomOutboxLoggingQueue(ctx, dbPool, workMan, eventsMan),
 			events.NewFanoutEventHandler(ctx, &cfg, dbPool, workMan, queueMan),
 		))

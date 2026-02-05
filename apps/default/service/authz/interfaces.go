@@ -38,6 +38,6 @@ type Middleware interface {
 	RemoveRoomMember(ctx context.Context, roomID string, profileID string) error
 	UpdateRoomMemberRole(ctx context.Context, roomID string, profileID string, oldRole, newRole string) error
 
-	// Message tuple management
+	// SetMessageSender Message tuple management
 	SetMessageSender(ctx context.Context, messageID string, senderProfileID string, roomID string) error
 }
