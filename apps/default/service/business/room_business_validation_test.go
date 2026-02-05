@@ -173,6 +173,7 @@ func (s *RoomBusinessTestSuite) setupBusinessLayerWithProfileClient(
 		subRepo,
 		nil, // proposalRepo
 		subscriptionSvc,
+		evtsMan,
 		messageBusiness,
 		profileCli,
 		nil, // authz middleware

@@ -80,6 +80,7 @@ func NewChatServer(
 		subRepo,
 		proposalRepo,
 		subscriptionSvc,
+		eventsMan,
 		messageBusiness,
 		profileCli,
 		authzMiddleware,
@@ -256,9 +257,12 @@ func (ps *ChatServer) CreateRoom(
 		)
 	}
 
-	room, err := ps.RoomBusiness.CreateRoom(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	room, err := ps.RoomBusiness.CreateRoom(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
-		return nil, err
+		return nil, ps.toAPIError(ctx, err)
 	}
 
 	return connect.NewResponse(&chatv1.CreateRoomResponse{
@@ -312,9 +316,12 @@ func (ps *ChatServer) UpdateRoom(
 		)
 	}
 
-	room, err := ps.RoomBusiness.UpdateRoom(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	room, err := ps.RoomBusiness.UpdateRoom(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
-		return nil, err
+		return nil, ps.toAPIError(ctx, err)
 	}
 
 	return connect.NewResponse(&chatv1.UpdateRoomResponse{
@@ -339,9 +346,12 @@ func (ps *ChatServer) DeleteRoom(
 		)
 	}
 
-	err = ps.RoomBusiness.DeleteRoom(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	err = ps.RoomBusiness.DeleteRoom(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
-		return nil, err
+		return nil, ps.toAPIError(ctx, err)
 	}
 
 	return connect.NewResponse(&chatv1.DeleteRoomResponse{}), nil
@@ -365,7 +375,10 @@ func (ps *ChatServer) AddRoomSubscriptions(
 		)
 	}
 
-	err = ps.RoomBusiness.AddRoomSubscriptions(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	err = ps.RoomBusiness.AddRoomSubscriptions(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
 		// Check for partial batch error - some members added, some failed
 		if pbe, ok := service.IsPartialBatchError(err); ok {
@@ -377,7 +390,7 @@ func (ps *ChatServer) AddRoomSubscriptions(
 				},
 			}), nil
 		}
-		return nil, err
+		return nil, ps.toAPIError(ctx, err)
 	}
 
 	return connect.NewResponse(&chatv1.AddRoomSubscriptionsResponse{
@@ -403,7 +416,10 @@ func (ps *ChatServer) RemoveRoomSubscriptions(
 		)
 	}
 
-	err = ps.RoomBusiness.RemoveRoomSubscriptions(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	err = ps.RoomBusiness.RemoveRoomSubscriptions(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
 		// Check for partial batch error - some removals succeeded, some failed lookup
 		if pbe, ok := service.IsPartialBatchError(err); ok {
@@ -415,7 +431,7 @@ func (ps *ChatServer) RemoveRoomSubscriptions(
 				},
 			}), nil
 		}
-		return nil, err
+		return nil, ps.toAPIError(ctx, err)
 	}
 
 	return connect.NewResponse(&chatv1.RemoveRoomSubscriptionsResponse{
@@ -440,9 +456,12 @@ func (ps *ChatServer) UpdateSubscriptionRole(
 		)
 	}
 
-	err = ps.RoomBusiness.UpdateSubscriptionRole(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	err = ps.RoomBusiness.UpdateSubscriptionRole(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
-		return nil, err
+		return nil, ps.toAPIError(ctx, err)
 	}
 
 	return connect.NewResponse(&chatv1.UpdateSubscriptionRoleResponse{}), nil

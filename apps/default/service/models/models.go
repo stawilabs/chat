@@ -131,9 +131,9 @@ const (
 // RoomSubscription represents a user's subscription to a room.
 type RoomSubscription struct {
 	data.BaseModel
-	RoomID              string `gorm:"type:varchar(50);index:idx_roomsubscription_room_id_subscription_state"`
-	ProfileID           string `gorm:"type:varchar(50)"`
-	ContactID           string `gorm:"type:varchar(50)"`
+	RoomID              string `gorm:"type:varchar(50);index:idx_roomsubscription_room_id_subscription_state;uniqueIndex:idx_room_subscription_unique_active"`
+	ProfileID           string `gorm:"type:varchar(50);uniqueIndex:idx_room_subscription_unique_active"`
+	ContactID           string `gorm:"type:varchar(50);uniqueIndex:idx_room_subscription_unique_active"`
 	Role                string
 	SubscriptionState   RoomSubscriptionState `gorm:"index:idx_roomsubscription_room_id_subscription_state"`
 	LastReadEventID     string                `gorm:"type:varchar(50)"` // ID of the last read event (naturally time-sorted)

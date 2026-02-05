@@ -101,19 +101,34 @@ func (rsr *roomSubscriptionRepository) GetByRoomIDAndContactLinks(
 ) ([]*models.RoomSubscription, error) {
 	var subscriptionSlice []*models.RoomSubscription
 
-	profileIDList := make([]string, len(contactLink))
-	contactIDList := make([]string, len(contactLink))
+	var profileIDList []string
+	var contactIDList []string
 
-	for i, cl := range contactLink {
+	for _, cl := range contactLink {
 		if cl.GetProfileId() != "" {
-			profileIDList[i] = cl.GetProfileId()
+			profileIDList = append(profileIDList, cl.GetProfileId())
 		}
-		contactIDList[i] = cl.GetContactId()
+		if cl.GetContactId() != "" {
+			contactIDList = append(contactIDList, cl.GetContactId())
+		}
 	}
 
-	err := rsr.Pool().DB(ctx, true).
-		Where("room_id = ? AND ( profile_id IN ? OR contact_id IN ? )", roomID, profileIDList, contactIDList).
-		Find(&subscriptionSlice).Error
+	// Build query conditionally based on available identifiers
+	query := rsr.Pool().DB(ctx, true).Where("room_id = ?", roomID)
+
+	switch {
+	case len(profileIDList) > 0 && len(contactIDList) > 0:
+		query = query.Where("profile_id IN ? OR contact_id IN ?", profileIDList, contactIDList)
+	case len(profileIDList) > 0:
+		query = query.Where("profile_id IN ?", profileIDList)
+	case len(contactIDList) > 0:
+		query = query.Where("contact_id IN ?", contactIDList)
+	default:
+		// No identifiers to search by
+		return subscriptionSlice, nil
+	}
+
+	err := query.Find(&subscriptionSlice).Error
 	return subscriptionSlice, err
 }
 

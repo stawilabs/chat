@@ -46,6 +46,7 @@ func (s *MessageBusinessTestSuite) setupBusinessLayer(
 		subRepo,
 		nil, // proposalRepo
 		subscriptionSvc,
+		evtsMan,
 		messageBusiness,
 		nil,
 		nil,

@@ -11,6 +11,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/datastore/pool"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/workerpool"
@@ -102,15 +103,6 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 ) error {
 	var err error
 	contactLink := subscription.GetContactLink()
-	// Get existing subscriptions to avoid duplicates
-	subscriptionList, err := csq.subscriptionRepo.GetByRoomIDAndContactLinks(ctx, roomID, contactLink)
-	if err != nil {
-		return fmt.Errorf("failed to check existing subscriptions: %w", err)
-	}
-
-	if len(subscriptionList) > 0 {
-		return nil
-	}
 
 	// Create new subscription
 	subscriptionModel := &models.RoomSubscription{
@@ -128,7 +120,10 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 	// Save new subscription
 	err = csq.subscriptionRepo.Create(ctx, subscriptionModel)
 	if err != nil {
-		return fmt.Errorf("failed to create subscription: %w", err)
+		// Handle unique constraint violation as idempotent success
+		if !data.ErrorIsDuplicateKey(err) {
+			return fmt.Errorf("failed to create subscription: %w", err)
+		}
 	}
 
 	err = csq.eventsManager.Emit(ctx, SubscriptionAuthorizeEventName, subscriptionModel.ToAPI())

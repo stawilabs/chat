@@ -53,6 +53,7 @@ func NewRoomBusiness(
 	subRepo repository.RoomSubscriptionRepository,
 	proposalRepo repository.ProposalRepository,
 	subscriptionSvc SubscriptionService,
+	eventsManager frevents.Manager,
 	messageBusiness MessageBusiness,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
@@ -63,6 +64,7 @@ func NewRoomBusiness(
 		eventRepo:        eventRepo,
 		subscriptionRepo: subRepo,
 		proposalRepo:     proposalRepo,
+		eventsManager:    eventsManager,
 		subscriptionSvc:  subscriptionSvc,
 		messageBusiness:  messageBusiness,
 		profileCli:       profileCli,
@@ -97,7 +99,6 @@ func (rb *roomBusiness) CreateRoom(
 		Description: req.GetDescription(),
 		IsPublic:    !req.GetIsPrivate(),
 	}
-	createdRoom.GenID(ctx)
 	if req.GetId() != "" {
 		createdRoom.ID = req.GetId()
 	}
@@ -105,6 +106,10 @@ func (rb *roomBusiness) CreateRoom(
 	// Save the room
 	err = rb.roomRepo.Create(ctx, createdRoom)
 	if err != nil {
+		if data.ErrorIsDuplicateKey(err) {
+			// Return the already existing room
+			return createdRoom.ToAPI(), nil
+		}
 		return nil, fmt.Errorf("failed to save room: %w", err)
 	}
 
@@ -140,18 +145,18 @@ func (rb *roomBusiness) CreateRoom(
 	if err != nil {
 		partErr, ok := service.IsPartialBatchError(err)
 		if !ok {
-			// Rollback: delete the orphaned room
+			// Full failure: clean up subscriptions and authz before deleting the room
 			_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
 
 			return nil, fmt.Errorf("failed to create room: %w", err)
 		}
 
-		return nil, fmt.Errorf(
-			"partial failure, with %d invalid contact (s), %d succeeded: %w",
-			partErr.Failed,
-			partErr.Succeeded,
-			err,
-		)
+		// Partial failure: room + owner subscription exist and are valid,
+		// only some additional members failed validation. Return the room.
+		util.Log(ctx).WithField("room_id", createdRoom.GetID()).
+			WithField("failed", partErr.Failed).
+			WithField("succeeded", partErr.Succeeded).
+			Warn("partial failure adding members during room creation")
 	}
 
 	util.Log(ctx).
@@ -618,8 +623,8 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 		return nil, service.ErrRoomAccessDenied
 	}
 
-	// Get all active subscriptions for the room
-	subscriptions, err := rb.subscriptionRepo.GetByRoomID(ctx, req.GetRoomId(), nil)
+	// Get active subscriptions for the room with pagination
+	subscriptions, err := rb.subscriptionRepo.GetByRoomID(ctx, req.GetRoomId(), req.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get room members: %w", err)
 	}
@@ -662,7 +667,8 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 			},
 			Targets: []*eventsv1.Subscription{
 				{
-					ContactLink: subscription.GetMember(),
+					SubscriptionId: subscription.GetId(),
+					ContactLink:    subscription.GetMember(),
 				},
 			},
 			Roles: subscription.GetRoles(),

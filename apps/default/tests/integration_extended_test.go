@@ -41,7 +41,7 @@ func (s *ExtendedIntegrationTestSuite) setupBusiness(
 	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
 	roomBusiness := business.NewRoomBusiness(
 		svc, roomRepo, eventRepo, subRepo, proposalRepo,
-		subscriptionSvc, messageBusiness, nil, nil,
+		subscriptionSvc, evtsMan, messageBusiness, nil, nil,
 	)
 
 	return roomBusiness, messageBusiness, subscriptionSvc
