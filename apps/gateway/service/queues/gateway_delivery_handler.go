@@ -37,19 +37,24 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 	profileID := headers[internal.HeaderProfileID]
 	deviceID := headers[internal.HeaderDeviceID]
 
-	connection, ok := dq.connectionManager.GetConnection(ctx, profileID, deviceID)
-	if !ok {
-		util.Log(ctx).WithFields(map[string]any{
+	// Parse payload first so we can fall back to offline delivery if needed
+	evt, err := dq.toPayloadToEventData(ctx, payload)
+	if err != nil {
+		util.Log(ctx).WithError(err).WithFields(map[string]any{
 			"profile_id": profileID,
 			"device_id":  deviceID,
-		}).Debug("connection not found: device may have disconnected")
+		}).Error("failed to parse user delivery message, dropping corrupt message")
 		return nil
 	}
 
-	evt, err := dq.toPayloadToEventData(ctx, payload)
-	if err != nil {
-		util.Log(ctx).WithError(err).Error("Failed to parse user delivery message")
-		return nil
+	connection, ok := dq.connectionManager.GetConnection(ctx, profileID, deviceID)
+	if !ok {
+		// Device disconnected - fall back to offline delivery (push notification)
+		util.Log(ctx).WithFields(map[string]any{
+			"profile_id": profileID,
+			"device_id":  deviceID,
+		}).Debug("connection not found: falling back to offline delivery")
+		return dq.publishToOfflineDevice(ctx, headers, evt)
 	}
 
 	data := dq.toStreamData(evt)

@@ -535,36 +535,9 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		return service.ErrRoomMemberNotFound
 	}
 
-	// Capture old role for authz update
-	oldRole := sub.Role
-
-	// Update roles (use first role or keep existing)
-	var newRole string
-	if len(req.GetRoles()) > 0 {
-		newRole = req.GetRoles()[0] // Primary role for authz
-		sub.Role = strings.Join(req.GetRoles(), ",")
-	}
-
-	if _, updateErr := rb.subscriptionRepo.Update(ctx, sub, "role"); updateErr != nil {
-		return fmt.Errorf("failed to update member role: %w", updateErr)
-	}
-
-	// Sync authorization tuple - update role in Keto
-	if rb.authzMiddleware != nil && newRole != "" {
-		if authzErr := rb.authzMiddleware.UpdateRoomMemberRole(
-			ctx,
-			req.GetRoomId(),
-			sub.ProfileID,
-			oldRole,
-			newRole,
-		); authzErr != nil {
-			util.Log(ctx).WithError(authzErr).
-				WithField("room_id", req.GetRoomId()).
-				WithField("profile_id", sub.ProfileID).
-				WithField("old_role", oldRole).
-				WithField("new_role", newRole).
-				Warn("failed to update authorization tuple for role change")
-		}
+	// Update roles: sync authz first, then DB
+	if err = rb.syncRoleUpdate(ctx, req, sub); err != nil {
+		return err
 	}
 
 	// Send member role updated event
@@ -574,6 +547,38 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		req.GetSubscriptionId()); err != nil {
 		util.Log(ctx).WithError(err).WithField("room_id", req.GetRoomId()).
 			Warn("failed to emit role update event")
+	}
+
+	return nil
+}
+
+// syncRoleUpdate updates the authz tuple first, then the DB subscription role.
+func (rb *roomBusiness) syncRoleUpdate(
+	ctx context.Context,
+	req *chatv1.UpdateSubscriptionRoleRequest,
+	sub *models.RoomSubscription,
+) error {
+	oldRole := sub.Role
+	var newRole string
+	if len(req.GetRoles()) > 0 {
+		newRole = req.GetRoles()[0]
+	}
+
+	// Sync authorization tuple first to maintain consistency
+	if rb.authzMiddleware != nil && newRole != "" {
+		if authzErr := rb.authzMiddleware.UpdateRoomMemberRole(
+			ctx, req.GetRoomId(), sub.ProfileID, oldRole, newRole,
+		); authzErr != nil {
+			return fmt.Errorf("failed to update authorization tuple for role change: %w", authzErr)
+		}
+	}
+
+	if newRole != "" {
+		sub.Role = strings.Join(req.GetRoles(), ",")
+	}
+
+	if _, updateErr := rb.subscriptionRepo.Update(ctx, sub, "role"); updateErr != nil {
+		return fmt.Errorf("failed to update member role: %w", updateErr)
 	}
 
 	return nil
@@ -749,13 +754,19 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 
 	// Sync authorization tuples - remove from Keto
 	if rb.authzMiddleware != nil {
+		var authzErrors []error
 		for _, profileID := range profileIDsToRemove {
 			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, profileID); authzErr != nil {
 				util.Log(ctx).WithError(authzErr).
 					WithField("room_id", roomID).
 					WithField("profile_id", profileID).
 					Warn("failed to remove authorization tuple for removed room member")
+				authzErrors = append(authzErrors, authzErr)
 			}
+		}
+		if len(authzErrors) > 0 {
+			return fmt.Errorf("failed to remove authorization tuples for %d member(s): %w",
+				len(authzErrors), errors.Join(authzErrors...))
 		}
 	}
 
@@ -797,13 +808,19 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 	}
 
 	if rb.authzMiddleware != nil {
+		var authzErrors []error
 		for _, sub := range allSubs {
 			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, sub.ProfileID); authzErr != nil {
 				util.Log(ctx).WithError(authzErr).
 					WithField("room_id", roomID).
 					WithField("profile_id", sub.ProfileID).
 					Warn("failed to remove authorization tuple during room deletion")
+				authzErrors = append(authzErrors, authzErr)
 			}
+		}
+		if len(authzErrors) > 0 {
+			return fmt.Errorf("failed to remove authorization tuples for %d member(s) during room deletion: %w",
+				len(authzErrors), errors.Join(authzErrors...))
 		}
 	}
 

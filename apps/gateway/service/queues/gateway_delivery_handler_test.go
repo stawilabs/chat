@@ -64,12 +64,19 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ValidDelivery_DispatchesToC
 	s.Equal(1, mockConn.dispatchCount)
 }
 
-func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ConnectionNotFound_ReturnsNil() {
+func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ConnectionNotFound_FallsBackToOffline() {
 	mockCM := &mockConnectionManager{
 		connections: map[string]business.Connection{}, // Empty - no connections
 	}
 
-	handler := queues.NewGatewayEventsQueueHandler(s.cfg, nil, mockCM)
+	mockPub := &mockPublisher{}
+	mockQueueManager := &mockQueueManager{
+		publishers: map[string]queue.Publisher{
+			s.cfg.QueueOfflineEventDeliveryName: mockPub,
+		},
+	}
+
+	handler := queues.NewGatewayEventsQueueHandler(s.cfg, mockQueueManager, mockCM)
 
 	delivery := s.createTextDelivery("Hello")
 	payload, err := proto.Marshal(delivery)
@@ -80,9 +87,12 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ConnectionNotFound_ReturnsN
 		internal.HeaderDeviceID:  "device456",
 	}
 
-	// Should return nil (message consumed) when connection not found
+	// Should fall back to offline delivery when connection not found
 	err = handler.Handle(context.Background(), headers, payload)
 	s.Require().NoError(err)
+
+	// Verify message was published to offline queue
+	s.Equal(1, mockPub.publishCount)
 }
 
 func (s *GatewayDeliveryHandlerTestSuite) TestHandle_MalformedPayload_ReturnsNil() {

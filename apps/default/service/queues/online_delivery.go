@@ -150,7 +150,7 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		deviceErr := response.Err()
 		if deviceErr != nil {
 			if !errors.Is(deviceErr, io.EOF) {
-				util.Log(ctx).WithError(err).Error("failed to unmarshal user delivery")
+				util.Log(ctx).WithError(deviceErr).Error("failed to receive device search stream")
 			}
 		}
 
@@ -160,10 +160,19 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		for _, dev := range resp.GetData() {
 			job := dq.createDeviceJob(ctx, dev, eventDelivery)
 
-			err = workerpool.SubmitJob(ctx, dq.workMan, job)
-			if err != nil {
-				util.Log(ctx).WithError(err).WithField("device_id", dev.GetId()).
-					Error("failed to submit job")
+			submitErr := workerpool.SubmitJob(ctx, dq.workMan, job)
+			if submitErr != nil {
+				// Worker pool full - fall back to synchronous delivery
+				util.Log(ctx).WithError(submitErr).WithField("device_id", dev.GetId()).
+					Warn("worker pool full, delivering synchronously")
+				eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
+				if ok {
+					eventCopy.DeviceId = dev.GetId()
+					if deliverErr := dq.deliver(ctx, eventCopy, dev); deliverErr != nil {
+						util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.GetId()).
+							Error("synchronous delivery also failed")
+					}
+				}
 			}
 		}
 	}

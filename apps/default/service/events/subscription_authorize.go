@@ -77,31 +77,42 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 		return err
 	}
 
+	var authzErrors []error
 	for _, subscription := range action.GetTargets() {
+		var targetFailed bool
 		for _, role := range action.GetRoles() {
 			link := subscription.GetContactLink()
-			err = csq.authzMiddleware.AddRoomMember(ctx, action.GetRoomId(), link.GetProfileId(), role)
-			if err != nil {
-				util.Log(ctx).WithError(err).
+			authzErr := csq.authzMiddleware.AddRoomMember(ctx, action.GetRoomId(), link.GetProfileId(), role)
+			if authzErr != nil {
+				util.Log(ctx).WithError(authzErr).
 					WithField("room_id", action.GetRoomId()).
 					WithField("profile_id", link.GetProfileId()).
 					WithField("role", role).
 					Warn("failed to sync authorization tuple for new room member")
-				return err
+				authzErrors = append(authzErrors, authzErr)
+				targetFailed = true
 			}
+		}
+
+		if targetFailed {
+			continue
 		}
 
 		if action.GetAction() == chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED {
 			// Emit room change event
-			err = csq.emitInternalRoomChangeEvents(ctx, action.GetRoomId(),
+			emitErr := csq.emitInternalRoomChangeEvents(ctx, action.GetRoomId(),
 				chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED,
 				"member role changed",
 				action.GetActor(), subscription)
-			if err != nil {
-				err = fmt.Errorf("failed to emit room change event: %w", err)
-				return err
+			if emitErr != nil {
+				authzErrors = append(authzErrors, fmt.Errorf("failed to emit room change event: %w", emitErr))
 			}
 		}
+	}
+
+	if len(authzErrors) > 0 {
+		err = fmt.Errorf("failed to authorize %d target(s): %w", len(authzErrors), errors.Join(authzErrors...))
+		return err
 	}
 
 	return nil

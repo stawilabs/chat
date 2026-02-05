@@ -31,6 +31,9 @@ type RoomEventRepository interface {
 	// ExistsByIDs checks if any of the given event IDs already exist.
 	// Returns a map of eventID -> exists for deduplication.
 	ExistsByIDs(ctx context.Context, eventIDs []string) (map[string]bool, error)
+	// CreateIgnoringDuplicates inserts events one-by-one with ON CONFLICT DO NOTHING.
+	// Returns a map of eventID -> true for events that were actually inserted (not duplicates).
+	CreateIgnoringDuplicates(ctx context.Context, events []*models.RoomEvent) (map[string]bool, error)
 }
 
 // RoomSubscriptionRepository defines the interface for room subscription data access operations.

@@ -7,6 +7,7 @@ import (
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/workerpool"
+	"gorm.io/gorm/clause"
 )
 
 type roomEventRepository struct {
@@ -100,6 +101,31 @@ func (rer *roomEventRepository) CountByRoomID(ctx context.Context, roomID string
 		Where("room_id = ? AND deleted_at IS NULL", roomID).
 		Count(&count).Error
 	return count, err
+}
+
+// CreateIgnoringDuplicates inserts events individually with ON CONFLICT DO NOTHING.
+// Returns a map of eventID -> true for events that were actually inserted.
+// This prevents race conditions where concurrent requests insert the same event ID.
+func (rer *roomEventRepository) CreateIgnoringDuplicates(
+	ctx context.Context,
+	events []*models.RoomEvent,
+) (map[string]bool, error) {
+	insertedIDs := make(map[string]bool, len(events))
+	if len(events) == 0 {
+		return insertedIDs, nil
+	}
+
+	db := rer.Pool().DB(ctx, false)
+	for _, event := range events {
+		result := db.Clauses(clause.OnConflict{DoNothing: true}).Create(event)
+		if result.Error != nil {
+			return insertedIDs, result.Error
+		}
+		if result.RowsAffected > 0 {
+			insertedIDs[event.GetID()] = true
+		}
+	}
+	return insertedIDs, nil
 }
 
 // ExistsByIDs checks if any of the given event IDs already exist.

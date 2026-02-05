@@ -232,71 +232,101 @@ func (mb *messageBusiness) SendEvents(
 		return responses, nil
 	}
 
-	bulkCreateErr := mb.eventRepo.BulkCreate(ctx, validEvents)
+	// Use CreateIgnoringDuplicates to atomically handle concurrent inserts.
+	// Returns which events were actually inserted vs skipped (duplicate from concurrent request).
+	insertedIDs, bulkCreateErr := mb.eventRepo.CreateIgnoringDuplicates(ctx, validEvents)
 	if bulkCreateErr == nil {
-		chattel.MessagesSentCounter.Add(ctx, int64(len(validEvents)))
+		chattel.MessagesSentCounter.Add(ctx, int64(len(insertedIDs)))
 	}
 
 	// Phase 3: Process each valid event - emit to outbox or report errors
 	for _, event := range validEvents {
 		responseIdx := eventToIndex[event.GetID()]
+		responses[responseIdx] = mb.emitOrAckEvent(ctx, event, insertedIDs, bulkCreateErr, subscriptionMap)
+	}
 
-		// Check if bulk save failed
-		if bulkCreateErr != nil {
-			responses[responseIdx] = &chatv1.AckEvent{
-				EventId: []string{event.GetID()},
-				AckAt:   timestamppb.Now(),
-				Error: &commonv1.ErrorDetail{
-					Code:    int32(connect.CodeInternal),
-					Message: fmt.Sprintf("failed to save event: %v", bulkCreateErr),
-				},
-			}
-			continue
-		}
+	return responses, nil
+}
 
-		subscription, ok := subscriptionMap[event.SenderID]
-		if !ok {
-			util.Log(ctx).
-				WithField("subscription_id", event.SenderID).
-				Error("very unlikely, no such subscription exists")
-			continue
-		}
-
-		// Emit event to outbox for delivery
-		outboxEventLink := eventsv1.Link{
-			EventId: event.GetID(),
-			RoomId:  event.RoomID,
-
-			Source: &eventsv1.Subscription{
-				SubscriptionId: subscription.GetID(),
-				ContactLink:    subscription.ToLink(),
+// emitOrAckEvent processes a single event after bulk save: emits to outbox if newly inserted,
+// returns success ack for duplicates, or returns error ack on failure.
+func (mb *messageBusiness) emitOrAckEvent(
+	ctx context.Context,
+	event *models.RoomEvent,
+	insertedIDs map[string]bool,
+	bulkCreateErr error,
+	subscriptionMap map[string]*models.RoomSubscription,
+) *chatv1.AckEvent {
+	if bulkCreateErr != nil {
+		return &chatv1.AckEvent{
+			EventId: []string{event.GetID()},
+			AckAt:   timestamppb.Now(),
+			Error: &commonv1.ErrorDetail{
+				Code:    int32(connect.CodeInternal),
+				Message: fmt.Sprintf("failed to save event: %v", bulkCreateErr),
 			},
-			ParentId:  event.ParentID,
-			EventType: chatv1.RoomEventType(event.EventType),
-			CreatedAt: timestamppb.New(event.CreatedAt),
 		}
+	}
 
-		emitErr := mb.eventsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &outboxEventLink)
-		if emitErr != nil {
-			responses[responseIdx] = &chatv1.AckEvent{
-				EventId: []string{event.GetID()},
-				AckAt:   timestamppb.Now(),
-				Error: &commonv1.ErrorDetail{
-					Code:    int32(connect.CodeInternal),
-					Message: fmt.Sprintf("failed to emit event: %v", emitErr),
-				},
-			}
-			continue
-		}
-
-		// Success - event saved and emitted to outbox
-		responses[responseIdx] = &chatv1.AckEvent{
+	// Skip events that were duplicates (already inserted by a concurrent request).
+	// The concurrent request will handle emitting to the outbox.
+	if !insertedIDs[event.GetID()] {
+		return &chatv1.AckEvent{
 			EventId: []string{event.GetID()},
 			AckAt:   timestamppb.Now(),
 		}
 	}
 
-	return responses, nil
+	subscription, ok := subscriptionMap[event.SenderID]
+	if !ok {
+		util.Log(ctx).
+			WithField("subscription_id", event.SenderID).
+			Error("very unlikely, no such subscription exists")
+		return &chatv1.AckEvent{
+			EventId: []string{event.GetID()},
+			AckAt:   timestamppb.Now(),
+			Error: &commonv1.ErrorDetail{
+				Code:    int32(connect.CodeInternal),
+				Message: "no subscription found for sender",
+			},
+		}
+	}
+
+	// Emit event to outbox for delivery
+	outboxEventLink := eventsv1.Link{
+		EventId: event.GetID(),
+		RoomId:  event.RoomID,
+		Source: &eventsv1.Subscription{
+			SubscriptionId: subscription.GetID(),
+			ContactLink:    subscription.ToLink(),
+		},
+		ParentId:  event.ParentID,
+		EventType: chatv1.RoomEventType(event.EventType),
+		CreatedAt: timestamppb.New(event.CreatedAt),
+	}
+
+	emitErr := mb.eventsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &outboxEventLink)
+	if emitErr != nil {
+		// Emit failed - delete the orphaned event so client can retry cleanly
+		if delErr := mb.eventRepo.Delete(ctx, event.GetID()); delErr != nil {
+			util.Log(ctx).WithError(delErr).
+				WithField("event_id", event.GetID()).
+				Warn("failed to clean up orphaned event after emit failure")
+		}
+		return &chatv1.AckEvent{
+			EventId: []string{event.GetID()},
+			AckAt:   timestamppb.Now(),
+			Error: &commonv1.ErrorDetail{
+				Code:    int32(connect.CodeInternal),
+				Message: fmt.Sprintf("failed to emit event: %v", emitErr),
+			},
+		}
+	}
+
+	return &chatv1.AckEvent{
+		EventId: []string{event.GetID()},
+		AckAt:   timestamppb.Now(),
+	}
 }
 
 func (mb *messageBusiness) GetMessage(

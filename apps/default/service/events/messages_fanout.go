@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
@@ -114,7 +115,7 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 	eventPayload, payloadErr := feh.payloadConverter.ToProto(eventLinkData.Content)
 	if payloadErr != nil {
 		logger.WithError(payloadErr).Error("failed to convert event content to payload")
-		// Continue with nil payload rather than failing entirely
+		return fmt.Errorf("failed to convert event content to payload: %w", payloadErr)
 	}
 
 	// Publish all deliveries - continue on individual failures
