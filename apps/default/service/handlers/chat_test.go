@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/apps/default/service/handlers"
 	"github.com/antinvestor/service-chat/apps/default/tests"
+	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/frame/security"
 	"github.com/pitabwire/util"
@@ -25,10 +26,29 @@ func TestChatServerTestSuite(t *testing.T) {
 	suite.Run(t, new(ChatServerTestSuite))
 }
 
+// createRoomAndWait creates a room via the handler and waits for the creator's
+// subscription and authz access to be set up asynchronously.
+func (s *ChatServerTestSuite) createRoomAndWait(
+	ctx context.Context,
+	t *testing.T,
+	svc *frame.Service,
+	chatServer *handlers.ChatServer,
+	profileID string,
+	req *connect.Request[chatv1.CreateRoomRequest],
+) string {
+	t.Helper()
+	createResp, err := chatServer.CreateRoom(ctx, req)
+	require.NoError(t, err)
+	roomID := createResp.Msg.GetRoom().GetId()
+	s.WaitForMemberSubscription(ctx, svc, roomID, profileID, t)
+	s.WaitForAuthzAccess(ctx, profileID, roomID, t)
+	return roomID
+}
+
 func (s *ChatServerTestSuite) TestCreateRoom() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
@@ -51,7 +71,7 @@ func (s *ChatServerTestSuite) TestCreateRoom() {
 func (s *ChatServerTestSuite) TestCreateRoomUnauthenticated() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		req := connect.NewRequest(&chatv1.CreateRoomRequest{
 			Name:      "Test Room",
@@ -66,20 +86,16 @@ func (s *ChatServerTestSuite) TestCreateRoomUnauthenticated() {
 func (s *ChatServerTestSuite) TestUpdateRoom() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room first
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Original Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Original Room",
+				IsPrivate: false,
+			}))
 
 		// Update the room
 		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
@@ -97,27 +113,23 @@ func (s *ChatServerTestSuite) TestUpdateRoom() {
 func (s *ChatServerTestSuite) TestDeleteRoom() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Room to Delete",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Room to Delete",
+				IsPrivate: false,
+			}))
 
 		// Delete the room
 		deleteReq := connect.NewRequest(&chatv1.DeleteRoomRequest{
 			RoomId: roomID,
 		})
 
-		_, err = chatServer.DeleteRoom(ctx, deleteReq)
+		_, err := chatServer.DeleteRoom(ctx, deleteReq)
 		require.NoError(t, err)
 	})
 }
@@ -125,20 +137,16 @@ func (s *ChatServerTestSuite) TestDeleteRoom() {
 func (s *ChatServerTestSuite) TestSendEvent() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Message Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Message Room",
+				IsPrivate: false,
+			}))
 
 		// Send message
 		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
@@ -164,20 +172,16 @@ func (s *ChatServerTestSuite) TestSendEvent() {
 func (s *ChatServerTestSuite) TestGetHistory() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "History Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "History Room",
+				IsPrivate: false,
+			}))
 
 		// Send messages
 		for range 5 {
@@ -193,7 +197,7 @@ func (s *ChatServerTestSuite) TestGetHistory() {
 				},
 			})
 
-			_, err = chatServer.SendEvent(ctx, msgReq)
+			_, err := chatServer.SendEvent(ctx, msgReq)
 			require.NoError(t, err)
 		}
 
@@ -212,20 +216,16 @@ func (s *ChatServerTestSuite) TestGetHistory() {
 func (s *ChatServerTestSuite) TestAddRoomSubscriptions() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Subscription Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Subscription Room",
+				IsPrivate: false,
+			}))
 
 		// Add member
 		memberID := util.IDString()
@@ -240,7 +240,7 @@ func (s *ChatServerTestSuite) TestAddRoomSubscriptions() {
 			},
 		})
 
-		_, err = chatServer.AddRoomSubscriptions(ctx, addReq)
+		_, err := chatServer.AddRoomSubscriptions(ctx, addReq)
 		require.NoError(t, err)
 	})
 }
@@ -248,20 +248,16 @@ func (s *ChatServerTestSuite) TestAddRoomSubscriptions() {
 func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Removal Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Removal Room",
+				IsPrivate: false,
+			}))
 
 		// Add member
 		memberID := util.IDString()
@@ -276,8 +272,11 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 			},
 		})
 
-		_, err = chatServer.AddRoomSubscriptions(ctx, addReq)
+		_, err := chatServer.AddRoomSubscriptions(ctx, addReq)
 		require.NoError(t, err)
+
+		// Wait for member subscription to be created
+		s.WaitForMemberSubscription(ctx, svc, roomID, memberID, t)
 
 		// Get subscription ID
 		searchReq := connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
@@ -309,20 +308,16 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Role Update Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Role Update Room",
+				IsPrivate: false,
+			}))
 
 		// Add member
 		memberID := util.IDString()
@@ -337,8 +332,11 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 			},
 		})
 
-		_, err = chatServer.AddRoomSubscriptions(ctx, addReq)
+		_, err := chatServer.AddRoomSubscriptions(ctx, addReq)
 		require.NoError(t, err)
+
+		// Wait for member subscription to be created
+		s.WaitForMemberSubscription(ctx, svc, roomID, memberID, t)
 
 		// Get subscription ID
 		searchReq := connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
@@ -371,20 +369,16 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 func (s *ChatServerTestSuite) TestSearchRoomSubscriptions() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, profileID)
 
-		// Create room
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Search Subscriptions Room",
-			IsPrivate: false,
-		})
-
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Search Subscriptions Room",
+				IsPrivate: false,
+			}))
 
 		// Search subscriptions
 		searchReq := connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
@@ -413,27 +407,25 @@ func (s *ChatServerTestSuite) withSystemAuth(ctx context.Context, profileID stri
 
 func (s *ChatServerTestSuite) setupLiveTest(
 	t *testing.T, dep *definition.DependencyOption,
-) (context.Context, *handlers.ChatServer) {
+) (context.Context, *frame.Service, *handlers.ChatServer) {
 	ctx, svc := s.CreateService(t, dep)
-	chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+	chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 	profileID := util.IDString()
 	ctx = s.withSystemAuth(ctx, profileID)
-	return ctx, chatServer
+	return ctx, svc, chatServer
 }
 
 func (s *ChatServerTestSuite) TestLive_TypingIndicator() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		ctx, chatServer := s.setupLiveTest(t, dep)
+		ctx, svc, chatServer := s.setupLiveTest(t, dep)
 
-		// Create a room first
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "Typing Test Room",
-			IsPrivate: false,
-		})
+		profileID := security.ClaimsFromContext(ctx).ContactID
 
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Typing Test Room",
+				IsPrivate: false,
+			}))
 
 		// Send typing indicator via Live
 		liveReq := connect.NewRequest(&chatv1.LiveRequest{
@@ -457,17 +449,15 @@ func (s *ChatServerTestSuite) TestLive_TypingIndicator() {
 
 func (s *ChatServerTestSuite) TestLive_ReadMarker() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		ctx, chatServer := s.setupLiveTest(t, dep)
+		ctx, svc, chatServer := s.setupLiveTest(t, dep)
 
-		// Create room and send a message
-		createReq := connect.NewRequest(&chatv1.CreateRoomRequest{
-			Name:      "ReadMarker Test Room",
-			IsPrivate: false,
-		})
+		profileID := security.ClaimsFromContext(ctx).ContactID
 
-		createResp, err := chatServer.CreateRoom(ctx, createReq)
-		require.NoError(t, err)
-		roomID := createResp.Msg.GetRoom().GetId()
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "ReadMarker Test Room",
+				IsPrivate: false,
+			}))
 
 		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
@@ -505,7 +495,7 @@ func (s *ChatServerTestSuite) TestLive_ReadMarker() {
 
 func (s *ChatServerTestSuite) TestLive_EmptyClientStates() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		ctx, chatServer := s.setupLiveTest(t, dep)
+		ctx, _, chatServer := s.setupLiveTest(t, dep)
 
 		liveReq := connect.NewRequest(&chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{},
@@ -519,7 +509,7 @@ func (s *ChatServerTestSuite) TestLive_EmptyClientStates() {
 func (s *ChatServerTestSuite) TestLive_Unauthenticated() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
-		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, nil)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		liveReq := connect.NewRequest(&chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{

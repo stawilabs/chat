@@ -9,8 +9,8 @@ import (
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"github.com/antinvestor/service-chat/apps/default/service"
+	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
 	"github.com/pitabwire/frame/cache"
@@ -25,6 +25,7 @@ type connectBusiness struct {
 	subRepo         repository.RoomSubscriptionRepository
 	eventRepo       repository.RoomEventRepository
 	subscriptionSvc SubscriptionService
+	authzMiddleware authz.Middleware
 
 	presenceCache cache.Cache[string, *chatv1.PresenceEvent]
 }
@@ -35,12 +36,14 @@ func NewConnectBusiness(
 	subRepo repository.RoomSubscriptionRepository,
 	eventRepo repository.RoomEventRepository,
 	subscriptionSvc SubscriptionService,
+	authzMiddleware authz.Middleware,
 ) ClientStateBusiness {
 	return &connectBusiness{
 		evtsManager:     evtsManager,
 		subRepo:         subRepo,
 		eventRepo:       eventRepo,
 		subscriptionSvc: subscriptionSvc,
+		authzMiddleware: authzMiddleware,
 	}
 }
 
@@ -75,22 +78,14 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 		return service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room
-	accessList, err := cb.subscriptionSvc.HasAccess(ctx, typer, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	var subscription *models.RoomSubscription
-	// Check if the user has access to the room
-	for _, sub := range accessList {
-		if sub.RoomID == roomID && sub.IsActive() {
-			subscription = sub
-		}
-	}
-
-	if subscription == nil {
+	// Check if user has access to the room via authz
+	if authzErr := cb.authzMiddleware.CanSendMessage(ctx, typer, roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
+	}
+
+	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, typer, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
 	// Broadcast user is typing to other room members
@@ -130,22 +125,14 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 		return service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room
-	accessList, err := cb.subscriptionSvc.HasAccess(ctx, recipient, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	var subscription *models.RoomSubscription
-	// Check if the user has access to the room
-	for _, sub := range accessList {
-		if sub.RoomID == roomID && sub.IsActive() {
-			subscription = sub
-		}
-	}
-
-	if subscription == nil {
+	// Check if user has access to the room via authz
+	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, recipient, roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
+	}
+
+	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, recipient, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
 	// Broadcast delivery receipt to other room members
@@ -186,22 +173,14 @@ func (cb *connectBusiness) UpdateReadMarker(
 		return service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room
-	accessList, err := cb.subscriptionSvc.HasAccess(ctx, reader, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	var subscription *models.RoomSubscription
-	// Check if the user has access to the room
-	for _, sub := range accessList {
-		if sub.RoomID == roomID && sub.IsActive() {
-			subscription = sub
-		}
-	}
-
-	if subscription == nil {
+	// Check if user has access to the room via authz
+	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, reader, roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
+	}
+
+	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, reader, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
 	// Update the subscription's last read event ID

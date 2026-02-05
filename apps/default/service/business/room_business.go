@@ -144,15 +144,15 @@ func (rb *roomBusiness) CreateRoom(
 	)
 	if err != nil {
 		partErr, ok := service.IsPartialBatchError(err)
-		if !ok {
-			// Full failure: clean up subscriptions and authz before deleting the room
+		if !ok || partErr.Succeeded == 0 {
+			// Full failure: delete the room (subscriptions are created asynchronously
+			// via events, so none exist yet at this point)
 			_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
-
 			return nil, fmt.Errorf("failed to create room: %w", err)
 		}
 
-		// Partial failure: room + owner subscription exist and are valid,
-		// only some additional members failed validation. Return the room.
+		// Partial failure: some members succeeded (including at least the owner).
+		// Return the room with a warning about the failed members.
 		util.Log(ctx).WithField("room_id", createdRoom.GetID()).
 			WithField("failed", partErr.Failed).
 			WithField("succeeded", partErr.Succeeded).
@@ -178,21 +178,8 @@ func (rb *roomBusiness) GetRoom(
 		return nil, err
 	}
 
-	// Check if the user has access to the room
-	accessList, err := rb.subscriptionSvc.HasAccess(ctx, searchedBy, roomID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	// Check if the user has access to the room
-	hasAccess := false
-	for _, sub := range accessList {
-		if sub.RoomID == roomID && sub.IsActive() {
-			hasAccess = true
-			break
-		}
-	}
-	if !hasAccess {
+	// Check if the user has access to the room via authz
+	if err := rb.authzMiddleware.CanViewRoom(ctx, searchedBy, roomID); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -605,21 +592,8 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 		return nil, err
 	}
 
-	// Check if the user has access to the room
-	accessList, err := rb.subscriptionSvc.HasAccess(ctx, searchedBy, req.GetRoomId())
-	if err != nil {
-		return nil, fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	// Check if the user has access to the room
-	hasAccess := false
-	for _, sub := range accessList {
-		if sub.RoomID == req.GetRoomId() && sub.IsActive() {
-			hasAccess = true
-			break
-		}
-	}
-	if !hasAccess {
+	// Check if the user has access to the room via authz
+	if err := rb.authzMiddleware.CanViewRoom(ctx, searchedBy, req.GetRoomId()); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -642,11 +616,23 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 	roomID string, subscriptionList []*chatv1.RoomSubscription,
 	actorSubscriptionID string, actorLink *commonv1.ContactLink) error {
-	// Create new subscriptions for profiles that via event service.
+	// Deduplicate members by profile_id+contact_id to avoid redundant processing
+	seen := make(map[string]struct{}, len(subscriptionList))
+	dedupList := make([]*chatv1.RoomSubscription, 0, len(subscriptionList))
+	for _, subscription := range subscriptionList {
+		key := subscription.GetMember().GetProfileId() + "|" + subscription.GetMember().GetContactId()
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		dedupList = append(dedupList, subscription)
+	}
+
+	// Create new subscriptions for profiles via event service.
 	// Continue processing after individual validation failures so that
-	// valid subscriptionList are still added (partial success).
+	// valid members are still added (partial success).
 	var itemErrors []service.ItemError
-	var roomActionList []*eventsv1.RoomAction
+	roomActionList := &eventsv1.RoomActionList{}
 	for idx, subscription := range subscriptionList {
 		// Validate Contact and Profile ID via Profile Service
 		if validateErr := rb.validateContactProfile(ctx, subscription.GetMember()); validateErr != nil {
@@ -656,6 +642,11 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 				Message: validateErr.Error(),
 			})
 			continue
+		}
+
+		roles := subscription.GetRoles()
+		if len(roles) == 0 {
+			roles = []string{roleMember}
 		}
 
 		action := &eventsv1.RoomAction{
@@ -671,10 +662,10 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 					ContactLink:    subscription.GetMember(),
 				},
 			},
-			Roles: subscription.GetRoles(),
+			Roles: roles,
 		}
 
-		roomActionList = append(roomActionList, action)
+		roomActionList.Actions = append(roomActionList.Actions, action)
 	}
 
 	err := rb.eventsManager.Emit(ctx, events.RoomCreatedEventName, roomActionList)
@@ -684,7 +675,7 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 
 	if len(itemErrors) > 0 {
 		return &service.PartialBatchError{
-			Succeeded: len(subscriptionList) - len(itemErrors),
+			Succeeded: len(dedupList) - len(itemErrors),
 			Failed:    len(itemErrors),
 			Errors:    itemErrors,
 		}

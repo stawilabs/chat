@@ -1,6 +1,7 @@
 package tests_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/business"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/apps/default/tests"
+	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/util"
@@ -26,7 +28,7 @@ func TestExtendedIntegrationTestSuite(t *testing.T) {
 
 func (s *ExtendedIntegrationTestSuite) setupBusiness(
 	t *testing.T, dep *definition.DependencyOption,
-) (business.RoomBusiness, business.MessageBusiness, business.SubscriptionService) {
+) (context.Context, *frame.Service, business.RoomBusiness, business.MessageBusiness, business.SubscriptionService) {
 	ctx, svc := s.CreateService(t, dep)
 	workMan := svc.WorkManager()
 	evtsMan := svc.EventsManager()
@@ -38,13 +40,13 @@ func (s *ExtendedIntegrationTestSuite) setupBusiness(
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
 	roomBusiness := business.NewRoomBusiness(
 		svc, roomRepo, eventRepo, subRepo, proposalRepo,
-		subscriptionSvc, evtsMan, messageBusiness, nil, nil,
+		subscriptionSvc, evtsMan, messageBusiness, nil, s.AuthzMiddleware,
 	)
 
-	return roomBusiness, messageBusiness, subscriptionSvc
+	return ctx, svc, roomBusiness, messageBusiness, subscriptionSvc
 }
 
 func (s *ExtendedIntegrationTestSuite) makeContactLink() *commonv1.ContactLink {
@@ -58,8 +60,8 @@ func (s *ExtendedIntegrationTestSuite) makeContactLink() *commonv1.ContactLink {
 // does not cause data races or database constraint violations.
 func (s *ExtendedIntegrationTestSuite) TestConcurrentRoomCreation() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, _, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, _, _ := s.setupBusiness(t, dep)
+		_ = svc
 
 		const numRooms = 10
 		creator := s.makeContactLink()
@@ -100,14 +102,15 @@ func (s *ExtendedIntegrationTestSuite) TestConcurrentRoomCreation() {
 // to the same room works correctly.
 func (s *ExtendedIntegrationTestSuite) TestConcurrentMessageSending() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 			Name: "Concurrent Message Room",
 		}, creator)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
 
 		const numMessages = 20
 		var wg sync.WaitGroup
@@ -152,14 +155,15 @@ func (s *ExtendedIntegrationTestSuite) TestConcurrentMessageSending() {
 // the limit parameter and returns the correct number of events.
 func (s *ExtendedIntegrationTestSuite) TestLargeMessageHistoryWithLimit() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 			Name: "Limit Test Room",
 		}, creator)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
 
 		// Send 25 messages
 		const totalMessages = 25
@@ -213,14 +217,15 @@ func (s *ExtendedIntegrationTestSuite) TestLargeMessageHistoryWithLimit() {
 // TestMessageTypeVariations tests sending different message payload types.
 func (s *ExtendedIntegrationTestSuite) TestMessageTypeVariations() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 			Name: "Type Test Room",
 		}, creator)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
 
 		payloads := []*chatv1.Payload{
 			// Text message
@@ -272,18 +277,18 @@ func (s *ExtendedIntegrationTestSuite) TestMessageTypeVariations() {
 // TestRoomSearch verifies room search functionality.
 func (s *ExtendedIntegrationTestSuite) TestRoomSearch() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, _, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, _, _ := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 
 		// Create rooms with distinctive names
 		names := []string{"Alpha Finance Group", "Beta Trading Hub", "Gamma Support Channel"}
 		for _, name := range names {
-			_, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+			created, crErr := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 				Name: name,
 			}, creator)
-			require.NoError(t, err)
+			require.NoError(t, crErr)
+			s.WaitForRoomSubscription(ctx, svc, created.GetId(), t)
 		}
 
 		// Search for "Alpha"
@@ -308,8 +313,7 @@ func (s *ExtendedIntegrationTestSuite) TestRoomSearch() {
 // is handled gracefully.
 func (s *ExtendedIntegrationTestSuite) TestDuplicateMemberAddition() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, _, subscriptionSvc := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, _, subscriptionSvc := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 		member := s.makeContactLink()
@@ -319,11 +323,13 @@ func (s *ExtendedIntegrationTestSuite) TestDuplicateMemberAddition() {
 			Members: []*commonv1.ContactLink{member},
 		}, creator)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
 
-		// Verify member has access
-		accessMap, err := subscriptionSvc.HasAccess(ctx, member, room.GetId())
+		// Verify member has subscription
+		sub, err := subscriptionSvc.GetSubscription(ctx, member, room.GetId())
 		require.NoError(t, err)
-		s.NotEmpty(accessMap)
+		s.NotNil(sub)
 
 		// Try adding the same member again - should not error
 		err = roomBusiness.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
@@ -333,12 +339,12 @@ func (s *ExtendedIntegrationTestSuite) TestDuplicateMemberAddition() {
 			},
 		}, creator)
 		// This may succeed or return a partial error - either way, the member
-		// should still have access
+		// should still have a subscription
 		_ = err
 
-		accessMap, err = subscriptionSvc.HasAccess(ctx, member, room.GetId())
+		sub, err = subscriptionSvc.GetSubscription(ctx, member, room.GetId())
 		require.NoError(t, err)
-		s.NotEmpty(accessMap)
+		s.NotNil(sub)
 	})
 }
 
@@ -346,8 +352,7 @@ func (s *ExtendedIntegrationTestSuite) TestDuplicateMemberAddition() {
 // returns all members in a room.
 func (s *ExtendedIntegrationTestSuite) TestSearchAllSubscriptionsInRoom() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, _, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, _, _ := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 
@@ -363,6 +368,12 @@ func (s *ExtendedIntegrationTestSuite) TestSearchAllSubscriptionsInRoom() {
 			Members: members,
 		}, creator)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
+		// Wait for all member subscriptions to be created
+		for _, member := range members {
+			s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
+		}
 
 		// Search all subscriptions
 		subs, err := roomBusiness.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
@@ -379,14 +390,15 @@ func (s *ExtendedIntegrationTestSuite) TestSearchAllSubscriptionsInRoom() {
 // system-generated moderation events (e.g. "Room created"), not user messages.
 func (s *ExtendedIntegrationTestSuite) TestNewRoomHistory() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, messageBusiness, _ := s.setupBusiness(t, dep)
 
 		creator := s.makeContactLink()
 		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 			Name: "New Room",
 		}, creator)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
 
 		events, err := messageBusiness.GetHistory(ctx, &chatv1.GetHistoryRequest{
 			RoomId: room.GetId(),
@@ -407,8 +419,7 @@ func (s *ExtendedIntegrationTestSuite) TestNewRoomHistory() {
 // and enforced correctly across multiple updates.
 func (s *ExtendedIntegrationTestSuite) TestMultipleMemberRoleEscalation() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, _, subscriptionSvc := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, _, subscriptionSvc := s.setupBusiness(t, dep)
 
 		owner := s.makeContactLink()
 		user := s.makeContactLink()
@@ -418,6 +429,9 @@ func (s *ExtendedIntegrationTestSuite) TestMultipleMemberRoleEscalation() {
 			Members: []*commonv1.ContactLink{user},
 		}, owner)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), user.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, owner.GetProfileId(), room.GetId(), t)
 
 		// Find the user's subscription ID
 		subs, err := roomBusiness.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
@@ -466,8 +480,7 @@ func (s *ExtendedIntegrationTestSuite) TestMultipleMemberRoleEscalation() {
 // makes all subscriptions inaccessible.
 func (s *ExtendedIntegrationTestSuite) TestRoomDeletionCleansSubscriptions() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
-		roomBusiness, _, subscriptionSvc := s.setupBusiness(t, dep)
-		ctx := t.Context()
+		ctx, svc, roomBusiness, _, subscriptionSvc := s.setupBusiness(t, dep)
 
 		owner := s.makeContactLink()
 		member := s.makeContactLink()
@@ -477,11 +490,14 @@ func (s *ExtendedIntegrationTestSuite) TestRoomDeletionCleansSubscriptions() {
 			Members: []*commonv1.ContactLink{member},
 		}, owner)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, owner.GetProfileId(), room.GetId(), t)
 
-		// Verify access before deletion
-		accessMap, err := subscriptionSvc.HasAccess(ctx, member, room.GetId())
+		// Verify subscription exists before deletion
+		sub, err := subscriptionSvc.GetSubscription(ctx, member, room.GetId())
 		require.NoError(t, err)
-		s.NotEmpty(accessMap)
+		s.NotNil(sub)
 
 		// Delete room
 		err = roomBusiness.DeleteRoom(ctx, &chatv1.DeleteRoomRequest{
@@ -494,14 +510,7 @@ func (s *ExtendedIntegrationTestSuite) TestRoomDeletionCleansSubscriptions() {
 		require.Error(t, err)
 
 		// Verify subscriptions are deactivated after room deletion
-		accessMap, err = subscriptionSvc.HasAccess(ctx, member, room.GetId())
-		if err != nil {
-			// Access denied error is acceptable — subscriptions were fully removed
-			return
-		}
-		// If subscriptions are returned, they should all be inactive (blocked)
-		for _, sub := range accessMap {
-			s.False(sub.IsActive(), "subscription should be deactivated after room deletion")
-		}
+		_, err = subscriptionSvc.GetSubscription(ctx, member, room.GetId())
+		require.Error(t, err, "subscription should be deactivated after room deletion")
 	})
 }

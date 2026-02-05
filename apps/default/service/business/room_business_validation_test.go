@@ -165,7 +165,7 @@ func (s *RoomBusinessTestSuite) setupBusinessLayerWithProfileClient(
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,
@@ -176,7 +176,7 @@ func (s *RoomBusinessTestSuite) setupBusinessLayerWithProfileClient(
 		evtsMan,
 		messageBusiness,
 		profileCli,
-		nil, // authz middleware
+		s.AuthzMiddleware,
 	)
 
 	return roomBusiness
@@ -225,6 +225,9 @@ func (s *RoomBusinessTestSuite) TestCreateRoomWithValidationSuccess() {
 		)
 		require.NoError(t, err)
 		s.NotNil(room)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), validProfileID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		// Verify subscription created
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{

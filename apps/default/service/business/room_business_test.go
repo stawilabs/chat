@@ -37,7 +37,7 @@ func (s *RoomBusinessTestSuite) setupBusinessLayer(
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,
@@ -48,7 +48,7 @@ func (s *RoomBusinessTestSuite) setupBusinessLayer(
 		evtsMan,
 		messageBusiness,
 		nil,
-		nil,
+		s.AuthzMiddleware,
 	)
 
 	return roomBusiness
@@ -116,6 +116,8 @@ func (s *RoomBusinessTestSuite) TestGetRoom() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Get the room
 		retrieved, err := roomBusiness.GetRoom(
@@ -150,6 +152,7 @@ func (s *RoomBusinessTestSuite) TestGetRoomAccessDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, created.GetId(), t)
 
 		// Try to get room as non-member
 		_, err = roomBusiness.GetRoom(
@@ -179,6 +182,7 @@ func (s *RoomBusinessTestSuite) TestUpdateRoom() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, created.GetId(), t)
 
 		// Update room
 		updateReq := &chatv1.UpdateRoomRequest{
@@ -220,6 +224,7 @@ func (s *RoomBusinessTestSuite) TestUpdateRoomUnauthorized() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, created.GetId(), t)
 
 		// Try to update as non-admin member
 		updateReq := &chatv1.UpdateRoomRequest{
@@ -254,6 +259,7 @@ func (s *RoomBusinessTestSuite) TestDeleteRoom() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
 
 		// Delete room
 		deleteReq := &chatv1.DeleteRoomRequest{
@@ -299,6 +305,8 @@ func (s *RoomBusinessTestSuite) TestAddRoomSubscriptions() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Add new member
 		addReq := &chatv1.AddRoomSubscriptionsRequest{
@@ -317,6 +325,7 @@ func (s *RoomBusinessTestSuite) TestAddRoomSubscriptions() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), newMemberID, t)
 
 		// Verify member added
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
@@ -355,6 +364,9 @@ func (s *RoomBusinessTestSuite) TestRemoveRoomSubscriptions() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Get subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
@@ -422,6 +434,9 @@ func (s *RoomBusinessTestSuite) TestUpdateSubscriptionRole() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Get subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
@@ -494,6 +509,9 @@ func (s *RoomBusinessTestSuite) TestDeleteRoomDeniedForNonOwner() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Promote member to admin first
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
@@ -587,6 +605,7 @@ func (s *RoomBusinessTestSuite) TestAddRoomSubscriptionsDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, created.GetId(), t)
 
 		// Regular member should NOT be able to add members
 		addReq := &chatv1.AddRoomSubscriptionsRequest{
@@ -632,6 +651,10 @@ func (s *RoomBusinessTestSuite) TestRemoveRoomSubscriptionsDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), memberID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), member2ID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Find member2's subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{RoomId: created.GetId()}
@@ -693,6 +716,10 @@ func (s *RoomBusinessTestSuite) TestUpdateSubscriptionRoleDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), memberID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), member2ID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Find member2's subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{RoomId: created.GetId()}
@@ -769,6 +796,9 @@ func (s *RoomBusinessTestSuite) TestSubscriptionContactIDStored() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, created.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, created.GetId(), t)
 
 		// Get subscriptions and verify ContactID is populated
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{RoomId: created.GetId()}
@@ -803,12 +833,13 @@ func (s *RoomBusinessTestSuite) TestSearchRooms() {
 				Name:      name,
 				IsPrivate: false,
 			}
-			_, err := roomBusiness.CreateRoom(
+			created, crErr := roomBusiness.CreateRoom(
 				ctx,
 				req,
 				&commonv1.ContactLink{ProfileId: userID, ContactId: userContactID},
 			)
-			require.NoError(t, err)
+			require.NoError(t, crErr)
+			s.WaitForRoomSubscription(ctx, svc, created.GetId(), t)
 		}
 
 		// Search for rooms

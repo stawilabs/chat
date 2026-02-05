@@ -32,13 +32,13 @@ func (csq *roomCreatedQueue) Name() string {
 }
 
 func (csq *roomCreatedQueue) PayloadType() any {
-	return []*eventsv1.RoomAction{}
+	return &eventsv1.RoomActionList{}
 }
 
 func (csq *roomCreatedQueue) Validate(_ context.Context, payload any) error {
-	_, ok := payload.([]*eventsv1.RoomAction)
+	_, ok := payload.(*eventsv1.RoomActionList)
 	if !ok {
-		return errors.New("invalid payload type, expected []*eventsv1.RoomAction")
+		return errors.New("invalid payload type, expected *eventsv1.RoomActionList")
 	}
 	return nil
 }
@@ -51,12 +51,12 @@ func (csq *roomCreatedQueue) Execute(ctx context.Context, payload any) error {
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
 
 	// Unwrap payload
-	actionList, ok := payload.([]*eventsv1.RoomAction)
+	actionList, ok := payload.(*eventsv1.RoomActionList)
 	if !ok {
 		return errors.New("invalid payload type")
 	}
 
-	for _, action := range actionList {
+	for _, action := range actionList.GetActions() {
 		err = csq.eventsManager.Emit(ctx, SubscriptionAddEventName, action)
 		if err != nil {
 			return fmt.Errorf("failed to emit subscription add event: %w", err)

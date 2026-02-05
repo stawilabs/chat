@@ -38,7 +38,7 @@ func (s *MessageBusinessTestSuite) setupBusinessLayer(
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,
@@ -49,7 +49,7 @@ func (s *MessageBusinessTestSuite) setupBusinessLayer(
 		evtsMan,
 		messageBusiness,
 		nil,
-		nil,
+		s.AuthzMiddleware,
 	)
 
 	return messageBusiness, roomBusiness
@@ -74,6 +74,8 @@ func (s *MessageBusinessTestSuite) TestSendMessage() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		// Send message
 		msgReq := &chatv1.SendEventRequest{
@@ -150,6 +152,8 @@ func (s *MessageBusinessTestSuite) TestSendMultipleMessages() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		// Send multiple messages
 		var messages []*chatv1.RoomEvent
@@ -199,6 +203,8 @@ func (s *MessageBusinessTestSuite) TestGetHistory() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		// Send 10 messages
 		for range 10 {
@@ -257,6 +263,8 @@ func (s *MessageBusinessTestSuite) TestGetMessageViaHistory() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
@@ -329,6 +337,8 @@ func (s *MessageBusinessTestSuite) TestDeleteMessageViaRepository() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
@@ -389,6 +399,10 @@ func (s *MessageBusinessTestSuite) TestMarkMessagesAsRead() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
 
 		// Send message
 		msgReq := &chatv1.SendEventRequest{
@@ -441,6 +455,7 @@ func (s *MessageBusinessTestSuite) TestSendMessageAccessDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, room.GetId(), t)
 
 		// Non-member tries to send a message
 		nonMemberID := util.IDString()
@@ -487,6 +502,7 @@ func (s *MessageBusinessTestSuite) TestGetHistoryAccessDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, room.GetId(), t)
 
 		// Non-member tries to get history
 		nonMemberID := util.IDString()
@@ -528,6 +544,8 @@ func (s *MessageBusinessTestSuite) TestDeleteMessageDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		// Creator sends a message
 		msgReq := &chatv1.SendEventRequest{
@@ -583,6 +601,9 @@ func (s *MessageBusinessTestSuite) TestDeleteMessageByAdmin() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
 
 		// Member sends a message
 		msgReq := &chatv1.SendEventRequest{
@@ -638,6 +659,9 @@ func (s *MessageBusinessTestSuite) TestDeleteOwnMessage() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
 
 		// Member sends a message
 		msgReq := &chatv1.SendEventRequest{
@@ -689,6 +713,7 @@ func (s *MessageBusinessTestSuite) TestMarkMessagesAsReadDenied() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForRoomSubscription(ctx, svc, room.GetId(), t)
 
 		// Non-member tries to mark messages as read
 		nonMemberID := util.IDString()
@@ -722,6 +747,8 @@ func (s *MessageBusinessTestSuite) TestSendDifferentMessageTypes() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
 
 		// Test different message types
 		messageTypes := []chatv1.RoomEventType{

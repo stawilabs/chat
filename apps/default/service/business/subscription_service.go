@@ -40,12 +40,13 @@ const (
 
 // SubscriptionService defines the interface for subscription-related operations.
 type SubscriptionService interface {
-	// HasAccess checks if a user has access to a room
-	HasAccess(
+	// GetSubscription returns the active subscription for a contact in a room.
+	// Does NOT check access - caller must verify access via authz first.
+	GetSubscription(
 		ctx context.Context,
 		contact *commonv1.ContactLink,
-		roomID ...string,
-	) ([]*models.RoomSubscription, error)
+		roomID string,
+	) (*models.RoomSubscription, error)
 
 	// HasRole checks if a user has a specific role in a room
 	HasRole(
@@ -94,30 +95,32 @@ func NewSubscriptionService(
 	}
 }
 
-func (ss *subscriptionService) HasAccess(
+func (ss *subscriptionService) GetSubscription(
 	ctx context.Context,
 	contact *commonv1.ContactLink,
-	roomID ...string,
-) ([]*models.RoomSubscription, error) {
+	roomID string,
+) (*models.RoomSubscription, error) {
 	if err := internal.IsValidContactLink(contact); err != nil {
 		return nil, err
 	}
 
-	if len(roomID) == 0 {
+	if roomID == "" {
 		return nil, service.ErrMessageRoomIDRequired
 	}
 
-	subscriptionList, err := ss.subRepo.GetByContactLinkAndRooms(ctx, contact, roomID...)
+	subscriptionList, err := ss.subRepo.GetByContactLinkAndRooms(ctx, contact, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check subscription: %w", err)
+		return nil, fmt.Errorf("failed to get subscription: %w", err)
 	}
 
-	// If no subscriptions found, deny access
-	if len(subscriptionList) == 0 {
-		return nil, service.ErrRoomAccessDenied
+	// Find first active subscription
+	for _, sub := range subscriptionList {
+		if sub.IsActive() {
+			return sub, nil
+		}
 	}
 
-	return subscriptionList, nil
+	return nil, service.ErrRoomAccessDenied
 }
 
 func (ss *subscriptionService) HasRole(

@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
@@ -17,6 +19,8 @@ import (
 	notificationmocks "github.com/antinvestor/apis/go/notification/mocks"
 	profilemocks "github.com/antinvestor/apis/go/profile/mocks"
 	iconfig "github.com/antinvestor/service-chat/apps/default/config"
+	"github.com/antinvestor/service-chat/apps/default/service/authz"
+	authmock "github.com/antinvestor/service-chat/apps/default/service/authz/mock"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/queues"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
@@ -38,10 +42,15 @@ const PostgresqlDBImage = "postgres:latest"
 
 const (
 	DefaultRandomStringLength = 8
+
+	waitTimeout      = 5 * time.Second
+	waitPollInterval = 50 * time.Millisecond
+	startupDelay     = 200 * time.Millisecond
 )
 
 type BaseTestSuite struct {
 	frametests.FrameBaseTestSuite
+	AuthzMiddleware authz.Middleware
 }
 
 // migrationPath returns the absolute path to the SQL migration directory.
@@ -101,40 +110,55 @@ func (bs *BaseTestSuite) CreateService(
 
 	dbManager := svc.DatastoreManager()
 	workMan := svc.WorkManager()
-	eventsMan := svc.EventsManager()
 	queueMan := svc.QueueManager()
+	eventsMan := svc.EventsManager()
 
 	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)
 
 	err = repository.Migrate(ctx, dbManager, migrationPath())
 	require.NoError(t, err)
 
-	eventDeliveryQueuePublisher := frame.WithRegisterPublisher(
-		cfg.QueueDeviceEventDeliveryName,
-		cfg.QueueDeviceEventDeliveryURI,
-	)
+	// Create mock authz service and middleware for tests
+	mockAuthzSvc := authmock.NewAuthzService()
+	authzMw := authz.NewMiddleware(mockAuthzSvc)
+	bs.AuthzMiddleware = authzMw
 
-	eventDeliveryQueueSubscriber := frame.WithRegisterSubscriber(
-		cfg.QueueDeviceEventDeliveryName,
-		cfg.QueueDeviceEventDeliveryURI,
-		queues.NewHotPathDeliveryQueueHandler(&cfg, queueMan, workMan, bs.GetDevice(t), nil),
-	)
-
-	// Register queue handlers and event handlers
+	// Register queue handlers and event handlers BEFORE Run() to avoid
+	// race conditions. The queue consumer starts during Run(), so all
+	// handlers must be registered before that point.
 	serviceOptions := []frame.Option{
-		eventDeliveryQueuePublisher,
-		eventDeliveryQueueSubscriber,
+		frame.WithRegisterPublisher(
+			cfg.QueueDeviceEventDeliveryName,
+			cfg.QueueDeviceEventDeliveryURI,
+		),
+		frame.WithRegisterSubscriber(
+			cfg.QueueDeviceEventDeliveryName,
+			cfg.QueueDeviceEventDeliveryURI,
+			queues.NewHotPathDeliveryQueueHandler(&cfg, queueMan, workMan, bs.GetDevice(t), nil),
+		),
 		frame.WithRegisterEvents(
+			events.NewRoomCreatedQueue(ctx, eventsMan),
+			events.NewSubscriptionAddQueue(ctx, dbPool, workMan, eventsMan),
+			events.NewSubscriptionAuthorizeQueue(ctx, dbPool, workMan, eventsMan, authzMw),
 			events.NewRoomOutboxLoggingQueue(ctx, dbPool, workMan, eventsMan),
 			events.NewFanoutEventHandler(ctx, &cfg, dbPool, workMan, queueMan),
-		)}
+		),
+	}
 
 	// Initialize the service with all options
 	svc.Init(ctx, serviceOptions...)
 
-	// Run the service
-	err = svc.Run(ctx, "")
-	require.NoError(t, err)
+	// Run the service in a goroutine with a random port so the queue
+	// subscribers stay alive for the full event chain (RoomCreated →
+	// SubscriptionAdd → SubscriptionAuthorize). Using empty port ""
+	// causes Run to exit immediately, which kills the queue subscriber
+	// before all async events are processed.
+	go func() {
+		_ = svc.Run(ctx, ":0")
+	}()
+
+	// Give queue listeners time to start before the test proceeds
+	time.Sleep(startupDelay)
 
 	return ctx, svc
 }
@@ -189,6 +213,86 @@ func (bs *BaseTestSuite) CreateTestProfiles(
 	}
 
 	return profileSlice, nil
+}
+
+// WaitForRoomSubscription polls until at least one active subscription exists
+// for the given room. This is needed because subscriptions are created
+// asynchronously via event queues after CreateRoom returns.
+func (bs *BaseTestSuite) WaitForRoomSubscription(
+	ctx context.Context,
+	svc *frame.Service,
+	roomID string,
+	t *testing.T,
+) {
+	t.Helper()
+	workMan := svc.WorkManager()
+	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+
+	type result struct{}
+	_, err := frametests.WaitForConditionWithResult(ctx, func() (*result, error) {
+		subs, subErr := subRepo.GetByRoomID(ctx, roomID, nil)
+		if subErr != nil || len(subs) == 0 {
+			return nil, subErr
+		}
+		return &result{}, nil
+	}, waitTimeout, waitPollInterval)
+	require.NoError(t, err, "timed out waiting for subscriptions in room %s", roomID)
+}
+
+// WaitForMemberSubscription polls until a subscription exists for a specific
+// member in a room. Used after AddRoomSubscriptions which creates
+// subscriptions asynchronously via event queues.
+func (bs *BaseTestSuite) WaitForMemberSubscription(
+	ctx context.Context,
+	svc *frame.Service,
+	roomID string,
+	profileID string,
+	t *testing.T,
+) {
+	t.Helper()
+	workMan := svc.WorkManager()
+	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+
+	type result struct{}
+	_, err := frametests.WaitForConditionWithResult(ctx, func() (*result, error) {
+		subs, subErr := subRepo.GetByContactLinkAndRooms(ctx,
+			&commonv1.ContactLink{ProfileId: profileID}, roomID)
+		if subErr != nil || len(subs) == 0 {
+			return nil, subErr
+		}
+		return &result{}, nil
+	}, waitTimeout, waitPollInterval)
+	require.NoError(t, err, "timed out waiting for member %s subscription in room %s", profileID, roomID)
+}
+
+// WaitForAuthzAccess polls until the authz middleware grants the specified
+// contact access to a room. This is needed because authz tuples are synced
+// asynchronously via event queues after subscriptions are created.
+// Uses WaitForCheckedConditionWithResult with a custom checker because the
+// authz "permission denied" error is not a "not found" error, and
+// WaitForConditionWithResult would stop polling immediately on such errors.
+func (bs *BaseTestSuite) WaitForAuthzAccess(
+	ctx context.Context,
+	profileID string,
+	roomID string,
+	t *testing.T,
+) {
+	t.Helper()
+	type result struct{}
+	_, err := frametests.WaitForCheckedConditionWithResult(ctx, func() (*result, error) {
+		contact := &commonv1.ContactLink{ProfileId: profileID}
+		if authzErr := bs.AuthzMiddleware.CanViewRoom(ctx, contact, roomID); authzErr != nil {
+			return nil, authzErr
+		}
+		return &result{}, nil
+	}, func(_ *result, err error) bool {
+		// Only stop polling on success (no error); keep retrying on any error
+		// since we're waiting for the async authz tuple to be created.
+		return err == nil
+	}, waitTimeout, waitPollInterval)
+	require.NoError(t, err, "timed out waiting for authz access for profile %s in room %s", profileID, roomID)
 }
 
 func (bs *BaseTestSuite) TearDownSuite() {

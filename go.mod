@@ -3,8 +3,8 @@ module github.com/antinvestor/service-chat
 go 1.25.2
 
 require (
-	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260205125555-6d8efde88823.2
-	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260205125555-6d8efde88823.1
+	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260205181813-d590f909d3f7.2
+	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260205181813-d590f909d3f7.1
 	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260102104630-5c57561a771f.1
 	buf.build/gen/go/antinvestor/device/connectrpc/go v1.19.1-20251223175454-e698295a3dc7.2
 	buf.build/gen/go/antinvestor/device/protocolbuffers/go v1.36.11-20251223175454-e698295a3dc7.1

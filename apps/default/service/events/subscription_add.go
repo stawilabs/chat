@@ -84,7 +84,7 @@ func (csq *roomSubscriptionAddQueue) Execute(ctx context.Context, payload any) e
 		// Create new subscriptions for profiles that don't exist.
 		// Continue processing after individual validation failures so that
 		// valid members are still added (partial success).
-		err = csq.addSubscription(ctx, roomID, subscription, action.GetRoles(), action.GetActor())
+		err = csq.addSubscription(ctx, action.GetRoomId(), subscription, action.GetRoles(), action.GetActor())
 		if err != nil {
 			err = fmt.Errorf("failed to add subscription: %w", err)
 			return err
@@ -95,11 +95,9 @@ func (csq *roomSubscriptionAddQueue) Execute(ctx context.Context, payload any) e
 }
 
 func (csq *roomSubscriptionAddQueue) addSubscription(
-	ctx context.Context,
-	roomID string,
-	subscription *eventsv1.Subscription,
-	roles []string,
-	addedBy *eventsv1.Subscription,
+	ctx context.Context, roomID string, subscription *eventsv1.Subscription,
+	roles []string, addedBy *eventsv1.Subscription,
+
 ) error {
 	var err error
 	contactLink := subscription.GetContactLink()
@@ -126,9 +124,17 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 		}
 	}
 
-	err = csq.eventsManager.Emit(ctx, SubscriptionAuthorizeEventName, subscriptionModel.ToAPI())
+	// Emit authorize event with the correct payload type so the authorize
+	// handler can create authz tuples asynchronously.
+	authorizeAction := &eventsv1.RoomAction{
+		RoomId:  roomID,
+		Targets: []*eventsv1.Subscription{subscription},
+		Roles:   roles,
+		Actor:   addedBy,
+	}
+	err = csq.eventsManager.Emit(ctx, SubscriptionAuthorizeEventName, authorizeAction)
 	if err != nil {
-		return fmt.Errorf("failed to emit subscription add event: %w", err)
+		return fmt.Errorf("failed to emit subscription authorize event: %w", err)
 	}
 
 	err = csq.emitInternalRoomChangeEvents(ctx, roomID,

@@ -2,7 +2,6 @@ package business
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/apps/default/service"
+	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
@@ -27,6 +27,7 @@ type messageBusiness struct {
 	subRepo         repository.RoomSubscriptionRepository
 	subscriptionSvc SubscriptionService
 	eventsManager   frevents.Manager
+	authzMiddleware authz.Middleware
 
 	payloadConverter *models.PayloadConverter
 }
@@ -37,6 +38,7 @@ func NewMessageBusiness(
 	eventRepo repository.RoomEventRepository,
 	subRepo repository.RoomSubscriptionRepository,
 	subscriptionSvc SubscriptionService,
+	authzMiddleware authz.Middleware,
 ) MessageBusiness {
 	return &messageBusiness{
 
@@ -44,6 +46,7 @@ func NewMessageBusiness(
 		eventRepo:       eventRepo,
 		subRepo:         subRepo,
 		subscriptionSvc: subscriptionSvc,
+		authzMiddleware: authzMiddleware,
 
 		payloadConverter: models.NewPayloadConverter(),
 	}
@@ -88,28 +91,30 @@ func (mb *messageBusiness) SendEvents(
 		uniqueRoomIDList = append(uniqueRoomIDList, roomID)
 	}
 
-	// Check access for each room individually to handle non-existent rooms
+	// Batch check send permission for all rooms via authz
+	allowedRooms, batchErr := mb.authzMiddleware.CanSendMessagesToRooms(ctx, sentBy, uniqueRoomIDList)
+	if batchErr != nil {
+		return nil, fmt.Errorf("failed to check room access: %w", batchErr)
+	}
+
+	// Fetch subscriptions for allowed rooms
 	subscriptionMap := make(map[string]*models.RoomSubscription)
-	subscriptionIDAccessMap := make(map[string]bool)
 	roomSubscriptionIDMap := make(map[string]string)
+	subscriptionIDAccessMap := make(map[string]bool)
 
 	for _, roomID := range uniqueRoomIDList {
-		roomAccessList, accessErr := mb.subscriptionSvc.HasAccess(ctx, sentBy, roomID)
-		if accessErr != nil {
-			// For non-existent rooms, create empty access map
-			connectError := &connect.Error{}
-			if errors.As(accessErr, &connectError) {
-				continue
-			}
-			return nil, accessErr
+		if !allowedRooms[roomID] {
+			continue
 		}
 
-		// Add to combined maps
-		for _, sub := range roomAccessList {
-			subscriptionMap[sub.GetID()] = sub
-			roomSubscriptionIDMap[sub.RoomID] = sub.GetID()
-			subscriptionIDAccessMap[sub.GetID()] = sub.IsActive()
+		sub, subErr := mb.subscriptionSvc.GetSubscription(ctx, sentBy, roomID)
+		if subErr != nil {
+			continue
 		}
+
+		subscriptionMap[sub.GetID()] = sub
+		roomSubscriptionIDMap[sub.RoomID] = sub.GetID()
+		subscriptionIDAccessMap[sub.GetID()] = true
 	}
 
 	// Phase 1: Validate all events and prepare valid ones for bulk save
@@ -316,19 +321,12 @@ func (mb *messageBusiness) GetMessage(
 		return nil, fmt.Errorf("failed to get message: %w", err)
 	}
 
-	// Check if the user has access to the room
-	accessList, err := mb.subscriptionSvc.HasAccess(ctx, gottenBy, event.RoomID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check room access: %w", err)
+	// Check if the user has access to the room via authz
+	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, gottenBy, event.RoomID); authzErr != nil {
+		return nil, service.ErrMessageAccessDenied
 	}
 
-	for _, sub := range accessList {
-		if sub.RoomID == event.RoomID && sub.IsActive() {
-			return event, nil
-		}
-	}
-
-	return nil, service.ErrMessageAccessDenied
+	return event, nil
 }
 
 //nolint:nonamedreturns // named return needed for deferred tracing
@@ -348,20 +346,8 @@ func (mb *messageBusiness) GetHistory(
 		return nil, validErr
 	}
 
-	// Check if the user has access to the room
-	accessList, err := mb.subscriptionSvc.HasAccess(ctx, gottenBy, req.GetRoomId())
-	if err != nil {
-		return nil, fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	hasAccess := false
-	for _, sub := range accessList {
-		if sub.RoomID == req.GetRoomId() && sub.IsActive() {
-			hasAccess = true
-			break
-		}
-	}
-	if !hasAccess {
+	// Check if the user has access to the room via authz
+	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, gottenBy, req.GetRoomId()); authzErr != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -475,22 +461,14 @@ func (mb *messageBusiness) MarkMessagesAsRead(
 		return service.ErrMessageRoomIDRequired
 	}
 
-	// Check if the user has access to the room
-	accessList, err := mb.subscriptionSvc.HasAccess(ctx, markedBy, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to check room access: %w", err)
-	}
-
-	var subscription *models.RoomSubscription
-	// Check if the user has access to the room
-	for _, sub := range accessList {
-		if sub.RoomID == roomID && sub.IsActive() {
-			subscription = sub
-		}
-	}
-
-	if subscription == nil {
+	// Check if the user has access to the room via authz
+	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, markedBy, roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
+	}
+
+	subscription, err := mb.subscriptionSvc.GetSubscription(ctx, markedBy, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
 	// Update the last read event ID

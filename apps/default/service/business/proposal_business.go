@@ -8,6 +8,7 @@ import (
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"github.com/antinvestor/service-chat/apps/default/service"
+	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
@@ -21,6 +22,7 @@ type roomProposalManagement struct {
 	proposalRepo    repository.ProposalRepository
 	roomBusiness    RoomBusiness
 	subscriptionSvc SubscriptionService
+	authzMiddleware authz.Middleware
 }
 
 // NewRoomProposalManagement creates a new room-scoped ProposalManagement instance.
@@ -28,11 +30,13 @@ func NewRoomProposalManagement(
 	proposalRepo repository.ProposalRepository,
 	roomBusiness RoomBusiness,
 	subscriptionSvc SubscriptionService,
+	authzMiddleware authz.Middleware,
 ) ProposalManagement {
 	return &roomProposalManagement{
 		proposalRepo:    proposalRepo,
 		roomBusiness:    roomBusiness,
 		subscriptionSvc: subscriptionSvc,
+		authzMiddleware: authzMiddleware,
 	}
 }
 
@@ -135,10 +139,9 @@ func (rpm *roomProposalManagement) ListPending(
 		return nil, service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room
-	_, err := rpm.subscriptionSvc.HasAccess(ctx, searchedBy, scopeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check room access: %w", err)
+	// Check if user has access to the room via authz
+	if err := rpm.authzMiddleware.CanViewRoom(ctx, searchedBy, scopeID); err != nil {
+		return nil, service.ErrRoomAccessDenied
 	}
 
 	return rpm.proposalRepo.GetPendingByScope(ctx, models.ProposalScopeRoom, scopeID)

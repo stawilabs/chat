@@ -37,7 +37,7 @@ func (s *IntegrationTestSuite) setupBusinessLayer(
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,
@@ -48,7 +48,7 @@ func (s *IntegrationTestSuite) setupBusinessLayer(
 		evtsMan,
 		messageBusiness,
 		nil,
-		nil,
+		s.AuthzMiddleware,
 	)
 
 	return roomBusiness, messageBusiness, subscriptionSvc
@@ -84,23 +84,29 @@ func (s *IntegrationTestSuite) TestCompleteRoomLifecycle() {
 		)
 		require.NoError(t, err)
 		s.NotNil(room)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member1ID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member2ID, t)
+		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, member1ID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, member2ID, room.GetId(), t)
 
-		// 2. Verify all members have access
-		accessMap, err := subscriptionSvc.HasAccess(
+		// 2. Verify all members have subscriptions
+		creatorSub, err := subscriptionSvc.GetSubscription(
 			ctx,
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 			room.GetId(),
 		)
 		require.NoError(t, err)
-		s.NotEmpty(accessMap)
+		s.NotNil(creatorSub)
 
-		accessMap, err = subscriptionSvc.HasAccess(
+		member1Sub, err := subscriptionSvc.GetSubscription(
 			ctx,
 			&commonv1.ContactLink{ProfileId: member1ID, ContactId: member1ContactID},
 			room.GetId(),
 		)
 		require.NoError(t, err)
-		s.NotEmpty(accessMap)
+		s.NotNil(member1Sub)
 
 		// 3. Send messages
 		for range 5 {
@@ -173,15 +179,16 @@ func (s *IntegrationTestSuite) TestCompleteRoomLifecycle() {
 			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), newMemberID, t)
 
-		// 7. Verify new member has access
-		accessMap, err = subscriptionSvc.HasAccess(
+		// 7. Verify new member has subscription
+		newMemberSub, err := subscriptionSvc.GetSubscription(
 			ctx,
 			&commonv1.ContactLink{ProfileId: newMemberID, ContactId: newMemberContactID},
 			room.GetId(),
 		)
 		require.NoError(t, err)
-		s.NotEmpty(accessMap)
+		s.NotNil(newMemberSub)
 
 		// 8. Remove member - first find the subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
@@ -216,22 +223,13 @@ func (s *IntegrationTestSuite) TestCompleteRoomLifecycle() {
 		)
 		require.NoError(t, err)
 
-		// 9. Verify removed member no longer has access
-		accessMap, err = subscriptionSvc.HasAccess(
+		// 9. Verify removed member no longer has active subscription
+		_, err = subscriptionSvc.GetSubscription(
 			ctx,
 			&commonv1.ContactLink{ProfileId: member2ID, ContactId: member2ContactID},
 			room.GetId(),
 		)
-		require.NoError(t, err)
-
-		// Check that no subscriptions are active (filter out inactive ones)
-		activeSubscriptions := 0
-		for _, sub := range accessMap {
-			if sub.IsActive() {
-				activeSubscriptions++
-			}
-		}
-		s.Equal(0, activeSubscriptions, "Removed member should not have active access")
+		require.Error(t, err, "Removed member should not have active subscription")
 
 		// 10. Delete room
 		deleteReq := &chatv1.DeleteRoomRequest{
@@ -277,6 +275,8 @@ func (s *IntegrationTestSuite) TestMultiRoomMessaging() {
 				&commonv1.ContactLink{ProfileId: userID, ContactId: userContactID},
 			)
 			require.NoError(t, err)
+			s.WaitForMemberSubscription(ctx, svc, room.GetId(), userID, t)
+			s.WaitForAuthzAccess(ctx, userID, room.GetId(), t)
 			rooms = append(rooms, room)
 		}
 
@@ -355,6 +355,10 @@ func (s *IntegrationTestSuite) TestRoleBasedPermissions() {
 			&commonv1.ContactLink{ProfileId: ownerID, ContactId: ownerContactID},
 		)
 		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), ownerID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), adminID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, ownerID, room.GetId(), t)
 
 		// Promote one member to admin - first find the subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{

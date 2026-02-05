@@ -71,8 +71,8 @@ func NewChatServer(
 
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
-	messageBusiness := business.NewMessageBusiness(eventsMan, eventRepo, subRepo, subscriptionSvc)
-	connectBusiness := business.NewConnectBusiness(eventsMan, subRepo, eventRepo, subscriptionSvc)
+	messageBusiness := business.NewMessageBusiness(eventsMan, eventRepo, subRepo, subscriptionSvc, authzMiddleware)
+	connectBusiness := business.NewConnectBusiness(eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware)
 	roomBusiness := business.NewRoomBusiness(
 		service,
 		roomRepo,
@@ -85,7 +85,12 @@ func NewChatServer(
 		profileCli,
 		authzMiddleware,
 	)
-	proposalManagement := business.NewRoomProposalManagement(proposalRepo, roomBusiness, subscriptionSvc)
+	proposalManagement := business.NewRoomProposalManagement(
+		proposalRepo,
+		roomBusiness,
+		subscriptionSvc,
+		authzMiddleware,
+	)
 
 	return &ChatServer{
 		Service:            service,
