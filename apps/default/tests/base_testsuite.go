@@ -268,22 +268,35 @@ func (bs *BaseTestSuite) WaitForMemberSubscription(
 }
 
 // WaitForAuthzAccess polls until the authz middleware grants the specified
-// contact access to a room. This is needed because authz tuples are synced
+// subscription access to a room. This is needed because authz tuples are synced
 // asynchronously via event queues after subscriptions are created.
+// It first resolves the subscription for the profile, then checks authz with the subscriptionID.
 // Uses WaitForCheckedConditionWithResult with a custom checker because the
 // authz "permission denied" error is not a "not found" error, and
 // WaitForConditionWithResult would stop polling immediately on such errors.
 func (bs *BaseTestSuite) WaitForAuthzAccess(
 	ctx context.Context,
+	svc *frame.Service,
 	profileID string,
 	roomID string,
 	t *testing.T,
 ) {
 	t.Helper()
+	workMan := svc.WorkManager()
+	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+
 	type result struct{}
 	_, err := frametests.WaitForCheckedConditionWithResult(ctx, func() (*result, error) {
+		// Resolve subscription first
 		contact := &commonv1.ContactLink{ProfileId: profileID}
-		if authzErr := bs.AuthzMiddleware.CanViewRoom(ctx, contact, roomID); authzErr != nil {
+		subs, subErr := subRepo.GetByContactLinkAndRooms(ctx, contact, roomID)
+		if subErr != nil || len(subs) == 0 {
+			return nil, subErr
+		}
+
+		// Check authz with subscriptionID
+		if authzErr := bs.AuthzMiddleware.CanViewRoom(ctx, subs[0].GetID(), roomID); authzErr != nil {
 			return nil, authzErr
 		}
 		return &result{}, nil

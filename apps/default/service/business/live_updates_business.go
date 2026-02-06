@@ -78,14 +78,14 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 		return service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room via authz
-	if authzErr := cb.authzMiddleware.CanSendMessage(ctx, typer, roomID); authzErr != nil {
+	// Look up subscription first - reuse for both authz check and typing event
+	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, typer, roomID)
+	if err != nil {
 		return service.ErrRoomAccessDenied
 	}
 
-	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, typer, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscription: %w", err)
+	if authzErr := cb.authzMiddleware.CanSendMessage(ctx, subscription.GetID(), roomID); authzErr != nil {
+		return service.ErrRoomAccessDenied
 	}
 
 	// Broadcast user is typing to other room members
@@ -125,14 +125,14 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 		return service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room via authz
-	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, recipient, roomID); authzErr != nil {
+	// Look up subscription first - reuse for both authz check and delivery receipt
+	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, recipient, roomID)
+	if err != nil {
 		return service.ErrRoomAccessDenied
 	}
 
-	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, recipient, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscription: %w", err)
+	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
+		return service.ErrRoomAccessDenied
 	}
 
 	// Broadcast delivery receipt to other room members
@@ -173,14 +173,14 @@ func (cb *connectBusiness) UpdateReadMarker(
 		return service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room via authz
-	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, reader, roomID); authzErr != nil {
+	// Look up subscription first - reuse for both authz check and read marker update
+	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, reader, roomID)
+	if err != nil {
 		return service.ErrRoomAccessDenied
 	}
 
-	subscription, err := cb.subscriptionSvc.GetSubscription(ctx, reader, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscription: %w", err)
+	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
+		return service.ErrRoomAccessDenied
 	}
 
 	// Update the subscription's last read event ID

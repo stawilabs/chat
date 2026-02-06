@@ -48,6 +48,14 @@ type SubscriptionService interface {
 		roomID string,
 	) (*models.RoomSubscription, error)
 
+	// GetSubscriptionsForRooms returns active subscriptions for a contact across multiple rooms.
+	// Returns map[roomID]*RoomSubscription for rooms where an active subscription exists.
+	GetSubscriptionsForRooms(
+		ctx context.Context,
+		contact *commonv1.ContactLink,
+		roomIDs []string,
+	) (map[string]*models.RoomSubscription, error)
+
 	// HasRole checks if a user has a specific role in a room
 	HasRole(
 		ctx context.Context,
@@ -121,6 +129,34 @@ func (ss *subscriptionService) GetSubscription(
 	}
 
 	return nil, service.ErrRoomAccessDenied
+}
+
+func (ss *subscriptionService) GetSubscriptionsForRooms(
+	ctx context.Context,
+	contact *commonv1.ContactLink,
+	roomIDs []string,
+) (map[string]*models.RoomSubscription, error) {
+	if err := internal.IsValidContactLink(contact); err != nil {
+		return nil, err
+	}
+
+	if len(roomIDs) == 0 {
+		return map[string]*models.RoomSubscription{}, nil
+	}
+
+	subscriptionList, err := ss.subRepo.GetByContactLinkAndRooms(ctx, contact, roomIDs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subscriptions: %w", err)
+	}
+
+	result := make(map[string]*models.RoomSubscription, len(subscriptionList))
+	for _, sub := range subscriptionList {
+		if sub.IsActive() {
+			result[sub.RoomID] = sub
+		}
+	}
+
+	return result, nil
 }
 
 func (ss *subscriptionService) HasRole(

@@ -41,7 +41,7 @@ func (s *ChatServerTestSuite) createRoomAndWait(
 	require.NoError(t, err)
 	roomID := createResp.Msg.GetRoom().GetId()
 	s.WaitForMemberSubscription(ctx, svc, roomID, profileID, t)
-	s.WaitForAuthzAccess(ctx, profileID, roomID, t)
+	s.WaitForAuthzAccess(ctx, svc, profileID, roomID, t)
 	return roomID
 }
 

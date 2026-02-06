@@ -43,13 +43,13 @@ func NewAuthzService() *AuthzService {
 	return &AuthzService{}
 }
 
-// AddRoomMember is a convenience method to add a member tuple.
-func (m *AuthzService) AddRoomMember(roomID, profileID, role string) error {
+// AddRoomMember is a convenience method to add a member tuple using subscription namespace.
+func (m *AuthzService) AddRoomMember(roomID, subscriptionID, role string) error {
 	relation := authz.RoleToRelation(role)
 	return m.WriteTuple(context.Background(), security.RelationTuple{
 		Object:   security.ObjectRef{Namespace: authz.NamespaceRoom, ID: roomID},
 		Relation: relation,
-		Subject:  security.SubjectRef{Namespace: authz.NamespaceProfile, ID: profileID},
+		Subject:  security.SubjectRef{Namespace: authz.NamespaceSubscription, ID: subscriptionID},
 	})
 }
 

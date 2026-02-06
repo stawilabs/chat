@@ -178,8 +178,13 @@ func (rb *roomBusiness) GetRoom(
 		return nil, err
 	}
 
-	// Check if the user has access to the room via authz
-	if err := rb.authzMiddleware.CanViewRoom(ctx, searchedBy, roomID); err != nil {
+	// Look up subscription, then check authz with subscriptionID
+	sub, subErr := rb.subscriptionSvc.GetSubscription(ctx, searchedBy, roomID)
+	if subErr != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	if err := rb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), roomID); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -567,7 +572,7 @@ func (rb *roomBusiness) syncRoleUpdate(
 	// Sync authorization tuple first to maintain consistency
 	if rb.authzMiddleware != nil && newRole != "" {
 		if authzErr := rb.authzMiddleware.UpdateRoomMemberRole(
-			ctx, req.GetRoomId(), sub.ProfileID, oldRole, newRole,
+			ctx, req.GetRoomId(), sub.GetID(), oldRole, newRole,
 		); authzErr != nil {
 			return fmt.Errorf("failed to update authorization tuple for role change: %w", authzErr)
 		}
@@ -597,8 +602,13 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 		return nil, err
 	}
 
-	// Check if the user has access to the room via authz
-	if err := rb.authzMiddleware.CanViewRoom(ctx, searchedBy, req.GetRoomId()); err != nil {
+	// Look up subscription, then check authz with subscriptionID
+	sub, subErr := rb.subscriptionSvc.GetSubscription(ctx, searchedBy, req.GetRoomId())
+	if subErr != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	if err := rb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), req.GetRoomId()); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -725,41 +735,20 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 	actorSubscriptionID string,
 	actor *commonv1.ContactLink,
 ) error {
-	// Get subscriptions to find profile IDs for authz cleanup.
-	// Track lookup failures to report to the caller.
-	var profileIDsToRemove []string
-	var lookupErrors []service.ItemError
-	for i, subID := range subscriptionIDs {
-		sub, subErr := rb.subscriptionRepo.GetByID(ctx, subID)
-		if subErr != nil || sub == nil {
-			msg := "subscription not found"
-			if subErr != nil {
-				msg = subErr.Error()
-			}
-			lookupErrors = append(lookupErrors, service.ItemError{
-				Index:   i,
-				ItemID:  subID,
-				Message: msg,
-			})
-			continue
-		}
-		profileIDsToRemove = append(profileIDsToRemove, sub.ProfileID)
-	}
-
 	// Deactivate subscriptions directly
 	err := rb.subscriptionRepo.Deactivate(ctx, subscriptionIDs...)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate subscription: %w", err)
 	}
 
-	// Sync authorization tuples - remove from Keto
+	// Sync authorization tuples - remove from Keto using subscription IDs
 	if rb.authzMiddleware != nil {
 		var authzErrors []error
-		for _, profileID := range profileIDsToRemove {
-			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, profileID); authzErr != nil {
+		for _, subID := range subscriptionIDs {
+			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, subID); authzErr != nil {
 				util.Log(ctx).WithError(authzErr).
 					WithField("room_id", roomID).
-					WithField("profile_id", profileID).
+					WithField("subscription_id", subID).
 					Warn("failed to remove authorization tuple for removed room member")
 				authzErrors = append(authzErrors, authzErr)
 			}
@@ -775,15 +764,6 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_REMOVED,
 		actorSubscriptionID, "Member(s) removed from room",
 		subscriptionIDs...)
-
-	// If some subscription lookups failed, return partial batch error
-	if len(lookupErrors) > 0 {
-		return &service.PartialBatchError{
-			Succeeded: len(subscriptionIDs) - len(lookupErrors),
-			Failed:    len(lookupErrors),
-			Errors:    lookupErrors,
-		}
-	}
 
 	return nil
 }
@@ -810,10 +790,10 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 	if rb.authzMiddleware != nil {
 		var authzErrors []error
 		for _, sub := range allSubs {
-			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, sub.ProfileID); authzErr != nil {
+			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, sub.GetID()); authzErr != nil {
 				util.Log(ctx).WithError(authzErr).
 					WithField("room_id", roomID).
-					WithField("profile_id", sub.ProfileID).
+					WithField("subscription_id", sub.GetID()).
 					Warn("failed to remove authorization tuple during room deletion")
 				authzErrors = append(authzErrors, authzErr)
 			}

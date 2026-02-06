@@ -139,8 +139,13 @@ func (rpm *roomProposalManagement) ListPending(
 		return nil, service.ErrRoomIDRequired
 	}
 
-	// Check if user has access to the room via authz
-	if err := rpm.authzMiddleware.CanViewRoom(ctx, searchedBy, scopeID); err != nil {
+	// Look up subscription, then check authz with subscriptionID
+	sub, subErr := rpm.subscriptionSvc.GetSubscription(ctx, searchedBy, scopeID)
+	if subErr != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	if err := rpm.authzMiddleware.CanViewRoom(ctx, sub.GetID(), scopeID); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 

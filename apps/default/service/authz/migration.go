@@ -117,7 +117,7 @@ func MigrateSubscriptionsToKeto(
 func buildTuplesFromBatch(batch []*models.RoomSubscription) []security.RelationTuple {
 	tuples := make([]security.RelationTuple, 0, len(batch))
 	for _, sub := range batch {
-		if sub.ProfileID == "" || sub.RoomID == "" {
+		if sub.GetID() == "" || sub.RoomID == "" {
 			continue
 		}
 
@@ -129,7 +129,7 @@ func buildTuplesFromBatch(batch []*models.RoomSubscription) []security.RelationT
 		tuples = append(tuples, security.RelationTuple{
 			Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: sub.RoomID},
 			Relation: RoleToRelation(role),
-			Subject:  security.SubjectRef{Namespace: NamespaceProfile, ID: sub.ProfileID},
+			Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: sub.GetID()},
 		})
 	}
 	return tuples
@@ -190,7 +190,7 @@ func SyncRoomSubscriptions(
 	tuples := make([]security.RelationTuple, 0, len(subscriptions))
 
 	for _, sub := range subscriptions {
-		if !sub.IsActive() || sub.ProfileID == "" {
+		if !sub.IsActive() || sub.GetID() == "" {
 			continue
 		}
 
@@ -202,7 +202,7 @@ func SyncRoomSubscriptions(
 		tuples = append(tuples, security.RelationTuple{
 			Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 			Relation: RoleToRelation(role),
-			Subject:  security.SubjectRef{Namespace: NamespaceProfile, ID: sub.ProfileID},
+			Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: sub.GetID()},
 		})
 	}
 

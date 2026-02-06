@@ -87,9 +87,9 @@ func (s *IntegrationTestSuite) TestCompleteRoomLifecycle() {
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member1ID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member2ID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
-		s.WaitForAuthzAccess(ctx, member1ID, room.GetId(), t)
-		s.WaitForAuthzAccess(ctx, member2ID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, member1ID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, member2ID, room.GetId(), t)
 
 		// 2. Verify all members have subscriptions
 		creatorSub, err := subscriptionSvc.GetSubscription(
@@ -276,7 +276,7 @@ func (s *IntegrationTestSuite) TestMultiRoomMessaging() {
 			)
 			require.NoError(t, err)
 			s.WaitForMemberSubscription(ctx, svc, room.GetId(), userID, t)
-			s.WaitForAuthzAccess(ctx, userID, room.GetId(), t)
+			s.WaitForAuthzAccess(ctx, svc, userID, room.GetId(), t)
 			rooms = append(rooms, room)
 		}
 
@@ -358,7 +358,7 @@ func (s *IntegrationTestSuite) TestRoleBasedPermissions() {
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), ownerID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), adminID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
-		s.WaitForAuthzAccess(ctx, ownerID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, ownerID, room.GetId(), t)
 
 		// Promote one member to admin - first find the subscription ID
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{

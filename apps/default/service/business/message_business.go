@@ -91,30 +91,35 @@ func (mb *messageBusiness) SendEvents(
 		uniqueRoomIDList = append(uniqueRoomIDList, roomID)
 	}
 
+	// Batch-lookup subscriptions for all rooms first
+	subsByRoomMap, subsErr := mb.subscriptionSvc.GetSubscriptionsForRooms(ctx, sentBy, uniqueRoomIDList)
+	if subsErr != nil {
+		return nil, fmt.Errorf("failed to get subscriptions: %w", subsErr)
+	}
+
+	// Build map[roomID]subscriptionID for batch authz check
+	subscriptionsByRoom := make(map[string]string, len(subsByRoomMap))
+	subscriptionMap := make(map[string]*models.RoomSubscription, len(subsByRoomMap))
+	roomSubscriptionIDMap := make(map[string]string, len(subsByRoomMap))
+
+	for roomID, sub := range subsByRoomMap {
+		subscriptionsByRoom[roomID] = sub.GetID()
+		subscriptionMap[sub.GetID()] = sub
+		roomSubscriptionIDMap[roomID] = sub.GetID()
+	}
+
 	// Batch check send permission for all rooms via authz
-	allowedRooms, batchErr := mb.authzMiddleware.CanSendMessagesToRooms(ctx, sentBy, uniqueRoomIDList)
+	allowedRooms, batchErr := mb.authzMiddleware.CanSendMessagesToRooms(ctx, subscriptionsByRoom)
 	if batchErr != nil {
 		return nil, fmt.Errorf("failed to check room access: %w", batchErr)
 	}
 
-	// Fetch subscriptions for allowed rooms
-	subscriptionMap := make(map[string]*models.RoomSubscription)
-	roomSubscriptionIDMap := make(map[string]string)
-	subscriptionIDAccessMap := make(map[string]bool)
-
-	for _, roomID := range uniqueRoomIDList {
-		if !allowedRooms[roomID] {
-			continue
+	// Build access map from allowed rooms
+	subscriptionIDAccessMap := make(map[string]bool, len(allowedRooms))
+	for roomID, allowed := range allowedRooms {
+		if subID, ok := roomSubscriptionIDMap[roomID]; ok && allowed {
+			subscriptionIDAccessMap[subID] = true
 		}
-
-		sub, subErr := mb.subscriptionSvc.GetSubscription(ctx, sentBy, roomID)
-		if subErr != nil {
-			continue
-		}
-
-		subscriptionMap[sub.GetID()] = sub
-		roomSubscriptionIDMap[sub.RoomID] = sub.GetID()
-		subscriptionIDAccessMap[sub.GetID()] = true
 	}
 
 	// Phase 1: Validate all events and prepare valid ones for bulk save
@@ -351,8 +356,13 @@ func (mb *messageBusiness) GetMessage(
 		return nil, fmt.Errorf("failed to get message: %w", err)
 	}
 
-	// Check if the user has access to the room via authz
-	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, gottenBy, event.RoomID); authzErr != nil {
+	// Look up subscription first, then check authz with subscriptionID
+	sub, subErr := mb.subscriptionSvc.GetSubscription(ctx, gottenBy, event.RoomID)
+	if subErr != nil {
+		return nil, service.ErrMessageAccessDenied
+	}
+
+	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), event.RoomID); authzErr != nil {
 		return nil, service.ErrMessageAccessDenied
 	}
 
@@ -376,8 +386,13 @@ func (mb *messageBusiness) GetHistory(
 		return nil, validErr
 	}
 
-	// Check if the user has access to the room via authz
-	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, gottenBy, req.GetRoomId()); authzErr != nil {
+	// Look up subscription first, then check authz with subscriptionID
+	sub, subErr := mb.subscriptionSvc.GetSubscription(ctx, gottenBy, req.GetRoomId())
+	if subErr != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), req.GetRoomId()); authzErr != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -491,14 +506,14 @@ func (mb *messageBusiness) MarkMessagesAsRead(
 		return service.ErrMessageRoomIDRequired
 	}
 
-	// Check if the user has access to the room via authz
-	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, markedBy, roomID); authzErr != nil {
+	// Look up subscription first - reuse for both authz check and subscription update
+	subscription, err := mb.subscriptionSvc.GetSubscription(ctx, markedBy, roomID)
+	if err != nil {
 		return service.ErrRoomAccessDenied
 	}
 
-	subscription, err := mb.subscriptionSvc.GetSubscription(ctx, markedBy, roomID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscription: %w", err)
+	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
+		return service.ErrRoomAccessDenied
 	}
 
 	// Update the last read event ID

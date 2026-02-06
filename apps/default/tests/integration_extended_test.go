@@ -110,7 +110,7 @@ func (s *ExtendedIntegrationTestSuite) TestConcurrentMessageSending() {
 		}, creator)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creator.GetProfileId(), room.GetId(), t)
 
 		const numMessages = 20
 		var wg sync.WaitGroup
@@ -163,7 +163,7 @@ func (s *ExtendedIntegrationTestSuite) TestLargeMessageHistoryWithLimit() {
 		}, creator)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creator.GetProfileId(), room.GetId(), t)
 
 		// Send 25 messages
 		const totalMessages = 25
@@ -225,7 +225,7 @@ func (s *ExtendedIntegrationTestSuite) TestMessageTypeVariations() {
 		}, creator)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creator.GetProfileId(), room.GetId(), t)
 
 		payloads := []*chatv1.Payload{
 			// Text message
@@ -369,7 +369,7 @@ func (s *ExtendedIntegrationTestSuite) TestSearchAllSubscriptionsInRoom() {
 		}, creator)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creator.GetProfileId(), room.GetId(), t)
 		// Wait for all member subscriptions to be created
 		for _, member := range members {
 			s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
@@ -398,7 +398,7 @@ func (s *ExtendedIntegrationTestSuite) TestNewRoomHistory() {
 		}, creator)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creator.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, creator.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creator.GetProfileId(), room.GetId(), t)
 
 		events, err := messageBusiness.GetHistory(ctx, &chatv1.GetHistoryRequest{
 			RoomId: room.GetId(),
@@ -431,7 +431,7 @@ func (s *ExtendedIntegrationTestSuite) TestMultipleMemberRoleEscalation() {
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), user.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, owner.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, owner.GetProfileId(), room.GetId(), t)
 
 		// Find the user's subscription ID
 		subs, err := roomBusiness.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
@@ -492,7 +492,7 @@ func (s *ExtendedIntegrationTestSuite) TestRoomDeletionCleansSubscriptions() {
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, owner.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, owner.GetProfileId(), room.GetId(), t)
 
 		// Verify subscription exists before deletion
 		sub, err := subscriptionSvc.GetSubscription(ctx, member, room.GetId())

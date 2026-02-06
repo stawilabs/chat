@@ -75,7 +75,7 @@ func (s *MessageBusinessTestSuite) TestSendMessage() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		// Send message
 		msgReq := &chatv1.SendEventRequest{
@@ -153,7 +153,7 @@ func (s *MessageBusinessTestSuite) TestSendMultipleMessages() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		// Send multiple messages
 		var messages []*chatv1.RoomEvent
@@ -204,7 +204,7 @@ func (s *MessageBusinessTestSuite) TestGetHistory() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		// Send 10 messages
 		for range 10 {
@@ -264,7 +264,7 @@ func (s *MessageBusinessTestSuite) TestGetMessageViaHistory() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
@@ -338,7 +338,7 @@ func (s *MessageBusinessTestSuite) TestDeleteMessageViaRepository() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
@@ -401,8 +401,8 @@ func (s *MessageBusinessTestSuite) TestMarkMessagesAsRead() {
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
-		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, memberID, room.GetId(), t)
 
 		// Send message
 		msgReq := &chatv1.SendEventRequest{
@@ -545,7 +545,7 @@ func (s *MessageBusinessTestSuite) TestDeleteMessageDenied() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		// Creator sends a message
 		msgReq := &chatv1.SendEventRequest{
@@ -603,7 +603,7 @@ func (s *MessageBusinessTestSuite) TestDeleteMessageByAdmin() {
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
-		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, memberID, room.GetId(), t)
 
 		// Member sends a message
 		msgReq := &chatv1.SendEventRequest{
@@ -661,7 +661,7 @@ func (s *MessageBusinessTestSuite) TestDeleteOwnMessage() {
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
-		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, memberID, room.GetId(), t)
 
 		// Member sends a message
 		msgReq := &chatv1.SendEventRequest{
@@ -748,7 +748,7 @@ func (s *MessageBusinessTestSuite) TestSendDifferentMessageTypes() {
 		)
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		// Test different message types
 		messageTypes := []chatv1.RoomEventType{

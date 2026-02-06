@@ -12,15 +12,15 @@ import (
 // Middleware provides domain-specific authorization methods.
 // These translate business operations to authorization checks.
 type Middleware interface {
-	// Room permissions
-	CanViewRoom(ctx context.Context, actor *commonv1.ContactLink, roomID string) error
-	CanSendMessage(ctx context.Context, actor *commonv1.ContactLink, roomID string) error
-	CanUpdateRoom(ctx context.Context, actor *commonv1.ContactLink, roomID string) error
-	CanDeleteRoom(ctx context.Context, actor *commonv1.ContactLink, roomID string) error
-	CanManageMembers(ctx context.Context, actor *commonv1.ContactLink, roomID string) error
-	CanManageRoles(ctx context.Context, actor *commonv1.ContactLink, roomID string) error
+	// Room permissions - subscriptionID is used as the subject
+	CanViewRoom(ctx context.Context, subscriptionID string, roomID string) error
+	CanSendMessage(ctx context.Context, subscriptionID string, roomID string) error
+	CanUpdateRoom(ctx context.Context, subscriptionID string, roomID string) error
+	CanDeleteRoom(ctx context.Context, subscriptionID string, roomID string) error
+	CanManageMembers(ctx context.Context, subscriptionID string, roomID string) error
+	CanManageRoles(ctx context.Context, subscriptionID string, roomID string) error
 
-	// Message permissions
+	// Message permissions - identity-based, not room access
 	CanDeleteMessage(
 		ctx context.Context,
 		actor *commonv1.ContactLink,
@@ -30,13 +30,13 @@ type Middleware interface {
 	) error
 	CanEditMessage(ctx context.Context, actor *commonv1.ContactLink, messageID string, senderProfileID string) error
 
-	// Batch operations (for efficiency in hot paths)
-	CanSendMessagesToRooms(ctx context.Context, actor *commonv1.ContactLink, roomIDs []string) (map[string]bool, error)
+	// Batch operations - map[roomID]subscriptionID
+	CanSendMessagesToRooms(ctx context.Context, subscriptionsByRoom map[string]string) (map[string]bool, error)
 
-	// Tuple management (for subscription changes)
-	AddRoomMember(ctx context.Context, roomID string, profileID string, role string) error
-	RemoveRoomMember(ctx context.Context, roomID string, profileID string) error
-	UpdateRoomMemberRole(ctx context.Context, roomID string, profileID string, oldRole, newRole string) error
+	// Tuple management - subscriptionID as subject
+	AddRoomMember(ctx context.Context, roomID string, subscriptionID string, role string) error
+	RemoveRoomMember(ctx context.Context, roomID string, subscriptionID string) error
+	UpdateRoomMemberRole(ctx context.Context, roomID string, subscriptionID string, oldRole, newRole string) error
 
 	// SetMessageSender Message tuple management
 	SetMessageSender(ctx context.Context, messageID string, senderProfileID string, roomID string) error

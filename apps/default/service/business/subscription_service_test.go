@@ -282,8 +282,8 @@ func (s *SubscriptionServiceTestSuite) TestAccessAfterRemoval() {
 		require.NoError(t, err)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
-		s.WaitForAuthzAccess(ctx, memberID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, memberID, room.GetId(), t)
 
 		// Verify member has subscription
 		sub, err := subscriptionSvc.GetSubscription(

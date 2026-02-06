@@ -21,34 +21,34 @@ func NewMiddleware(service security.Authorizer) Middleware {
 	}
 }
 
-// CanViewRoom checks if the actor can view a room.
-func (m *middleware) CanViewRoom(ctx context.Context, actor *commonv1.ContactLink, roomID string) error {
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionView)
+// CanViewRoom checks if the subscription can view a room.
+func (m *middleware) CanViewRoom(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionView)
 }
 
-// CanSendMessage checks if the actor can send messages to a room.
-func (m *middleware) CanSendMessage(ctx context.Context, actor *commonv1.ContactLink, roomID string) error {
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionSendMessage)
+// CanSendMessage checks if the subscription can send messages to a room.
+func (m *middleware) CanSendMessage(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionSendMessage)
 }
 
-// CanUpdateRoom checks if the actor can update a room.
-func (m *middleware) CanUpdateRoom(ctx context.Context, actor *commonv1.ContactLink, roomID string) error {
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionUpdate)
+// CanUpdateRoom checks if the subscription can update a room.
+func (m *middleware) CanUpdateRoom(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionUpdate)
 }
 
-// CanDeleteRoom checks if the actor can delete a room.
-func (m *middleware) CanDeleteRoom(ctx context.Context, actor *commonv1.ContactLink, roomID string) error {
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionDelete)
+// CanDeleteRoom checks if the subscription can delete a room.
+func (m *middleware) CanDeleteRoom(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionDelete)
 }
 
-// CanManageMembers checks if the actor can add/remove members from a room.
-func (m *middleware) CanManageMembers(ctx context.Context, actor *commonv1.ContactLink, roomID string) error {
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionManageMembers)
+// CanManageMembers checks if the subscription can add/remove members from a room.
+func (m *middleware) CanManageMembers(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionManageMembers)
 }
 
-// CanManageRoles checks if the actor can change member roles in a room.
-func (m *middleware) CanManageRoles(ctx context.Context, actor *commonv1.ContactLink, roomID string) error {
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionManageRoles)
+// CanManageRoles checks if the subscription can change member roles in a room.
+func (m *middleware) CanManageRoles(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionManageRoles)
 }
 
 // CanDeleteMessage checks if the actor can delete a message.
@@ -66,7 +66,7 @@ func (m *middleware) CanDeleteMessage(
 	}
 
 	// Check room admin/owner permission for deleting others' messages
-	return m.checkRoomPermission(ctx, actor, roomID, PermissionDeleteAnyMessage)
+	return m.checkRoomPermission(ctx, actor.GetProfileId(), roomID, PermissionDeleteAnyMessage)
 }
 
 // CanEditMessage checks if the actor can edit a message.
@@ -91,24 +91,28 @@ func (m *middleware) CanEditMessage(
 	)
 }
 
-// CanSendMessagesToRooms checks if the actor can send messages to multiple rooms.
-// Returns a map of room ID to allowed status.
+// CanSendMessagesToRooms checks if the subscriptions can send messages to multiple rooms.
+// Accepts map[roomID]subscriptionID. Returns a map of room ID to allowed status.
 func (m *middleware) CanSendMessagesToRooms(
 	ctx context.Context,
-	actor *commonv1.ContactLink,
-	roomIDs []string,
+	subscriptionsByRoom map[string]string,
 ) (map[string]bool, error) {
-	if len(roomIDs) == 0 {
+	if len(subscriptionsByRoom) == 0 {
 		return map[string]bool{}, nil
 	}
 
-	profileID := actor.GetProfileId()
+	roomIDs := make([]string, 0, len(subscriptionsByRoom))
+	for roomID := range subscriptionsByRoom {
+		roomIDs = append(roomIDs, roomID)
+	}
+
 	requests := make([]security.CheckRequest, len(roomIDs))
 	for i, roomID := range roomIDs {
+		subscriptionID := subscriptionsByRoom[roomID]
 		requests[i] = security.CheckRequest{
 			Object:     security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 			Permission: PermissionSendMessage,
-			Subject:    security.SubjectRef{Namespace: NamespaceProfile, ID: profileID},
+			Subject:    security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 		}
 	}
 
@@ -125,37 +129,37 @@ func (m *middleware) CanSendMessagesToRooms(
 }
 
 // AddRoomMember adds a member to a room with the specified role.
-func (m *middleware) AddRoomMember(ctx context.Context, roomID, profileID, role string) error {
+func (m *middleware) AddRoomMember(ctx context.Context, roomID, subscriptionID, role string) error {
 	relation := RoleToRelation(role)
 	return m.service.WriteTuple(ctx, security.RelationTuple{
 		Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 		Relation: relation,
-		Subject:  security.SubjectRef{Namespace: NamespaceProfile, ID: profileID},
+		Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 	})
 }
 
 // RemoveRoomMember removes all relations for a member from a room.
-func (m *middleware) RemoveRoomMember(ctx context.Context, roomID, profileID string) error {
+func (m *middleware) RemoveRoomMember(ctx context.Context, roomID, subscriptionID string) error {
 	// Remove all relations for this member
 	tuples := make([]security.RelationTuple, len(ValidRelations()))
 	for i, rel := range ValidRelations() {
 		tuples[i] = security.RelationTuple{
 			Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 			Relation: rel,
-			Subject:  security.SubjectRef{Namespace: NamespaceProfile, ID: profileID},
+			Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 		}
 	}
 	return m.service.DeleteTuples(ctx, tuples)
 }
 
 // UpdateRoomMemberRole updates a member's role in a room.
-func (m *middleware) UpdateRoomMemberRole(ctx context.Context, roomID, profileID, oldRole, newRole string) error {
+func (m *middleware) UpdateRoomMemberRole(ctx context.Context, roomID, subscriptionID, oldRole, newRole string) error {
 	// Remove old relation if specified
 	if oldRole != "" {
 		_ = m.service.DeleteTuple(ctx, security.RelationTuple{
 			Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 			Relation: RoleToRelation(oldRole),
-			Subject:  security.SubjectRef{Namespace: NamespaceProfile, ID: profileID},
+			Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 		})
 	}
 
@@ -163,7 +167,7 @@ func (m *middleware) UpdateRoomMemberRole(ctx context.Context, roomID, profileID
 	return m.service.WriteTuple(ctx, security.RelationTuple{
 		Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 		Relation: RoleToRelation(newRole),
-		Subject:  security.SubjectRef{Namespace: NamespaceProfile, ID: profileID},
+		Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 	})
 }
 
@@ -189,18 +193,16 @@ func (m *middleware) SetMessageSender(ctx context.Context, messageID, senderProf
 // checkRoomPermission is a helper that checks a room permission and returns an appropriate error.
 func (m *middleware) checkRoomPermission(
 	ctx context.Context,
-	actor *commonv1.ContactLink,
-	roomID, permission string,
+	subscriptionID, roomID, permission string,
 ) error {
-	profileID := actor.GetProfileId()
-	if profileID == "" {
+	if subscriptionID == "" {
 		return authorizer.ErrInvalidSubject
 	}
 
 	req := security.CheckRequest{
 		Object:     security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
 		Permission: permission,
-		Subject:    security.SubjectRef{Namespace: NamespaceProfile, ID: profileID},
+		Subject:    security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 	}
 
 	result, err := m.service.Check(ctx, req)

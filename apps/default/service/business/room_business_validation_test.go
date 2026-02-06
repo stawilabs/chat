@@ -227,7 +227,7 @@ func (s *RoomBusinessTestSuite) TestCreateRoomWithValidationSuccess() {
 		s.NotNil(room)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), validProfileID, t)
-		s.WaitForAuthzAccess(ctx, creatorID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, creatorID, room.GetId(), t)
 
 		// Verify subscription created
 		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
