@@ -4,10 +4,10 @@ import "slices"
 
 // Namespace constants define the object types in the authorization system.
 const (
-	NamespaceRoom         = "room"
-	NamespaceMessage      = "message"
-	NamespaceProfile      = "profile"
-	NamespaceSubscription = "subscription"
+	NamespaceRoom         = "chat_room"
+	NamespaceMessage      = "chat_message"
+	NamespaceProfile      = "chat_profile"
+	NamespaceSubscription = "chat_subscription"
 )
 
 // Relation constants define the relationships between objects and subjects.

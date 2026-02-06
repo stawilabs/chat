@@ -87,9 +87,10 @@ func TestConstants(t *testing.T) {
 		actual   string
 		expected string
 	}{
-		{"NamespaceRoom", authz.NamespaceRoom, "room"},
-		{"NamespaceMessage", authz.NamespaceMessage, "message"},
-		{"NamespaceProfile", authz.NamespaceProfile, "profile"},
+		{"NamespaceRoom", authz.NamespaceRoom, "chat_room"},
+		{"NamespaceMessage", authz.NamespaceMessage, "chat_message"},
+		{"NamespaceProfile", authz.NamespaceProfile, "chat_profile"},
+		{"NamespaceSubscription", authz.NamespaceSubscription, "chat_subscription"},
 		{"RelationOwner", authz.RelationOwner, "owner"},
 		{"RelationAdmin", authz.RelationAdmin, "admin"},
 		{"RelationMember", authz.RelationMember, "member"},

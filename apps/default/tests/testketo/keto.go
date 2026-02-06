@@ -41,24 +41,25 @@ namespaces:
 	// oplNamespaces is the OPL namespace definition for the chat service.
 	// It is embedded here so that the test container can mount it without
 	// depending on the file system path of the source tree.
-	// NOTE: Class names are lowercase to match Go authz constants
-	// (e.g., NamespaceRoom = "room"). Keto uses exact class names.
+	// NOTE: Class names are prefixed with "chat_" to avoid collisions with
+	// other services sharing the same Keto instance. Must match Go constants
+	// (e.g., NamespaceRoom = "chat_room"). Keto uses exact class names.
 	oplNamespaces = `import { Namespace, Context } from "@ory/keto-namespace-types"
 
-class profile implements Namespace {
+class chat_profile implements Namespace {
   related: {
-    self: profile[]
+    self: chat_profile[]
   }
 }
 
-class subscription implements Namespace {}
+class chat_subscription implements Namespace {}
 
-class room implements Namespace {
+class chat_room implements Namespace {
   related: {
-    owner: (profile | subscription)[]
-    admin: (profile | subscription)[]
-    member: (profile | subscription)[]
-    viewer: (profile | subscription)[]
+    owner: (chat_profile | chat_subscription)[]
+    admin: (chat_profile | chat_subscription)[]
+    member: (chat_profile | chat_subscription)[]
+    viewer: (chat_profile | chat_subscription)[]
   }
 
   permits = {
@@ -93,10 +94,10 @@ class room implements Namespace {
   }
 }
 
-class message implements Namespace {
+class chat_message implements Namespace {
   related: {
-    sender: profile[]
-    room: room[]
+    sender: chat_profile[]
+    room: chat_room[]
   }
 
   permits = {

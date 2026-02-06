@@ -4,34 +4,35 @@
 // This file defines the authorization model for the chat service.
 // It uses a Zanzibar-style relationship-based access control (ReBAC) model.
 //
-// NOTE: Class names are lowercase to match the namespace strings used in the
-// Go authz middleware (e.g., NamespaceRoom = "room", NamespaceProfile = "profile").
-// Keto uses the exact class name as the namespace identifier in API calls.
+// NOTE: Class names are prefixed with "chat_" to avoid collisions with other
+// services sharing the same Keto instance. Keto uses the exact class name as
+// the namespace identifier in API calls, so these must match the Go constants
+// (e.g., NamespaceRoom = "chat_room", NamespaceProfile = "chat_profile").
 
 import { Namespace, Context } from "@ory/keto-namespace-types"
 
-// profile namespace represents users/actors in the system
-class profile implements Namespace {
+// chat_profile namespace represents users/actors in the chat system
+class chat_profile implements Namespace {
   related: {
-    self: profile[]
+    self: chat_profile[]
   }
 }
 
-// subscription namespace represents room memberships used as authz subjects
-class subscription implements Namespace {}
+// chat_subscription namespace represents room memberships used as authz subjects
+class chat_subscription implements Namespace {}
 
-// room namespace represents chat rooms with hierarchical roles
+// chat_room namespace represents chat rooms with hierarchical roles
 // Room relations use subscription subjects (subscription-based authz)
-class room implements Namespace {
+class chat_room implements Namespace {
   related: {
     // Room owner has full control
-    owner: (profile | subscription)[]
+    owner: (chat_profile | chat_subscription)[]
     // Admins can manage members and moderate content
-    admin: (profile | subscription)[]
+    admin: (chat_profile | chat_subscription)[]
     // Members can participate in the room
-    member: (profile | subscription)[]
+    member: (chat_profile | chat_subscription)[]
     // Viewers have read-only access (e.g., for channel subscribers)
-    viewer: (profile | subscription)[]
+    viewer: (chat_profile | chat_subscription)[]
   }
 
   permits = {
@@ -73,17 +74,17 @@ class room implements Namespace {
   }
 }
 
-// message namespace represents individual messages with ownership
-class message implements Namespace {
+// chat_message namespace represents individual messages with ownership
+class chat_message implements Namespace {
   related: {
     // The profile that sent this message
-    sender: profile[]
+    sender: chat_profile[]
     // The room this message belongs to (for permission inheritance)
-    room: room[]
+    room: chat_room[]
   }
 
   permits = {
-    // View the message (inherits from room.view)
+    // View the message (inherits from chat_room.view)
     view: (ctx: Context): boolean =>
       this.related.room.traverse((r) => r.permits.view(ctx)),
 
@@ -103,4 +104,4 @@ class message implements Namespace {
 }
 
 // Export namespaces for Keto to use
-export { profile, subscription, room, message }
+export { chat_profile, chat_subscription, chat_room, chat_message }
