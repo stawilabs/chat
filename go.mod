@@ -13,7 +13,7 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.11-20260102123445-62e44f8dd82b.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
-	github.com/antinvestor/apis/go/chat v1.53.6
+	github.com/antinvestor/apis/go/chat v1.53.10
 	github.com/antinvestor/apis/go/common v1.53.5
 	github.com/antinvestor/apis/go/device v1.53.6
 	github.com/antinvestor/apis/go/notification v1.53.6
