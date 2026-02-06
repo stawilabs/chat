@@ -3,6 +3,8 @@ package tests
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -20,10 +22,10 @@ import (
 	profilemocks "github.com/antinvestor/apis/go/profile/mocks"
 	iconfig "github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
-	authmock "github.com/antinvestor/service-chat/apps/default/service/authz/mock"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/queues"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
+	"github.com/antinvestor/service-chat/apps/default/tests/testketo"
 	"github.com/gojuno/minimock/v3"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
@@ -43,7 +45,7 @@ const PostgresqlDBImage = "postgres:latest"
 const (
 	DefaultRandomStringLength = 8
 
-	waitTimeout      = 5 * time.Second
+	waitTimeout      = 10 * time.Second
 	waitPollInterval = 50 * time.Millisecond
 	startupDelay     = 200 * time.Millisecond
 )
@@ -51,6 +53,8 @@ const (
 type BaseTestSuite struct {
 	frametests.FrameBaseTestSuite
 	AuthzMiddleware authz.Middleware
+	ketoReadURI     string
+	ketoWriteURI    string
 }
 
 // migrationPath returns the absolute path to the SQL migration directory.
@@ -66,13 +70,40 @@ func initResources(_ context.Context) []definition.TestResource {
 		definition.WithUserName("ant"),
 		definition.WithImageName(PostgresqlDBImage),
 		definition.WithEnableLogging(true))
-	resources := []definition.TestResource{pg}
-	return resources
+
+	keto := testketo.NewWithOpts(
+		definition.WithDependancies(pg),
+		definition.WithEnableLogging(true),
+	)
+
+	return []definition.TestResource{pg, keto}
 }
 
 func (bs *BaseTestSuite) SetupSuite() {
 	bs.InitResourceFunc = initResources
 	bs.FrameBaseTestSuite.SetupSuite()
+
+	ctx := bs.T().Context()
+
+	// Find Keto dependency and extract read/write URIs
+	var ketoDep definition.DependancyConn
+	for _, res := range bs.Resources() {
+		if res.Name() == testketo.ImageName {
+			ketoDep = res
+			break
+		}
+	}
+	bs.Require().NotNil(ketoDep, "keto dependency should be available")
+
+	// Write API: default port (4467/tcp, first in port list)
+	writeURL, err := url.Parse(string(ketoDep.GetDS(ctx)))
+	bs.Require().NoError(err)
+	bs.ketoWriteURI = writeURL.Host
+
+	// Read API: port 4466/tcp (second in port list)
+	readPort, err := ketoDep.PortMapping(ctx, "4466/tcp")
+	bs.Require().NoError(err)
+	bs.ketoReadURI = fmt.Sprintf("%s:%s", writeURL.Hostname(), readPort)
 }
 
 func (bs *BaseTestSuite) CreateService(
@@ -102,6 +133,10 @@ func (bs *BaseTestSuite) CreateService(
 	cfg.DatabasePrimaryURL = []string{testDS.String()}
 	cfg.DatabaseReplicaURL = []string{testDS.String()}
 
+	// Configure real Keto authorizer URIs
+	cfg.AuthorizationServiceReadURI = bs.ketoReadURI
+	cfg.AuthorizationServiceWriteURI = bs.ketoWriteURI
+
 	ctx, svc := frame.NewServiceWithContext(t.Context(),
 		frame.WithName("chat tests"),
 		frame.WithConfig(&cfg),
@@ -118,9 +153,9 @@ func (bs *BaseTestSuite) CreateService(
 	err = repository.Migrate(ctx, dbManager, migrationPath())
 	require.NoError(t, err)
 
-	// Create mock authz service and middleware for tests
-	mockAuthzSvc := authmock.NewAuthzService()
-	authzMw := authz.NewMiddleware(mockAuthzSvc)
+	// Use real Keto authorizer via SecurityManager
+	sm := svc.SecurityManager()
+	authzMw := authz.NewMiddleware(sm.GetAuthorizer(ctx))
 	bs.AuthzMiddleware = authzMw
 
 	// Register queue handlers and event handlers BEFORE Run() to avoid

@@ -3,28 +3,35 @@
 //
 // This file defines the authorization model for the chat service.
 // It uses a Zanzibar-style relationship-based access control (ReBAC) model.
+//
+// NOTE: Class names are lowercase to match the namespace strings used in the
+// Go authz middleware (e.g., NamespaceRoom = "room", NamespaceProfile = "profile").
+// Keto uses the exact class name as the namespace identifier in API calls.
 
 import { Namespace, Context } from "@ory/keto-namespace-types"
 
-// Profile namespace represents users/actors in the system
-class Profile implements Namespace {
-  // Profile can reference itself (for subject sets if needed)
+// profile namespace represents users/actors in the system
+class profile implements Namespace {
   related: {
-    self: Profile[]
+    self: profile[]
   }
 }
 
-// Room namespace represents chat rooms with hierarchical roles
-class Room implements Namespace {
+// subscription namespace represents room memberships used as authz subjects
+class subscription implements Namespace {}
+
+// room namespace represents chat rooms with hierarchical roles
+// Room relations use subscription subjects (subscription-based authz)
+class room implements Namespace {
   related: {
     // Room owner has full control
-    owner: Profile[]
+    owner: (profile | subscription)[]
     // Admins can manage members and moderate content
-    admin: Profile[]
+    admin: (profile | subscription)[]
     // Members can participate in the room
-    member: Profile[]
+    member: (profile | subscription)[]
     // Viewers have read-only access (e.g., for channel subscribers)
-    viewer: Profile[]
+    viewer: (profile | subscription)[]
   }
 
   permits = {
@@ -66,13 +73,13 @@ class Room implements Namespace {
   }
 }
 
-// Message namespace represents individual messages with ownership
-class Message implements Namespace {
+// message namespace represents individual messages with ownership
+class message implements Namespace {
   related: {
     // The profile that sent this message
-    sender: Profile[]
+    sender: profile[]
     // The room this message belongs to (for permission inheritance)
-    room: Room[]
+    room: room[]
   }
 
   permits = {
@@ -96,4 +103,4 @@ class Message implements Namespace {
 }
 
 // Export namespaces for Keto to use
-export { Profile, Room, Message }
+export { profile, subscription, room, message }
