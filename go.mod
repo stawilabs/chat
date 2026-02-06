@@ -19,7 +19,7 @@ require (
 	github.com/antinvestor/apis/go/notification v1.53.6
 	github.com/antinvestor/apis/go/profile v1.53.6
 	github.com/gojuno/minimock/v3 v3.4.7
-	github.com/pitabwire/frame v1.71.1
+	github.com/pitabwire/frame v1.72.0
 	github.com/pitabwire/util v0.4.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.78.0
@@ -89,6 +89,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/ory/keto/proto v0.13.0-alpha.0 // indirect
 	github.com/panjf2000/ants/v2 v2.11.4 // indirect
 	github.com/pitabwire/natspubsub v0.7.12 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
