@@ -155,7 +155,7 @@ func setupChatServiceClient(
 		common.WithTokenUsername(sm.JwtClientID()),
 		common.WithTokenPassword(sm.JwtClientSecret()),
 		common.WithScopes(openid.ConstSystemScopeInternal),
-		common.WithAudiences("service_chat"))
+		common.WithAudiences("service_chat_drone"))
 }
 
 // setupDeviceClient creates and configures the device service client.
