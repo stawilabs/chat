@@ -8,6 +8,7 @@ import (
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	chattel "github.com/antinvestor/service-chat/internal/telemetry"
 	frevents "github.com/pitabwire/frame/events"
+	"github.com/pitabwire/util"
 )
 
 const (
@@ -56,7 +57,14 @@ func (csq *roomCreatedQueue) Execute(ctx context.Context, payload any) error {
 		return errors.New("invalid payload type")
 	}
 
+	util.Log(ctx).WithField("action_count", len(actionList.GetActions())).Debug("RoomCreated processing actions")
+
 	for _, action := range actionList.GetActions() {
+		util.Log(ctx).WithFields(map[string]any{
+			"room_id":      action.GetRoomId(),
+			"target_count": len(action.GetTargets()),
+		}).Debug("RoomCreated emitting SubscriptionAdd")
+
 		err = csq.eventsManager.Emit(ctx, SubscriptionAddEventName, action)
 		if err != nil {
 			return fmt.Errorf("failed to emit subscription add event: %w", err)

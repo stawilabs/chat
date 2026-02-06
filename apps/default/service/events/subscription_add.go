@@ -122,6 +122,16 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 		if !data.ErrorIsDuplicateKey(err) {
 			return fmt.Errorf("failed to create subscription: %w", err)
 		}
+		util.Log(ctx).WithFields(map[string]any{
+			"room_id":         roomID,
+			"subscription_id": subscriptionModel.GetID(),
+		}).Debug("addSubscription duplicate (idempotent)")
+	} else {
+		util.Log(ctx).WithFields(map[string]any{
+			"room_id":         roomID,
+			"subscription_id": subscriptionModel.GetID(),
+			"profile_id":      contactLink.GetProfileId(),
+		}).Debug("addSubscription created")
 	}
 
 	// Emit authorize event with the correct payload type so the authorize
@@ -132,6 +142,12 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 		Roles:   roles,
 		Actor:   addedBy,
 	}
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":         roomID,
+		"subscription_id": subscription.GetSubscriptionId(),
+		"roles":           roles,
+	}).Debug("addSubscription emitting authorize event")
+
 	err = csq.eventsManager.Emit(ctx, SubscriptionAuthorizeEventName, authorizeAction)
 	if err != nil {
 		return fmt.Errorf("failed to emit subscription authorize event: %w", err)

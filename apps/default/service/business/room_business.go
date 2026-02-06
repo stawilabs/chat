@@ -178,11 +178,18 @@ func (rb *roomBusiness) GetRoom(
 		return nil, err
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":    roomID,
+		"profile_id": searchedBy.GetProfileId(),
+	}).Debug("GetRoom request")
+
 	// Look up subscription, then check authz with subscriptionID
 	sub, subErr := rb.subscriptionSvc.GetSubscription(ctx, searchedBy, roomID)
 	if subErr != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
+
+	util.Log(ctx).WithField("subscription_id", sub.GetID()).Debug("GetRoom subscription found")
 
 	if err := rb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), roomID); err != nil {
 		return nil, service.ErrRoomAccessDenied
@@ -224,6 +231,7 @@ func (rb *roomBusiness) UpdateRoom(
 
 	// Check if room requires approval for changes
 	if needsApproval, approvalErr := rb.requiresApproval(ctx, req.GetRoomId()); approvalErr == nil && needsApproval {
+		util.Log(ctx).WithField("room_id", req.GetRoomId()).Debug("UpdateRoom requires approval")
 		if crErr := rb.createProposal(ctx, req.GetRoomId(), models.ProposalTypeUpdateRoom,
 			updatedBy.GetProfileId(), req); crErr != nil {
 			return nil, fmt.Errorf("failed to create proposal: %w", crErr)
@@ -299,6 +307,8 @@ func (rb *roomBusiness) DeleteRoom(
 		}
 		return service.ErrProposalRequired
 	}
+
+	util.Log(ctx).WithField("room_id", roomID).Debug("DeleteRoom deactivating subscriptions")
 
 	// Deactivate all subscriptions and clean up authz
 	if cleanupErr := rb.deactivateAllRoomSubscriptions(ctx, roomID); cleanupErr != nil {
@@ -643,6 +653,12 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 		dedupList = append(dedupList, subscription)
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":       roomID,
+		"total_members": len(subscriptionList),
+		"dedup_members": len(dedupList),
+	}).Debug("addRoomMembersWithRoles deduplication")
+
 	// Create new subscriptions for profiles via event service.
 	// Continue processing after individual validation failures so that
 	// valid members are still added (partial success).
@@ -682,6 +698,11 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 
 		roomActionList.Actions = append(roomActionList.Actions, action)
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":      roomID,
+		"action_count": len(roomActionList.GetActions()),
+	}).Debug("addRoomMembersWithRoles emitting RoomCreated event")
 
 	err := rb.eventsManager.Emit(ctx, events.RoomCreatedEventName, roomActionList)
 	if err != nil {
@@ -735,6 +756,11 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 	actorSubscriptionID string,
 	actor *commonv1.ContactLink,
 ) error {
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":            roomID,
+		"subscription_count": len(subscriptionIDs),
+	}).Debug("removeRoomMembersBySubscriptionID")
+
 	// Deactivate subscriptions directly
 	err := rb.subscriptionRepo.Deactivate(ctx, subscriptionIDs...)
 	if err != nil {
@@ -778,6 +804,11 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 	if len(allSubs) == 0 {
 		return nil
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":            roomID,
+		"subscription_count": len(allSubs),
+	}).Debug("deactivateAllRoomSubscriptions")
 
 	subIDs := make([]string, 0, len(allSubs))
 	for _, sub := range allSubs {

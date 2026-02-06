@@ -76,6 +76,11 @@ func (dq *offlineDeliveryQueueHandler) Handle(
 			"max retries exceeded", headers)
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"event_id":  evtMsg.GetEvent().GetEventId(),
+		"device_id": evtMsg.GetDeviceId(),
+	}).Debug("OfflineDelivery processing")
+
 	// Extract notification content
 	messageTitle := "Stawi message"
 	messageBody := dq.extractMessageBody(evtMsg)

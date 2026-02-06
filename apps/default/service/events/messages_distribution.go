@@ -93,6 +93,8 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 		return nil
 	}
 
+	logger.WithField("subscriber_count", len(subscriptions)).Debug("fetched room subscribers")
+
 	var destinations []*eventsv1.Subscription
 	for _, sub := range subscriptions {
 		// Only broadcast messages to active subscriptions

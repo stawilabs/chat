@@ -920,16 +920,14 @@ func (cm *connectionManager) performHealthCheck(ctx context.Context) {
 		}).Warn("connection pool utilization high")
 	}
 
-	// Log comprehensive health status
-	util.Log(ctx).WithFields(map[string]any{
-		"active_conns":       activeConns,
-		"pool_size":          poolSize,
-		"pool_utilization":   fmt.Sprintf("%.2f%%", utilization),
-		"total_conns":        atomic.LoadUint64(&cm.totalConns),
-		"failed_conns":       atomic.LoadUint64(&cm.failedConns),
-		"replaced_conns":     atomic.LoadUint64(&cm.replacedConns),
-		"disconnected_conns": atomic.LoadUint64(&cm.disconnectedConns),
-	}).Debug("connection manager health check")
+	// Only log health status when there are active connections
+	if poolSize > 0 {
+		util.Log(ctx).WithFields(map[string]any{
+			"active_conns":     activeConns,
+			"pool_size":        poolSize,
+			"pool_utilization": fmt.Sprintf("%.2f%%", utilization),
+		}).Debug("connection manager health check")
+	}
 }
 
 // Shutdown gracefully shuts down the connection manager.

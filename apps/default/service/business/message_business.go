@@ -72,6 +72,11 @@ func (mb *messageBusiness) SendEvents(
 
 	requestEvents := req.GetEvent()
 
+	util.Log(ctx).WithFields(map[string]any{
+		"event_count": len(requestEvents),
+		"profile_id":  sentBy.GetProfileId(),
+	}).Debug("SendEvents processing")
+
 	// Pre-allocate response slice to maintain request order
 	responses := make([]*chatv1.AckEvent, len(requestEvents))
 	validEvents := make([]*models.RoomEvent, 0, len(requestEvents))
@@ -97,6 +102,11 @@ func (mb *messageBusiness) SendEvents(
 		return nil, fmt.Errorf("failed to get subscriptions: %w", subsErr)
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"unique_rooms":        len(uniqueRoomIDList),
+		"subscriptions_found": len(subsByRoomMap),
+	}).Debug("SendEvents subscription lookup")
+
 	// Build map[roomID]subscriptionID for batch authz check
 	subscriptionsByRoom := make(map[string]string, len(subsByRoomMap))
 	subscriptionMap := make(map[string]*models.RoomSubscription, len(subsByRoomMap))
@@ -116,11 +126,18 @@ func (mb *messageBusiness) SendEvents(
 
 	// Build access map from allowed rooms
 	subscriptionIDAccessMap := make(map[string]bool, len(allowedRooms))
+	allowedCount := 0
 	for roomID, allowed := range allowedRooms {
 		if subID, ok := roomSubscriptionIDMap[roomID]; ok && allowed {
 			subscriptionIDAccessMap[subID] = true
+			allowedCount++
 		}
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"rooms_allowed": allowedCount,
+		"rooms_denied":  len(allowedRooms) - allowedCount,
+	}).Debug("SendEvents authz batch check")
 
 	// Phase 1: Validate all events and prepare valid ones for bulk save
 	for i, reqEvt := range requestEvents {
@@ -237,6 +254,8 @@ func (mb *messageBusiness) SendEvents(
 		return responses, nil
 	}
 
+	util.Log(ctx).WithField("valid_event_count", len(validEvents)).Debug("SendEvents bulk saving")
+
 	// Use CreateIgnoringDuplicates to atomically handle concurrent inserts.
 	// Returns which events were actually inserted vs skipped (duplicate from concurrent request).
 	insertedIDs, bulkCreateErr := mb.eventRepo.CreateIgnoringDuplicates(ctx, validEvents)
@@ -347,6 +366,8 @@ func (mb *messageBusiness) GetMessage(
 		return nil, err
 	}
 
+	util.Log(ctx).WithField("message_id", messageID).Debug("GetMessage request")
+
 	// Get the message
 	event, err := mb.eventRepo.GetByID(ctx, messageID)
 	if err != nil {
@@ -386,6 +407,11 @@ func (mb *messageBusiness) GetHistory(
 		return nil, validErr
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":    req.GetRoomId(),
+		"profile_id": gottenBy.GetProfileId(),
+	}).Debug("GetHistory request")
+
 	// Look up subscription first, then check authz with subscriptionID
 	sub, subErr := mb.subscriptionSvc.GetSubscription(ctx, gottenBy, req.GetRoomId())
 	if subErr != nil {
@@ -411,6 +437,11 @@ func (mb *messageBusiness) GetHistory(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get message history: %w", err)
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":      req.GetRoomId(),
+		"result_count": len(evts),
+	}).Debug("GetHistory result")
 
 	// Convert to proto
 	protoEvents := make([]*chatv1.RoomEvent, 0, len(evts))
@@ -467,6 +498,11 @@ func (mb *messageBusiness) DeleteMessage(
 		isSender = senderSub.ProfileID == deletedBy.GetProfileId()
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"message_id": messageID,
+		"is_sender":  isSender,
+	}).Debug("DeleteMessage checking permissions")
+
 	// If user is the sender, allow deletion
 	if isSender {
 		err = mb.eventRepo.Delete(ctx, event.GetID())
@@ -505,6 +541,11 @@ func (mb *messageBusiness) MarkMessagesAsRead(
 	if roomID == "" {
 		return service.ErrMessageRoomIDRequired
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":  roomID,
+		"event_id": eventID,
+	}).Debug("MarkMessagesAsRead")
 
 	// Look up subscription first - reuse for both authz check and subscription update
 	subscription, err := mb.subscriptionSvc.GetSubscription(ctx, markedBy, roomID)

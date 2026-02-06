@@ -127,6 +127,11 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		}
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"profile_id": profileID,
+		"event_id":   eventDelivery.GetEvent().GetEventId(),
+	}).Debug("HotPathDelivery searching devices")
+
 	response, err := dq.deviceCli.Search(ctx, connect.NewRequest(&devicev1.SearchRequest{
 		Query: profileID,
 		Page:  0,
@@ -209,6 +214,11 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 	msg *eventsv1.Delivery,
 	dev *devicev1.DeviceObject,
 ) error {
+	util.Log(ctx).WithFields(map[string]any{
+		"device_id": dev.GetId(),
+		"online":    dq.deviceIsOnline(ctx, dev),
+	}).Debug("HotPathDelivery routing decision")
+
 	if dq.deviceIsOnline(ctx, dev) {
 		err := dq.publishToOnlineDevice(ctx, dev, msg)
 		if err == nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
 	"github.com/pitabwire/frame"
+	"github.com/pitabwire/util"
 )
 
 // RoleLevel represents the hierarchy level of a room role.
@@ -124,9 +125,18 @@ func (ss *subscriptionService) GetSubscription(
 	// Find first active subscription
 	for _, sub := range subscriptionList {
 		if sub.IsActive() {
+			util.Log(ctx).WithFields(map[string]any{
+				"room_id":         roomID,
+				"subscription_id": sub.GetID(),
+			}).Debug("GetSubscription found")
 			return sub, nil
 		}
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":    roomID,
+		"profile_id": contact.GetProfileId(),
+	}).Debug("GetSubscription not found")
 
 	return nil, service.ErrRoomAccessDenied
 }
@@ -156,6 +166,11 @@ func (ss *subscriptionService) GetSubscriptionsForRooms(
 		}
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"rooms_requested": len(roomIDs),
+		"rooms_found":     len(result),
+	}).Debug("GetSubscriptionsForRooms result")
+
 	return result, nil
 }
 
@@ -183,9 +198,20 @@ func (ss *subscriptionService) HasRole(
 
 		// Check if the user has the required role or higher
 		if ss.hasMinimumRole(roleLevel, strings.Split(sub.Role, ",")...) {
+			util.Log(ctx).WithFields(map[string]any{
+				"room_id":        roomID,
+				"required_level": roleLevel,
+				"has_role":       true,
+			}).Debug("HasRole check")
 			return sub, nil
 		}
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":        roomID,
+		"required_level": roleLevel,
+		"has_role":       false,
+	}).Debug("HasRole check")
 
 	return nil, nil //nolint:nilnil // nil,nil means no matching subscription at the required role level
 }

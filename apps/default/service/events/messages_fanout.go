@@ -91,8 +91,10 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 
 	logger := util.Log(ctx).WithFields(map[string]any{
 		"room_id":      eventLink.GetRoomId(),
+		"event_id":     eventLink.GetEventId(),
 		"target_count": len(destinations),
 	})
+	logger.Debug("Fanout processing")
 
 	// Get event data to extract payload
 	eventLinkData, err := feh.eventRepo.GetByID(ctx, eventLink.GetEventId())
@@ -140,6 +142,7 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 	successCount := int64(len(destinations)) - int64(failCount)
 	if successCount > 0 {
 		chattel.EventFanoutCounter.Add(ctx, successCount)
+		logger.WithField("success_count", successCount).Debug("Fanout delivery complete")
 	}
 	if failCount > 0 {
 		chattel.MessagesFailedCounter.Add(ctx, int64(failCount))

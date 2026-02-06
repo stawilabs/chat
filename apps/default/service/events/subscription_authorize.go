@@ -77,6 +77,12 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 		return err
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":      action.GetRoomId(),
+		"target_count": len(action.GetTargets()),
+		"role_count":   len(action.GetRoles()),
+	}).Debug("SubscriptionAuthorize processing")
+
 	var authzErrors []error
 	for _, subscription := range action.GetTargets() {
 		var targetFailed bool
@@ -101,6 +107,12 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 		if targetFailed {
 			continue
 		}
+
+		util.Log(ctx).WithFields(map[string]any{
+			"room_id":         action.GetRoomId(),
+			"subscription_id": subscription.GetSubscriptionId(),
+			"roles":           action.GetRoles(),
+		}).Debug("SubscriptionAuthorize tuple created")
 
 		if action.GetAction() == chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED {
 			// Emit room change event

@@ -57,6 +57,11 @@ func (cb *connectBusiness) UpdatePresence(
 		return service.ErrUnspecifiedID
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"profile_id": source.GetProfileId(),
+		"status":     presenceEvt.GetStatus(),
+	}).Debug("UpdatePresence")
+
 	return cb.presenceCache.Set(ctx, source.GetProfileId(), presenceEvt, 1*time.Minute)
 }
 
@@ -87,6 +92,12 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 	if authzErr := cb.authzMiddleware.CanSendMessage(ctx, subscription.GetID(), roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":    roomID,
+		"profile_id": typer.GetProfileId(),
+		"is_typing":  isTyping,
+	}).Debug("UpdateTypingIndicator")
 
 	// Broadcast user is typing to other room members
 	// Note: STATE_TYPING events don't have typed payload content
@@ -135,6 +146,11 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 		return service.ErrRoomAccessDenied
 	}
 
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":     roomID,
+		"event_count": len(eventIDList),
+	}).Debug("UpdateDeliveryReceipt")
+
 	// Broadcast delivery receipt to other room members
 	for _, eventID := range eventIDList {
 		receiptEvents := eventsv1.Link{
@@ -182,6 +198,11 @@ func (cb *connectBusiness) UpdateReadMarker(
 	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
 	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		"room_id":        roomID,
+		"up_to_event_id": upToEventID,
+	}).Debug("UpdateReadMarker")
 
 	// Update the subscription's last read event ID
 
