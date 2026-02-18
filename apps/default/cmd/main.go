@@ -11,6 +11,7 @@ import (
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
+	chatv1 "github.com/antinvestor/apis/go/chat/v1"
 	"github.com/antinvestor/apis/go/common"
 	"github.com/antinvestor/apis/go/device"
 	"github.com/antinvestor/apis/go/notification"
@@ -230,5 +231,9 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 	_, serverHandler := chatv1connect.NewChatServiceHandler(
 		implementation, connect.WithInterceptors(authInterceptor, otelInterceptor, validateInterceptor))
 
-	return serverHandler
+	mux := http.NewServeMux()
+	mux.Handle("/", serverHandler)
+	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatv1.ApiSpecFile, nil))
+
+	return mux
 }
