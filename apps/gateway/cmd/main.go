@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"github.com/antinvestor/apis/go/chat"
+	chatv1 "github.com/antinvestor/apis/go/chat/v1"
 	"github.com/antinvestor/apis/go/common"
 	"github.com/antinvestor/apis/go/device"
 	gtwconfig "github.com/antinvestor/service-chat/apps/gateway/config"
@@ -198,5 +199,9 @@ func setupGatewayServer(
 		gatewayServer, connect.WithInterceptors(authInterceptor, otelInterceptor, validateInterceptor),
 	)
 
-	return serverHandler
+	mux := http.NewServeMux()
+	mux.Handle("/", serverHandler)
+	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatv1.ApiSpecFile, nil))
+
+	return mux
 }
