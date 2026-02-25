@@ -65,7 +65,8 @@ func (m *mockQueueManager) GetSubscriber(_ string) (queue.Subscriber, error) {
 func (m *mockQueueManager) Publish(_ context.Context, _ string, _ any, _ ...map[string]string) error {
 	return nil
 }
-func (m *mockQueueManager) Init(_ context.Context) error { return nil }
+func (m *mockQueueManager) Init(_ context.Context) error  { return nil }
+func (m *mockQueueManager) Close(_ context.Context) error { return nil }
 func (m *mockQueueManager) GetPublisher(name string) (queue.Publisher, error) {
 	if m.getPublisherErr != nil {
 		return nil, m.getPublisherErr

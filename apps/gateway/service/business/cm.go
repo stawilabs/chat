@@ -319,7 +319,7 @@ func NewConnectionManager(
 	if poolSize > maxInt32 { // Max int32
 		poolSize = maxInt32
 	}
-	//nolint:gosec // Overflow checked above
+
 	poolSizeInt32 := int32(poolSize) // Support 1000 devices by default
 	if poolSizeInt32 < minPoolSize {
 		poolSizeInt32 = 10000 // Minimum pool size for small deployments
