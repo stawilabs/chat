@@ -386,6 +386,10 @@ func (m *mockQueueManager) Init(_ context.Context) error {
 	return nil
 }
 
+func (m *mockQueueManager) Close(_ context.Context) error {
+	return nil
+}
+
 type mockPublisher struct {
 	publishCount int
 	publishErr   error
