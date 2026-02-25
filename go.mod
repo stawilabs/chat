@@ -1,6 +1,6 @@
 module github.com/antinvestor/service-chat
 
-go 1.25.2
+go 1.26
 
 require (
 	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260219061800-1773ee53215d.2
@@ -19,8 +19,8 @@ require (
 	github.com/antinvestor/apis/go/notification v1.53.13
 	github.com/antinvestor/apis/go/profile v1.53.13
 	github.com/gojuno/minimock/v3 v3.4.7
-	github.com/pitabwire/frame v1.73.0
-	github.com/pitabwire/util v0.5.0
+	github.com/pitabwire/frame v1.74.0
+	github.com/pitabwire/util v0.6.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	google.golang.org/grpc v1.79.1
