@@ -4,9 +4,9 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "deps"
+      interval: "daily"
+      time: "09:00"
+    open-pull-requests-limit: 10
     # Auto-merge configuration
     allow:
       - dependency-type: "all"
@@ -14,6 +14,13 @@ updates:
     labels:
       - "dependencies"
       - "auto-merge"
+    reviewers:
+      - "antinvestor/maintainers"
+    assignees:
+      - "antinvestor/maintainers"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
     # Group updates to reduce PR noise
     groups:
       production-dependencies:
