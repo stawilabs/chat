@@ -191,7 +191,7 @@ func (rb *roomBusiness) GetRoom(
 
 	util.Log(ctx).WithField("subscription_id", sub.GetID()).Debug("GetRoom subscription found")
 
-	if err := rb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), roomID); err != nil {
+	if err := rb.authzMiddleware.CanRoomView(ctx, sub.GetID(), roomID); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -421,7 +421,7 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 	}
 
 	// Check if the user has permission to add members
-	admin, err := rb.subscriptionSvc.CanManageMembers(ctx, addedBy, req.GetRoomId())
+	admin, err := rb.subscriptionSvc.CanMembersManage(ctx, addedBy, req.GetRoomId())
 	if err != nil {
 		return fmt.Errorf("failed to check permissions: %w", err)
 	}
@@ -479,7 +479,7 @@ func (rb *roomBusiness) RemoveRoomSubscriptions(
 	}
 
 	// Check if the user has permission to remove members
-	admin, err := rb.subscriptionSvc.CanManageMembers(ctx, removedBy, req.GetRoomId())
+	admin, err := rb.subscriptionSvc.CanMembersManage(ctx, removedBy, req.GetRoomId())
 	if err != nil {
 		return fmt.Errorf("failed to check permissions: %w", err)
 	}
@@ -518,7 +518,7 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 	}
 
 	// Check if the updater has permission to update roles
-	admin, err := rb.subscriptionSvc.CanManageRoles(ctx, actor, req.GetRoomId())
+	admin, err := rb.subscriptionSvc.CanRolesManage(ctx, actor, req.GetRoomId())
 	if err != nil {
 		return fmt.Errorf("failed to check permissions: %w", err)
 	}
@@ -618,7 +618,7 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 		return nil, service.ErrRoomAccessDenied
 	}
 
-	if err := rb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), req.GetRoomId()); err != nil {
+	if err := rb.authzMiddleware.CanRoomView(ctx, sub.GetID(), req.GetRoomId()); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 

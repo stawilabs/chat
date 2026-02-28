@@ -13,28 +13,31 @@ const (
 	NamespaceTenancyAccess = "tenancy_access"
 	// NamespaceProfileUser is the platform-wide user identity namespace used as
 	// subject in tenancy access tuples.
-	NamespaceProfileUser = "profile/user"
+	NamespaceProfileUser = "profile_user"
 )
 
 // Relation constants define the relationships between objects and subjects.
+// Direct-grant relations are prefixed with "granted_" to avoid name conflicts
+// with permit functions. Keto skips permit evaluation when a relation shares
+// the same name as a permit function.
 const (
-	RelationOwner  = "owner"
-	RelationAdmin  = "admin"
-	RelationMember = "member"
-	RelationViewer = "viewer"
-	RelationSender = "sender"
+	RelationOwner  = "granted_owner"
+	RelationAdmin  = "granted_admin"
+	RelationMember = "granted_member"
+	RelationViewer = "granted_viewer"
+	RelationSender = "granted_sender"
 	RelationRoom   = "room"
 )
 
 // Permission constants define the actions that can be performed on objects.
 const (
 	PermissionView             = "view"
-	PermissionSendMessage      = "send_message"
-	PermissionDeleteAnyMessage = "delete_any_message"
+	PermissionMessageSend      = "message_send"
+	PermissionMessageDeleteAny = "message_delete_any"
 	PermissionUpdate           = "update"
 	PermissionDelete           = "delete"
-	PermissionManageMembers    = "manage_members"
-	PermissionManageRoles      = "manage_roles"
+	PermissionMembersManage    = "members_manage"
+	PermissionRolesManage      = "roles_manage"
 	PermissionEdit             = "edit"
 	PermissionReact            = "react"
 )

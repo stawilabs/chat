@@ -331,7 +331,7 @@ func (bs *BaseTestSuite) WaitForAuthzAccess(
 		}
 
 		// Check authz with subscriptionID
-		if authzErr := bs.AuthzMiddleware.CanViewRoom(ctx, subs[0].GetID(), roomID); authzErr != nil {
+		if authzErr := bs.AuthzMiddleware.CanRoomView(ctx, subs[0].GetID(), roomID); authzErr != nil {
 			return nil, authzErr
 		}
 		return &result{}, nil

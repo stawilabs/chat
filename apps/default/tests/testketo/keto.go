@@ -45,14 +45,17 @@ namespaces:
 	// NOTE: Class names are prefixed with "chat_" to avoid collisions with
 	// other services sharing the same Keto instance. Must match Go constants
 	// (e.g., NamespaceRoom = "chat_room"). Keto uses exact class names.
+	// Direct-grant relations are prefixed with "granted_" to avoid name
+	// conflicts with permit functions. Keto skips permit evaluation when a
+	// relation shares the same name as a permit function.
 	oplNamespaces = `import { Namespace, Context } from "@ory/keto-namespace-types"
 
 class profile_user implements Namespace {}
 
 class tenancy_access implements Namespace {
   related: {
-    member: profile_user[]
-    service: profile_user[]
+    granted_member: profile_user[]
+    granted_service: profile_user[]
   }
 }
 
@@ -66,47 +69,47 @@ class chat_subscription implements Namespace {}
 
 class chat_room implements Namespace {
   related: {
-    owner: (chat_profile | chat_subscription)[]
-    admin: (chat_profile | chat_subscription)[]
-    member: (chat_profile | chat_subscription)[]
-    viewer: (chat_profile | chat_subscription)[]
+    granted_owner: (chat_profile | chat_subscription)[]
+    granted_admin: (chat_profile | chat_subscription)[]
+    granted_member: (chat_profile | chat_subscription)[]
+    granted_viewer: (chat_profile | chat_subscription)[]
   }
 
   permits = {
     view: (ctx: Context): boolean =>
-      this.related.viewer.includes(ctx.subject) ||
-      this.related.member.includes(ctx.subject) ||
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+      this.related.granted_viewer.includes(ctx.subject) ||
+      this.related.granted_member.includes(ctx.subject) ||
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
-    send_message: (ctx: Context): boolean =>
-      this.related.member.includes(ctx.subject) ||
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+    message_send: (ctx: Context): boolean =>
+      this.related.granted_member.includes(ctx.subject) ||
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
-    delete_any_message: (ctx: Context): boolean =>
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+    message_delete_any: (ctx: Context): boolean =>
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     update: (ctx: Context): boolean =>
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     delete: (ctx: Context): boolean =>
-      this.related.owner.includes(ctx.subject),
+      this.related.granted_owner.includes(ctx.subject),
 
-    manage_members: (ctx: Context): boolean =>
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+    members_manage: (ctx: Context): boolean =>
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
-    manage_roles: (ctx: Context): boolean =>
-      this.related.owner.includes(ctx.subject),
+    roles_manage: (ctx: Context): boolean =>
+      this.related.granted_owner.includes(ctx.subject),
   }
 }
 
 class chat_message implements Namespace {
   related: {
-    sender: chat_profile[]
+    granted_sender: chat_profile[]
     room: chat_room[]
   }
 
@@ -115,14 +118,14 @@ class chat_message implements Namespace {
       this.related.room.traverse((r) => r.permits.view(ctx)),
 
     delete: (ctx: Context): boolean =>
-      this.related.sender.includes(ctx.subject) ||
-      this.related.room.traverse((r) => r.permits.delete_any_message(ctx)),
+      this.related.granted_sender.includes(ctx.subject) ||
+      this.related.room.traverse((r) => r.permits.message_delete_any(ctx)),
 
     edit: (ctx: Context): boolean =>
-      this.related.sender.includes(ctx.subject),
+      this.related.granted_sender.includes(ctx.subject),
 
     react: (ctx: Context): boolean =>
-      this.related.room.traverse((r) => r.permits.send_message(ctx)),
+      this.related.room.traverse((r) => r.permits.message_send(ctx)),
   }
 }
 `

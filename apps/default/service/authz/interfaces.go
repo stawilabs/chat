@@ -13,25 +13,25 @@ import (
 // These translate business operations to authorization checks.
 type Middleware interface {
 	// Room permissions - subscriptionID is used as the subject
-	CanViewRoom(ctx context.Context, subscriptionID string, roomID string) error
-	CanSendMessage(ctx context.Context, subscriptionID string, roomID string) error
-	CanUpdateRoom(ctx context.Context, subscriptionID string, roomID string) error
-	CanDeleteRoom(ctx context.Context, subscriptionID string, roomID string) error
-	CanManageMembers(ctx context.Context, subscriptionID string, roomID string) error
-	CanManageRoles(ctx context.Context, subscriptionID string, roomID string) error
+	CanRoomView(ctx context.Context, subscriptionID string, roomID string) error
+	CanMessageSend(ctx context.Context, subscriptionID string, roomID string) error
+	CanRoomUpdate(ctx context.Context, subscriptionID string, roomID string) error
+	CanRoomDelete(ctx context.Context, subscriptionID string, roomID string) error
+	CanMembersManage(ctx context.Context, subscriptionID string, roomID string) error
+	CanRolesManage(ctx context.Context, subscriptionID string, roomID string) error
 
 	// Message permissions - identity-based, not room access
-	CanDeleteMessage(
+	CanMessageDelete(
 		ctx context.Context,
 		actor *commonv1.ContactLink,
 		messageID string,
 		senderProfileID string,
 		roomID string,
 	) error
-	CanEditMessage(ctx context.Context, actor *commonv1.ContactLink, messageID string, senderProfileID string) error
+	CanMessageEdit(ctx context.Context, actor *commonv1.ContactLink, messageID string, senderProfileID string) error
 
 	// Batch operations - map[roomID]subscriptionID
-	CanSendMessagesToRooms(ctx context.Context, subscriptionsByRoom map[string]string) (map[string]bool, error)
+	CanMessageSendToRooms(ctx context.Context, subscriptionsByRoom map[string]string) (map[string]bool, error)
 
 	// Tuple management - subscriptionID as subject
 	AddRoomMember(ctx context.Context, roomID string, subscriptionID string, role string) error

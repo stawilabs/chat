@@ -66,7 +66,7 @@ func (s *MiddlewareTestSuite) TestCanViewRoom() {
 				s.Require().NoError(err)
 			}
 
-			err := s.middleware.CanViewRoom(ctx, subscriptionID, roomID)
+			err := s.middleware.CanRoomView(ctx, subscriptionID, roomID)
 
 			if tc.shouldBeAllowed {
 				s.Require().NoError(err)
@@ -82,7 +82,7 @@ func (s *MiddlewareTestSuite) TestCanViewRoom_EmptySubscriptionIDDenied() {
 	ctx := context.Background()
 	roomID := util.IDString()
 
-	err := s.middleware.CanViewRoom(ctx, "", roomID)
+	err := s.middleware.CanRoomView(ctx, "", roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrInvalidSubject)
 }
@@ -96,7 +96,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessage_MemberCanSend() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleMember)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanSendMessage(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMessageSend(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -108,7 +108,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessage_AdminCanSend() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleAdmin)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanSendMessage(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMessageSend(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -120,7 +120,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessage_OwnerCanSend() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleOwner)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanSendMessage(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMessageSend(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -133,7 +133,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessage_GuestCannotSend() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleGuest)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanSendMessage(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMessageSend(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -143,7 +143,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessage_NonMemberDenied() {
 	roomID := util.IDString()
 	subscriptionID := util.IDString()
 
-	err := s.middleware.CanSendMessage(ctx, subscriptionID, roomID)
+	err := s.middleware.CanMessageSend(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -157,7 +157,7 @@ func (s *MiddlewareTestSuite) TestCanUpdateRoom_AdminCanUpdate() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleAdmin)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanUpdateRoom(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRoomUpdate(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -169,7 +169,7 @@ func (s *MiddlewareTestSuite) TestCanUpdateRoom_OwnerCanUpdate() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleOwner)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanUpdateRoom(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRoomUpdate(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -181,7 +181,7 @@ func (s *MiddlewareTestSuite) TestCanUpdateRoom_MemberCannotUpdate() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleMember)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanUpdateRoom(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRoomUpdate(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -195,7 +195,7 @@ func (s *MiddlewareTestSuite) TestCanDeleteRoom_OwnerCanDelete() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleOwner)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanDeleteRoom(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRoomDelete(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -207,7 +207,7 @@ func (s *MiddlewareTestSuite) TestCanDeleteRoom_AdminCannotDelete() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleAdmin)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanDeleteRoom(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRoomDelete(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -221,7 +221,7 @@ func (s *MiddlewareTestSuite) TestCanManageMembers_AdminCanManage() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleAdmin)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanManageMembers(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMembersManage(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -233,7 +233,7 @@ func (s *MiddlewareTestSuite) TestCanManageMembers_OwnerCanManage() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleOwner)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanManageMembers(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMembersManage(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -245,7 +245,7 @@ func (s *MiddlewareTestSuite) TestCanManageMembers_MemberCannotManage() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleMember)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanManageMembers(ctx, subscriptionID, roomID)
+	err = s.middleware.CanMembersManage(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -259,7 +259,7 @@ func (s *MiddlewareTestSuite) TestCanManageRoles_OwnerCanManage() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleOwner)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanManageRoles(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRolesManage(ctx, subscriptionID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -271,7 +271,7 @@ func (s *MiddlewareTestSuite) TestCanManageRoles_AdminCannotManage() {
 	err := s.mockService.AddRoomMember(roomID, subscriptionID, authz.RoleAdmin)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanManageRoles(ctx, subscriptionID, roomID)
+	err = s.middleware.CanRolesManage(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -284,7 +284,7 @@ func (s *MiddlewareTestSuite) TestCanDeleteMessage_SenderCanDelete() {
 	profileID := util.IDString()
 
 	// Sender can always delete their own message (fast path)
-	err := s.middleware.CanDeleteMessage(ctx, s.actor(profileID), messageID, profileID, roomID)
+	err := s.middleware.CanMessageDelete(ctx, s.actor(profileID), messageID, profileID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -300,7 +300,7 @@ func (s *MiddlewareTestSuite) TestCanDeleteMessage_AdminCanDeleteOthers() {
 	err := s.mockService.AddRoomMember(roomID, adminID, authz.RoleAdmin)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanDeleteMessage(ctx, s.actor(adminID), messageID, senderID, roomID)
+	err = s.middleware.CanMessageDelete(ctx, s.actor(adminID), messageID, senderID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -314,7 +314,7 @@ func (s *MiddlewareTestSuite) TestCanDeleteMessage_OwnerCanDeleteOthers() {
 	err := s.mockService.AddRoomMember(roomID, ownerID, authz.RoleOwner)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanDeleteMessage(ctx, s.actor(ownerID), messageID, senderID, roomID)
+	err = s.middleware.CanMessageDelete(ctx, s.actor(ownerID), messageID, senderID, roomID)
 	s.Require().NoError(err)
 }
 
@@ -328,7 +328,7 @@ func (s *MiddlewareTestSuite) TestCanDeleteMessage_MemberCannotDeleteOthers() {
 	err := s.mockService.AddRoomMember(roomID, memberID, authz.RoleMember)
 	s.Require().NoError(err)
 
-	err = s.middleware.CanDeleteMessage(ctx, s.actor(memberID), messageID, senderID, roomID)
+	err = s.middleware.CanMessageDelete(ctx, s.actor(memberID), messageID, senderID, roomID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -340,7 +340,7 @@ func (s *MiddlewareTestSuite) TestCanEditMessage_SenderCanEdit() {
 	profileID := util.IDString()
 
 	// Sender can always edit their own message
-	err := s.middleware.CanEditMessage(ctx, s.actor(profileID), messageID, profileID)
+	err := s.middleware.CanMessageEdit(ctx, s.actor(profileID), messageID, profileID)
 	s.Require().NoError(err)
 }
 
@@ -351,7 +351,7 @@ func (s *MiddlewareTestSuite) TestCanEditMessage_OthersCannotEdit() {
 	senderID := util.IDString()
 
 	// Others cannot edit (even admin/owner)
-	err := s.middleware.CanEditMessage(ctx, s.actor(profileID), messageID, senderID)
+	err := s.middleware.CanMessageEdit(ctx, s.actor(profileID), messageID, senderID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, authorizer.ErrPermissionDenied)
 }
@@ -377,7 +377,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessagesToRooms_BatchCheck() {
 		room2ID: sub2ID,
 		room3ID: sub3ID,
 	}
-	allowed, err := s.middleware.CanSendMessagesToRooms(ctx, subscriptionsByRoom)
+	allowed, err := s.middleware.CanMessageSendToRooms(ctx, subscriptionsByRoom)
 	s.Require().NoError(err)
 
 	s.True(allowed[room1ID], "Member should be able to send to room1")
@@ -388,7 +388,7 @@ func (s *MiddlewareTestSuite) TestCanSendMessagesToRooms_BatchCheck() {
 func (s *MiddlewareTestSuite) TestCanSendMessagesToRooms_EmptyList() {
 	ctx := context.Background()
 
-	allowed, err := s.middleware.CanSendMessagesToRooms(ctx, map[string]string{})
+	allowed, err := s.middleware.CanMessageSendToRooms(ctx, map[string]string{})
 	s.Require().NoError(err)
 	s.Empty(allowed)
 }
@@ -519,7 +519,7 @@ func (s *MiddlewareTestSuite) TestCanViewRoom_ServiceError() {
 		return security.CheckResult{}, errors.New("service unavailable")
 	}
 
-	err := s.middleware.CanViewRoom(ctx, subscriptionID, roomID)
+	err := s.middleware.CanRoomView(ctx, subscriptionID, roomID)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "authorization check failed")
 }

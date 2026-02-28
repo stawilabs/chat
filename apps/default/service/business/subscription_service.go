@@ -65,15 +65,15 @@ type SubscriptionService interface {
 		roleLvl roleLevel,
 	) (*models.RoomSubscription, error)
 
-	// CanManageMembers checks if a user can add/remove members from a room
-	CanManageMembers(
+	// CanMembersManage checks if a user can add/remove members from a room
+	CanMembersManage(
 		ctx context.Context,
 		contact *commonv1.ContactLink,
 		roomID string,
 	) (*models.RoomSubscription, error)
 
-	// CanManageRoles checks if a user can change member roles in a room
-	CanManageRoles(ctx context.Context, contact *commonv1.ContactLink, roomID string) (*models.RoomSubscription, error)
+	// CanRolesManage checks if a user can change member roles in a room
+	CanRolesManage(ctx context.Context, contact *commonv1.ContactLink, roomID string) (*models.RoomSubscription, error)
 
 	// GetSubscribedRoomIDs returns all room IDs a user is subscribed to
 	GetSubscribedRoomIDs(ctx context.Context, contact *commonv1.ContactLink) ([]string, error)
@@ -216,7 +216,7 @@ func (ss *subscriptionService) HasRole(
 	return nil, nil //nolint:nilnil // nil,nil means no matching subscription at the required role level
 }
 
-func (ss *subscriptionService) CanManageMembers(
+func (ss *subscriptionService) CanMembersManage(
 	ctx context.Context,
 	contact *commonv1.ContactLink,
 	roomID string,
@@ -230,7 +230,7 @@ func (ss *subscriptionService) CanManageMembers(
 	return manager, nil
 }
 
-func (ss *subscriptionService) CanManageRoles(
+func (ss *subscriptionService) CanRolesManage(
 	ctx context.Context,
 	contact *commonv1.ContactLink,
 	roomID string,

@@ -22,39 +22,39 @@ func NewMiddleware(service security.Authorizer) Middleware {
 	}
 }
 
-// CanViewRoom checks if the subscription can view a room.
-func (m *middleware) CanViewRoom(ctx context.Context, subscriptionID string, roomID string) error {
+// CanRoomView checks if the subscription can view a room.
+func (m *middleware) CanRoomView(ctx context.Context, subscriptionID string, roomID string) error {
 	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionView)
 }
 
-// CanSendMessage checks if the subscription can send messages to a room.
-func (m *middleware) CanSendMessage(ctx context.Context, subscriptionID string, roomID string) error {
-	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionSendMessage)
+// CanMessageSend checks if the subscription can send messages to a room.
+func (m *middleware) CanMessageSend(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionMessageSend)
 }
 
-// CanUpdateRoom checks if the subscription can update a room.
-func (m *middleware) CanUpdateRoom(ctx context.Context, subscriptionID string, roomID string) error {
+// CanRoomUpdate checks if the subscription can update a room.
+func (m *middleware) CanRoomUpdate(ctx context.Context, subscriptionID string, roomID string) error {
 	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionUpdate)
 }
 
-// CanDeleteRoom checks if the subscription can delete a room.
-func (m *middleware) CanDeleteRoom(ctx context.Context, subscriptionID string, roomID string) error {
+// CanRoomDelete checks if the subscription can delete a room.
+func (m *middleware) CanRoomDelete(ctx context.Context, subscriptionID string, roomID string) error {
 	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionDelete)
 }
 
-// CanManageMembers checks if the subscription can add/remove members from a room.
-func (m *middleware) CanManageMembers(ctx context.Context, subscriptionID string, roomID string) error {
-	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionManageMembers)
+// CanMembersManage checks if the subscription can add/remove members from a room.
+func (m *middleware) CanMembersManage(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionMembersManage)
 }
 
-// CanManageRoles checks if the subscription can change member roles in a room.
-func (m *middleware) CanManageRoles(ctx context.Context, subscriptionID string, roomID string) error {
-	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionManageRoles)
+// CanRolesManage checks if the subscription can change member roles in a room.
+func (m *middleware) CanRolesManage(ctx context.Context, subscriptionID string, roomID string) error {
+	return m.checkRoomPermission(ctx, subscriptionID, roomID, PermissionRolesManage)
 }
 
-// CanDeleteMessage checks if the actor can delete a message.
+// CanMessageDelete checks if the actor can delete a message.
 // Fast path: sender can always delete their own message.
-func (m *middleware) CanDeleteMessage(
+func (m *middleware) CanMessageDelete(
 	ctx context.Context,
 	actor *commonv1.ContactLink,
 	_, senderProfileID, roomID string,
@@ -67,12 +67,12 @@ func (m *middleware) CanDeleteMessage(
 	}
 
 	// Check room admin/owner permission for deleting others' messages
-	return m.checkRoomPermission(ctx, actor.GetProfileId(), roomID, PermissionDeleteAnyMessage)
+	return m.checkRoomPermission(ctx, actor.GetProfileId(), roomID, PermissionMessageDeleteAny)
 }
 
-// CanEditMessage checks if the actor can edit a message.
+// CanMessageEdit checks if the actor can edit a message.
 // Only the sender can edit their own message.
-func (m *middleware) CanEditMessage(
+func (m *middleware) CanMessageEdit(
 	_ context.Context,
 	actor *commonv1.ContactLink,
 	messageID, senderProfileID string,
@@ -92,9 +92,9 @@ func (m *middleware) CanEditMessage(
 	)
 }
 
-// CanSendMessagesToRooms checks if the subscriptions can send messages to multiple rooms.
+// CanMessageSendToRooms checks if the subscriptions can send messages to multiple rooms.
 // Accepts map[roomID]subscriptionID. Returns a map of room ID to allowed status.
-func (m *middleware) CanSendMessagesToRooms(
+func (m *middleware) CanMessageSendToRooms(
 	ctx context.Context,
 	subscriptionsByRoom map[string]string,
 ) (map[string]bool, error) {
@@ -102,7 +102,7 @@ func (m *middleware) CanSendMessagesToRooms(
 		return map[string]bool{}, nil
 	}
 
-	util.Log(ctx).WithField("room_count", len(subscriptionsByRoom)).Debug("CanSendMessagesToRooms batch check")
+	util.Log(ctx).WithField("room_count", len(subscriptionsByRoom)).Debug("CanMessageSendToRooms batch check")
 
 	roomIDs := make([]string, 0, len(subscriptionsByRoom))
 	for roomID := range subscriptionsByRoom {
@@ -114,7 +114,7 @@ func (m *middleware) CanSendMessagesToRooms(
 		subscriptionID := subscriptionsByRoom[roomID]
 		requests[i] = security.CheckRequest{
 			Object:     security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
-			Permission: PermissionSendMessage,
+			Permission: PermissionMessageSend,
 			Subject:    security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
 		}
 	}
