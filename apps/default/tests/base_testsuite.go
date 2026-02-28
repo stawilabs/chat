@@ -364,15 +364,31 @@ func (bs *BaseTestSuite) WithTestDependencies(
 }
 
 // WithAuthClaims adds authentication claims to a context for testing.
-func (bs *BaseTestSuite) WithAuthClaims(ctx context.Context, profileID string) context.Context {
+func (bs *BaseTestSuite) WithAuthClaims(
+	ctx context.Context,
+	tenantID, partitionID, profileID string,
+) context.Context {
 	claims := &security.AuthenticationClaims{
-		TenantID:  util.IDString(),
-		AccessID:  util.IDString(),
-		ContactID: profileID,
-		SessionID: util.IDString(),
-		DeviceID:  "test-device",
+		TenantID:    tenantID,
+		PartitionID: partitionID,
+		AccessID:    util.IDString(),
+		ContactID:   profileID,
+		SessionID:   util.IDString(),
+		DeviceID:    "test-device",
 	}
-	// Set the Subject field from jwt.RegisteredClaims
 	claims.Subject = profileID
 	return claims.ClaimsToContext(ctx)
+}
+
+// SeedTenantAccess writes a tenancy_access member tuple so the profile can pass
+// the TenancyAccessChecker (data access layer).
+func (bs *BaseTestSuite) SeedTenantAccess(
+	ctx context.Context,
+	svc *frame.Service,
+	tenantID, partitionID, profileID string,
+) {
+	auth := svc.SecurityManager().GetAuthorizer(ctx)
+	tenancyPath := fmt.Sprintf("%s/%s", tenantID, partitionID)
+	err := auth.WriteTuple(ctx, authz.BuildAccessTuple(tenancyPath, profileID))
+	bs.Require().NoError(err, "failed to seed tenant access")
 }

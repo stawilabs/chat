@@ -4,12 +4,28 @@
 // This file defines the authorization model for the chat service.
 // It uses a Zanzibar-style relationship-based access control (ReBAC) model.
 //
+// Two-layer authorization:
+//   Layer 1 — tenancy_access: Data access gate (can this caller access this partition?)
+//   Layer 2 — chat_room/chat_message: Resource-level permissions (rooms & messages)
+//
 // NOTE: Class names are prefixed with "chat_" to avoid collisions with other
 // services sharing the same Keto instance. Keto uses the exact class name as
 // the namespace identifier in API calls, so these must match the Go constants
 // (e.g., NamespaceRoom = "chat_room", NamespaceProfile = "chat_profile").
 
 import { Namespace, Context } from "@ory/keto-namespace-types"
+
+// profile_user is the platform-wide user identity namespace, shared across all services.
+class profile_user implements Namespace {}
+
+// tenancy_access gates data access per tenant/partition (Layer 1).
+// "member" = regular user, "service" = service bot (system_internal role).
+class tenancy_access implements Namespace {
+  related: {
+    member: profile_user[]
+    service: profile_user[]
+  }
+}
 
 // chat_profile namespace represents users/actors in the chat system
 class chat_profile implements Namespace {
@@ -104,4 +120,4 @@ class chat_message implements Namespace {
 }
 
 // Export namespaces for Keto to use
-export { chat_profile, chat_subscription, chat_room, chat_message }
+export { profile_user, tenancy_access, chat_profile, chat_subscription, chat_room, chat_message }

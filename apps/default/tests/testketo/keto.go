@@ -25,6 +25,7 @@ serve:
   read:
     host: 0.0.0.0
     port: 4466
+    max_read_depth: 10
   write:
     host: 0.0.0.0
     port: 4467
@@ -34,7 +35,7 @@ log:
   format: text
 
 namespaces:
-  location: file:///home/ory/namespaces
+  location: file:///home/ory/namespaces/chat.ts
 
 `
 
@@ -45,6 +46,15 @@ namespaces:
 	// other services sharing the same Keto instance. Must match Go constants
 	// (e.g., NamespaceRoom = "chat_room"). Keto uses exact class names.
 	oplNamespaces = `import { Namespace, Context } from "@ory/keto-namespace-types"
+
+class profile_user implements Namespace {}
+
+class tenancy_access implements Namespace {
+  related: {
+    member: profile_user[]
+    service: profile_user[]
+  }
+}
 
 class chat_profile implements Namespace {
   related: {

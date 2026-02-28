@@ -8,6 +8,12 @@ const (
 	NamespaceMessage      = "chat_message"
 	NamespaceProfile      = "chat_profile"
 	NamespaceSubscription = "chat_subscription"
+
+	// NamespaceTenancyAccess is the cross-service data access namespace (Layer 1).
+	NamespaceTenancyAccess = "tenancy_access"
+	// NamespaceProfileUser is the platform-wide user identity namespace used as
+	// subject in tenancy access tuples.
+	NamespaceProfileUser = "profile/user"
 )
 
 // Relation constants define the relationships between objects and subjects.
