@@ -18,6 +18,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const (
+	testTenantID    = "tenant1"
+	testPartitionID = "partition1"
+)
+
 type ChatServerTestSuite struct {
 	tests.BaseTestSuite
 }
@@ -51,7 +56,7 @@ func (s *ChatServerTestSuite) TestCreateRoom() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		req := connect.NewRequest(&chatv1.CreateRoomRequest{
 			Name:        "Test Room",
@@ -89,7 +94,7 @@ func (s *ChatServerTestSuite) TestUpdateRoom() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -116,7 +121,7 @@ func (s *ChatServerTestSuite) TestDeleteRoom() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -140,7 +145,7 @@ func (s *ChatServerTestSuite) TestSendEvent() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -175,7 +180,7 @@ func (s *ChatServerTestSuite) TestGetHistory() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -219,7 +224,7 @@ func (s *ChatServerTestSuite) TestAddRoomSubscriptions() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -251,7 +256,7 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -311,7 +316,7 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -372,7 +377,7 @@ func (s *ChatServerTestSuite) TestSearchRoomSubscriptions() {
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
 		profileID := util.IDString()
-		ctx = s.WithAuthClaims(ctx, profileID)
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
 			connect.NewRequest(&chatv1.CreateRoomRequest{
@@ -394,12 +399,13 @@ func (s *ChatServerTestSuite) TestSearchRoomSubscriptions() {
 // withSystemAuth creates a context with system_internal role for Live API tests.
 func (s *ChatServerTestSuite) withSystemAuth(ctx context.Context, profileID string) context.Context {
 	claims := &security.AuthenticationClaims{
-		TenantID:  util.IDString(),
-		AccessID:  util.IDString(),
-		ContactID: profileID,
-		SessionID: util.IDString(),
-		DeviceID:  "test-device",
-		Roles:     []string{"system_internal"},
+		TenantID:    testTenantID,
+		PartitionID: testPartitionID,
+		AccessID:    util.IDString(),
+		ContactID:   profileID,
+		SessionID:   util.IDString(),
+		DeviceID:    "test-device",
+		Roles:       []string{"system_internal"},
 	}
 	claims.Subject = profileID
 	return claims.ClaimsToContext(ctx)

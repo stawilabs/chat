@@ -89,7 +89,7 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 		return service.ErrRoomAccessDenied
 	}
 
-	if authzErr := cb.authzMiddleware.CanSendMessage(ctx, subscription.GetID(), roomID); authzErr != nil {
+	if authzErr := cb.authzMiddleware.CanMessageSend(ctx, subscription.GetID(), roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
 	}
 
@@ -142,7 +142,7 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 		return service.ErrRoomAccessDenied
 	}
 
-	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
+	if authzErr := cb.authzMiddleware.CanRoomView(ctx, subscription.GetID(), roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
 	}
 
@@ -195,7 +195,7 @@ func (cb *connectBusiness) UpdateReadMarker(
 		return service.ErrRoomAccessDenied
 	}
 
-	if authzErr := cb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
+	if authzErr := cb.authzMiddleware.CanRoomView(ctx, subscription.GetID(), roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
 	}
 

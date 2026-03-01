@@ -10,7 +10,6 @@ import (
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"connectrpc.com/connect"
-	"connectrpc.com/otelconnect"
 	chatv1 "github.com/antinvestor/apis/go/chat/v1"
 	"github.com/antinvestor/apis/go/common"
 	"github.com/antinvestor/apis/go/device"
@@ -26,7 +25,8 @@ import (
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/security"
-	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
+	"github.com/pitabwire/frame/security/authorizer"
+	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/frame/security/openid"
 	"github.com/pitabwire/util"
 )
@@ -92,7 +92,8 @@ func runService(ctx context.Context) error {
 	}
 
 	// Setup Keto authorization service
-	authzMiddleware := authz.NewMiddleware(sm.GetAuthorizer(ctx))
+	auth := sm.GetAuthorizer(ctx)
+	authzMiddleware := authz.NewMiddleware(auth)
 
 	// Setup Connect server
 	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
@@ -217,19 +218,20 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 ) http.Handler {
 	securityMan := svc.SecurityManager()
 
-	otelInterceptor, err := otelconnect.NewInterceptor()
+	auth := securityMan.GetAuthorizer(ctx)
+	tenancyAccessChecker := authorizer.NewTenancyAccessChecker(auth, authz.NamespaceTenancyAccess)
+	tenancyAccessInterceptor := connectInterceptors.NewTenancyAccessInterceptor(tenancyAccessChecker)
+
+	defaultInterceptorList, err := connectInterceptors.DefaultList(
+		ctx, securityMan.GetAuthenticator(ctx), tenancyAccessInterceptor)
 	if err != nil {
-		util.Log(ctx).WithError(err).Fatal("could not configure open telemetry")
+		util.Log(ctx).WithError(err).Fatal("could not configure interceptors")
 	}
-
-	validateInterceptor := securityconnect.NewValidationInterceptor()
-
-	authInterceptor := securityconnect.NewAuthInterceptor(securityMan.GetAuthenticator(ctx))
 
 	implementation := handlers.NewChatServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
 
 	_, serverHandler := chatv1connect.NewChatServiceHandler(
-		implementation, connect.WithInterceptors(authInterceptor, otelInterceptor, validateInterceptor))
+		implementation, connect.WithInterceptors(defaultInterceptorList...))
 
 	mux := http.NewServeMux()
 	mux.Handle("/", serverHandler)

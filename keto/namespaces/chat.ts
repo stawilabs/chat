@@ -4,12 +4,32 @@
 // This file defines the authorization model for the chat service.
 // It uses a Zanzibar-style relationship-based access control (ReBAC) model.
 //
+// Two-layer authorization:
+//   Layer 1 — tenancy_access: Data access gate (can this caller access this partition?)
+//   Layer 2 — chat_room/chat_message: Resource-level permissions (rooms & messages)
+//
 // NOTE: Class names are prefixed with "chat_" to avoid collisions with other
 // services sharing the same Keto instance. Keto uses the exact class name as
 // the namespace identifier in API calls, so these must match the Go constants
 // (e.g., NamespaceRoom = "chat_room", NamespaceProfile = "chat_profile").
+//
+// IMPORTANT: Direct-grant relations are prefixed with "granted_" to avoid
+// name conflicts with permit functions. Keto skips permit evaluation when a
+// relation shares the same name as a permit function.
 
 import { Namespace, Context } from "@ory/keto-namespace-types"
+
+// profile_user is the platform-wide user identity namespace, shared across all services.
+class profile_user implements Namespace {}
+
+// tenancy_access gates data access per tenant/partition (Layer 1).
+// "granted_member" = regular user, "granted_service" = service bot (system_internal role).
+class tenancy_access implements Namespace {
+  related: {
+    granted_member: profile_user[]
+    granted_service: profile_user[]
+  }
+}
 
 // chat_profile namespace represents users/actors in the chat system
 class chat_profile implements Namespace {
@@ -26,51 +46,51 @@ class chat_subscription implements Namespace {}
 class chat_room implements Namespace {
   related: {
     // Room owner has full control
-    owner: (chat_profile | chat_subscription)[]
+    granted_owner: (chat_profile | chat_subscription)[]
     // Admins can manage members and moderate content
-    admin: (chat_profile | chat_subscription)[]
+    granted_admin: (chat_profile | chat_subscription)[]
     // Members can participate in the room
-    member: (chat_profile | chat_subscription)[]
+    granted_member: (chat_profile | chat_subscription)[]
     // Viewers have read-only access (e.g., for channel subscribers)
-    viewer: (chat_profile | chat_subscription)[]
+    granted_viewer: (chat_profile | chat_subscription)[]
   }
 
   permits = {
     // View room content and history
     view: (ctx: Context): boolean =>
-      this.related.viewer.includes(ctx.subject) ||
-      this.related.member.includes(ctx.subject) ||
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+      this.related.granted_viewer.includes(ctx.subject) ||
+      this.related.granted_member.includes(ctx.subject) ||
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     // Send messages to the room
-    send_message: (ctx: Context): boolean =>
-      this.related.member.includes(ctx.subject) ||
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+    message_send: (ctx: Context): boolean =>
+      this.related.granted_member.includes(ctx.subject) ||
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     // Delete any message in the room (moderation)
-    delete_any_message: (ctx: Context): boolean =>
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+    message_delete_any: (ctx: Context): boolean =>
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     // Update room metadata (name, description, etc.)
     update: (ctx: Context): boolean =>
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     // Delete the room entirely
     delete: (ctx: Context): boolean =>
-      this.related.owner.includes(ctx.subject),
+      this.related.granted_owner.includes(ctx.subject),
 
     // Add or remove members from the room
-    manage_members: (ctx: Context): boolean =>
-      this.related.admin.includes(ctx.subject) ||
-      this.related.owner.includes(ctx.subject),
+    members_manage: (ctx: Context): boolean =>
+      this.related.granted_admin.includes(ctx.subject) ||
+      this.related.granted_owner.includes(ctx.subject),
 
     // Change member roles (promote/demote)
-    manage_roles: (ctx: Context): boolean =>
-      this.related.owner.includes(ctx.subject),
+    roles_manage: (ctx: Context): boolean =>
+      this.related.granted_owner.includes(ctx.subject),
   }
 }
 
@@ -78,7 +98,7 @@ class chat_room implements Namespace {
 class chat_message implements Namespace {
   related: {
     // The profile that sent this message
-    sender: chat_profile[]
+    granted_sender: chat_profile[]
     // The room this message belongs to (for permission inheritance)
     room: chat_room[]
   }
@@ -90,18 +110,18 @@ class chat_message implements Namespace {
 
     // Delete the message (sender or room admin/owner)
     delete: (ctx: Context): boolean =>
-      this.related.sender.includes(ctx.subject) ||
-      this.related.room.traverse((r) => r.permits.delete_any_message(ctx)),
+      this.related.granted_sender.includes(ctx.subject) ||
+      this.related.room.traverse((r) => r.permits.message_delete_any(ctx)),
 
     // Edit the message (only sender)
     edit: (ctx: Context): boolean =>
-      this.related.sender.includes(ctx.subject),
+      this.related.granted_sender.includes(ctx.subject),
 
     // React to the message (anyone who can send messages to the room)
     react: (ctx: Context): boolean =>
-      this.related.room.traverse((r) => r.permits.send_message(ctx)),
+      this.related.room.traverse((r) => r.permits.message_send(ctx)),
   }
 }
 
 // Export namespaces for Keto to use
-export { chat_profile, chat_subscription, chat_room, chat_message }
+export { profile_user, tenancy_access, chat_profile, chat_subscription, chat_room, chat_message }

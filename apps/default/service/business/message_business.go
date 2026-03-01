@@ -119,7 +119,7 @@ func (mb *messageBusiness) SendEvents(
 	}
 
 	// Batch check send permission for all rooms via authz
-	allowedRooms, batchErr := mb.authzMiddleware.CanSendMessagesToRooms(ctx, subscriptionsByRoom)
+	allowedRooms, batchErr := mb.authzMiddleware.CanMessageSendToRooms(ctx, subscriptionsByRoom)
 	if batchErr != nil {
 		return nil, fmt.Errorf("failed to check room access: %w", batchErr)
 	}
@@ -383,7 +383,7 @@ func (mb *messageBusiness) GetMessage(
 		return nil, service.ErrMessageAccessDenied
 	}
 
-	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), event.RoomID); authzErr != nil {
+	if authzErr := mb.authzMiddleware.CanRoomView(ctx, sub.GetID(), event.RoomID); authzErr != nil {
 		return nil, service.ErrMessageAccessDenied
 	}
 
@@ -418,7 +418,7 @@ func (mb *messageBusiness) GetHistory(
 		return nil, service.ErrRoomAccessDenied
 	}
 
-	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, sub.GetID(), req.GetRoomId()); authzErr != nil {
+	if authzErr := mb.authzMiddleware.CanRoomView(ctx, sub.GetID(), req.GetRoomId()); authzErr != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
@@ -553,7 +553,7 @@ func (mb *messageBusiness) MarkMessagesAsRead(
 		return service.ErrRoomAccessDenied
 	}
 
-	if authzErr := mb.authzMiddleware.CanViewRoom(ctx, subscription.GetID(), roomID); authzErr != nil {
+	if authzErr := mb.authzMiddleware.CanRoomView(ctx, subscription.GetID(), roomID); authzErr != nil {
 		return service.ErrRoomAccessDenied
 	}
 

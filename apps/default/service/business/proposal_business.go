@@ -145,7 +145,7 @@ func (rpm *roomProposalManagement) ListPending(
 		return nil, service.ErrRoomAccessDenied
 	}
 
-	if err := rpm.authzMiddleware.CanViewRoom(ctx, sub.GetID(), scopeID); err != nil {
+	if err := rpm.authzMiddleware.CanRoomView(ctx, sub.GetID(), scopeID); err != nil {
 		return nil, service.ErrRoomAccessDenied
 	}
 
