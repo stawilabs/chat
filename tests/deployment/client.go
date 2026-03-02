@@ -375,9 +375,9 @@ func (c *Client) SearchSubscriptions(ctx context.Context, roomID string) ([]*cha
 // UpdateRoom updates room properties.
 func (c *Client) UpdateRoom(ctx context.Context, roomID, name, topic string) (*chatv1.Room, error) {
 	resp, err := c.chat.UpdateRoom(ctx, connect.NewRequest(&chatv1.UpdateRoomRequest{
-		RoomId: roomID,
-		Name:   name,
-		Topic:  topic,
+		RoomId:      roomID,
+		Name:        name,
+		Description: topic,
 	}))
 	if err != nil {
 		return nil, err

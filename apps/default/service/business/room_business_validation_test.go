@@ -322,3 +322,54 @@ func (s *RoomBusinessTestSuite) TestCreateRoomWithValidationFailure_ContactNotFo
 		s.Contains(err.Error(), "contact validation failed")
 	})
 }
+
+// TestCreateRoomWithValidation_PopulatesProfileID tests that validateContactProfile
+// populates the ProfileId from the profile service when it's missing from the ContactLink.
+func (s *RoomBusinessTestSuite) TestCreateRoomWithValidation_PopulatesProfileID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+
+		validContactID := util.IDString()
+		resolvedProfileID := util.IDString()
+
+		creatorID := util.IDString()
+		creatorContactID := util.IDString()
+
+		mockCli := &mockProfileClient{
+			getByContactFunc: func(_ context.Context, req *connect.Request[profilev1.GetByContactRequest]) (*connect.Response[profilev1.GetByContactResponse], error) {
+				if req.Msg.GetContact() == validContactID {
+					return connect.NewResponse(&profilev1.GetByContactResponse{
+						Data: &profilev1.ProfileObject{Id: resolvedProfileID},
+					}), nil
+				}
+				if req.Msg.GetContact() == creatorContactID {
+					return connect.NewResponse(&profilev1.GetByContactResponse{
+						Data: &profilev1.ProfileObject{Id: creatorID},
+					}), nil
+				}
+				return nil, errors.New("not found")
+			},
+		}
+
+		roomBusiness := s.setupBusinessLayerWithProfileClient(ctx, svc, mockCli)
+
+		// Member has ContactId but no ProfileId - should be populated from profile service
+		req := &chatv1.CreateRoomRequest{
+			Name:      "Populate ProfileID Room",
+			IsPrivate: false,
+			Members: []*commonv1.ContactLink{
+				{ContactId: validContactID}, // no ProfileId
+			},
+		}
+
+		room, err := roomBusiness.CreateRoom(
+			ctx,
+			req,
+			&commonv1.ContactLink{ProfileId: creatorID, ContactId: creatorContactID},
+		)
+		require.NoError(t, err)
+		s.NotNil(room)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), creatorID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), resolvedProfileID, t)
+	})
+}

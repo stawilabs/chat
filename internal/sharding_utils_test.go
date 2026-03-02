@@ -1,4 +1,3 @@
-//nolint:testpackage // testing internal sharding functions
 package internal
 
 import (

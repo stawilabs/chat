@@ -438,7 +438,10 @@ linters:
           - funlen
           - goconst
           - gosec
+          - govet
           - noctx
+          - testpackage
+          - unparam
           - wrapcheck
       # Deployment integration tests are CLI tools with different requirements
       - path: 'tests/deployment/'

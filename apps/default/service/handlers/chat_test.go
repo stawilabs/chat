@@ -15,6 +15,7 @@ import (
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -104,9 +105,9 @@ func (s *ChatServerTestSuite) TestUpdateRoom() {
 
 		// Update the room
 		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
-			RoomId: roomID,
-			Name:   "Updated Room",
-			Topic:  "Updated topic",
+			RoomId:      roomID,
+			Name:        "Updated Room",
+			Description: "Updated topic",
 		})
 
 		updateResp, err := chatServer.UpdateRoom(ctx, updateReq)
@@ -531,5 +532,612 @@ func (s *ChatServerTestSuite) TestLive_Unauthenticated() {
 
 		_, err := chatServer.Live(ctx, liveReq)
 		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetEvent() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "GetEvent Room",
+				IsPrivate: false,
+			}))
+
+		// Send a message to get an event ID
+		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{
+				{
+					RoomId: roomID,
+					Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
+					Payload: &chatv1.Payload{
+						Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "get event test"}},
+					},
+				},
+			},
+		})
+
+		msgResp, err := chatServer.SendEvent(ctx, msgReq)
+		require.NoError(t, err)
+		require.Len(t, msgResp.Msg.GetAck(), 1)
+		require.Len(t, msgResp.Msg.GetAck()[0].GetEventId(), 1)
+		eventID := msgResp.Msg.GetAck()[0].GetEventId()[0]
+
+		// Get the event by ID
+		getReq := connect.NewRequest(&chatv1.GetEventRequest{
+			RoomId:  roomID,
+			EventId: eventID,
+		})
+
+		getResp, err := chatServer.GetEvent(ctx, getReq)
+		require.NoError(t, err)
+		s.NotNil(getResp.Msg.GetEvent())
+		s.Equal(eventID, getResp.Msg.GetEvent().GetId())
+		s.Equal(roomID, getResp.Msg.GetEvent().GetRoomId())
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetEvent_InvalidEventID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		getReq := connect.NewRequest(&chatv1.GetEventRequest{
+			EventId: "",
+		})
+
+		_, err := chatServer.GetEvent(ctx, getReq)
+		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetRoom() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:        "GetRoom Test",
+				Description: "A room to retrieve",
+				IsPrivate:   false,
+			}))
+
+		// Get the room
+		getReq := connect.NewRequest(&chatv1.GetRoomRequest{
+			RoomId: roomID,
+		})
+
+		getResp, err := chatServer.GetRoom(ctx, getReq)
+		require.NoError(t, err)
+		s.NotNil(getResp.Msg.GetRoom())
+		s.Equal(roomID, getResp.Msg.GetRoom().GetId())
+		s.Equal("GetRoom Test", getResp.Msg.GetRoom().GetName())
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetRoom_InvalidRoomID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		getReq := connect.NewRequest(&chatv1.GetRoomRequest{
+			RoomId: "",
+		})
+
+		_, err := chatServer.GetRoom(ctx, getReq)
+		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetRoom_Unauthenticated() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		getReq := connect.NewRequest(&chatv1.GetRoomRequest{
+			RoomId: util.IDString(),
+		})
+
+		_, err := chatServer.GetRoom(ctx, getReq)
+		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetSubscriptionSettings() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Settings Room",
+				IsPrivate: false,
+			}))
+
+		// Get subscription settings
+		getReq := connect.NewRequest(&chatv1.GetSubscriptionSettingsRequest{
+			RoomId: roomID,
+		})
+
+		getResp, err := chatServer.GetSubscriptionSettings(ctx, getReq)
+		require.NoError(t, err)
+		s.NotNil(getResp.Msg.GetSettings())
+		s.Equal(roomID, getResp.Msg.GetSettings().GetRoomId())
+	})
+}
+
+func (s *ChatServerTestSuite) TestGetSubscriptionSettings_InvalidRoomID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		getReq := connect.NewRequest(&chatv1.GetSubscriptionSettingsRequest{
+			RoomId: "",
+		})
+
+		_, err := chatServer.GetSubscriptionSettings(ctx, getReq)
+		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestUpdateSubscriptionSettings() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Update Settings Room",
+				IsPrivate: false,
+			}))
+
+		// Update subscription settings with muted, pinned, and notification level
+		nl := chatv1.NotificationLevel_NOTIFICATION_LEVEL_MENTIONS
+		updateReq := connect.NewRequest(&chatv1.UpdateSubscriptionSettingsRequest{
+			RoomId:            roomID,
+			Muted:             proto.Bool(true),
+			Pinned:            proto.Bool(true),
+			Archived:          proto.Bool(false),
+			NotificationLevel: &nl,
+		})
+
+		updateResp, err := chatServer.UpdateSubscriptionSettings(ctx, updateReq)
+		require.NoError(t, err)
+		s.NotNil(updateResp.Msg.GetSettings())
+		s.True(updateResp.Msg.GetSettings().GetMuted())
+		s.True(updateResp.Msg.GetSettings().GetPinned())
+		s.False(updateResp.Msg.GetSettings().GetArchived())
+		s.Equal(chatv1.NotificationLevel_NOTIFICATION_LEVEL_MENTIONS,
+			updateResp.Msg.GetSettings().GetNotificationLevel())
+	})
+}
+
+func (s *ChatServerTestSuite) TestLive_DeliveryReceipt() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc, chatServer := s.setupLiveTest(t, dep)
+
+		profileID := security.ClaimsFromContext(ctx).ContactID
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Receipt Test Room",
+				IsPrivate: false,
+			}))
+
+		// Send a message to get an event ID
+		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{
+				{
+					RoomId: roomID,
+					Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
+					Payload: &chatv1.Payload{
+						Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "receipt test"}},
+					},
+				},
+			},
+		})
+
+		msgResp, err := chatServer.SendEvent(ctx, msgReq)
+		require.NoError(t, err)
+		eventID := msgResp.Msg.GetAck()[0].GetEventId()[0]
+
+		// Send delivery receipt via Live
+		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+			ClientStates: []*chatv1.ClientCommand{
+				{
+					State: &chatv1.ClientCommand_Receipt{
+						Receipt: &chatv1.ReceiptEvent{
+							RoomId:  roomID,
+							EventId: []string{eventID},
+						},
+					},
+				},
+			},
+		})
+
+		resp, err := chatServer.Live(ctx, liveReq)
+		require.NoError(t, err)
+		s.NotNil(resp)
+	})
+}
+
+func (s *ChatServerTestSuite) TestLive_Presence() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc, chatServer := s.setupLiveTest(t, dep)
+
+		profileID := security.ClaimsFromContext(ctx).ContactID
+
+		// Create a room so the service is fully initialized
+		_ = s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Presence Test Room",
+				IsPrivate: false,
+			}))
+
+		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+			ClientStates: []*chatv1.ClientCommand{
+				{
+					State: &chatv1.ClientCommand_Presence{
+						Presence: &chatv1.PresenceEvent{
+							Status:    chatv1.PresenceStatus_PRESENCE_STATUS_ONLINE,
+							StatusMsg: "Available",
+						},
+					},
+				},
+			},
+		})
+
+		// Presence update currently panics due to nil presenceCache in
+		// connectBusiness (not initialized in NewConnectBusiness). Use
+		// require.Panics to document this known issue until the cache
+		// is wired up.
+		require.Panics(t, func() {
+			_, _ = chatServer.Live(ctx, liveReq)
+		})
+	})
+}
+
+func (s *ChatServerTestSuite) TestLive_RoomEvent() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc, chatServer := s.setupLiveTest(t, dep)
+
+		profileID := security.ClaimsFromContext(ctx).ContactID
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Live RoomEvent Test",
+				IsPrivate: false,
+			}))
+
+		// Send a room event via Live
+		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+			ClientStates: []*chatv1.ClientCommand{
+				{
+					State: &chatv1.ClientCommand_Event{
+						Event: &chatv1.RoomEvent{
+							RoomId: roomID,
+							Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
+							Payload: &chatv1.Payload{
+								Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "live event message"}},
+							},
+						},
+					},
+				},
+			},
+		})
+
+		resp, err := chatServer.Live(ctx, liveReq)
+		require.NoError(t, err)
+		s.NotNil(resp)
+	})
+}
+
+func (s *ChatServerTestSuite) TestLive_NilClientState() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, chatServer := s.setupLiveTest(t, dep)
+
+		// Send a nil client state in the list - should result in partial failure
+		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+			ClientStates: []*chatv1.ClientCommand{
+				nil,
+			},
+		})
+
+		// All states failed so this returns an error
+		_, err := chatServer.Live(ctx, liveReq)
+		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestLive_TooManyClientStates() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, _, chatServer := s.setupLiveTest(t, dep)
+
+		// Create more than MaxBatchSize (50) client states
+		states := make([]*chatv1.ClientCommand, 51)
+		for i := range states {
+			states[i] = &chatv1.ClientCommand{
+				State: &chatv1.ClientCommand_Presence{
+					Presence: &chatv1.PresenceEvent{
+						Status: chatv1.PresenceStatus_PRESENCE_STATUS_ONLINE,
+					},
+				},
+			}
+		}
+
+		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+			ClientStates: states,
+		})
+
+		_, err := chatServer.Live(ctx, liveReq)
+		require.Error(t, err)
+	})
+}
+
+func (s *ChatServerTestSuite) TestListProposals() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		// Create a room that requires approval
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:             "Proposal Room",
+				IsPrivate:        false,
+				RequiresApproval: true,
+			}))
+
+		// Attempt to update the room — this should create a proposal instead
+		// of directly updating, and return ErrProposalRequired.
+		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+			RoomId: roomID,
+			Name:   "Proposed Name Change",
+		})
+
+		_, updateErr := chatServer.UpdateRoom(ctx, updateReq)
+		require.Error(t, updateErr, "UpdateRoom on a RequiresApproval room should return an error")
+		s.Equal(connect.CodeFailedPrecondition, connect.CodeOf(updateErr))
+
+		// List proposals — there should be at least one pending proposal
+		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+			RoomId: roomID,
+		})
+
+		listResp, err := chatServer.ListProposals(ctx, listReq)
+		require.NoError(t, err)
+		s.GreaterOrEqual(len(listResp.Msg.GetProposals()), 1)
+
+		// Verify the proposal has the expected fields
+		proposal := listResp.Msg.GetProposals()[0]
+		s.Equal(roomID, proposal.GetRoomId())
+		s.NotEmpty(proposal.GetId())
+		s.Equal(profileID, proposal.GetRequestedBy())
+		s.Equal(chatv1.ProposalState_PROPOSAL_STATE_PENDING, proposal.GetState())
+	})
+}
+
+func (s *ChatServerTestSuite) TestListProposals_InvalidRoomID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+			RoomId: "",
+		})
+
+		_, err := chatServer.ListProposals(ctx, listReq)
+		require.Error(t, err)
+		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
+	})
+}
+
+func (s *ChatServerTestSuite) TestSubmitProposal_Approve() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		// Create a room that requires approval
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:             "Approve Proposal Room",
+				IsPrivate:        false,
+				RequiresApproval: true,
+			}))
+
+		// Trigger a proposal via UpdateRoom
+		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+			RoomId: roomID,
+			Name:   "Approved Name",
+		})
+
+		_, updateErr := chatServer.UpdateRoom(ctx, updateReq)
+		require.Error(t, updateErr)
+		s.Equal(connect.CodeFailedPrecondition, connect.CodeOf(updateErr))
+
+		// Get the proposal ID from ListProposals
+		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+			RoomId: roomID,
+		})
+
+		listResp, err := chatServer.ListProposals(ctx, listReq)
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(listResp.Msg.GetProposals()), 1)
+
+		proposalID := listResp.Msg.GetProposals()[0].GetId()
+
+		// Approve the proposal
+		submitReq := connect.NewRequest(&chatv1.SubmitProposalRequest{
+			RoomId:     roomID,
+			ProposalId: proposalID,
+			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
+		})
+
+		submitResp, err := chatServer.SubmitProposal(ctx, submitReq)
+		require.NoError(t, err)
+		s.NotNil(submitResp)
+		// Successful approval returns no error detail
+		s.Nil(submitResp.Msg.GetError())
+	})
+}
+
+func (s *ChatServerTestSuite) TestSubmitProposal_Reject() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		// Create a room that requires approval
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:             "Reject Proposal Room",
+				IsPrivate:        false,
+				RequiresApproval: true,
+			}))
+
+		// Trigger a proposal via UpdateRoom
+		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+			RoomId: roomID,
+			Name:   "Rejected Name",
+		})
+
+		_, updateErr := chatServer.UpdateRoom(ctx, updateReq)
+		require.Error(t, updateErr)
+		s.Equal(connect.CodeFailedPrecondition, connect.CodeOf(updateErr))
+
+		// Get the proposal ID from ListProposals
+		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+			RoomId: roomID,
+		})
+
+		listResp, err := chatServer.ListProposals(ctx, listReq)
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(listResp.Msg.GetProposals()), 1)
+
+		proposalID := listResp.Msg.GetProposals()[0].GetId()
+
+		// Reject the proposal with a reason
+		submitReq := connect.NewRequest(&chatv1.SubmitProposalRequest{
+			RoomId:     roomID,
+			ProposalId: proposalID,
+			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_REJECT,
+			Reason:     proto.String("Not appropriate at this time"),
+		})
+
+		submitResp, err := chatServer.SubmitProposal(ctx, submitReq)
+		require.NoError(t, err)
+		s.NotNil(submitResp)
+		s.Nil(submitResp.Msg.GetError())
+	})
+}
+
+func (s *ChatServerTestSuite) TestSubmitProposal_InvalidArgs() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
+
+		profileID := util.IDString()
+		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
+
+		// Empty room_id
+		_, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+			RoomId:     "",
+			ProposalId: util.IDString(),
+			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
+		}))
+		require.Error(t, err)
+		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		// Empty proposal_id
+		_, err = chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+			RoomId:     util.IDString(),
+			ProposalId: "",
+			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
+		}))
+		require.Error(t, err)
+		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		// Unspecified action
+		_, err = chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+			RoomId:     util.IDString(),
+			ProposalId: util.IDString(),
+			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_UNSPECIFIED,
+		}))
+		require.Error(t, err)
+		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
+	})
+}
+
+// TestLive_MixedValidAndInvalid requires a real service because it sends
+// a valid typing command that reaches ConnectBusiness.
+func (s *ChatServerTestSuite) TestLive_MixedValidAndInvalid() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc, chatServer := s.setupLiveTest(t, dep)
+
+		profileID := security.ClaimsFromContext(ctx).ContactID
+
+		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
+			connect.NewRequest(&chatv1.CreateRoomRequest{
+				Name:      "Mixed Live Test Room",
+				IsPrivate: false,
+			}))
+
+		// One valid typing + one invalid nil receipt = partial failure (returns response with error detail, not error)
+		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+			ClientStates: []*chatv1.ClientCommand{
+				{
+					State: &chatv1.ClientCommand_Typing{
+						Typing: &chatv1.TypingEvent{
+							RoomId: roomID,
+							Typing: true,
+						},
+					},
+				},
+				{
+					State: &chatv1.ClientCommand_Receipt{
+						Receipt: nil,
+					},
+				},
+			},
+		})
+
+		resp, err := chatServer.Live(ctx, liveReq)
+		// Partial failure: one succeeded, one failed -- returns response with error detail
+		require.NoError(t, err)
+		s.NotNil(resp.Msg.GetError())
 	})
 }

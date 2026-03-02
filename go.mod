@@ -3,8 +3,8 @@ module github.com/antinvestor/service-chat
 go 1.26
 
 require (
-	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260219061800-1773ee53215d.2
-	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260219061800-1773ee53215d.1
+	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260301171100-96d44d800202.2
+	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260301171100-96d44d800202.1
 	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260219054105-fe125014d75c.1
 	buf.build/gen/go/antinvestor/device/connectrpc/go v1.19.1-20260221033317-1a8e101ef7c6.2
 	buf.build/gen/go/antinvestor/device/protocolbuffers/go v1.36.11-20260221033317-1a8e101ef7c6.1
@@ -13,7 +13,7 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.11-20260219062039-499f582dea7e.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
-	github.com/antinvestor/apis/go/chat v1.53.18
+	github.com/antinvestor/apis/go/chat v1.53.20
 	github.com/antinvestor/apis/go/common v1.53.17
 	github.com/antinvestor/apis/go/device v1.53.18
 	github.com/antinvestor/apis/go/notification v1.53.18

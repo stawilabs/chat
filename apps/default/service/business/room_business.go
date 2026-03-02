@@ -94,10 +94,11 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Create the room
 	createdRoom := &models.Room{
-		RoomType:    defaultGroupType,
-		Name:        req.GetName(),
-		Description: req.GetDescription(),
-		IsPublic:    !req.GetIsPrivate(),
+		RoomType:         defaultGroupType,
+		Name:             req.GetName(),
+		Description:      req.GetDescription(),
+		IsPublic:         !req.GetIsPrivate(),
+		RequiresApproval: req.GetRequiresApproval(),
 	}
 	if req.GetId() != "" {
 		createdRoom.ID = req.GetId()
@@ -249,8 +250,8 @@ func (rb *roomBusiness) UpdateRoom(
 	if req.GetName() != "" {
 		room.Name = req.GetName()
 	}
-	if req.GetTopic() != "" {
-		room.Description = req.GetTopic()
+	if req.GetDescription() != "" {
+		room.Description = req.GetDescription()
 	}
 
 	// Save the updated room
@@ -635,6 +636,86 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 	}
 
 	return protoSubs, nil
+}
+
+func (rb *roomBusiness) GetSubscriptionForContact(
+	ctx context.Context,
+	roomID string,
+	contact *commonv1.ContactLink,
+) (*models.RoomSubscription, error) {
+	if err := internal.IsValidContactLink(contact); err != nil {
+		return nil, err
+	}
+
+	if roomID == "" {
+		return nil, service.ErrRoomIDRequired
+	}
+
+	sub, subErr := rb.subscriptionSvc.GetSubscription(ctx, contact, roomID)
+	if subErr != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	if err := rb.authzMiddleware.CanRoomView(ctx, sub.GetID(), roomID); err != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	return sub, nil
+}
+
+func (rb *roomBusiness) UpdateSubscriptionSettings(
+	ctx context.Context,
+	req *chatv1.UpdateSubscriptionSettingsRequest,
+	updatedBy *commonv1.ContactLink,
+) (*chatv1.SubscriptionSettings, error) {
+	if err := internal.IsValidContactLink(updatedBy); err != nil {
+		return nil, err
+	}
+
+	if req.GetRoomId() == "" {
+		return nil, service.ErrRoomIDRequired
+	}
+
+	// Look up the caller's subscription
+	sub, subErr := rb.subscriptionSvc.GetSubscription(ctx, updatedBy, req.GetRoomId())
+	if subErr != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	if err := rb.authzMiddleware.CanRoomView(ctx, sub.GetID(), req.GetRoomId()); err != nil {
+		return nil, service.ErrRoomAccessDenied
+	}
+
+	// Apply updates (only non-nil fields)
+	var updateFields []string
+
+	if req.NotificationLevel != nil {
+		sub.NotificationLevel = int32(req.GetNotificationLevel())
+		updateFields = append(updateFields, "notification_level")
+	}
+	if req.Muted != nil {
+		sub.Muted = req.GetMuted()
+		updateFields = append(updateFields, "muted")
+	}
+	if req.Archived != nil {
+		sub.Archived = req.GetArchived()
+		updateFields = append(updateFields, "archived")
+	}
+	if req.Pinned != nil {
+		sub.Pinned = req.GetPinned()
+		updateFields = append(updateFields, "pinned")
+	}
+
+	if len(updateFields) == 0 {
+		// Nothing to update, return current settings
+		return sub.ToSettings(), nil
+	}
+
+	if _, updateErr := rb.subscriptionRepo.Update(ctx, sub, updateFields...); updateErr != nil {
+		return nil, fmt.Errorf("failed to update subscription settings: %w", updateErr)
+	}
+
+	return sub.ToSettings(), nil
 }
 
 // Helper function to add members to a room with specific roles.

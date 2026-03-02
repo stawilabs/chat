@@ -35,31 +35,33 @@ func (r *Room) ToAPI() *chatv1.Room {
 	}
 
 	protoRoom := &chatv1.Room{
-		Id:          r.GetID(),
-		Name:        r.Name,
-		Description: r.Description,
-		IsPrivate:   !r.IsPublic,
-		Metadata:    metadata,
-		CreatedAt:   timestamppb.New(r.CreatedAt),
-	}
-
-	// Initialize metadata if needed for room_type or requires_approval
-	if metadata == nil && (r.RoomType != "" || r.RequiresApproval) {
-		protoRoom.Metadata, _ = structpb.NewStruct(map[string]any{})
-		metadata = protoRoom.GetMetadata()
-	}
-
-	// Include room_type in metadata
-	if r.RoomType != "" && metadata != nil {
-		metadata.Fields["room_type"] = structpb.NewStringValue(r.RoomType)
-	}
-
-	// Include requires_approval in metadata
-	if r.RequiresApproval && metadata != nil {
-		metadata.Fields["requires_approval"] = structpb.NewBoolValue(true)
+		Id:               r.GetID(),
+		Name:             r.Name,
+		Description:      r.Description,
+		Type:             roomTypeToAPI(r.RoomType),
+		IsPrivate:        !r.IsPublic,
+		RequiresApproval: r.RequiresApproval,
+		Metadata:         metadata,
+		CreatedAt:        timestamppb.New(r.CreatedAt),
 	}
 
 	return protoRoom
+}
+
+// roomTypeToAPI converts a room type string to the proto enum.
+func roomTypeToAPI(roomType string) chatv1.RoomType {
+	switch roomType {
+	case "direct":
+		return chatv1.RoomType_ROOM_TYPE_DIRECT
+	case "group":
+		return chatv1.RoomType_ROOM_TYPE_GROUP
+	case "channel":
+		return chatv1.RoomType_ROOM_TYPE_CHANNEL
+	case "bot":
+		return chatv1.RoomType_ROOM_TYPE_BOT
+	default:
+		return chatv1.RoomType_ROOM_TYPE_UNSPECIFIED
+	}
 }
 
 // RoomCall represents a call session in a room.
@@ -139,6 +141,10 @@ type RoomSubscription struct {
 	LastReadEventID     string                `gorm:"type:varchar(50)"` // ID of the last read event (naturally time-sorted)
 	LastReadAt          int64
 	DisableNotification bool
+	NotificationLevel   int32
+	Muted               bool
+	Archived            bool
+	Pinned              bool
 	Properties          data.JSONMap
 }
 
@@ -167,6 +173,22 @@ func (rs *RoomSubscription) ToAPI() *chatv1.RoomSubscription {
 		Roles:      strings.Split(rs.Role, ","),
 		JoinedAt:   timestamppb.New(rs.CreatedAt),
 		LastActive: lastActive,
+	}
+}
+
+// ToSettings converts RoomSubscription model to API SubscriptionSettings representation.
+func (rs *RoomSubscription) ToSettings() *chatv1.SubscriptionSettings {
+	if rs == nil {
+		return nil
+	}
+
+	return &chatv1.SubscriptionSettings{
+		SubscriptionId:    rs.GetID(),
+		RoomId:            rs.RoomID,
+		NotificationLevel: chatv1.NotificationLevel(rs.NotificationLevel),
+		Muted:             rs.Muted,
+		Archived:          rs.Archived,
+		Pinned:            rs.Pinned,
 	}
 }
 

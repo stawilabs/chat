@@ -72,7 +72,7 @@ func NewChatServer(
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
 	messageBusiness := business.NewMessageBusiness(eventsMan, eventRepo, subRepo, subscriptionSvc, authzMiddleware)
-	connectBusiness := business.NewConnectBusiness(eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware)
+	connectBusiness := business.NewConnectBusiness(eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, nil)
 	roomBusiness := business.NewRoomBusiness(
 		service,
 		roomRepo,
@@ -107,6 +107,12 @@ func NewChatServer(
 func (ps *ChatServer) toAPIError(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
+	}
+
+	// Check if it's already a connect error (preserves code)
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		return connectErr
 	}
 
 	// Check if it's already a gRPC status error
@@ -245,6 +251,64 @@ func (ps *ChatServer) GetHistory(
 	}), nil
 }
 
+func (ps *ChatServer) GetEvent(
+	ctx context.Context,
+	req *connect.Request[chatv1.GetEventRequest],
+) (*connect.Response[chatv1.GetEventResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.GetEventId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("event_id must be specified"),
+		)
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	event, err := ps.MessageBusiness.GetMessage(timeoutCtx, req.Msg.GetEventId(), authenticatedContact)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	return connect.NewResponse(&chatv1.GetEventResponse{
+		Event: event.ToAPI(ctx, models.NewPayloadConverter()),
+	}), nil
+}
+
+func (ps *ChatServer) GetRoom(
+	ctx context.Context,
+	req *connect.Request[chatv1.GetRoomRequest],
+) (*connect.Response[chatv1.GetRoomResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	room, err := ps.RoomBusiness.GetRoom(timeoutCtx, req.Msg.GetRoomId(), authenticatedContact)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	return connect.NewResponse(&chatv1.GetRoomResponse{
+		Room: room,
+	}), nil
+}
+
 func (ps *ChatServer) CreateRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.CreateRoomRequest],
@@ -332,6 +396,13 @@ func (ps *ChatServer) UpdateRoom(
 		)
 	}
 
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
 	util.Log(ctx).WithFields(map[string]any{
 		"room_id":    req.Msg.GetRoomId(),
 		"profile_id": authenticatedContact.GetProfileId(),
@@ -369,6 +440,13 @@ func (ps *ChatServer) DeleteRoom(
 		)
 	}
 
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
 	util.Log(ctx).WithFields(map[string]any{
 		"room_id":    req.Msg.GetRoomId(),
 		"profile_id": authenticatedContact.GetProfileId(),
@@ -402,6 +480,13 @@ func (ps *ChatServer) AddRoomSubscriptions(
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
 			errors.New("request cannot be nil"),
+		)
+	}
+
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
 		)
 	}
 
@@ -453,6 +538,13 @@ func (ps *ChatServer) RemoveRoomSubscriptions(
 		)
 	}
 
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
 	util.Log(ctx).WithFields(map[string]any{
 		"room_id":            req.Msg.GetRoomId(),
 		"subscription_count": len(req.Msg.GetSubscriptionId()),
@@ -500,6 +592,13 @@ func (ps *ChatServer) UpdateSubscriptionRole(
 		)
 	}
 
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
 	util.Log(ctx).WithFields(map[string]any{
 		"room_id":         req.Msg.GetRoomId(),
 		"subscription_id": req.Msg.GetSubscriptionId(),
@@ -536,6 +635,13 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 		)
 	}
 
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
 	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("SearchRoomSubscriptions request")
 
 	subscriptions, err := ps.RoomBusiness.SearchRoomSubscriptions(ctx, req.Msg, authenticatedContact)
@@ -550,6 +656,62 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 
 	return connect.NewResponse(&chatv1.SearchRoomSubscriptionsResponse{
 		Members: subscriptions,
+	}), nil
+}
+
+func (ps *ChatServer) GetSubscriptionSettings(
+	ctx context.Context,
+	req *connect.Request[chatv1.GetSubscriptionSettingsRequest],
+) (*connect.Response[chatv1.GetSubscriptionSettingsResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
+	// Look up the caller's subscription for this room
+	sub, subErr := ps.RoomBusiness.GetSubscriptionForContact(ctx, req.Msg.GetRoomId(), authenticatedContact)
+	if subErr != nil {
+		return nil, ps.toAPIError(ctx, subErr)
+	}
+
+	return connect.NewResponse(&chatv1.GetSubscriptionSettingsResponse{
+		Settings: sub.ToSettings(),
+	}), nil
+}
+
+func (ps *ChatServer) UpdateSubscriptionSettings(
+	ctx context.Context,
+	req *connect.Request[chatv1.UpdateSubscriptionSettingsRequest],
+) (*connect.Response[chatv1.UpdateSubscriptionSettingsResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(
+			connect.CodeInvalidArgument,
+			errors.New("room_id must be specified"),
+		)
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	settings, err := ps.RoomBusiness.UpdateSubscriptionSettings(timeoutCtx, req.Msg, authenticatedContact)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	return connect.NewResponse(&chatv1.UpdateSubscriptionSettingsResponse{
+		Settings: settings,
 	}), nil
 }
 

@@ -130,8 +130,9 @@ func (bs *BaseTestSuite) CreateService(
 	})
 
 	cfg.DatabaseTraceQueries = true
+	cfg.DatabaseMaxOpenConnections = 1
+	cfg.DatabaseMaxIdleConnections = 0
 	cfg.DatabasePrimaryURL = []string{testDS.String()}
-	cfg.DatabaseReplicaURL = []string{testDS.String()}
 
 	// Configure real Keto authorizer URIs
 	cfg.AuthorizationServiceReadURI = bs.ketoReadURI
@@ -182,6 +183,14 @@ func (bs *BaseTestSuite) CreateService(
 
 	// Initialize the service with all options
 	svc.Init(ctx, serviceOptions...)
+
+	// Stop the service and close DB connections when this test finishes.
+	// Without this, connections accumulate across tests and exhaust the pool.
+	// Use context.Background() since t.Context() is already cancelled by cleanup time.
+	t.Cleanup(func() {
+		svc.Stop(context.Background())
+		svc.DatastoreManager().Close(context.Background())
+	})
 
 	// Run the service in a goroutine with a random port so the queue
 	// subscribers stay alive for the full event chain (RoomCreated →

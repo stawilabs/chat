@@ -1,4 +1,4 @@
-package business //nolint:testpackage // Tests need access to unexported rate limiter and connection internals
+package business
 
 import (
 	"context"

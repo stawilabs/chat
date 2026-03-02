@@ -1,4 +1,4 @@
-package business //nolint:testpackage // Tests need access to unexported connectionPool internals
+package business
 
 import (
 	"fmt"

@@ -64,6 +64,20 @@ type RoomBusiness interface {
 		req *chatv1.SearchRoomSubscriptionsRequest,
 		searchedBy *commonv1.ContactLink,
 	) ([]*chatv1.RoomSubscription, error)
+
+	// GetSubscriptionForContact returns the caller's active subscription for a room
+	GetSubscriptionForContact(
+		ctx context.Context,
+		roomID string,
+		contact *commonv1.ContactLink,
+	) (*models.RoomSubscription, error)
+
+	// UpdateSubscriptionSettings updates per-room preferences for a member
+	UpdateSubscriptionSettings(
+		ctx context.Context,
+		req *chatv1.UpdateSubscriptionSettingsRequest,
+		updatedBy *commonv1.ContactLink,
+	) (*chatv1.SubscriptionSettings, error)
 }
 
 // MessageBusiness defines the business logic for message operations.

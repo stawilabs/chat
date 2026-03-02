@@ -1,7 +1,7 @@
-buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260219061800-1773ee53215d.2 h1:ARnLCnwXdyWqAXdf00rehZfeZ/maRVGh3ApLPw6LeVw=
-buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260219061800-1773ee53215d.2/go.mod h1:aLBt4Blda2uxQH9RszDOxDUXxdhuWxkv6FFNbg8p9zo=
-buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260219061800-1773ee53215d.1 h1:TmRoEKBZJUzMX5GrMR3fOkbRCjgyUReaVCIR4GPCj28=
-buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260219061800-1773ee53215d.1/go.mod h1:I8V3GEEM2JMbDMaaz048fo6TtqVfgq2tMI5WcrpPT7E=
+buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260301171100-96d44d800202.2 h1:ClvR8L/XLpzk1bsNaM/YI0952M1lvSMP14+M4H3l4dg=
+buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260301171100-96d44d800202.2/go.mod h1:nRdFvob9NyXZ+2ANC5jg8n4fchSug7Te3qhLeflDF8g=
+buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260301171100-96d44d800202.1 h1:2uW+fHRPeFLK/4Rq1PtvP5tfd92CJxf1BzDM3QrM+gE=
+buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260301171100-96d44d800202.1/go.mod h1:I8V3GEEM2JMbDMaaz048fo6TtqVfgq2tMI5WcrpPT7E=
 buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260219054105-fe125014d75c.1 h1:y3IDNQEfXCmDQtuxk/MfbquZ7QKbyVAIG7rjes3fYNs=
 buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260219054105-fe125014d75c.1/go.mod h1:pIhhXoB1KgaAfsCc0hZ16ZEibXvXn0OoDnJKdYpP6JU=
 buf.build/gen/go/antinvestor/device/connectrpc/go v1.19.1-20260221033317-1a8e101ef7c6.2 h1:rheZAsUiG4MO03IM4qLQEIvMv9CED6ZqJBjY0aWUaA8=
@@ -51,8 +51,8 @@ github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/antinvestor/apis/go/chat v1.53.18 h1:l/GmvHCECP/Yt6lKmE43QsDh0Z3nt8v9qKm7xVVo9lw=
-github.com/antinvestor/apis/go/chat v1.53.18/go.mod h1:z3l/xIyq7pS6k2Cj224CZZhoNTHYoTiN0i54fakHnds=
+github.com/antinvestor/apis/go/chat v1.53.20 h1:80oO/9C/5v/QsZLmbR881XAKvQ3XfyH+Wap/MIhDSeM=
+github.com/antinvestor/apis/go/chat v1.53.20/go.mod h1:z3l/xIyq7pS6k2Cj224CZZhoNTHYoTiN0i54fakHnds=
 github.com/antinvestor/apis/go/common v1.53.17 h1:MACDoXTDeXoLquq39tkx8iZJvuj5I9yd7L/ioy5GeHQ=
 github.com/antinvestor/apis/go/common v1.53.17/go.mod h1:KQSO2j7pS+9J3vazHj+rVBFUsNbUDrCectxmNCLNkB0=
 github.com/antinvestor/apis/go/device v1.53.18 h1:nfPWcdWY8OY802Y0rHQ4sPuZcYs8veMEGSTJI0lXU0s=

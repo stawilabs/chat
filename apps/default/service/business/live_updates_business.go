@@ -37,6 +37,7 @@ func NewConnectBusiness(
 	eventRepo repository.RoomEventRepository,
 	subscriptionSvc SubscriptionService,
 	authzMiddleware authz.Middleware,
+	presenceCache cache.Cache[string, *chatv1.PresenceEvent],
 ) ClientStateBusiness {
 	return &connectBusiness{
 		evtsManager:     evtsManager,
@@ -44,6 +45,7 @@ func NewConnectBusiness(
 		eventRepo:       eventRepo,
 		subscriptionSvc: subscriptionSvc,
 		authzMiddleware: authzMiddleware,
+		presenceCache:   presenceCache,
 	}
 }
 

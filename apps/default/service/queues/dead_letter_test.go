@@ -1,4 +1,3 @@
-//nolint:testpackage // tests use unexported mock types for queue testing
 package queues
 
 import (

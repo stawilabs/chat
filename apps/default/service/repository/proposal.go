@@ -52,8 +52,8 @@ func (r *proposalRepository) UpdateState(
 ) error {
 	now := time.Now()
 	return r.Pool().DB(ctx, false).
-		Model(&models.Proposal{}).
-		Where("id = ?", id).
+		Table("proposals").
+		Where("id = ? AND deleted_at IS NULL", id).
 		Updates(map[string]any{
 			"state":       state,
 			"resolved_by": resolvedBy,

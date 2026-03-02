@@ -147,9 +147,9 @@ func (s *IntegrationTestSuite) TestCompleteRoomLifecycle() {
 
 		// 5. Update room
 		updateReq := &chatv1.UpdateRoomRequest{
-			RoomId: room.GetId(),
-			Name:   "Updated Room Name",
-			Topic:  "Updated Description",
+			RoomId:      room.GetId(),
+			Name:        "Updated Room Name",
+			Description: "Updated Description",
 		}
 
 		updated, err := roomBusiness.UpdateRoom(
