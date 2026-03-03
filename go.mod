@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260301171100-96d44d800202.2
-	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260301171100-96d44d800202.1
+	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260302135025-ade2cc8115e6.1
 	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260219054105-fe125014d75c.1
 	buf.build/gen/go/antinvestor/device/connectrpc/go v1.19.1-20260221033317-1a8e101ef7c6.2
 	buf.build/gen/go/antinvestor/device/protocolbuffers/go v1.36.11-20260221033317-1a8e101ef7c6.1
