@@ -12,10 +12,13 @@ type GatewayConfig struct {
 	config.ConfigurationDefault
 
 	// Chat service configuration - the gateway connects to the default chat service
-	ChatServiceURI string `envDefault:"127.0.0.1:7010" env:"CHAT_SERVICE_URI"`
+	//nolint:golines // Struct tags must remain valid single-line reflect.StructTag literals.
+	ChatServiceURI                   string `envDefault:"127.0.0.1:7010" env:"CHAT_SERVICE_URI"`
+	ChatServiceWorkloadAPITargetPath string `envDefault:"/ns/chat/sa/service-chat-drone" env:"CHAT_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
 	// Device service configuration - for delivery status tracking
-	DeviceServiceURI string `envDefault:"device.api.antinvestor.com:443" env:"DEVICE_SERVICE_URI"`
+	DeviceServiceURI                   string `envDefault:"device.api.antinvestor.com:443" env:"DEVICE_SERVICE_URI"`
+	DeviceServiceWorkloadAPITargetPath string `envDefault:"/ns/profile/sa/service-devices" env:"DEVICE_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
 	// Connection management
 	MaxConnectionsPerDevice int `envDefault:"1"   env:"MAX_CONNECTIONS_PER_DEVICE"`

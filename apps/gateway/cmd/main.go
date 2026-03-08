@@ -23,9 +23,7 @@ import (
 	"github.com/pitabwire/frame/cache/valkey"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/data"
-	"github.com/pitabwire/frame/security"
 	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
-	"github.com/pitabwire/frame/security/openid"
 	"github.com/pitabwire/util"
 )
 
@@ -58,20 +56,20 @@ func main() {
 
 	// Create service
 	ctx, svc := frame.NewServiceWithContext(ctx, frame.WithConfig(&cfg),
-		frame.WithCache(cfg.CacheName, rawCache), frame.WithRegisterServerOauth2Client())
+		frame.WithCache(cfg.CacheName, rawCache))
 	defer svc.Stop(ctx)
 	log := svc.Log(ctx)
 
 	qManager := svc.QueueManager()
 
 	// Setup chat service client
-	chatServiceClient, err := setupChatServiceClient(ctx, svc.SecurityManager(), cfg)
+	chatServiceClient, err := setupChatServiceClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup chat service client")
 	}
 
 	// Setup device service client for delivery tracking
-	deviceClient, err := setupDeviceClient(ctx, svc.SecurityManager(), cfg)
+	deviceClient, err := setupDeviceClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup device service client")
 	}
@@ -146,32 +144,25 @@ func setupCache(_ context.Context, cfg gtwconfig.GatewayConfig) (cache.RawCache,
 // setupChatServiceClient creates and configures the chat service client.
 func setupChatServiceClient(
 	ctx context.Context,
-	sm security.Manager,
 	cfg gtwconfig.GatewayConfig,
 ) (chatv1connect.ChatServiceClient, error) {
-	// Create HTTP client for the chat service
-	return chat.NewClient(ctx,
-		common.WithEndpoint(cfg.ChatServiceURI),
-		common.WithTokenEndpoint(cfg.GetOauth2TokenEndpoint()),
-		common.WithTokenUsername(sm.JwtClientID()),
-		common.WithTokenPassword(sm.JwtClientSecret()),
-		common.WithScopes(openid.ConstSystemScopeInternal),
-		common.WithAudiences("service_chat_drone"))
+	return chat.NewClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.ChatServiceURI,
+		WorkloadAPITargetPath: cfg.ChatServiceWorkloadAPITargetPath,
+		Audiences:             []string{"service_chat_drone"},
+	})
 }
 
 // setupDeviceClient creates and configures the device service client.
 func setupDeviceClient(
 	ctx context.Context,
-	sm security.Manager,
 	cfg gtwconfig.GatewayConfig,
 ) (devicev1connect.DeviceServiceClient, error) {
-	return device.NewClient(ctx,
-		common.WithEndpoint(cfg.DeviceServiceURI),
-		common.WithTokenEndpoint(cfg.GetOauth2TokenEndpoint()),
-		common.WithTokenUsername(sm.JwtClientID()),
-		common.WithTokenPassword(sm.JwtClientSecret()),
-		common.WithScopes(openid.ConstSystemScopeInternal),
-		common.WithAudiences("service_device"))
+	return device.NewClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.DeviceServiceURI,
+		WorkloadAPITargetPath: cfg.DeviceServiceWorkloadAPITargetPath,
+		Audiences:             []string{"service_device"},
+	})
 }
 
 // setupGatewayServer initializes and configures the gateway server.

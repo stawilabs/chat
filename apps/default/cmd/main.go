@@ -24,10 +24,8 @@ import (
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
-	"github.com/pitabwire/frame/security"
 	"github.com/pitabwire/frame/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
-	"github.com/pitabwire/frame/security/openid"
 	"github.com/pitabwire/util"
 )
 
@@ -54,7 +52,6 @@ func runService(ctx context.Context) error {
 	ctx, svc := frame.NewServiceWithContext(
 		ctx,
 		frame.WithConfig(&cfg),
-		frame.WithRegisterServerOauth2Client(),
 		frame.WithDatastore(),
 	)
 	defer svc.Stop(ctx)
@@ -71,17 +68,17 @@ func runService(ctx context.Context) error {
 	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)
 
 	// Setup clients and services
-	deviceCli, err := setupDeviceClient(ctx, sm, cfg)
+	deviceCli, err := setupDeviceClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup device client")
 	}
 
-	notificationCli, err := setupNotificationClient(ctx, sm, cfg)
+	notificationCli, err := setupNotificationClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup notification client")
 	}
 
-	profileCli, err := setupProfileClient(ctx, sm, cfg)
+	profileCli, err := setupProfileClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup profile client")
 	}
@@ -171,43 +168,34 @@ func handleDatabaseMigration(
 // setupNotificationClient creates and configures the notification client.
 func setupNotificationClient(
 	ctx context.Context,
-	clHolder security.InternalOauth2ClientHolder,
 	cfg aconfig.ChatConfig) (notificationv1connect.NotificationServiceClient, error) {
-	return notification.NewClient(ctx,
-		common.WithEndpoint(cfg.NotificationServiceURI),
-		common.WithTokenEndpoint(cfg.GetOauth2TokenEndpoint()),
-		common.WithTokenUsername(clHolder.JwtClientID()),
-		common.WithTokenPassword(clHolder.JwtClientSecret()),
-		common.WithScopes(openid.ConstSystemScopeInternal),
-		common.WithAudiences("service_notifications"))
+	return notification.NewClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.NotificationServiceURI,
+		WorkloadAPITargetPath: cfg.NotificationServiceWorkloadAPITargetPath,
+		Audiences:             []string{"service_notifications"},
+	})
 }
 
 // setupProfileClient creates and configures the profile client.
 func setupProfileClient(
 	ctx context.Context,
-	clHolder security.InternalOauth2ClientHolder,
 	cfg aconfig.ChatConfig) (profilev1connect.ProfileServiceClient, error) {
-	return profile.NewClient(ctx,
-		common.WithEndpoint(cfg.ProfileServiceURI),
-		common.WithTokenEndpoint(cfg.GetOauth2TokenEndpoint()),
-		common.WithTokenUsername(clHolder.JwtClientID()),
-		common.WithTokenPassword(clHolder.JwtClientSecret()),
-		common.WithScopes(openid.ConstSystemScopeInternal),
-		common.WithAudiences("service_profile"))
+	return profile.NewClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.ProfileServiceURI,
+		WorkloadAPITargetPath: cfg.ProfileServiceWorkloadAPITargetPath,
+		Audiences:             []string{"service_profile"},
+	})
 }
 
 // setupDeviceClient creates and configures the device client.
 func setupDeviceClient(
 	ctx context.Context,
-	clHolder security.InternalOauth2ClientHolder,
 	cfg aconfig.ChatConfig) (devicev1connect.DeviceServiceClient, error) {
-	return device.NewClient(ctx,
-		common.WithEndpoint(cfg.DeviceServiceURI),
-		common.WithTokenEndpoint(cfg.GetOauth2TokenEndpoint()),
-		common.WithTokenUsername(clHolder.JwtClientID()),
-		common.WithTokenPassword(clHolder.JwtClientSecret()),
-		common.WithScopes(openid.ConstSystemScopeInternal),
-		common.WithAudiences("service_device"))
+	return device.NewClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.DeviceServiceURI,
+		WorkloadAPITargetPath: cfg.DeviceServiceWorkloadAPITargetPath,
+		Audiences:             []string{"service_device"},
+	})
 }
 
 // setupConnectServer initializes and configures the gRPC server.
