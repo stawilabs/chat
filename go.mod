@@ -13,11 +13,11 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.11-20260219062039-499f582dea7e.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
-	github.com/antinvestor/apis/go/chat v1.55.7
-	github.com/antinvestor/apis/go/common v1.55.6
-	github.com/antinvestor/apis/go/device v1.55.7
-	github.com/antinvestor/apis/go/notification v1.55.7
-	github.com/antinvestor/apis/go/profile v1.55.7
+	github.com/antinvestor/apis/go/chat v1.55.8
+	github.com/antinvestor/apis/go/common v1.55.8
+	github.com/antinvestor/apis/go/device v1.55.8
+	github.com/antinvestor/apis/go/notification v1.55.8
+	github.com/antinvestor/apis/go/profile v1.55.8
 	github.com/gojuno/minimock/v3 v3.4.7
 	github.com/pitabwire/frame v1.77.1
 	github.com/pitabwire/util v0.6.1
@@ -149,7 +149,7 @@ require (
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.269.0 // indirect
