@@ -338,7 +338,7 @@ func lightweightSystemCtx() context.Context {
 		ContactID:   util.IDString(),
 		SessionID:   util.IDString(),
 		DeviceID:    "test-device",
-		Roles:       []string{"system_internal"},
+		Roles:       []string{"internal"},
 	}
 	claims.Subject = claims.ContactID
 	return claims.ClaimsToContext(context.Background())

@@ -835,7 +835,7 @@ func (ps *ChatServer) Live(
 	req *connect.Request[chatv1.LiveRequest],
 ) (*connect.Response[chatv1.LiveResponse], error) {
 	// Authentication check
-	authenticatedContact, err := internal.AuthContactLink(ctx, "system_internal")
+	authenticatedContact, err := internal.AuthContactLink(ctx, "internal")
 	if err != nil {
 		return nil, err
 	}

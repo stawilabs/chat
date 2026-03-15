@@ -406,7 +406,7 @@ func (s *ChatServerTestSuite) withSystemAuth(ctx context.Context, profileID stri
 		ContactID:   profileID,
 		SessionID:   util.IDString(),
 		DeviceID:    "test-device",
-		Roles:       []string{"system_internal"},
+		Roles:       []string{"internal"},
 	}
 	claims.Subject = profileID
 	return claims.ClaimsToContext(ctx)
