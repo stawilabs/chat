@@ -172,7 +172,7 @@ func setupNotificationClient(
 	return notification.NewClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.NotificationServiceURI,
 		WorkloadAPITargetPath: cfg.NotificationServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_notifications"},
+		Audiences:             []string{"service_notification"},
 	})
 }
 
