@@ -1,0 +1,293 @@
+name: E2E Nightly Tests
+
+on:
+  schedule:
+    # Run every night at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - scenarios
+          - performance
+      notify_slack:
+        description: 'Send Slack notification'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.9.0'
+  JAVA_VERSION: '17'
+
+jobs:
+  build-staging-apk:
+    name: Build Staging APK
+    runs-on: ubuntu-latest
+    outputs:
+      apk_path: ${{ steps.build.outputs.apk_path }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build staging APK
+        id: build
+        run: |
+          flutter build apk \
+            --debug \
+            --dart-define=ENV=staging \
+            --dart-define=E2E_GATEWAY_URL=${{ secrets.E2E_GATEWAY_URL }} \
+            --dart-define=E2E_CHAT_URL=${{ secrets.E2E_CHAT_URL }} \
+            --dart-define=E2E_PROFILE_URL=${{ secrets.E2E_PROFILE_URL }} \
+            --dart-define=E2E_AUTH_URL=${{ secrets.E2E_AUTH_URL }} \
+            --dart-define=E2E_OAUTH_CLIENT_ID=${{ secrets.E2E_OAUTH_CLIENT_ID }} \
+            --dart-define=E2E_USER1_EMAIL=${{ secrets.E2E_USER1_EMAIL }} \
+            --dart-define=E2E_USER1_PASSWORD=${{ secrets.E2E_USER1_PASSWORD }} \
+            --dart-define=E2E_USER1_PROFILE_ID=${{ secrets.E2E_USER1_PROFILE_ID }} \
+            --dart-define=E2E_USER2_EMAIL=${{ secrets.E2E_USER2_EMAIL }} \
+            --dart-define=E2E_USER2_PASSWORD=${{ secrets.E2E_USER2_PASSWORD }} \
+            --dart-define=E2E_USER2_PROFILE_ID=${{ secrets.E2E_USER2_PROFILE_ID }}
+          echo "apk_path=build/app/outputs/flutter-apk/app-debug.apk" >> $GITHUB_OUTPUT
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: staging-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+
+  build-test-apk:
+    name: Build Test APK
+    runs-on: ubuntu-latest
+    outputs:
+      test_apk_path: ${{ steps.build.outputs.test_apk_path }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install Patrol CLI
+        run: dart pub global activate patrol_cli
+
+      - name: Build Patrol test APK
+        id: build
+        run: |
+          patrol build android \
+            --target e2e_test \
+            --dart-define=ENV=staging \
+            --dart-define=E2E_GATEWAY_URL=${{ secrets.E2E_GATEWAY_URL }} \
+            --dart-define=E2E_USER1_EMAIL=${{ secrets.E2E_USER1_EMAIL }} \
+            --dart-define=E2E_USER1_PASSWORD=${{ secrets.E2E_USER1_PASSWORD }} \
+            --dart-define=E2E_USER1_PROFILE_ID=${{ secrets.E2E_USER1_PROFILE_ID }} \
+            --dart-define=E2E_USER2_EMAIL=${{ secrets.E2E_USER2_EMAIL }} \
+            --dart-define=E2E_USER2_PASSWORD=${{ secrets.E2E_USER2_PASSWORD }} \
+            --dart-define=E2E_USER2_PROFILE_ID=${{ secrets.E2E_USER2_PROFILE_ID }}
+          echo "test_apk_path=build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk" >> $GITHUB_OUTPUT
+
+      - name: Upload Test APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-apk
+          path: build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          retention-days: 7
+
+  run-e2e-firebase:
+    name: Run E2E on Firebase Test Lab
+    needs: [build-staging-apk, build-test-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download staging APK
+        uses: actions/download-artifact@v8
+        with:
+          name: staging-apk
+          path: ./apks
+
+      - name: Download test APK
+        uses: actions/download-artifact@v8
+        with:
+          name: test-apk
+          path: ./apks
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Run E2E scenarios on Firebase Test Lab
+        if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'scenarios' || github.event_name == 'schedule' }}
+        run: |
+          gcloud firebase test android run \
+            --type instrumentation \
+            --app ./apks/app-debug.apk \
+            --test ./apks/app-debug-androidTest.apk \
+            --device model=Pixel6,version=33,locale=en,orientation=portrait \
+            --timeout 30m \
+            --results-bucket=${{ secrets.FIREBASE_RESULTS_BUCKET }} \
+            --results-dir=e2e-scenarios-$(date +%Y%m%d-%H%M%S) \
+            --environment-variables "test_suite=scenarios" \
+            --num-flaky-test-attempts=2
+
+      - name: Run E2E performance tests on Firebase Test Lab
+        if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'performance' || github.event_name == 'schedule' }}
+        run: |
+          gcloud firebase test android run \
+            --type instrumentation \
+            --app ./apks/app-debug.apk \
+            --test ./apks/app-debug-androidTest.apk \
+            --device model=Pixel6,version=33,locale=en,orientation=portrait \
+            --timeout 45m \
+            --results-bucket=${{ secrets.FIREBASE_RESULTS_BUCKET }} \
+            --results-dir=e2e-performance-$(date +%Y%m%d-%H%M%S) \
+            --environment-variables "test_suite=performance" \
+            --num-flaky-test-attempts=1
+
+      - name: Download test results
+        if: always()
+        run: |
+          mkdir -p test-results
+          gsutil -m cp -r gs://${{ secrets.FIREBASE_RESULTS_BUCKET }}/e2e-*-$(date +%Y%m%d)* ./test-results/ || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 30
+
+  notify-slack:
+    name: Notify Slack
+    needs: [run-e2e-firebase]
+    runs-on: ubuntu-latest
+    if: always() && (github.event.inputs.notify_slack == 'true' || github.event_name == 'schedule')
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          if [ "${{ needs.run-e2e-firebase.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "color=#36a64f" >> $GITHUB_OUTPUT
+            echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "color=#dc3545" >> $GITHUB_OUTPUT
+            echo "emoji=:x:" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "${{ steps.status.outputs.color }}",
+                  "blocks": [
+                    {
+                      "type": "header",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "${{ steps.status.outputs.emoji }} E2E Nightly Tests - ${{ steps.status.outputs.status }}"
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "fields": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Repository:*\n${{ github.repository }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Branch:*\n${{ github.ref_name }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Trigger:*\n${{ github.event_name }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  cleanup-old-results:
+    name: Cleanup Old Results
+    needs: [run-e2e-firebase]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'schedule'
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Delete results older than 30 days
+        run: |
+          # List and delete test results older than 30 days
+          CUTOFF_DATE=$(date -d '30 days ago' +%Y%m%d)
+          gsutil ls gs://${{ secrets.FIREBASE_RESULTS_BUCKET }}/ | while read DIR; do
+            DIR_DATE=$(echo $DIR | grep -oP '\d{8}' | head -1)
+            if [ -n "$DIR_DATE" ] && [ "$DIR_DATE" -lt "$CUTOFF_DATE" ]; then
+              echo "Deleting old results: $DIR"
+              gsutil -m rm -r "$DIR" || true
+            fi
+          done

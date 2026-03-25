@@ -1,0 +1,256 @@
+# Unified CI Pipeline - Runs on Pull Requests
+# Combines code quality, testing, security, and build verification
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+env:
+  FLUTTER_VERSION: '3.38.7'
+  JAVA_VERSION: '17'
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # PHASE 1: Fast checks (run in parallel)
+  # ============================================
+
+  analyze:
+    name: Analyze & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Check formatting
+        run: dart format --set-exit-if-changed .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          file: coverage/lcov.info
+          flags: unittests
+        continue-on-error: true
+
+      - name: Check coverage threshold
+        run: |
+          if command -v lcov &> /dev/null; then
+            COVERAGE=$(lcov --summary coverage/lcov.info 2>/dev/null | grep "lines......:" | awk '{print $2}' | sed 's/%//' || echo "0")
+            echo "Current coverage: ${COVERAGE}%"
+            # Warn but don't fail if coverage is below 80%
+            if (( $(echo "$COVERAGE < 80" | bc -l 2>/dev/null || echo "0") )); then
+              echo "::warning::Coverage ${COVERAGE}% is below target of 80%"
+            fi
+          fi
+        continue-on-error: true
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # ============================================
+  # PHASE 2: Build verification (after phase 1)
+  # ============================================
+
+  build-android:
+    name: Build Android
+    needs: [analyze, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Cache Gradle for faster Android builds
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Setup Google Services
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+
+      - name: Build Android (debug)
+        run: flutter build apk --debug
+
+      - name: Report APK size
+        run: |
+          APK_SIZE=$(stat -c%s build/app/outputs/flutter-apk/app-debug.apk)
+          echo "Debug APK size: $(( APK_SIZE / 1024 / 1024 )) MB (${APK_SIZE} bytes)"
+          echo "::notice::Debug APK size: $(( APK_SIZE / 1024 / 1024 )) MB"
+
+  build-web:
+    name: Build Web
+    needs: [analyze, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build Web
+        run: flutter build web
+
+      - name: Report Web build size
+        run: |
+          WEB_SIZE=$(du -sb build/web | cut -f1)
+          echo "Web build size: $(( WEB_SIZE / 1024 / 1024 )) MB"
+          echo "::notice::Web build size: $(( WEB_SIZE / 1024 / 1024 )) MB"
+
+  build-linux:
+    name: Build Linux
+    needs: [analyze, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build libgtk-3-dev libsecret-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libcurl4-openssl-dev
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build Linux (debug)
+        run: flutter build linux --debug
+
+      - name: Report Linux build size
+        run: |
+          BUNDLE_SIZE=$(du -sb build/linux/x64/debug/bundle | cut -f1)
+          echo "Linux bundle size: $(( BUNDLE_SIZE / 1024 / 1024 )) MB"
+          echo "::notice::Linux bundle size: $(( BUNDLE_SIZE / 1024 / 1024 )) MB"
+
+  # ============================================
+  # PHASE 3: Optional quality checks
+  # ============================================
+
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Generate documentation
+        run: dart doc --validate-links 2>/dev/null || dart doc
+        continue-on-error: true
+
+  # ============================================
+  # Summary job - always runs
+  # ============================================
+
+  ci-summary:
+    name: CI Summary
+    needs: [analyze, test, security, build-android, build-web, build-linux]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Analyze & Format | ${{ needs.analyze.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android Build | ${{ needs.build-android.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web Build | ${{ needs.build-web.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux Build | ${{ needs.build-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          # Fail if any required job failed
+          if [ "${{ needs.analyze.result }}" == "failure" ] || \
+             [ "${{ needs.test.result }}" == "failure" ] || \
+             [ "${{ needs.build-android.result }}" == "failure" ] || \
+             [ "${{ needs.build-web.result }}" == "failure" ] || \
+             [ "${{ needs.build-linux.result }}" == "failure" ]; then
+            echo ""
+            echo "::error::One or more required checks failed"
+            exit 1
+          fi

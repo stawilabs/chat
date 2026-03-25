@@ -1,6 +1,8 @@
 # Service-specific configuration
 SERVICE_NAME := chat
 APP_DIRS     := apps/default apps/gateway
+HAS_UI       := true
+UI_DIR       := ui
 
 # Bootstrap: download shared Makefile.common if missing
 ifeq (,$(wildcard .tmp/Makefile.common))

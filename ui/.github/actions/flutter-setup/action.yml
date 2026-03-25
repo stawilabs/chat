@@ -1,0 +1,73 @@
+# Composite action for Flutter setup with caching
+# Reduces duplication across all workflows
+name: 'Flutter Setup'
+description: 'Setup Flutter with dependency caching and code generation'
+
+inputs:
+  flutter-version:
+    description: 'Flutter version to use'
+    required: false
+    default: '3.38.7'
+  java-version:
+    description: 'Java version (for Android builds)'
+    required: false
+    default: ''
+  run-codegen:
+    description: 'Run build_runner for code generation'
+    required: false
+    default: 'true'
+
+outputs:
+  cache-hit:
+    description: 'Whether the cache was hit'
+    value: ${{ steps.cache-deps.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Java
+      if: inputs.java-version != ''
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ inputs.java-version }}
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        channel: 'stable'
+        cache: true
+
+    # Cache pub dependencies (exclude .dart_tool to avoid stale generated files)
+    - name: Cache pub dependencies
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        path: ~/.pub-cache
+        key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+        restore-keys: |
+          pub-${{ runner.os }}-
+
+    - name: Get dependencies
+      shell: bash
+      run: flutter pub get
+
+    # Cache generated code
+    - name: Cache generated code
+      if: inputs.run-codegen == 'true'
+      id: cache-codegen
+      uses: actions/cache@v4
+      with:
+        path: |
+          lib/**/*.g.dart
+          lib/**/*.freezed.dart
+          test/**/*.mocks.dart
+        key: codegen-${{ runner.os }}-${{ hashFiles('lib/**/*.dart', 'pubspec.lock') }}
+        restore-keys: |
+          codegen-${{ runner.os }}-
+
+    - name: Generate code
+      if: inputs.run-codegen == 'true' && steps.cache-codegen.outputs.cache-hit != 'true'
+      shell: bash
+      run: dart run build_runner build --delete-conflicting-outputs

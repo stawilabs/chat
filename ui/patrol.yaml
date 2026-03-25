@@ -1,0 +1,25 @@
+patrol:
+  app_name: Stawi
+  android:
+    package_name: com.antinvestor.chat
+  ios:
+    bundle_id: com.antinvestor.chat
+
+# Test configuration
+test_timeout: 300 # 5 minutes per test
+
+# Default test target
+targets:
+  - e2e_test
+
+# Device configuration
+devices:
+  - android
+  - ios
+
+# Firebase Test Lab configuration (for CI)
+firebase_test_lab:
+  project_id: ${FIREBASE_PROJECT_ID}
+  timeout: 30m
+  results_bucket: ${FIREBASE_RESULTS_BUCKET}
+  results_dir: test_results
