@@ -21,7 +21,7 @@ require (
 	github.com/antinvestor/apis/go/device v1.56.0
 	github.com/antinvestor/apis/go/notification v1.56.0
 	github.com/antinvestor/apis/go/profile v1.56.0
-	github.com/pitabwire/frame v1.81.1
+	github.com/pitabwire/frame v1.82.1
 	github.com/pitabwire/util v0.7.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.41.0

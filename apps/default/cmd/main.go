@@ -101,11 +101,13 @@ func runService(ctx context.Context) error {
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 
 	// Register OPL for this service's authorization namespace
-	oplData, _ := chatv1.OPLSpecFiles.ReadFile("service_chat.opl.ts")
+// TODO: re-enable after Go import migration
+// 	oplData, _ := chatv1.OPLSpecFiles.ReadFile("service_chat.opl.ts")
 
 	serviceOptions := []frame.Option{
 		frame.WithHTTPHandler(connectHandler),
-		frame.WithOPL("service_chat", oplData),
+// TODO: re-enable after Go import migration
+// 		frame.WithOPL("service_chat", oplData),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(

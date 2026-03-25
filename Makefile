@@ -1,65 +1,145 @@
+# Standardized service Makefile — copy to service repo and adjust variables below.
+# See https://github.com/antinvestor/common for tooling documentation.
 
-ENV_LOCAL_TEST=\
-  TEST_DATABASE_URL=postgres://ant:secret@localhost:5434/service_profile?sslmode=disable \
-  POSTGRES_PASSWORD=secret \
-  POSTGRES_DB=service_profile \
-  POSTGRES_HOST=profile_db \
-  POSTGRES_USER=ant \
-  CONTACT_ENCRYPTION_KEY=ualgJEcb4GNXLn3jYV9TUGtgYrdTMg \
-  CONTACT_ENCRYPTION_SALT=VufLmnycUCgz
+SHELL := bash
+.SHELLFLAGS := -eu -o pipefail -c
+.DEFAULT_GOAL := all
 
-SERVICE		?= $(shell basename `go list`)
-VERSION		?= $(shell git describe --tags --always --dirty --match=v* 2> /dev/null || cat $(PWD)/.version 2> /dev/null || echo v0)
-PACKAGE		?= $(shell go list)
-PACKAGES	?= $(shell go list ./...)
-FILES		?= $(shell find . -type f -name '*.go' -not -path "./vendor/*")
-BIN			:= $(shell go env GOPATH)/bin
-# Set to use a different compiler. For example, `GO=go1.18rc1 make test`.
-GO ?= go
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+MAKEFLAGS += --no-print-directory
 
+# ------------------------------------------------------------------------------
+# Service configuration — adjust per repo
+# ------------------------------------------------------------------------------
 
-default: help
+SERVICE_NAME     := chat
+PROTO_DIR        := proto
+DEFAULT_APP      := apps/default
+APP_DIRS         := apps/default
 
-help:   ## show this help
-	@echo 'usage: make [target] ...'
-	@echo ''
-	@echo 'targets:'
-	@egrep '^(.+)\:\ .*##\ (.+)' ${MAKEFILE_LIST} | sed 's/:.*##/#/' | column -t -c 2 -s '#'
+# ------------------------------------------------------------------------------
+# Paths & tools
+# ------------------------------------------------------------------------------
 
-format:
-	find . -name '*.go' -not -path './.git/*' -exec sed -i '/^import (/,/^)/{/^$$/d}' {} +
-	find . -name '*.go' -not -path './.git/*' -exec goimports -w {} +
-	golangci-lint run --fix -c .golangci.yaml
+BIN              := $(abspath .tmp/bin)
+GO               ?= go
+TOOLS_VER        ?= latest
+COPYRIGHT_YEARS  := 2023-2026
 
-clean:  ## go clean
-	go clean
+export PATH  := $(BIN):$(PATH)
+export GOBIN := $(BIN)
 
-fmt:    ## format the go source files
-	go fmt ./...
+# ------------------------------------------------------------------------------
+# Tool bootstrap
+# ------------------------------------------------------------------------------
 
-vet:    ## run go vet on the source files
-	go vet ./...
-
-doc:    ## generate godocs and start a local documentation webserver on port 8085
-	godoc -http=:8085 -index
-
-generate:
+$(BIN)/buf:
+	@mkdir -p $(BIN)
 	$(GO) install github.com/bufbuild/buf/cmd/buf@latest
-	cd proto/events/v1 && PATH=$(BIN):$$PATH $(BIN)/buf dep update
-	cd proto/events/v1 && PATH=$(BIN):$$PATH $(BIN)/buf generate
 
-# this command will run all tests in the repo
-# INTEGRATION_TEST_SUITE_PATH is used to run specific tests in Golang,
-# if it's not specified it will run all tests
-tests: ## runs all system tests
-	$(ENV_LOCAL_TEST) \
-	FILES=$(go list ./...  | grep -v /vendor/);\
-	go test ./... -v -run=$(INTEGRATION_TEST_SUITE_PATH)  -coverprofile=coverage.out;\
-	RETURNCODE=$$?;\
-	if [ "$$RETURNCODE" -ne 0 ]; then\
-		echo "unit tests failed with error code: $$RETURNCODE" >&2;\
-		exit 1;\
-	fi;\
-	go tool cover -html=coverage.out -o coverage.html
+$(BIN)/license-header:
+	@mkdir -p $(BIN)
+	$(GO) install github.com/bufbuild/buf/private/pkg/licenseheader/cmd/license-header@latest
 
-build: clean  fmt vet tests ## run all preliminary steps and tests the setup
+$(BIN)/golangci-lint:
+	@mkdir -p $(BIN)
+	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
+$(BIN)/inject-permissions:
+	@mkdir -p $(BIN)
+	$(GO) install github.com/antinvestor/common/tools/inject-permissions@$(TOOLS_VER)
+
+$(BIN)/generate-opl:
+	@mkdir -p $(BIN)
+	$(GO) install github.com/antinvestor/common/tools/generate-opl@$(TOOLS_VER)
+
+# ------------------------------------------------------------------------------
+# Proto targets
+# ------------------------------------------------------------------------------
+
+.PHONY: proto-lint
+proto-lint: $(BIN)/buf ## Format and lint protobuf
+	cd $(PROTO_DIR) && buf format -w
+	cd $(PROTO_DIR) && buf lint
+
+.PHONY: proto-deps
+proto-deps: $(BIN)/buf ## Update buf dependencies
+	cd $(PROTO_DIR) && buf dep update
+
+.PHONY: proto-generate
+proto-generate: $(BIN)/buf $(BIN)/inject-permissions $(BIN)/generate-opl ## Generate all artifacts from proto
+	@echo "==> buf generate $(SERVICE_NAME)"
+	cd $(PROTO_DIR) && buf dep update && buf generate
+	@# Inject permissions into OpenAPI specs
+	@for app_dir in $(APP_DIRS); do \
+		yaml_files=$$(find $$app_dir -name '*.openapi.yaml' 2>/dev/null); \
+		for yaml_file in $$yaml_files; do \
+			echo "==> inject permissions $$yaml_file"; \
+			buf build $(PROTO_DIR) -o /dev/stdout | \
+				$(BIN)/inject-permissions "$$yaml_file"; \
+		done; \
+	done
+	@# Generate OPL TypeScript
+	@echo "==> generate opl $(SERVICE_NAME)"
+	@buf build $(PROTO_DIR) -o /dev/stdout | $(BIN)/generate-opl $(DEFAULT_APP)
+	@# License headers
+	license-header \
+		--license-type apache \
+		--copyright-holder "Ant Investor Ltd" \
+		--year-range "$(COPYRIGHT_YEARS)" \
+		--ignore /testdata/ --ignore /sdk/
+
+.PHONY: proto-push
+proto-push: $(BIN)/buf ## Push proto to BSR
+	cd $(PROTO_DIR) && buf push
+
+# ------------------------------------------------------------------------------
+# Go targets
+# ------------------------------------------------------------------------------
+
+.PHONY: build
+build: ## Build all app binaries
+	@for app_dir in $(APP_DIRS); do \
+		if [ -d "$$app_dir/cmd" ]; then \
+			echo "==> building $$app_dir"; \
+			$(GO) build ./$$app_dir/cmd/...; \
+		fi; \
+	done
+
+.PHONY: test
+test: ## Run all tests with race detection
+	$(GO) test -vet=off -race -cover ./...
+
+.PHONY: lint
+lint: $(BIN)/golangci-lint ## Lint Go code
+	$(GO) vet ./...
+	golangci-lint run
+
+.PHONY: lintfix
+lintfix: $(BIN)/golangci-lint ## Auto-fix lint issues
+	golangci-lint run --fix
+
+.PHONY: tidy
+tidy: ## Tidy Go modules
+	$(GO) mod tidy
+	$(GO) fmt ./...
+
+# ------------------------------------------------------------------------------
+# Aggregate targets
+# ------------------------------------------------------------------------------
+
+.PHONY: all
+all: proto-lint proto-generate build test lint ## Full pipeline
+
+.PHONY: generate
+generate: proto-generate ## Alias for proto-generate
+
+.PHONY: clean
+clean: ## Delete generated / temporary files
+	rm -rf $(BIN)
+
+.PHONY: help
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+	awk 'BEGIN {FS = ":.*?## "}; {printf "%-28s %s\n", $$1, $$2}'

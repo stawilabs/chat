@@ -1,0 +1,189 @@
+// Copyright 2023-2026 Ant Investor Ltd
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package chat.v1;
+
+import "buf/validate/validate.proto";
+import "chat/v1/payload_type.proto";
+// -----------------------------------------------------
+// Core notes (normative):
+// - All timestamps are RFC3339 / google.protobuf.Timestamp.
+// - All flows should be idempotent / accept idempotency keys where relevant.
+// - Servers must enforce permission checks for each RPC (see AuthClaims below).
+// -----------------------------------------------------
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/antinvestor/apis/go/chat/v1;chatv1";
+option java_multiple_files = true;
+option java_package = "chatv1";
+
+// -----------------------------------------------------
+// Common payload definitions
+// -----------------------------------------------------
+
+// Allowed message types. Extendable via new enum values; clients must ignore unknown values.
+enum RoomEventType {
+  ROOM_EVENT_TYPE_UNSPECIFIED = 0;
+  ROOM_EVENT_TYPE_SYSTEM = 1;
+  ROOM_EVENT_TYPE_EVENT = 2;
+  ROOM_EVENT_TYPE_MESSAGE = 3;
+  ROOM_EVENT_TYPE_REACTION = 4;
+  ROOM_EVENT_TYPE_TYPING = 5;
+  ROOM_EVENT_TYPE_DELIVERED = 6;
+  ROOM_EVENT_TYPE_READ = 7;
+  ROOM_EVENT_TYPE_MOTION = 8;
+  ROOM_EVENT_TYPE_CALL = 10;
+  ROOM_EVENT_TYPE_ADVERT = 20;
+}
+
+// Unified message (user / bot / system / signalling)
+message RoomEvent {
+  // NOTE:
+  // Event IDs are XIDs and MUST be lexicographically sortable by creation time.
+  // Clients MUST NOT assume any other ordering mechanism.
+  string id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ]; // client-supplied or server-generated UUID
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ]; // room_id
+
+  string subscription_id = 3; // profile_id or service/bot id
+
+  RoomEventType type = 4;
+
+  google.protobuf.Timestamp sent_at = 7;
+  bool edited = 8;
+  bool redacted = 9;
+
+  optional string parent_id = 10 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ]; // if this message is a followup event on an original message
+
+  Payload payload = 15;
+}
+
+// Acknowledgement for event(s) received; server uses it to free ephemeral delivery buffers.
+// ack_event_id: last event_id client processed (inclusive).
+// If error is set, indicates the event failed to send/process correctly.
+message AckEvent {
+  string room_id = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  repeated string event_id = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      string: {
+        min_len: 3
+        max_len: 40
+        pattern: "[0-9a-z_-]{3,40}"
+      }
+    }
+  ];
+  string subscription_id = 3;
+  google.protobuf.Timestamp ack_at = 4;
+  optional common.v1.ErrorDetail error = 7; // if set, indicates failure reason for this event
+}
+
+// ReceiptEvent is OPTIONAL and ephemeral.
+// Servers MAY ignore it.
+// Clients SHOULD prefer ReadMarker for durable state.
+// Servers MUST NOT persist ReceiptEvent.
+// Servers MAY drop ReceiptEvent without acknowledgment.
+message ReceiptEvent {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  repeated string event_id = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      string: {
+        min_len: 3
+        max_len: 40
+        pattern: "[0-9a-z_-]{3,40}"
+      }
+    }
+  ];
+  string subscription_id = 5;
+}
+
+message ReadMarker {
+  optional string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+
+  string up_to_event_id = 3 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+
+  string subscription_id = 5;
+}
+
+// Presence event affecting a user (and visible to rooms the user is a member of)
+message PresenceEvent {
+  common.v1.ContactLink source = 1;
+  PresenceStatus status = 2;
+  string status_msg = 3;
+  google.protobuf.Timestamp last_active = 4;
+}
+
+enum PresenceStatus {
+  PRESENCE_STATUS_UNSPECIFIED = 0;
+  PRESENCE_STATUS_OFFLINE = 1;
+  PRESENCE_STATUS_ONLINE = 2;
+}
+
+// Typing indicator
+message TypingEvent {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string subscription_id = 1;
+  bool typing = 3;
+  google.protobuf.Timestamp since = 5;
+}
+
+// ClientCommand represents durable state changes initiated by the client.
+// Commands are validated, persisted, and broadcast as needed.
+// ClientCommand results in at least one RoomEvent being emitted.
+message ClientCommand {
+  oneof state {
+    AckEvent ack = 3;
+    TypingEvent typing = 4;
+    ReceiptEvent receipt = 2; // receipt acknowledgement for message delivery
+    PresenceEvent presence = 5; // send a presence message to a room
+    ReadMarker read_marker = 8;
+    RoomEvent event = 10;
+  }
+}

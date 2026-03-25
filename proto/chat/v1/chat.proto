@@ -1,0 +1,833 @@
+// Copyright 2023-2026 Ant Investor Ltd
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package chat.v1;
+
+import "buf/validate/validate.proto";
+import "chat/v1/definitions.proto";
+// -----------------------------------------------------
+// Core notes (normative):
+// - All timestamps are RFC3339 / google.protobuf.Timestamp.
+// - All flows should be idempotent / accept idempotency keys where relevant.
+// - Servers must enforce permission checks for each RPC (see AuthClaims below).
+// -----------------------------------------------------
+import "common/v1/common.proto";
+import "common/v1/permissions.proto";
+import "gnostic/openapi/v3/annotations.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/antinvestor/apis/go/chat/v1;chatv1";
+option java_multiple_files = true;
+option java_package = "chatv1";
+option (gnostic.openapi.v3.document) = {
+  info: {
+    title: "Chat Service"
+    version: "v1.0.0"
+    description: "The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections."
+    contact: {
+      name: "Ant Investor Ltd"
+      url: "https://github.com/antinvestor/service-chat"
+      email: "info@antinvestor.com"
+    }
+    license: {
+      name: "Apache License"
+      url: "https://github.com/antinvestor/apis/blob/master/LICENSE"
+    }
+  }
+  components: {
+    security_schemes: {
+      additional_properties: [
+        {
+          name: "BearerAuth"
+          value: {
+            security_scheme: {
+              type: "http"
+              scheme: "bearer"
+              bearer_format: "JWT"
+            }
+          }
+        }
+      ]
+    }
+  }
+};
+
+// -----------------------------------------------------
+// MAIN SERVICE: ChatService
+// - Message ops: SendEvent (unified), GetHistory (cursor-based).
+// - Room ops: create/update/manage members/roles.
+// - Device & presence: register device, presence updates.
+// - BotService included below for integration (service accounts).
+// -----------------------------------------------------
+
+service ChatService {
+  option (common.v1.service_permissions) = {
+    namespace: "service_chat"
+    permissions: [
+      "event_view",
+      "event_send",
+      "room_view",
+      "room_create",
+      "room_update",
+      "room_delete",
+      "subscription_view",
+      "subscription_manage",
+      "proposal_view",
+      "proposal_manage"
+    ]
+    role_bindings: [
+      {
+        role: ROLE_OWNER
+        permissions: [
+          "event_view",
+          "event_send",
+          "room_view",
+          "room_create",
+          "room_update",
+          "room_delete",
+          "subscription_view",
+          "subscription_manage",
+          "proposal_view",
+          "proposal_manage"
+        ]
+      },
+      {
+        role: ROLE_ADMIN
+        permissions: [
+          "event_view",
+          "event_send",
+          "room_view",
+          "room_create",
+          "room_update",
+          "subscription_view",
+          "subscription_manage",
+          "proposal_view",
+          "proposal_manage"
+        ]
+      },
+      {
+        role: ROLE_OPERATOR
+        permissions: [
+          "event_view",
+          "event_send",
+          "room_view",
+          "subscription_view",
+          "proposal_view"
+        ]
+      },
+      {
+        role: ROLE_VIEWER
+        permissions: [
+          "event_view",
+          "room_view",
+          "subscription_view",
+          "proposal_view"
+        ]
+      },
+      {
+        role: ROLE_MEMBER
+        permissions: [
+          "event_view",
+          "event_send",
+          "room_view",
+          "subscription_view"
+        ]
+      },
+      {
+        role: ROLE_SERVICE
+        permissions: [
+          "event_view",
+          "event_send",
+          "room_view",
+          "room_create",
+          "room_update",
+          "room_delete",
+          "subscription_view",
+          "subscription_manage",
+          "proposal_view",
+          "proposal_manage"
+        ]
+      }
+    ]
+  };
+
+  // Send an event (unified message model). Idempotent if idempotency_key is provided.
+  rpc SendEvent(SendEventRequest) returns (SendEventResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["event_send"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "sendEvent"
+      summary: "Send an event to a room"
+      description: "Sends one or more events to chat rooms. Supports text, attachments, reactions, and system messages. Idempotent when idempotency_key header is provided."
+      tags: "Messages"
+    };
+  }
+
+  // Fetch a single event by ID. Used for deep-linking, thread rendering, and verification.
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["event_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "getEvent"
+      summary: "Retrieve a single event by ID"
+      description: "Fetches a single event by its unique identifier. Useful for deep-linking to messages, rendering reply threads, and verifying event existence."
+      tags: "Messages"
+    };
+  }
+
+  // Fetch history for a room. Cursor-based paging (cursor = opaque server token).
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["event_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "getHistory"
+      summary: "Retrieve message history for a room"
+      description: "Fetches paginated message history for a specified room using cursor-based navigation. Supports forward and backward pagination."
+      tags: "Messages"
+    };
+  }
+
+  // Room lifecycle & management
+
+  // Fetch a single room by ID.
+  rpc GetRoom(GetRoomRequest) returns (GetRoomResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["room_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "getRoom"
+      summary: "Retrieve a single room by ID"
+      description: "Fetches a single chat room by its unique identifier. Returns room details including name, description, type, and metadata."
+      tags: "Rooms"
+    };
+  }
+
+  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["room_create"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "createRoom"
+      summary: "Create a new chat room"
+      description: "Creates a new chat room with specified configuration. The creator is automatically added as a member with owner privileges. Supports both public and private rooms."
+      tags: "Rooms"
+    };
+  }
+  rpc SearchRooms(SearchRoomsRequest) returns (stream SearchRoomsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["room_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "searchRooms"
+      summary: "Search for chat rooms"
+      description: "Searches for chat rooms matching the specified criteria. Returns a stream of matching rooms. Supports filtering by query, date range, and custom properties."
+      tags: "Rooms"
+    };
+  }
+  rpc UpdateRoom(UpdateRoomRequest) returns (UpdateRoomResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["room_update"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "updateRoom"
+      summary: "Update a chat room"
+      description: "Updates the configuration of an existing chat room including name, topic, and metadata. Only room owners and moderators can update room settings."
+      tags: "Rooms"
+    };
+  }
+  rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["room_delete"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "deleteRoom"
+      summary: "Delete a chat room"
+      description: "Permanently deletes a chat room and all its messages. This action cannot be undone. Only room owners can delete rooms."
+      tags: "Rooms"
+    };
+  }
+
+  // Subscriptionship & roles
+  rpc AddRoomSubscriptions(AddRoomSubscriptionsRequest) returns (AddRoomSubscriptionsResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["subscription_manage"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "addRoomSubscriptions"
+      summary: "Add members to a room"
+      description: "Adds one or more users to a chat room with specified roles. The requesting user must have owner or moderator privileges in the room."
+      tags: "Subscriptions"
+    };
+  }
+  rpc RemoveRoomSubscriptions(RemoveRoomSubscriptionsRequest) returns (RemoveRoomSubscriptionsResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["subscription_manage"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "removeRoomSubscriptions"
+      summary: "Remove members from a room"
+      description: "Removes one or more users from a chat room. The requesting user must have owner or moderator privileges in the room, unless removing themselves."
+      tags: "Subscriptions"
+    };
+  }
+  rpc UpdateSubscriptionRole(UpdateSubscriptionRoleRequest) returns (UpdateSubscriptionRoleResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["subscription_manage"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "updateSubscriptionRole"
+      summary: "Update a member's role in a room"
+      description: "Updates the role(s) of a user in a chat room. The requesting user must have owner or moderator privileges in the room."
+      tags: "Subscriptions"
+    };
+  }
+  rpc SearchRoomSubscriptions(SearchRoomSubscriptionsRequest) returns (SearchRoomSubscriptionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["subscription_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "searchRoomSubscriptions"
+      summary: "List room members"
+      description: "Retrieves a paginated list of users subscribed to a room, along with their roles and activity information."
+      tags: "Subscriptions"
+    };
+  }
+
+  // Get per-room subscription settings for a member (notification preferences, mute, archive)
+  rpc GetSubscriptionSettings(GetSubscriptionSettingsRequest) returns (GetSubscriptionSettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["subscription_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "getSubscriptionSettings"
+      summary: "Get subscription settings for a room"
+      description: "Retrieves per-room notification and display settings for the requesting user's subscription."
+      tags: "Subscriptions"
+    };
+  }
+
+  // Update per-room subscription settings for a member
+  rpc UpdateSubscriptionSettings(UpdateSubscriptionSettingsRequest) returns (UpdateSubscriptionSettingsResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["subscription_manage"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "updateSubscriptionSettings"
+      summary: "Update subscription settings for a room"
+      description: "Updates per-room notification and display settings for the requesting user's subscription. Supports muting, archiving, and notification level changes."
+      tags: "Subscriptions"
+    };
+  }
+
+  // Real-time Activity APIs
+  // -----------------------------------------------------
+
+  // Update different states that the client can be in for room subscriptions awareness
+  rpc Live(LiveRequest) returns (LiveResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["event_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "Live"
+      summary: "Executes realtime connection updates"
+      description: "Executes realtime updates for events from a user and optionally Broadcasts to affiliated active participants."
+      tags: "Real-time"
+    };
+  }
+
+  // Proposal APIs for approval workflows
+  // -----------------------------------------------------
+  // Proposals are pending changes that require approval before execution.
+  // They are used for rooms with RequiresApproval=true.
+
+  // List pending proposals for a room
+  rpc ListProposals(ListProposalsRequest) returns (ListProposalsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["proposal_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "listProposals"
+      summary: "List pending proposals for a room"
+      description: "Retrieves all pending proposals for a room that require approval. Only room members can view proposals."
+      tags: "Proposals"
+    };
+  }
+
+  // Submit a decision on a pending proposal (approve or reject)
+  rpc SubmitProposal(SubmitProposalRequest) returns (SubmitProposalResponse) {
+    option (common.v1.method_permissions) = {
+      permissions: ["proposal_manage"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "submitProposal"
+      summary: "Submit a decision on a pending proposal"
+      description: "Approves or rejects a pending proposal. If approved, the proposed change is executed. Only room owners can submit proposal decisions."
+      tags: "Proposals"
+    };
+  }
+}
+
+// -----------------------------------------------------
+// Message RPCs (unified send + get history)
+// -----------------------------------------------------
+
+message SendEventRequest {
+  repeated RoomEvent event = 4; // message payload (server will assign final event_id if empty)
+}
+
+message SendEventResponse {
+  repeated AckEvent ack = 1;
+}
+
+message GetEventRequest {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string event_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+}
+
+message GetEventResponse {
+  RoomEvent event = 1;
+  common.v1.ErrorDetail error = 2;
+}
+
+// History request: paging via opaque cursor. 'limit' is capped by server (e.g. 100).
+// Ordering is determined by XID lexicographic order.
+// Cursor encapsulates last seen event ID.
+message GetHistoryRequest {
+  string room_id = 2;
+  common.v1.PageCursor cursor = 3;
+  // direction: FORWARD means older -> newer; BACKWARD newer -> older (default BACKWARD).
+  bool forward = 5;
+}
+
+message GetHistoryResponse {
+  repeated RoomEvent events = 1;
+  string next_cursor = 2; // opaque; empty when no more pages
+  string prev_cursor = 3;
+}
+
+// -----------------------------------------------------
+// Room APIs
+// -----------------------------------------------------
+
+// RoomType distinguishes between different room semantics.
+enum RoomType {
+  ROOM_TYPE_UNSPECIFIED = 0;
+  ROOM_TYPE_DIRECT = 1; // 1:1 direct message between two users
+  ROOM_TYPE_GROUP = 2; // Multi-user group conversation
+  ROOM_TYPE_CHANNEL = 3; // Broadcast channel (one-to-many)
+  ROOM_TYPE_BOT = 4; // Conversation with a bot or service account
+}
+
+message GetRoomRequest {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+}
+
+message GetRoomResponse {
+  Room room = 1;
+  common.v1.ErrorDetail error = 2;
+}
+
+message Room {
+  string id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string name = 3 [
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 200
+  ];
+  string description = 4;
+  RoomType type = 11;
+  bool is_private = 5;
+  google.protobuf.Struct metadata = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  string creator_id = 9;
+  // If true, changes to this room require approval from owners before execution
+  bool requires_approval = 10;
+}
+
+message CreateRoomRequest {
+  string id = 3 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ]; // optional client-provided idempotency key
+  string name = 4 [
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 200
+  ];
+  string description = 5;
+  RoomType type = 10;
+  bool is_private = 6;
+  repeated common.v1.ContactLink members = 7; // optional
+  google.protobuf.Struct metadata = 8;
+  // If true, changes to this room require approval from owners before execution
+  bool requires_approval = 9;
+}
+
+message CreateRoomResponse {
+  Room room = 1;
+  common.v1.ErrorDetail error = 2;
+}
+
+message SearchRoomsRequest {
+  string query = 1;
+  repeated string properties = 6;
+  google.protobuf.Struct extras = 7;
+  common.v1.PageCursor cursor = 10;
+}
+
+message SearchRoomsResponse {
+  repeated Room data = 1;
+  string next_cursor = 2;
+  string prev_cursor = 3;
+}
+
+message UpdateRoomRequest {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string name = 3;
+  string description = 4;
+  google.protobuf.Struct metadata = 5;
+}
+
+message UpdateRoomResponse {
+  Room room = 1;
+  common.v1.ErrorDetail error = 2;
+}
+
+message DeleteRoomRequest {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+}
+
+message DeleteRoomResponse {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  common.v1.ErrorDetail error = 2;
+}
+
+// -----------------------------------------------------
+// Subscriptionship & roles
+// -----------------------------------------------------
+
+message RoomSubscription {
+  // NOTE:
+  // Event IDs are XIDs and MUST be lexicographically sortable by creation time.
+  // Clients MUST NOT assume any other ordering mechanism.
+  string id = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  common.v1.ContactLink member = 3;
+  repeated string roles = 4; // e.g. ["owner","moderator","member","guest"]
+  google.protobuf.Timestamp joined_at = 5;
+  google.protobuf.Timestamp last_active = 6;
+}
+
+message AddRoomSubscriptionsRequest {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  repeated RoomSubscription members = 3; // include roles if desired
+}
+
+message AddRoomSubscriptionsResponse {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  common.v1.ErrorDetail error = 3;
+}
+
+message RemoveRoomSubscriptionsRequest {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  repeated string subscription_id = 3;
+}
+
+message RemoveRoomSubscriptionsResponse {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  common.v1.ErrorDetail error = 3;
+}
+
+message UpdateSubscriptionRoleRequest {
+  string subscription_id = 3 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+
+  repeated string roles = 4;
+}
+
+message UpdateSubscriptionRoleResponse {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  common.v1.ErrorDetail error = 3;
+}
+
+message SearchRoomSubscriptionsRequest {
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  common.v1.PageCursor cursor = 4;
+}
+
+message SearchRoomSubscriptionsResponse {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  repeated RoomSubscription members = 2;
+  string next_cursor = 4;
+  string prev_cursor = 5;
+}
+
+// -----------------------------------------------------
+// Subscription Settings
+// -----------------------------------------------------
+
+// NotificationLevel controls how notifications are delivered for a room subscription.
+enum NotificationLevel {
+  NOTIFICATION_LEVEL_UNSPECIFIED = 0; // use account default
+  NOTIFICATION_LEVEL_ALL = 1; // notify on all messages
+  NOTIFICATION_LEVEL_MENTIONS = 2; // notify only on mentions and direct replies
+  NOTIFICATION_LEVEL_NONE = 3; // suppress all notifications
+}
+
+// SubscriptionSettings holds per-room preferences for a member.
+message SubscriptionSettings {
+  string subscription_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  NotificationLevel notification_level = 3;
+  bool muted = 4;
+  bool archived = 5;
+  bool pinned = 6;
+}
+
+message GetSubscriptionSettingsRequest {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string subscription_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+}
+
+message GetSubscriptionSettingsResponse {
+  SubscriptionSettings settings = 1;
+  common.v1.ErrorDetail error = 2;
+}
+
+message UpdateSubscriptionSettingsRequest {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string subscription_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  optional NotificationLevel notification_level = 3;
+  optional bool muted = 4;
+  optional bool archived = 5;
+  optional bool pinned = 6;
+}
+
+message UpdateSubscriptionSettingsResponse {
+  SubscriptionSettings settings = 1;
+  common.v1.ErrorDetail error = 2;
+}
+
+// -----------------------------------------------------
+// Real-time Activity Request/Response Messages
+// -----------------------------------------------------
+
+message LiveRequest {
+  common.v1.ContactLink source = 2;
+  repeated ClientCommand client_states = 3;
+}
+
+message LiveResponse {
+  common.v1.ErrorDetail error = 1;
+}
+
+// -----------------------------------------------------
+// Proposal APIs for approval workflows
+// -----------------------------------------------------
+
+// ProposalType represents the kind of change being proposed.
+enum ProposalType {
+  PROPOSAL_TYPE_UNSPECIFIED = 0;
+  PROPOSAL_TYPE_UPDATE_ROOM = 1;
+  PROPOSAL_TYPE_DELETE_ROOM = 2;
+  PROPOSAL_TYPE_ADD_SUBSCRIPTIONS = 3;
+  PROPOSAL_TYPE_REMOVE_SUBSCRIPTIONS = 4;
+  PROPOSAL_TYPE_UPDATE_SUBSCRIPTION_ROLE = 5;
+}
+
+// ProposalState represents the current state of a proposal.
+enum ProposalState {
+  PROPOSAL_STATE_UNSPECIFIED = 0;
+  PROPOSAL_STATE_PENDING = 1;
+  PROPOSAL_STATE_APPROVED = 2;
+  PROPOSAL_STATE_REJECTED = 3;
+  PROPOSAL_STATE_EXPIRED = 4;
+}
+
+// Proposal represents a pending change that requires approval before execution.
+message Proposal {
+  string id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  ProposalType type = 3;
+  ProposalState state = 4;
+  string requested_by = 5; // profile_id of the requester
+  google.protobuf.Struct payload = 6; // the proposed change payload
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  optional string resolved_by = 9; // profile_id of approver/rejector
+  optional google.protobuf.Timestamp resolved_at = 10;
+  optional string reason = 11; // rejection reason if rejected
+}
+
+message ListProposalsRequest {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  // Optional: filter by state (default: only PENDING)
+  optional ProposalState state = 2;
+  common.v1.PageCursor cursor = 3;
+}
+
+message ListProposalsResponse {
+  repeated Proposal proposals = 1;
+  string next_cursor = 2;
+  string prev_cursor = 3;
+}
+
+// Action to take on a proposal
+enum ProposalAction {
+  PROPOSAL_ACTION_UNSPECIFIED = 0;
+  PROPOSAL_ACTION_APPROVE = 1;
+  PROPOSAL_ACTION_REJECT = 2;
+}
+
+message SubmitProposalRequest {
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  string proposal_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  ProposalAction action = 3 [(buf.validate.field).enum.defined_only = true];
+  optional string reason = 4; // optional reason (typically for rejection)
+}
+
+message SubmitProposalResponse {
+  Proposal proposal = 1;
+  common.v1.ErrorDetail error = 2;
+}
