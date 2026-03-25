@@ -402,7 +402,7 @@ func (*stubNotificationClient) TemplateSave(
 // stubProfileClient implements profilev1connect.ProfileServiceClient; all methods return nil.
 type stubProfileClient struct{}
 
-//nolint:revive // interface method name from proto
+//nolint:revive,staticcheck // interface method name from proto
 func (*stubProfileClient) GetById(
 	context.Context,
 	*connect.Request[profilev1.GetByIdRequest],
@@ -533,7 +533,7 @@ func (*stubProfileClient) ListRelationship(
 // Search returns an error; all other methods return nil.
 type stubDeviceClient struct{}
 
-//nolint:revive // interface method name from proto
+//nolint:revive,staticcheck // interface method name from proto
 func (*stubDeviceClient) GetById(
 	context.Context,
 	*connect.Request[devicev1.GetByIdRequest],
@@ -541,7 +541,7 @@ func (*stubDeviceClient) GetById(
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
 
-//nolint:revive // interface method name from proto
+//nolint:revive,staticcheck // interface method name from proto
 func (*stubDeviceClient) GetBySessionId(
 	context.Context,
 	*connect.Request[devicev1.GetBySessionIdRequest],
