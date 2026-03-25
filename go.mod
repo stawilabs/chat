@@ -16,7 +16,7 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.11-20260219062039-499f582dea7e.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
-	github.com/antinvestor/common v1.0.1
+	github.com/antinvestor/common v1.1.0
 	github.com/pitabwire/frame v1.82.1
 	github.com/pitabwire/util v0.7.0
 	github.com/stretchr/testify v1.11.1
