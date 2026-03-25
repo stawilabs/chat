@@ -2000,7 +2000,7 @@ class SyncEngine with WidgetsBindingObserver {
     final event = pb.RoomEvent(
       id: payload['localId'] as String? ?? '',
       roomId: roomId,
-      subscriptionId: subscriptionId ?? '',
+      subscriptionId: subscriptionId,
       type: protoType,
       sentAt: timestamp,
       payload: pbPayload,
