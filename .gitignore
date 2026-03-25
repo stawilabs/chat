@@ -24,3 +24,6 @@ coverage.html
 .glide/
 vendor/
 
+
+# Shared Makefile cache
+.tmp/
