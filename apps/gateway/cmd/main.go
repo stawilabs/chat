@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"net/http"
 	"time"
 
@@ -9,10 +10,8 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
-	"github.com/antinvestor/apis/go/chat"
-	chatv1 "github.com/antinvestor/apis/go/chat/v1"
-	"github.com/antinvestor/apis/go/common"
-	"github.com/antinvestor/apis/go/device"
+	"github.com/antinvestor/common"
+	"github.com/antinvestor/common/connection"
 	gtwconfig "github.com/antinvestor/service-chat/apps/gateway/config"
 	"github.com/antinvestor/service-chat/apps/gateway/service/business"
 	"github.com/antinvestor/service-chat/apps/gateway/service/handlers"
@@ -26,6 +25,9 @@ import (
 	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
 )
+
+//go:embed spec/chat.openapi.yaml
+var chatAPISpecFile []byte
 
 const gracefulShutdownTimeout = 30 * time.Second
 
@@ -146,11 +148,11 @@ func setupChatServiceClient(
 	ctx context.Context,
 	cfg gtwconfig.GatewayConfig,
 ) (chatv1connect.ChatServiceClient, error) {
-	return chat.NewClient(ctx, &cfg, common.ServiceTarget{
+	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.ChatServiceURI,
 		WorkloadAPITargetPath: cfg.ChatServiceWorkloadAPITargetPath,
 		Audiences:             []string{"service_chat_drone"},
-	})
+	}, chatv1connect.NewChatServiceClient)
 }
 
 // setupDeviceClient creates and configures the device service client.
@@ -158,11 +160,11 @@ func setupDeviceClient(
 	ctx context.Context,
 	cfg gtwconfig.GatewayConfig,
 ) (devicev1connect.DeviceServiceClient, error) {
-	return device.NewClient(ctx, &cfg, common.ServiceTarget{
+	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.DeviceServiceURI,
 		WorkloadAPITargetPath: cfg.DeviceServiceWorkloadAPITargetPath,
 		Audiences:             []string{"service_device"},
-	})
+	}, devicev1connect.NewDeviceServiceClient)
 }
 
 // setupGatewayServer initializes and configures the gateway server.
@@ -192,7 +194,7 @@ func setupGatewayServer(
 
 	mux := http.NewServeMux()
 	mux.Handle("/", serverHandler)
-	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatv1.ApiSpecFile, nil))
+	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatAPISpecFile, nil))
 
 	return mux
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 
@@ -11,12 +12,9 @@ import (
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"connectrpc.com/connect"
-	chatv1 "github.com/antinvestor/apis/go/chat/v1"
-	"github.com/antinvestor/apis/go/common"
-	"github.com/antinvestor/apis/go/common/permissions"
-	"github.com/antinvestor/apis/go/device"
-	"github.com/antinvestor/apis/go/notification"
-	"github.com/antinvestor/apis/go/profile"
+	"github.com/antinvestor/common"
+	"github.com/antinvestor/common/connection"
+	"github.com/antinvestor/common/permissions"
 	aconfig "github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
@@ -30,6 +28,9 @@ import (
 	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
 )
+
+//go:embed spec/chat.openapi.yaml
+var chatAPISpecFile []byte
 
 // runService initializes and starts the chat service with all dependencies.
 func runService(ctx context.Context) error {
@@ -100,14 +101,8 @@ func runService(ctx context.Context) error {
 	// Setup HTTP handlers and queue infrastructure
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 
-	// Register OPL for this service's authorization namespace
-// TODO: re-enable after Go import migration
-// 	oplData, _ := chatv1.OPLSpecFiles.ReadFile("service_chat.opl.ts")
-
 	serviceOptions := []frame.Option{
 		frame.WithHTTPHandler(connectHandler),
-// TODO: re-enable after Go import migration
-// 		frame.WithOPL("service_chat", oplData),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(
@@ -177,33 +172,33 @@ func handleDatabaseMigration(
 func setupNotificationClient(
 	ctx context.Context,
 	cfg aconfig.ChatConfig) (notificationv1connect.NotificationServiceClient, error) {
-	return notification.NewClient(ctx, &cfg, common.ServiceTarget{
+	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.NotificationServiceURI,
 		WorkloadAPITargetPath: cfg.NotificationServiceWorkloadAPITargetPath,
 		Audiences:             []string{"service_notification"},
-	})
+	}, notificationv1connect.NewNotificationServiceClient)
 }
 
 // setupProfileClient creates and configures the profile client.
 func setupProfileClient(
 	ctx context.Context,
 	cfg aconfig.ChatConfig) (profilev1connect.ProfileServiceClient, error) {
-	return profile.NewClient(ctx, &cfg, common.ServiceTarget{
+	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.ProfileServiceURI,
 		WorkloadAPITargetPath: cfg.ProfileServiceWorkloadAPITargetPath,
 		Audiences:             []string{"service_profile"},
-	})
+	}, profilev1connect.NewProfileServiceClient)
 }
 
 // setupDeviceClient creates and configures the device client.
 func setupDeviceClient(
 	ctx context.Context,
 	cfg aconfig.ChatConfig) (devicev1connect.DeviceServiceClient, error) {
-	return device.NewClient(ctx, &cfg, common.ServiceTarget{
+	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.DeviceServiceURI,
 		WorkloadAPITargetPath: cfg.DeviceServiceWorkloadAPITargetPath,
 		Audiences:             []string{"service_device"},
-	})
+	}, devicev1connect.NewDeviceServiceClient)
 }
 
 // setupConnectServer initializes and configures the gRPC server.
@@ -238,7 +233,7 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 
 	mux := http.NewServeMux()
 	mux.Handle("/", serverHandler)
-	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatv1.ApiSpecFile, nil))
+	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatAPISpecFile, nil))
 
 	return mux
 }
