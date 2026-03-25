@@ -1,0 +1,300 @@
+# Production Release - Triggered on version tags (v*)
+# Full validation before release builds
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.38.7'
+
+jobs:
+  # Extract version from tag
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="v${VERSION}"
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG#v}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+  # Quick validation before expensive builds
+  validate:
+    name: Validate
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Run tests and analysis
+        run: |
+          flutter analyze --no-fatal-infos
+          flutter test
+          dart format --set-exit-if-changed .
+
+  # Build all platforms
+  build:
+    name: Build
+    needs: [prepare, validate]
+    uses: ./.github/workflows/build.yml
+    with:
+      environment: production
+      build_type: release
+      version: ${{ needs.prepare.outputs.version }}
+    secrets:
+      ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
+      ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+      P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+      BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+
+  # Create GitHub Release
+  create-release:
+    name: GitHub Release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    if: always() && !cancelled()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log $PREV_TAG..${{ needs.prepare.outputs.tag }} --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log -20 --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          echo "$CHANGELOG" > /tmp/changelog.txt
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+        continue-on-error: true
+
+      - name: List available artifacts
+        run: |
+          echo "Available artifacts:"
+          ls -la artifacts/ 2>/dev/null || echo "No artifacts directory"
+          find artifacts -type f 2>/dev/null || echo "No files found"
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          VERSION=${{ needs.prepare.outputs.version }}
+
+          [ -f "artifacts/android-apk-production/app-release.apk" ] && \
+            cp artifacts/android-apk-production/app-release.apk release-assets/chat-${VERSION}-android.apk
+
+          [ -f "artifacts/android-aab-production/app-release.aab" ] && \
+            cp artifacts/android-aab-production/app-release.aab release-assets/chat-${VERSION}-android.aab
+
+          [ -f "artifacts/ios-ipa-production/Runner.ipa" ] && \
+            cp artifacts/ios-ipa-production/Runner.ipa release-assets/chat-${VERSION}-ios.ipa
+
+          [ -d "artifacts/web-build-production" ] && \
+            (cd artifacts/web-build-production && zip -r ../../release-assets/chat-${VERSION}-web.zip .)
+
+          [ -f "artifacts/linux-bundle-production/linux-bundle.tar.gz" ] && \
+            cp artifacts/linux-bundle-production/linux-bundle.tar.gz release-assets/chat-${VERSION}-linux-x64.tar.gz
+
+          [ -f "artifacts/macos-app-production/macos-app.zip" ] && \
+            cp artifacts/macos-app-production/macos-app.zip release-assets/chat-${VERSION}-macos.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Chat App ${{ needs.prepare.outputs.tag }}
+          body_path: /tmp/changelog.txt
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Deploy Web
+  deploy-web:
+    name: Deploy Web
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    if: always() && !cancelled()
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://chat.antinvestor.com
+
+    steps:
+      - name: Download web build
+        id: download
+        uses: actions/download-artifact@v8
+        with:
+          name: web-build-production
+          path: build/web
+        continue-on-error: true
+
+      - name: Check artifact exists
+        if: steps.download.outcome == 'failure'
+        run: |
+          echo "::error::Web build artifact not found. Web build may have failed."
+          exit 1
+
+      - name: List downloaded files
+        run: |
+          echo "Contents of build/web:"
+          ls -la build/web/ || echo "Directory not found"
+          find build/web -type f | wc -l
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build/web --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME || 'stawi' }} --branch=main
+
+  # Deploy Android
+  deploy-android:
+    name: Deploy Android
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    if: always() && !cancelled()
+    timeout-minutes: 20
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download AAB
+        id: download
+        uses: actions/download-artifact@v8
+        with:
+          name: android-aab-production
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Check artifact exists
+        if: steps.download.outcome == 'failure'
+        run: |
+          echo "::error::Android AAB artifact not found. Android build may have failed."
+          exit 1
+
+      - name: Create changelog
+        run: |
+          mkdir -p fastlane/metadata/android/en-US/changelogs
+          echo "Version ${{ needs.prepare.outputs.version }}" > fastlane/metadata/android/en-US/changelogs/default.txt
+
+      - name: Upload to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          packageName: ${{ vars.ANDROID_PACKAGE_NAME || 'com.antinvestor.chat' }}
+          releaseFiles: artifacts/app-release.aab
+          track: production
+          status: completed
+          releaseName: ${{ needs.prepare.outputs.version }}
+          whatsNewDirectory: fastlane/metadata/android/en-US/changelogs
+
+  # Deploy iOS
+  deploy-ios:
+    name: Deploy iOS
+    needs: [prepare, build]
+    runs-on: macos-latest
+    if: always() && !cancelled()
+    timeout-minutes: 30
+    environment:
+      name: production
+
+    steps:
+      - name: Download IPA
+        id: download
+        uses: actions/download-artifact@v8
+        with:
+          name: ios-ipa-production
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Check artifact exists
+        if: steps.download.outcome == 'failure'
+        run: |
+          echo "::error::iOS IPA artifact not found. iOS build may have failed."
+          exit 1
+
+      - name: Upload to App Store Connect
+        uses: apple-actions/upload-testflight-build@v4
+        with:
+          app-path: artifacts/Runner.ipa
+          issuer-id: ${{ secrets.APPLE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPLE_KEY_ID }}
+          api-private-key: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+
+  # Summary
+  notify:
+    name: Summary
+    needs: [prepare, create-release, deploy-web, deploy-android, deploy-ios]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Create summary
+        run: |
+          echo "## Production Release: ${{ needs.prepare.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub Release | ${{ needs.create-release.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | ${{ needs.deploy-web.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android | ${{ needs.deploy-android.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS | ${{ needs.deploy-ios.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "Chat App ${{ needs.prepare.outputs.tag }} released!"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

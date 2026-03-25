@@ -1,0 +1,67 @@
+# Composite action for Flutter setup with caching
+name: 'Flutter Setup'
+description: 'Setup Flutter with dependency caching and code generation'
+
+inputs:
+  flutter-version:
+    description: 'Flutter version to use'
+    required: false
+    default: '3.38.7'
+  java-version:
+    description: 'Java version (for Android builds)'
+    required: false
+    default: ''
+  run-codegen:
+    description: 'Run build_runner for code generation'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Flutter project directory'
+    required: false
+    default: 'ui'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Java
+      if: inputs.java-version != ''
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ inputs.java-version }}
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        channel: 'stable'
+        cache: true
+
+    - name: Cache pub dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.pub-cache
+        key: pub-${{ runner.os }}-${{ hashFiles(format('{0}/pubspec.lock', inputs.working-directory)) }}
+        restore-keys: pub-${{ runner.os }}-
+
+    - name: Get dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: flutter pub get
+
+    - name: Cache generated code
+      if: inputs.run-codegen == 'true'
+      id: cache-codegen
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.working-directory }}/lib/**/*.g.dart
+          ${{ inputs.working-directory }}/lib/**/*.freezed.dart
+          ${{ inputs.working-directory }}/test/**/*.mocks.dart
+        key: codegen-${{ runner.os }}-${{ hashFiles(format('{0}/lib/**/*.dart', inputs.working-directory), format('{0}/pubspec.lock', inputs.working-directory)) }}
+
+    - name: Generate code
+      if: inputs.run-codegen == 'true' && steps.cache-codegen.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: dart run build_runner build --delete-conflicting-outputs

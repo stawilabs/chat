@@ -1,27 +1,15 @@
 version: 2
 updates:
-  # Enable version updates for Go modules
-  - package-ecosystem: "gomod"
+  # Enable version updates for Dart/Flutter (pub)
+  - package-ecosystem: "pub"
     directory: "/"
     schedule:
-      interval: "daily"
-      time: "09:00"
-    open-pull-requests-limit: 10
-    # Auto-merge configuration
-    allow:
-      - dependency-type: "all"
-    # Enable auto-merge for all dependency types
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
     labels:
       - "dependencies"
       - "auto-merge"
-    reviewers:
-      - "antinvestor/maintainers"
-    assignees:
-      - "antinvestor/maintainers"
-    commit-message:
-      prefix: "deps"
-      include: "scope"
-    # Group updates to reduce PR noise
     groups:
       production-dependencies:
         dependency-type: "production"

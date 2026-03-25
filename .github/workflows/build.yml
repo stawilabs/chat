@@ -1,0 +1,337 @@
+# Reusable build workflow for all platforms
+# Called by staging.yml and production.yml
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Build environment (staging or production)'
+        required: true
+        type: string
+      build_type:
+        description: 'Build type (debug or release)'
+        required: true
+        type: string
+      version:
+        description: 'Version string for the build'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ANDROID_SIGNING_KEY:
+        required: false
+      ANDROID_SIGNING_KEY_PASSWORD:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      BUILD_CERTIFICATE_BASE64:
+        required: false
+      P12_PASSWORD:
+        required: false
+      BUILD_PROVISION_PROFILE_BASE64:
+        required: false
+      KEYCHAIN_PASSWORD:
+        required: false
+      GOOGLE_SERVICES_JSON:
+        required: false
+
+env:
+  FLUTTER_VERSION: '3.38.7'
+  JAVA_VERSION: '17'
+
+jobs:
+  # Android Build
+  build-android:
+    name: Android (${{ inputs.build_type }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    outputs:
+      apk_path: ${{ steps.build.outputs.apk_path }}
+      aab_path: ${{ steps.build.outputs.aab_path }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Cache Gradle
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('ui/android/**/*.gradle*', 'ui/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Setup Google Services
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > ui/android/app/google-services.json
+
+      - name: Setup Android signing
+        if: inputs.build_type == 'release'
+        env:
+          SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "$SIGNING_KEY" | base64 -d > ui/android/app/keystore.jks
+            cat > ui/android/key.properties << EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$SIGNING_KEY_PASSWORD
+          keyAlias=key
+          storeFile=keystore.jks
+          EOF
+          fi
+
+      - name: Build Android
+        id: build
+        run: |
+          BUILD_ARGS="${{ inputs.build_type == 'release' && '--release --shrink' || '--debug' }}"
+          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+
+          flutter build apk $BUILD_ARGS
+
+          if [ "${{ inputs.build_type }}" == "release" ]; then
+            flutter build appbundle $BUILD_ARGS
+            echo "aab_path=ui/build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_OUTPUT
+            echo "apk_path=ui/build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
+          else
+            echo "apk_path=ui/build/app/outputs/flutter-apk/app-debug.apk" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apk-${{ inputs.environment }}
+          path: ${{ steps.build.outputs.apk_path }}
+          retention-days: 14
+
+      - name: Upload AAB
+        if: inputs.build_type == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-aab-${{ inputs.environment }}
+          path: ${{ steps.build.outputs.aab_path }}
+          retention-days: 14
+
+  # iOS Build
+  build-ios:
+    name: iOS (${{ inputs.build_type }})
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    outputs:
+      ipa_path: ${{ steps.build.outputs.ipa_path }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      # Cache CocoaPods
+      - name: Cache CocoaPods
+        uses: actions/cache@v5
+        with:
+          path: ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Setup iOS project
+        run: |
+          # Check if iOS project is properly initialized (has Runner.xcodeproj)
+          if [ ! -d "ios/Runner.xcodeproj" ]; then
+            echo "iOS project not found or incomplete, regenerating..."
+            rm -rf ios
+            flutter create --platforms=ios .
+          fi
+          cd ios
+          # Update deployment target
+          sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+
+      - name: Install CocoaPods
+        run: cd ios && pod install --repo-update || pod install
+
+      - name: Setup iOS signing
+        if: inputs.build_type == 'release' && inputs.environment == 'production'
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+            security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+            security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+            security list-keychain -d user -s $KEYCHAIN_PATH
+
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+          fi
+
+      - name: Build iOS
+        id: build
+        run: |
+          if [ "${{ inputs.build_type }}" == "release" ] && [ "${{ inputs.environment }}" == "production" ]; then
+            BUILD_ARGS="--release"
+          else
+            BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }} --no-codesign"
+          fi
+          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+
+          flutter build ios $BUILD_ARGS
+
+          # Create IPA
+          mkdir -p build/ios/ipa
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            cd build/ios/ipa
+            mkdir -p Payload
+            cp -r ../iphoneos/Runner.app Payload/
+            zip -r Runner.ipa Payload
+            rm -rf Payload
+          fi
+
+          echo "ipa_path=build/ios/ipa/Runner.ipa" >> $GITHUB_OUTPUT
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa-${{ inputs.environment }}
+          path: ui/build/ios/ipa/
+          retention-days: 14
+
+  # Web Build
+  build-web:
+    name: Web (${{ inputs.build_type }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Clean stale build artifacts
+        run: |
+          # Remove generated plugin registrant to avoid stale package references
+          rm -rf .dart_tool/flutter_build/
+
+      - name: Build Web
+        run: |
+          flutter build web ${{ inputs.build_type == 'release' && '--release' || '--profile' }} --base-href /
+
+      - name: Upload Web
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-build-${{ inputs.environment }}
+          path: ui/ui/build/web/
+          retention-days: 14
+
+  # Linux Build
+  build-linux:
+    name: Linux (${{ inputs.build_type }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build libgtk-3-dev libsecret-1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libcurl4-openssl-dev
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build Linux
+        run: |
+          BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
+          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+          flutter build linux $BUILD_ARGS
+
+      - name: Package Linux bundle
+        run: |
+          BUILD_MODE=${{ inputs.build_type == 'release' && 'release' || 'debug' }}
+          tar -czf linux-bundle.tar.gz -C ui/build/linux/x64/${BUILD_MODE}/bundle .
+
+      - name: Upload Linux bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-bundle-${{ inputs.environment }}
+          path: linux-bundle.tar.gz
+          retention-days: 14
+
+  # macOS Build
+  build-macos:
+    name: macOS (${{ inputs.build_type }})
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      # Cache CocoaPods
+      - name: Cache CocoaPods
+        uses: actions/cache@v5
+        with:
+          path: macos/Pods
+          key: macos-pods-${{ runner.os }}-${{ hashFiles('macos/Podfile.lock') }}
+          restore-keys: macos-pods-${{ runner.os }}-
+
+      - name: Install CocoaPods
+        run: cd macos && pod install --repo-update || pod install
+
+      - name: Build macOS
+        run: |
+          BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
+          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+          flutter build macos $BUILD_ARGS
+
+      - name: Package macOS app
+        run: |
+          BUILD_MODE=${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}
+          cd build/macos/Build/Products/${BUILD_MODE}
+          zip -r ${GITHUB_WORKSPACE}/macos-app.zip *.app
+
+      - name: Upload macOS app
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-app-${{ inputs.environment }}
+          path: macos-app.zip
+          retention-days: 14
