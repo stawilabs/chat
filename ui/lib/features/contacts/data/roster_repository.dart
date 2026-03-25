@@ -723,12 +723,12 @@ class RosterRepository implements ContactSyncRepository {
   String _computeContactsHash(List<flutter_contacts.Contact> contacts) {
     // Sort contacts by ID for stable ordering
     final sortedContacts = List<flutter_contacts.Contact>.from(contacts)
-      ..sort((a, b) => a.id.compareTo(b.id));
+      ..sort((a, b) => (a.id ?? '').compareTo(b.id ?? ''));
 
     // Build a string representation of all contact data we care about
     final buffer = StringBuffer();
     for (final contact in sortedContacts) {
-      buffer.write(contact.id);
+      buffer.write(contact.id ?? '');
       for (final phone in contact.phones) {
         buffer.write(_normalizePhone(phone.number));
       }
@@ -747,14 +747,20 @@ class RosterRepository implements ContactSyncRepository {
   @override
   Future<bool> needsSync() async {
     try {
-      final hasPermission = await flutter_contacts
-          .FlutterContacts.requestPermission(readonly: true);
-      if (!hasPermission) {
+      final permStatus = await flutter_contacts
+          .FlutterContacts.permissions.request(flutter_contacts.PermissionType.read);
+      if (permStatus != flutter_contacts.PermissionStatus.granted &&
+          permStatus != flutter_contacts.PermissionStatus.limited) {
         return false;
       }
 
-      final deviceContacts = await flutter_contacts.FlutterContacts.getContacts(
-        withProperties: true,
+      final deviceContacts = await flutter_contacts.FlutterContacts.getAll(
+        properties: {
+          flutter_contacts.ContactProperty.name,
+          flutter_contacts.ContactProperty.phone,
+          flutter_contacts.ContactProperty.email,
+          flutter_contacts.ContactProperty.organization,
+        },
       );
 
       final currentHash = _computeContactsHash(deviceContacts);
@@ -903,8 +909,13 @@ class RosterRepository implements ContactSyncRepository {
         ),
       );
 
-      final deviceContacts = await flutter_contacts.FlutterContacts.getContacts(
-        withProperties: true,
+      final deviceContacts = await flutter_contacts.FlutterContacts.getAll(
+        properties: {
+          flutter_contacts.ContactProperty.name,
+          flutter_contacts.ContactProperty.phone,
+          flutter_contacts.ContactProperty.email,
+          flutter_contacts.ContactProperty.organization,
+        },
       );
 
       AppLogger.info(
@@ -955,7 +966,7 @@ class RosterRepository implements ContactSyncRepository {
 
       for (final contact in deviceContacts) {
         // Skip contacts with no name and no contact details
-        if (contact.displayName.trim().isEmpty &&
+        if ((contact.displayName ?? '').trim().isEmpty &&
             contact.phones.isEmpty &&
             contact.emails.isEmpty) {
           AppLogger.debug(
@@ -1288,7 +1299,7 @@ class RosterRepository implements ContactSyncRepository {
         if (roster.hasContact()) {
           final detail = roster.contact.detail;
           final localContact = contactLookup[detail];
-          if (localContact != null && localContact.displayName.isNotEmpty) {
+          if (localContact != null && (localContact.displayName?.isNotEmpty ?? false)) {
             localDisplayName = localContact.displayName;
           }
         }
@@ -1369,8 +1380,13 @@ class RosterRepository implements ContactSyncRepository {
         ),
       );
 
-      final deviceContacts = await flutter_contacts.FlutterContacts.getContacts(
-        withProperties: true,
+      final deviceContacts = await flutter_contacts.FlutterContacts.getAll(
+        properties: {
+          flutter_contacts.ContactProperty.name,
+          flutter_contacts.ContactProperty.phone,
+          flutter_contacts.ContactProperty.email,
+          flutter_contacts.ContactProperty.organization,
+        },
       );
 
       AppLogger.info(
@@ -1411,7 +1427,7 @@ class RosterRepository implements ContactSyncRepository {
                 id: id,
                 contactType: RosterContactType.msisdn,
                 contactDetail: validatedPhone,
-                displayName: contact.displayName.isNotEmpty
+                displayName: (contact.displayName?.isNotEmpty ?? false)
                     ? contact.displayName
                     : null,
                 createdAt: now,
@@ -1430,7 +1446,7 @@ class RosterRepository implements ContactSyncRepository {
                 id: id,
                 contactType: RosterContactType.email,
                 contactDetail: normalized,
-                displayName: contact.displayName.isNotEmpty
+                displayName: (contact.displayName?.isNotEmpty ?? false)
                     ? contact.displayName
                     : null,
                 createdAt: now,

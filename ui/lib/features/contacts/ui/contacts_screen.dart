@@ -842,18 +842,18 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
               itemBuilder: (context, index) {
                 final contact = contacts[index];
                 return ListTile(
-                  leading: (contact.photo != null)
+                  leading: (contact.photo?.thumbnail != null)
                       ? CircleAvatar(
-                          backgroundImage: MemoryImage(contact.photo!),
+                          backgroundImage: MemoryImage(contact.photo!.thumbnail!),
                         )
                       : CircleAvatar(
                           child: Text(
-                            contact.displayName.isNotEmpty
-                                ? contact.displayName[0]
+                            (contact.displayName?.isNotEmpty ?? false)
+                                ? contact.displayName![0]
                                 : '?',
                           ),
                         ),
-                  title: Text(contact.displayName),
+                  title: Text(contact.displayName ?? ''),
                   subtitle: contact.phones.isNotEmpty
                       ? Text(contact.phones.first.number)
                       : contact.emails.isNotEmpty
@@ -963,7 +963,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(contact.displayName),
+        title: Text(contact.displayName ?? ''),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -977,7 +977,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
               const SizedBox(height: 4),
             ],
             if (contact.organizations.isNotEmpty)
-              Text('Organization: ${contact.organizations.first.company}'),
+              Text('Organization: ${contact.organizations.first.name}'),
           ],
         ),
         actions: [

@@ -1,4 +1,4 @@
-import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' as fc;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -6,7 +6,7 @@ final contactServiceProvider = Provider<ContactService>(
   (ref) => ContactService(),
 );
 
-final contactsProvider = FutureProvider<List<Contact>>((ref) async {
+final contactsProvider = FutureProvider<List<fc.Contact>>((ref) async {
   final service = ref.watch(contactServiceProvider);
   return service.getContacts();
 });
@@ -19,9 +19,16 @@ final contactPermissionGrantedProvider = FutureProvider<bool>((ref) async {
 });
 
 class ContactService {
-  Future<List<Contact>> getContacts() async {
-    if (await FlutterContacts.requestPermission()) {
-      return FlutterContacts.getContacts(withProperties: true, withPhoto: true);
+  Future<List<fc.Contact>> getContacts() async {
+    final status = await fc.FlutterContacts.permissions.request(fc.PermissionType.read);
+    if (status == fc.PermissionStatus.granted || status == fc.PermissionStatus.limited) {
+      return fc.FlutterContacts.getAll(properties: {
+        fc.ContactProperty.name,
+        fc.ContactProperty.phone,
+        fc.ContactProperty.email,
+        fc.ContactProperty.organization,
+        fc.ContactProperty.photoThumbnail,
+      });
     }
     return [];
   }

@@ -31,14 +31,14 @@ func (c *testDeviceClient) unimplemented(method string) error {
 	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("%s not implemented", method))
 }
 
-func (c *testDeviceClient) GetById(
+func (c *testDeviceClient) GetById( //nolint:revive,staticcheck // method name must match generated DeviceServiceClient interface
 	context.Context,
 	*connect.Request[devicev1.GetByIdRequest],
 ) (*connect.Response[devicev1.GetByIdResponse], error) {
 	return nil, c.unimplemented("GetById")
 }
 
-func (c *testDeviceClient) GetBySessionId(
+func (c *testDeviceClient) GetBySessionId( //nolint:revive,staticcheck // method name must match generated DeviceServiceClient interface
 	context.Context,
 	*connect.Request[devicev1.GetBySessionIdRequest],
 ) (*connect.Response[devicev1.GetBySessionIdResponse], error) {
