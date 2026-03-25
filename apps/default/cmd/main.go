@@ -6,12 +6,14 @@ import (
 	"net/http"
 
 	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
+	chatpb "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"connectrpc.com/connect"
 	chatv1 "github.com/antinvestor/apis/go/chat/v1"
 	"github.com/antinvestor/apis/go/common"
+	"github.com/antinvestor/apis/go/common/permissions"
 	"github.com/antinvestor/apis/go/device"
 	"github.com/antinvestor/apis/go/notification"
 	"github.com/antinvestor/apis/go/profile"
@@ -98,8 +100,12 @@ func runService(ctx context.Context) error {
 	// Setup HTTP handlers and queue infrastructure
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 
+	// Register OPL for this service's authorization namespace
+	oplData, _ := chatv1.OPLSpecFiles.ReadFile("service_chat.opl.ts")
+
 	serviceOptions := []frame.Option{
 		frame.WithHTTPHandler(connectHandler),
+		frame.WithOPL("service_chat", oplData),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(
@@ -210,8 +216,15 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 	tenancyAccessChecker := authorizer.NewTenancyAccessChecker(auth, authz.NamespaceTenancyAccess)
 	tenancyAccessInterceptor := connectInterceptors.NewTenancyAccessInterceptor(tenancyAccessChecker)
 
+	// Automatic tenant-level permission enforcement from proto annotations.
+	// This is complementary to the room-level checks in the authz middleware.
+	sd := chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")
+	procMap := permissions.BuildProcedureMap(sd)
+	functionChecker := authorizer.NewFunctionChecker(auth, "service_chat")
+	functionAccessInterceptor := connectInterceptors.NewFunctionAccessInterceptor(functionChecker, procMap)
+
 	defaultInterceptorList, err := connectInterceptors.DefaultList(
-		ctx, securityMan.GetAuthenticator(ctx), tenancyAccessInterceptor)
+		ctx, securityMan.GetAuthenticator(ctx), tenancyAccessInterceptor, functionAccessInterceptor)
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not configure interceptors")
 	}

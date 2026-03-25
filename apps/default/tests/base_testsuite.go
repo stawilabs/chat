@@ -14,19 +14,16 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
+	notificationv1 "buf.build/gen/go/antinvestor/notification/protocolbuffers/go/notification/v1"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	"connectrpc.com/connect"
-	devicemocks "github.com/antinvestor/apis/go/device/mocks"
-	notificationmocks "github.com/antinvestor/apis/go/notification/mocks"
-	profilemocks "github.com/antinvestor/apis/go/profile/mocks"
 	iconfig "github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/queues"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/apps/default/tests/testketo"
-	"github.com/gojuno/minimock/v3"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
@@ -214,31 +211,16 @@ func (bs *BaseTestSuite) GetRepoDeps(ctx context.Context, svc *frame.Service) (w
 	return workMan, dbPool
 }
 
-func (bs *BaseTestSuite) GetNotificationCli(t *testing.T) notificationv1connect.NotificationServiceClient {
-	ctrl := minimock.NewController(t)
-
-	mocksvc := notificationmocks.NewNotificationServiceClientMock(ctrl)
-	return mocksvc
+func (bs *BaseTestSuite) GetNotificationCli(_ *testing.T) notificationv1connect.NotificationServiceClient {
+	return &stubNotificationClient{}
 }
 
-func (bs *BaseTestSuite) GetProfileCli(t *testing.T) profilev1connect.ProfileServiceClient {
-	ctrl := minimock.NewController(t)
-	mocksvc := profilemocks.NewProfileServiceClientMock(ctrl)
-
-	return mocksvc
+func (bs *BaseTestSuite) GetProfileCli(_ *testing.T) profilev1connect.ProfileServiceClient {
+	return &stubProfileClient{}
 }
 
-func (bs *BaseTestSuite) GetDevice(t *testing.T) devicev1connect.DeviceServiceClient {
-	ctrl := minimock.NewController(t)
-	mockSvc := devicemocks.NewDeviceServiceClientMock(ctrl)
-
-	// Configure the mock to expect Search calls and return no devices found error
-	mockSvc.SearchMock.Optional().
-		Set(func(_ context.Context, _ *connect.Request[devicev1.SearchRequest]) (*connect.ServerStreamForClient[devicev1.SearchResponse], error) {
-			return nil, errors.New("no devices found")
-		})
-
-	return mockSvc
+func (bs *BaseTestSuite) GetDevice(_ *testing.T) devicev1connect.DeviceServiceClient {
+	return &stubDeviceClient{}
 }
 
 func (bs *BaseTestSuite) CreateTestProfiles(
@@ -354,6 +336,319 @@ func (bs *BaseTestSuite) WaitForAuthzAccess(
 
 func (bs *BaseTestSuite) TearDownSuite() {
 	bs.FrameBaseTestSuite.TearDownSuite()
+}
+
+// --- Stub implementations for notification, profile, and device clients ---
+
+// stubNotificationClient implements notificationv1connect.NotificationServiceClient; all methods return nil.
+type stubNotificationClient struct{}
+
+func (*stubNotificationClient) Send(
+	context.Context,
+	*connect.Request[notificationv1.SendRequest],
+) (*connect.ServerStreamForClient[notificationv1.SendResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) Release(
+	context.Context,
+	*connect.Request[notificationv1.ReleaseRequest],
+) (*connect.ServerStreamForClient[notificationv1.ReleaseResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) Receive(
+	context.Context,
+	*connect.Request[notificationv1.ReceiveRequest],
+) (*connect.ServerStreamForClient[notificationv1.ReceiveResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) Search(
+	context.Context,
+	*connect.Request[commonv1.SearchRequest],
+) (*connect.ServerStreamForClient[notificationv1.SearchResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) Status(
+	context.Context,
+	*connect.Request[commonv1.StatusRequest],
+) (*connect.Response[commonv1.StatusResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) StatusUpdate(
+	context.Context,
+	*connect.Request[commonv1.StatusUpdateRequest],
+) (*connect.Response[commonv1.StatusUpdateResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) TemplateSearch(
+	context.Context,
+	*connect.Request[notificationv1.TemplateSearchRequest],
+) (*connect.ServerStreamForClient[notificationv1.TemplateSearchResponse], error) {
+	return nil, nil
+}
+
+func (*stubNotificationClient) TemplateSave(
+	context.Context,
+	*connect.Request[notificationv1.TemplateSaveRequest],
+) (*connect.Response[notificationv1.TemplateSaveResponse], error) {
+	return nil, nil
+}
+
+// stubProfileClient implements profilev1connect.ProfileServiceClient; all methods return nil.
+type stubProfileClient struct{}
+
+func (*stubProfileClient) GetById(
+	context.Context,
+	*connect.Request[profilev1.GetByIdRequest],
+) (*connect.Response[profilev1.GetByIdResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) GetByContact(
+	context.Context,
+	*connect.Request[profilev1.GetByContactRequest],
+) (*connect.Response[profilev1.GetByContactResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) Search(
+	context.Context,
+	*connect.Request[profilev1.SearchRequest],
+) (*connect.ServerStreamForClient[profilev1.SearchResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) Merge(
+	context.Context,
+	*connect.Request[profilev1.MergeRequest],
+) (*connect.Response[profilev1.MergeResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) Create(
+	context.Context,
+	*connect.Request[profilev1.CreateRequest],
+) (*connect.Response[profilev1.CreateResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) Update(
+	context.Context,
+	*connect.Request[profilev1.UpdateRequest],
+) (*connect.Response[profilev1.UpdateResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) AddContact(
+	context.Context,
+	*connect.Request[profilev1.AddContactRequest],
+) (*connect.Response[profilev1.AddContactResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) CreateContact(
+	context.Context,
+	*connect.Request[profilev1.CreateContactRequest],
+) (*connect.Response[profilev1.CreateContactResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) CreateContactVerification(
+	context.Context,
+	*connect.Request[profilev1.CreateContactVerificationRequest],
+) (*connect.Response[profilev1.CreateContactVerificationResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) CheckVerification(
+	context.Context,
+	*connect.Request[profilev1.CheckVerificationRequest],
+) (*connect.Response[profilev1.CheckVerificationResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) RemoveContact(
+	context.Context,
+	*connect.Request[profilev1.RemoveContactRequest],
+) (*connect.Response[profilev1.RemoveContactResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) SearchRoster(
+	context.Context,
+	*connect.Request[profilev1.SearchRosterRequest],
+) (*connect.ServerStreamForClient[profilev1.SearchRosterResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) AddRoster(
+	context.Context,
+	*connect.Request[profilev1.AddRosterRequest],
+) (*connect.Response[profilev1.AddRosterResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) RemoveRoster(
+	context.Context,
+	*connect.Request[profilev1.RemoveRosterRequest],
+) (*connect.Response[profilev1.RemoveRosterResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) AddAddress(
+	context.Context,
+	*connect.Request[profilev1.AddAddressRequest],
+) (*connect.Response[profilev1.AddAddressResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) AddRelationship(
+	context.Context,
+	*connect.Request[profilev1.AddRelationshipRequest],
+) (*connect.Response[profilev1.AddRelationshipResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) DeleteRelationship(
+	context.Context,
+	*connect.Request[profilev1.DeleteRelationshipRequest],
+) (*connect.Response[profilev1.DeleteRelationshipResponse], error) {
+	return nil, nil
+}
+
+func (*stubProfileClient) ListRelationship(
+	context.Context,
+	*connect.Request[profilev1.ListRelationshipRequest],
+) (*connect.ServerStreamForClient[profilev1.ListRelationshipResponse], error) {
+	return nil, nil
+}
+
+// stubDeviceClient implements devicev1connect.DeviceServiceClient.
+// Search returns an error; all other methods return nil.
+type stubDeviceClient struct{}
+
+func (*stubDeviceClient) GetById(
+	context.Context,
+	*connect.Request[devicev1.GetByIdRequest],
+) (*connect.Response[devicev1.GetByIdResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) GetBySessionId(
+	context.Context,
+	*connect.Request[devicev1.GetBySessionIdRequest],
+) (*connect.Response[devicev1.GetBySessionIdResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) Search(
+	context.Context,
+	*connect.Request[devicev1.SearchRequest],
+) (*connect.ServerStreamForClient[devicev1.SearchResponse], error) {
+	return nil, errors.New("no devices found")
+}
+
+func (*stubDeviceClient) Create(
+	context.Context,
+	*connect.Request[devicev1.CreateRequest],
+) (*connect.Response[devicev1.CreateResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) Update(
+	context.Context,
+	*connect.Request[devicev1.UpdateRequest],
+) (*connect.Response[devicev1.UpdateResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) Link(
+	context.Context,
+	*connect.Request[devicev1.LinkRequest],
+) (*connect.Response[devicev1.LinkResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) Remove(
+	context.Context,
+	*connect.Request[devicev1.RemoveRequest],
+) (*connect.Response[devicev1.RemoveResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) Log(
+	context.Context,
+	*connect.Request[devicev1.LogRequest],
+) (*connect.Response[devicev1.LogResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) ListLogs(
+	context.Context,
+	*connect.Request[devicev1.ListLogsRequest],
+) (*connect.ServerStreamForClient[devicev1.ListLogsResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) AddKey(
+	context.Context,
+	*connect.Request[devicev1.AddKeyRequest],
+) (*connect.Response[devicev1.AddKeyResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) RemoveKey(
+	context.Context,
+	*connect.Request[devicev1.RemoveKeyRequest],
+) (*connect.Response[devicev1.RemoveKeyResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) SearchKey(
+	context.Context,
+	*connect.Request[devicev1.SearchKeyRequest],
+) (*connect.Response[devicev1.SearchKeyResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) RegisterKey(
+	context.Context,
+	*connect.Request[devicev1.RegisterKeyRequest],
+) (*connect.Response[devicev1.RegisterKeyResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) DeRegisterKey(
+	context.Context,
+	*connect.Request[devicev1.DeRegisterKeyRequest],
+) (*connect.Response[devicev1.DeRegisterKeyResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) GetTurnCredentials(
+	context.Context,
+	*connect.Request[devicev1.GetTurnCredentialsRequest],
+) (*connect.Response[devicev1.GetTurnCredentialsResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) Notify(
+	context.Context,
+	*connect.Request[devicev1.NotifyRequest],
+) (*connect.Response[devicev1.NotifyResponse], error) {
+	return nil, nil
+}
+
+func (*stubDeviceClient) UpdatePresence(
+	context.Context,
+	*connect.Request[devicev1.UpdatePresenceRequest],
+) (*connect.Response[devicev1.UpdatePresenceResponse], error) {
+	return nil, nil
 }
 
 // WithTestDependencies Creates subtests with each known DependencyOption.

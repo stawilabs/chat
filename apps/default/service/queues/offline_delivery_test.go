@@ -2,6 +2,9 @@ package queues_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"sync/atomic"
 	"testing"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
@@ -9,27 +12,154 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
-	devicemocks "github.com/antinvestor/apis/go/device/mocks"
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/queues"
-	"github.com/gojuno/minimock/v3"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
 
+// testDeviceClient is a stub implementation of devicev1connect.DeviceServiceClient.
+// The Notify method delegates to NotifyFunc if set; all other methods return unimplemented errors.
+type testDeviceClient struct {
+	NotifyFunc    func(context.Context, *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error)
+	notifyCounter atomic.Uint64
+}
+
+func (c *testDeviceClient) unimplemented(method string) error {
+	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("%s not implemented", method))
+}
+
+func (c *testDeviceClient) GetById(
+	context.Context,
+	*connect.Request[devicev1.GetByIdRequest],
+) (*connect.Response[devicev1.GetByIdResponse], error) {
+	return nil, c.unimplemented("GetById")
+}
+
+func (c *testDeviceClient) GetBySessionId(
+	context.Context,
+	*connect.Request[devicev1.GetBySessionIdRequest],
+) (*connect.Response[devicev1.GetBySessionIdResponse], error) {
+	return nil, c.unimplemented("GetBySessionId")
+}
+
+func (c *testDeviceClient) Search(
+	context.Context,
+	*connect.Request[devicev1.SearchRequest],
+) (*connect.ServerStreamForClient[devicev1.SearchResponse], error) {
+	return nil, errors.New("no devices found")
+}
+
+func (c *testDeviceClient) Create(
+	context.Context,
+	*connect.Request[devicev1.CreateRequest],
+) (*connect.Response[devicev1.CreateResponse], error) {
+	return nil, c.unimplemented("Create")
+}
+
+func (c *testDeviceClient) Update(
+	context.Context,
+	*connect.Request[devicev1.UpdateRequest],
+) (*connect.Response[devicev1.UpdateResponse], error) {
+	return nil, c.unimplemented("Update")
+}
+
+func (c *testDeviceClient) Link(
+	context.Context,
+	*connect.Request[devicev1.LinkRequest],
+) (*connect.Response[devicev1.LinkResponse], error) {
+	return nil, c.unimplemented("Link")
+}
+
+func (c *testDeviceClient) Remove(
+	context.Context,
+	*connect.Request[devicev1.RemoveRequest],
+) (*connect.Response[devicev1.RemoveResponse], error) {
+	return nil, c.unimplemented("Remove")
+}
+
+func (c *testDeviceClient) Log(
+	context.Context,
+	*connect.Request[devicev1.LogRequest],
+) (*connect.Response[devicev1.LogResponse], error) {
+	return nil, c.unimplemented("Log")
+}
+
+func (c *testDeviceClient) ListLogs(
+	context.Context,
+	*connect.Request[devicev1.ListLogsRequest],
+) (*connect.ServerStreamForClient[devicev1.ListLogsResponse], error) {
+	return nil, c.unimplemented("ListLogs")
+}
+
+func (c *testDeviceClient) AddKey(
+	context.Context,
+	*connect.Request[devicev1.AddKeyRequest],
+) (*connect.Response[devicev1.AddKeyResponse], error) {
+	return nil, c.unimplemented("AddKey")
+}
+
+func (c *testDeviceClient) RemoveKey(
+	context.Context,
+	*connect.Request[devicev1.RemoveKeyRequest],
+) (*connect.Response[devicev1.RemoveKeyResponse], error) {
+	return nil, c.unimplemented("RemoveKey")
+}
+
+func (c *testDeviceClient) SearchKey(
+	context.Context,
+	*connect.Request[devicev1.SearchKeyRequest],
+) (*connect.Response[devicev1.SearchKeyResponse], error) {
+	return nil, c.unimplemented("SearchKey")
+}
+
+func (c *testDeviceClient) RegisterKey(
+	context.Context,
+	*connect.Request[devicev1.RegisterKeyRequest],
+) (*connect.Response[devicev1.RegisterKeyResponse], error) {
+	return nil, c.unimplemented("RegisterKey")
+}
+
+func (c *testDeviceClient) DeRegisterKey(
+	context.Context,
+	*connect.Request[devicev1.DeRegisterKeyRequest],
+) (*connect.Response[devicev1.DeRegisterKeyResponse], error) {
+	return nil, c.unimplemented("DeRegisterKey")
+}
+
+func (c *testDeviceClient) GetTurnCredentials(
+	context.Context,
+	*connect.Request[devicev1.GetTurnCredentialsRequest],
+) (*connect.Response[devicev1.GetTurnCredentialsResponse], error) {
+	return nil, c.unimplemented("GetTurnCredentials")
+}
+
+func (c *testDeviceClient) Notify(
+	ctx context.Context,
+	req *connect.Request[devicev1.NotifyRequest],
+) (*connect.Response[devicev1.NotifyResponse], error) {
+	c.notifyCounter.Add(1)
+	if c.NotifyFunc != nil {
+		return c.NotifyFunc(ctx, req)
+	}
+	return nil, c.unimplemented("Notify")
+}
+
+func (c *testDeviceClient) UpdatePresence(
+	context.Context,
+	*connect.Request[devicev1.UpdatePresenceRequest],
+) (*connect.Response[devicev1.UpdatePresenceResponse], error) {
+	return nil, c.unimplemented("UpdatePresence")
+}
+
 type OfflineDeliveryQueueHandlerTestSuite struct {
 	suite.Suite
-	ctrl *minimock.Controller
 }
 
 func TestOfflineDeliveryQueueHandlerTestSuite(t *testing.T) {
 	suite.Run(t, new(OfflineDeliveryQueueHandlerTestSuite))
-}
-
-func (s *OfflineDeliveryQueueHandlerTestSuite) SetupTest() {
-	s.ctrl = minimock.NewController(s.T())
 }
 
 func (s *OfflineDeliveryQueueHandlerTestSuite) createConfig() *config.ChatConfig {
@@ -70,17 +200,16 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_TextMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	// Create mock device client
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		// Verify notification content
-		require.Equal(t, deviceID, req.Msg.GetDeviceId())
-		require.Len(t, req.Msg.GetNotifications(), 1)
-		require.Equal(t, "Hello, World!", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	// Create stub device client
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			// Verify notification content
+			require.Equal(t, deviceID, req.Msg.GetDeviceId())
+			require.Len(t, req.Msg.GetNotifications(), 1)
+			require.Equal(t, "Hello, World!", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -104,14 +233,13 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_AttachmentMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		// Attachment with caption should use caption text
-		require.Equal(t, "Check out this photo", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			// Attachment with caption should use caption text
+			require.Equal(t, "Check out this photo", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -140,14 +268,13 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_AttachmentWithoutCapti
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		// Attachment without caption should have generic message
-		require.Equal(t, "Sent an attachment", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			// Attachment without caption should have generic message
+			require.Equal(t, "Sent an attachment", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -175,13 +302,12 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_ReactionMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		require.Equal(t, "Reacted with 👍", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			require.Equal(t, "Reacted with 👍", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -209,13 +335,12 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_CallMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		require.Equal(t, "Started a call", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			require.Equal(t, "Started a call", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -242,13 +367,12 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_EncryptedMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		require.Equal(t, "Sent an encrypted message", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			require.Equal(t, "Sent an encrypted message", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -275,15 +399,14 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_ModerationMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		require.Equal(t,
-			"This message was removed for violating community guidelines",
-			req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			require.Equal(t,
+				"This message was removed for violating community guidelines",
+				req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -309,13 +432,12 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_MotionMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		require.Equal(t, "Created a motion", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			require.Equal(t, "Created a motion", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -342,13 +464,12 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_VoteMessage() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		require.Equal(t, "Voted", req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			require.Equal(t, "Voted", req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -380,7 +501,7 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_EmptyProfileID() {
 	cfg := s.createConfig()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
+	deviceCli := &testDeviceClient{}
 	// Notify should NOT be called when profile ID is empty
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
@@ -413,7 +534,7 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_EmptyProfileID() {
 	// Should succeed but skip notification
 	require.NoError(t, err)
 	// Verify Notify was never called
-	require.Equal(t, uint64(0), deviceCli.NotifyAfterCounter())
+	require.Equal(t, uint64(0), deviceCli.notifyCounter.Load())
 }
 
 func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_MalformedPayload() {
@@ -421,7 +542,7 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_MalformedPayload() {
 	ctx := context.Background()
 
 	cfg := s.createConfig()
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
+	deviceCli := &testDeviceClient{}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -441,14 +562,13 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_NilPayload() {
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		// With nil payload, body should be empty
-		require.Empty(t, req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			// With nil payload, body should be empty
+			require.Empty(t, req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
@@ -483,14 +603,13 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_UnspecifiedPayloadType
 	profileID := util.IDString()
 	deviceID := util.IDString()
 
-	deviceCli := devicemocks.NewDeviceServiceClientMock(s.ctrl)
-	deviceCli.NotifyMock.Set(func(
-		_ context.Context, req *connect.Request[devicev1.NotifyRequest],
-	) (*connect.Response[devicev1.NotifyResponse], error) {
-		// Unspecified type should have empty body
-		require.Empty(t, req.Msg.GetNotifications()[0].GetBody())
-		return connect.NewResponse(&devicev1.NotifyResponse{}), nil
-	})
+	deviceCli := &testDeviceClient{
+		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+			// Unspecified type should have empty body
+			require.Empty(t, req.Msg.GetNotifications()[0].GetBody())
+			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		},
+	}
 
 	handler := queues.NewOfflineDeliveryQueueHandler(cfg, nil, deviceCli, nil)
 
