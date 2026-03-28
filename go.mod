@@ -7,7 +7,7 @@ toolchain go1.26.1
 require (
 	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.1-20260302135025-ade2cc8115e6.2
 	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260302135025-ade2cc8115e6.1
-	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260219054105-fe125014d75c.1
+	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260325040325-9771112f2289.1
 	buf.build/gen/go/antinvestor/device/connectrpc/go v1.19.1-20260221033317-1a8e101ef7c6.2
 	buf.build/gen/go/antinvestor/device/protocolbuffers/go v1.36.11-20260221033317-1a8e101ef7c6.1
 	buf.build/gen/go/antinvestor/notification/connectrpc/go v1.19.1-20260219061917-db3557eecaba.2
@@ -16,7 +16,7 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.11-20260219062039-499f582dea7e.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
-	github.com/antinvestor/common v1.2.1
+	github.com/antinvestor/common v1.3.0
 	github.com/pitabwire/frame v1.83.0
 	github.com/pitabwire/util v0.7.0
 	github.com/stretchr/testify v1.11.1
