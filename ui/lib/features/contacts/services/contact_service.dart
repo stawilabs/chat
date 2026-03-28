@@ -20,15 +20,20 @@ final contactPermissionGrantedProvider = FutureProvider<bool>((ref) async {
 
 class ContactService {
   Future<List<fc.Contact>> getContacts() async {
-    final status = await fc.FlutterContacts.permissions.request(fc.PermissionType.read);
-    if (status == fc.PermissionStatus.granted || status == fc.PermissionStatus.limited) {
-      return fc.FlutterContacts.getAll(properties: {
-        fc.ContactProperty.name,
-        fc.ContactProperty.phone,
-        fc.ContactProperty.email,
-        fc.ContactProperty.organization,
-        fc.ContactProperty.photoThumbnail,
-      });
+    final status = await fc.FlutterContacts.permissions.request(
+      fc.PermissionType.read,
+    );
+    if (status == fc.PermissionStatus.granted ||
+        status == fc.PermissionStatus.limited) {
+      return fc.FlutterContacts.getAll(
+        properties: {
+          fc.ContactProperty.name,
+          fc.ContactProperty.phone,
+          fc.ContactProperty.email,
+          fc.ContactProperty.organization,
+          fc.ContactProperty.photoThumbnail,
+        },
+      );
     }
     return [];
   }

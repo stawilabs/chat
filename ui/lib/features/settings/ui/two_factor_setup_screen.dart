@@ -349,10 +349,7 @@ class _TwoFactorSetupScreenState extends ConsumerState<TwoFactorSetupScreen> {
               border: Border.all(color: theme.dividerColor),
             ),
             child: _setupData != null
-                ? QrImageView(
-                    data: _setupData!.qrCodeUrl,
-                    size: 180,
-                  )
+                ? QrImageView(data: _setupData!.qrCodeUrl, size: 180)
                 : Center(
                     child: Icon(
                       Icons.qr_code_2,

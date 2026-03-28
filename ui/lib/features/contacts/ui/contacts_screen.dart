@@ -844,7 +844,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
                 return ListTile(
                   leading: (contact.photo?.thumbnail != null)
                       ? CircleAvatar(
-                          backgroundImage: MemoryImage(contact.photo!.thumbnail!),
+                          backgroundImage: MemoryImage(
+                            contact.photo!.thumbnail!,
+                          ),
                         )
                       : CircleAvatar(
                           child: Text(

@@ -60,6 +60,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Run tests and analysis
+        working-directory: ui
         run: |
           flutter analyze --no-fatal-infos
           flutter test

@@ -51,11 +51,7 @@ class RoomSubscriptionRepository {
 
       AppLogger.info(
         'Subscription profile updated successfully',
-        data: {
-          'id': id,
-          'profileId': profileId,
-          'contactId': contactId,
-        },
+        data: {'id': id, 'profileId': profileId, 'contactId': contactId},
       );
 
       return true;
@@ -74,7 +70,9 @@ class RoomSubscriptionRepository {
   ///
   /// @param profileId The profile ID to search for
   /// @return List of room subscriptions for this profile
-  Future<List<RoomSubscription>> getProfileSubscriptions(String profileId) async {
+  Future<List<RoomSubscription>> getProfileSubscriptions(
+    String profileId,
+  ) async {
     try {
       final query = _database.select(_database.roomSubscriptions)
         ..where((t) => t.profileId.equals(profileId));
@@ -95,7 +93,9 @@ class RoomSubscriptionRepository {
   ///
   /// @param roomId Optional room filter
   /// @return List of anonymous subscriptions
-  Future<List<RoomSubscription>> getAnonymousSubscriptions({String? roomId}) async {
+  Future<List<RoomSubscription>> getAnonymousSubscriptions({
+    String? roomId,
+  }) async {
     try {
       var query = _database.select(_database.roomSubscriptions)
         ..where((t) => t.profileId.isNull());
@@ -183,10 +183,7 @@ class RoomSubscriptionRepository {
       final success = deleteCount > 0;
 
       if (success) {
-        AppLogger.info(
-          'Subscription removed successfully',
-          data: {'id': id},
-        );
+        AppLogger.info('Subscription removed successfully', data: {'id': id});
       } else {
         AppLogger.warning(
           'Subscription not found for removal',
@@ -468,7 +465,10 @@ class RoomSubscriptionRepository {
   /// @param roomId The room ID
   /// @param role The role to filter by
   /// @return List of room subscriptions with the specified role
-  Future<List<RoomSubscription>> getMembersByRole(String roomId, String role) async {
+  Future<List<RoomSubscription>> getMembersByRole(
+    String roomId,
+    String role,
+  ) async {
     try {
       final query = _database.select(_database.roomSubscriptions)
         ..where(

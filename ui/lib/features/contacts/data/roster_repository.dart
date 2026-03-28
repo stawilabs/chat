@@ -747,8 +747,8 @@ class RosterRepository implements ContactSyncRepository {
   @override
   Future<bool> needsSync() async {
     try {
-      final permStatus = await flutter_contacts
-          .FlutterContacts.permissions.request(flutter_contacts.PermissionType.read);
+      final permStatus = await flutter_contacts.FlutterContacts.permissions
+          .request(flutter_contacts.PermissionType.read);
       if (permStatus != flutter_contacts.PermissionStatus.granted &&
           permStatus != flutter_contacts.PermissionStatus.limited) {
         return false;
@@ -1299,7 +1299,8 @@ class RosterRepository implements ContactSyncRepository {
         if (roster.hasContact()) {
           final detail = roster.contact.detail;
           final localContact = contactLookup[detail];
-          if (localContact != null && (localContact.displayName?.isNotEmpty ?? false)) {
+          if (localContact != null &&
+              (localContact.displayName?.isNotEmpty ?? false)) {
             localDisplayName = localContact.displayName;
           }
         }
