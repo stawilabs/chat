@@ -217,7 +217,8 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 	// This is complementary to the room-level checks in the authz middleware.
 	sd := chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")
 	procMap := permissions.BuildProcedureMap(sd)
-	functionChecker := authorizer.NewFunctionChecker(auth, "service_chat")
+	svcPerms := permissions.ForService(sd)
+	functionChecker := authorizer.NewFunctionChecker(auth, svcPerms.Namespace)
 	functionAccessInterceptor := connectInterceptors.NewFunctionAccessInterceptor(functionChecker, procMap)
 
 	defaultInterceptorList, err := connectInterceptors.DefaultList(
