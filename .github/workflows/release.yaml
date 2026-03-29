@@ -15,5 +15,7 @@ jobs:
       pub_credentials: ${{ secrets.PUB_DEV_CREDENTIALS }}
   opl-push:
     uses: antinvestor/common/.github/workflows/opl-push.yml@main
+    with:
+      opl_source: "."
     secrets:
       deploy_token: ${{ secrets.DEPLOY_REPO_TOKEN }}
