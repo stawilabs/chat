@@ -52,8 +52,8 @@ class profile_user implements Namespace {}
 
 class tenancy_access implements Namespace {
   related: {
-    granted_member: profile_user[]
-    granted_service: profile_user[]
+    member: profile_user[]
+    service: profile_user[]
   }
 }
 
