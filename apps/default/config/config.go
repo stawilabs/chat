@@ -15,11 +15,11 @@ type ChatConfig struct {
 	DeviceServiceURI                         string `envDefault:"127.0.0.1:7020" env:"DEVICE_SERVICE_URI"`
 	NotificationServiceURI                   string `envDefault:"127.0.0.1:7020" env:"NOTIFICATION_SERVICE_URI"`
 	ProfileServiceURI                        string `envDefault:"127.0.0.1:7003" env:"PROFILE_SERVICE_URI"`
-	PartitionServiceURI                      string `envDefault:"127.0.0.1:7003" env:"PARTITION_SERVICE_URI"`
+	TenancyServiceURI                        string `envDefault:"127.0.0.1:7003" env:"TENANCY_SERVICE_URI"`
 	DeviceServiceWorkloadAPITargetPath       string `envDefault:"/ns/profile/sa/service-devices" env:"DEVICE_SERVICE_WORKLOAD_API_TARGET_PATH"`
 	NotificationServiceWorkloadAPITargetPath string `envDefault:"/ns/notifications/sa/service-notification" env:"NOTIFICATION_SERVICE_WORKLOAD_API_TARGET_PATH"`
 	ProfileServiceWorkloadAPITargetPath      string `envDefault:"/ns/profile/sa/service-profile" env:"PROFILE_SERVICE_WORKLOAD_API_TARGET_PATH"`
-	PartitionServiceWorkloadAPITargetPath    string `envDefault:"/ns/auth/sa/service-tenancy" env:"PARTITION_SERVICE_WORKLOAD_API_TARGET_PATH"`
+	TenancyServiceWorkloadAPITargetPath      string `envDefault:"/ns/auth/sa/service-tenancy" env:"TENANCY_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
 	SystemAccessID string `envDefault:"c8cf0ldstmdlinc3eva0" env:"STATIC_SYSTEM_ACCESS_ID"`
 

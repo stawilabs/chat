@@ -82,7 +82,7 @@ func validChatConfig() config.ChatConfig {
 		DeviceServiceURI:              "127.0.0.1:7020",
 		NotificationServiceURI:        "127.0.0.1:7020",
 		ProfileServiceURI:             "127.0.0.1:7003",
-		PartitionServiceURI:           "127.0.0.1:7003",
+		TenancyServiceURI:             "127.0.0.1:7003",
 		SystemAccessID:                "test-access-id",
 		QueueDeviceEventDeliveryName:  "device.event.delivery",
 		QueueDeviceEventDeliveryURI:   "mem://device.event.delivery",
