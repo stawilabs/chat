@@ -98,16 +98,11 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 	eventDelivery := &eventsv1.Delivery{}
 	err = proto.Unmarshal(payload, eventDelivery)
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("failed to unmarshal user delivery")
+		util.Log(ctx).WithError(err).WithField("queue", dq.cfg.QueueDeviceEventDeliveryName).
+			Error("failed to unmarshal delivery payload")
 		// Non-retryable: send raw payload to DLQ for diagnostics
 		if dq.dlp != nil {
-			dlqErr := dq.dlp.Publish(
-				ctx, payload, dq.cfg.QueueDeviceEventDeliveryName, err.Error(), headers)
-			if dlqErr != nil {
-				util.Log(ctx).
-					WithError(dlqErr).
-					Error("failed to publish unmarshalable message to DLQ")
-			}
+			_ = dq.dlp.Publish(ctx, payload, dq.cfg.QueueDeviceEventDeliveryName, err.Error(), headers)
 		}
 		return nil
 	}
@@ -138,7 +133,6 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		Count: DeviceSearchPageSize,
 	}))
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("failed to query user devices")
 		// Retryable: increment retry count and republish
 		return RetryOrDeadLetter(
 			ctx,
@@ -153,10 +147,9 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 
 	for response.Receive() {
 		deviceErr := response.Err()
-		if deviceErr != nil {
-			if !errors.Is(deviceErr, io.EOF) {
-				util.Log(ctx).WithError(deviceErr).Error("failed to receive device search stream")
-			}
+		if deviceErr != nil && !errors.Is(deviceErr, io.EOF) {
+			util.Log(ctx).WithError(deviceErr).WithField("profile_id", profileID).
+				Error("failed to receive device search stream")
 		}
 
 		resp := response.Msg()

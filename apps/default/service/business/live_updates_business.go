@@ -117,7 +117,8 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 
 	emitErr := cb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &typingEvent)
 	if emitErr != nil {
-		util.Log(ctx).WithError(emitErr).Error("failed to emit typing events to subscriptions")
+		util.Log(ctx).WithError(emitErr).WithField("room_id", roomID).
+			Error("failed to emit typing event")
 		return emitErr
 	}
 
@@ -170,7 +171,8 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 
 		emitErr := cb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &receiptEvents)
 		if emitErr != nil {
-			util.Log(ctx).WithError(emitErr).Error("failed to emit read marker to subscriptions")
+			util.Log(ctx).WithError(emitErr).WithField("room_id", roomID).
+				Error("failed to emit delivery receipt event")
 			return emitErr
 		}
 	}
@@ -239,7 +241,8 @@ func (cb *connectBusiness) UpdateReadMarker(
 
 	emitErr := cb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &readEvents)
 	if emitErr != nil {
-		util.Log(ctx).WithError(emitErr).Error("failed to emit read marker to subscriptions")
+		util.Log(ctx).WithError(emitErr).WithField("room_id", roomID).
+			Error("failed to emit read marker event")
 		return emitErr
 	}
 	return nil

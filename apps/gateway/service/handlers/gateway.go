@@ -60,19 +60,13 @@ func (gs *GatewayServer) Stream(
 	gs.svc.Log(ctx).WithFields(map[string]any{
 		"profile_id": profileID,
 		"device_id":  deviceID,
-	}).Info("New device connection request")
+	}).Debug("new device connection request")
 
 	// Create stream wrapper
 	streamWrapper := &deviceStreamImpl{stream: stream}
 
 	// Handle the connection through the connection manager
-	err := gs.cm.HandleConnection(ctx, profileID, deviceID, streamWrapper)
-	if err != nil {
-		gs.svc.Log(ctx).WithError(err).Error("connection ended with error")
-		return err
-	}
-
-	return nil
+	return gs.cm.HandleConnection(ctx, profileID, deviceID, streamWrapper)
 }
 
 // deviceStreamImpl wraps connect.BidiStream to implement business.DeviceStream.

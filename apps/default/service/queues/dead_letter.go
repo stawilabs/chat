@@ -58,16 +58,16 @@ func (dlp *DeadLetterPublisher) Publish(
 	dlqHeaders[internal.HeaderDLQErrorMessage] = errMsg
 
 	if pubErr := topic.Publish(ctx, msg, dlqHeaders); pubErr != nil {
-		util.Log(ctx).WithError(pubErr).
-			WithField("original_queue", originalQueue).
-			Error("failed to publish to dead-letter queue")
+		util.Log(ctx).WithError(pubErr).WithFields(map[string]any{
+			"original_queue": originalQueue,
+		}).Error("failed to publish to dead-letter queue")
 		return pubErr
 	}
 
-	util.Log(ctx).
-		WithField("original_queue", originalQueue).
-		WithField("error", errMsg).
-		Warn("delivery moved to dead-letter queue after max retries exceeded")
+	util.Log(ctx).WithFields(map[string]any{
+		"original_queue": originalQueue,
+		"error":          errMsg,
+	}).Warn("delivery moved to dead-letter queue after max retries exceeded")
 
 	return nil
 }
@@ -92,12 +92,14 @@ func RetryOrDeadLetter(
 	// Republish to the same queue for retry
 	topic, err := qMan.GetPublisher(queueName)
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("failed to get publisher for retry")
+		util.Log(ctx).WithError(err).WithField("queue_name", queueName).
+			Error("failed to get publisher for retry")
 		return err
 	}
 
 	if pubErr := topic.Publish(ctx, delivery, headers); pubErr != nil {
-		util.Log(ctx).WithError(pubErr).Error("failed to republish for retry")
+		util.Log(ctx).WithError(pubErr).WithField("queue_name", queueName).
+			Error("failed to republish for retry")
 		return pubErr
 	}
 

@@ -78,7 +78,6 @@ func (dq *GatewayEventsQueueHandler) toPayloadToEventData(
 	eventDelivery := &eventsv1.Delivery{}
 	err := proto.Unmarshal(payload, eventDelivery)
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("Failed to parse user delivery message")
 		return nil, err
 	}
 

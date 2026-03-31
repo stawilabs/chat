@@ -56,16 +56,11 @@ func (dq *offlineDeliveryQueueHandler) Handle(
 	evtMsg := &eventsv1.Delivery{}
 	err = proto.Unmarshal(payload, evtMsg)
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("failed to unmarshal user delivery")
+		util.Log(ctx).WithError(err).WithField("queue", dq.cfg.QueueOfflineEventDeliveryName).
+			Error("failed to unmarshal delivery payload")
 		// Non-retryable: send raw payload to DLQ for diagnostics
 		if dq.dlp != nil {
-			dlqErr := dq.dlp.Publish(
-				ctx, payload, dq.cfg.QueueOfflineEventDeliveryName, err.Error(), headers)
-			if dlqErr != nil {
-				util.Log(ctx).
-					WithError(dlqErr).
-					Error("failed to publish unmarshalable message to DLQ")
-			}
+			_ = dq.dlp.Publish(ctx, payload, dq.cfg.QueueOfflineEventDeliveryName, err.Error(), headers)
 		}
 		return nil
 	}

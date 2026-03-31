@@ -94,11 +94,11 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 				role,
 			)
 			if authzErr != nil {
-				util.Log(ctx).WithError(authzErr).
-					WithField("room_id", action.GetRoomId()).
-					WithField("subscription_id", subscription.GetSubscriptionId()).
-					WithField("role", role).
-					Warn("failed to sync authorization tuple for new room member")
+				util.Log(ctx).WithError(authzErr).WithFields(map[string]any{
+					"room_id":         action.GetRoomId(),
+					"subscription_id": subscription.GetSubscriptionId(),
+					"role":            role,
+				}).Warn("failed to sync authorization tuple for new room member")
 				authzErrors = append(authzErrors, authzErr)
 				targetFailed = true
 			}

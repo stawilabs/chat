@@ -219,7 +219,6 @@ func (cm *connectionManager) processLiveRequest(
 
 	source, err := internal.AuthContactLink(ctx)
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("Failed to get authenticated contact link")
 		return fmt.Errorf("failed to get contact link: %w", err)
 	}
 
@@ -231,17 +230,16 @@ func (cm *connectionManager) processLiveRequest(
 
 	// Handle any errors from the live call
 	if err != nil {
-		errMsg := "Failed to process live request"
-		util.Log(ctx).WithError(err).WithField("command_type", fmt.Sprintf("%T", command.GetState())).Error(errMsg)
-		return fmt.Errorf("%s: %w", errMsg, err)
+		return fmt.Errorf("failed to process live request: %w", err)
 	}
 
 	clErr := resp.Msg.GetError()
 	if clErr != nil {
-		util.Log(ctx).
-			WithField("code", clErr.GetCode()).
-			WithField("message", clErr.GetMessage()).
-			Error("live request error")
+		util.Log(ctx).WithFields(map[string]any{
+			"code":         clErr.GetCode(),
+			"message":      clErr.GetMessage(),
+			"command_type": fmt.Sprintf("%T", command.GetState()),
+		}).Warn("live request returned error")
 	}
 
 	return nil

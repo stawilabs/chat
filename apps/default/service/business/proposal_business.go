@@ -79,9 +79,10 @@ func (rpm *roomProposalManagement) Approve(
 	// Execute the proposed change
 	if execErr := rpm.executeProposal(ctx, proposal, approvedBy); execErr != nil {
 		util.Log(ctx).WithError(execErr).
-			WithField("proposal_id", proposalID).
-			WithField("scope_id", scopeID).
-			Error("failed to execute approved proposal")
+			WithFields(map[string]any{
+				"proposal_id": proposalID,
+				"scope_id":    scopeID,
+			}).Error("failed to execute approved proposal")
 		return fmt.Errorf("failed to execute proposal: %w", execErr)
 	}
 

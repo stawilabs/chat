@@ -154,15 +154,15 @@ func (rb *roomBusiness) CreateRoom(
 
 		// Partial failure: some members succeeded (including at least the owner).
 		// Return the room with a warning about the failed members.
-		util.Log(ctx).WithField("room_id", createdRoom.GetID()).
-			WithField("failed", partErr.Failed).
-			WithField("succeeded", partErr.Succeeded).
-			Warn("partial failure adding members during room creation")
+		util.Log(ctx).WithFields(map[string]any{
+			"room_id":   createdRoom.GetID(),
+			"failed":    partErr.Failed,
+			"succeeded": partErr.Succeeded,
+		}).Warn("partial failure adding members during room creation")
 	}
 
-	util.Log(ctx).
-		WithField("room_id", createdRoom.GetID()).
-		Debug("successfully create a room with event")
+	util.Log(ctx).WithField("room_id", createdRoom.GetID()).
+		Debug("room created")
 
 	chattel.RoomsCreatedCounter.Add(ctx, 1)
 
@@ -387,7 +387,6 @@ func (rb *roomBusiness) SearchRooms(
 	// Get rooms - need to convert JobResultPipe to slice
 	roomsPipe, err := rb.roomRepo.Search(ctx, query)
 	if err != nil {
-		util.Log(ctx).WithError(err).Error("failed to search rooms")
 		return nil, fmt.Errorf("failed to search rooms: %w", err)
 	}
 
@@ -853,10 +852,10 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 		var authzErrors []error
 		for _, subID := range subscriptionIDs {
 			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, subID); authzErr != nil {
-				util.Log(ctx).WithError(authzErr).
-					WithField("room_id", roomID).
-					WithField("subscription_id", subID).
-					Warn("failed to remove authorization tuple for removed room member")
+				util.Log(ctx).WithError(authzErr).WithFields(map[string]any{
+					"room_id":         roomID,
+					"subscription_id": subID,
+				}).Warn("failed to remove authorization tuple for removed room member")
 				authzErrors = append(authzErrors, authzErr)
 			}
 		}
@@ -903,10 +902,10 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 		var authzErrors []error
 		for _, sub := range allSubs {
 			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, sub.GetID()); authzErr != nil {
-				util.Log(ctx).WithError(authzErr).
-					WithField("room_id", roomID).
-					WithField("subscription_id", sub.GetID()).
-					Warn("failed to remove authorization tuple during room deletion")
+				util.Log(ctx).WithError(authzErr).WithFields(map[string]any{
+					"room_id":         roomID,
+					"subscription_id": sub.GetID(),
+				}).Warn("failed to remove authorization tuple during room deletion")
 				authzErrors = append(authzErrors, authzErr)
 			}
 		}

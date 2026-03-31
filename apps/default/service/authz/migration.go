@@ -81,16 +81,17 @@ func MigrateSubscriptionsToKeto(
 		Errors:         make([]MigrationError, 0),
 	}
 
-	log.WithField("total_subscriptions", len(subs)).Info("fetched subscriptions for migration")
+	log.WithField("total_subscriptions", len(subs)).Debug("fetched subscriptions for migration")
 
 	for i := 0; i < len(subs); i += cfg.BatchSize {
 		end := min(i+cfg.BatchSize, len(subs))
 		tuples := buildTuplesFromBatch(subs[i:end])
 
 		if cfg.DryRun {
-			log.WithField("batch_size", len(tuples)).
-				WithField("batch_start", i).
-				Info("dry run: would write tuples")
+			log.WithFields(map[string]any{
+				"batch_size":  len(tuples),
+				"batch_start": i,
+			}).Info("dry run: would write tuples")
 			result.Successful += len(tuples)
 			continue
 		}
@@ -99,16 +100,18 @@ func MigrateSubscriptionsToKeto(
 			return result, fmt.Errorf("failed to write tuples batch at %d: %w", i, batchErr)
 		}
 
-		log.WithField("batch_processed", end).
-			WithField("successful", result.Successful).
-			WithField("failed", result.Failed).
-			Debug("processed migration batch")
+		log.WithFields(map[string]any{
+			"batch_processed": end,
+			"successful":      result.Successful,
+			"failed":          result.Failed,
+		}).Debug("processed migration batch")
 	}
 
-	log.WithField("total_processed", result.TotalProcessed).
-		WithField("successful", result.Successful).
-		WithField("failed", result.Failed).
-		Info("completed subscription to Keto migration")
+	log.WithFields(map[string]any{
+		"total_processed": result.TotalProcessed,
+		"successful":      result.Successful,
+		"failed":          result.Failed,
+	}).Info("completed subscription to Keto migration")
 
 	return result, nil
 }
@@ -150,8 +153,7 @@ func writeBatchWithRetry(
 		return nil
 	}
 
-	util.Log(ctx).WithError(writeErr).
-		WithField("batch_size", len(tuples)).
+	util.Log(ctx).WithError(writeErr).WithField("batch_size", len(tuples)).
 		Warn("failed to write batch of tuples")
 
 	if !cfg.ContinueOnError {

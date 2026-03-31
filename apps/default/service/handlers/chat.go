@@ -171,18 +171,8 @@ func (ps *ChatServer) SendEvent(
 	// Send the events
 	acks, err := ps.MessageBusiness.SendEvents(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"auth":        authenticatedContact,
-			"event_count": len(req.Msg.GetEvent()),
-		}).Error("Failed to send events")
 		return nil, ps.toAPIError(ctx, err)
 	}
-
-	util.Log(ctx).WithFields(map[string]any{
-		"auth":        authenticatedContact,
-		"event_count": len(req.Msg.GetEvent()),
-		"ack_count":   len(acks),
-	}).Debug("Events sent successfully")
 
 	return connect.NewResponse(&chatv1.SendEventResponse{
 		Ack: acks,
@@ -230,21 +220,8 @@ func (ps *ChatServer) GetHistory(
 
 	events, err := ps.MessageBusiness.GetHistory(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"auth":    authenticatedContact,
-			"room_id": req.Msg.GetRoomId(),
-			"limit":   limit,
-		}).Error("Failed to get history")
 		return nil, ps.toAPIError(ctx, err)
 	}
-
-	// Convert to ServerEvent format with pre-allocated slice for efficiency
-	util.Log(ctx).WithFields(map[string]any{
-		"auth":        authenticatedContact,
-		"room_id":     req.Msg.GetRoomId(),
-		"event_count": len(events),
-		"limit":       limit,
-	}).Debug("History retrieved successfully")
 
 	return connect.NewResponse(&chatv1.GetHistoryResponse{
 		Events: events,
@@ -954,17 +931,12 @@ func (ps *ChatServer) processDeliveryReceiptState(
 	}
 
 	// Process delivery receipts for each event
-
 	err := ps.ConnectBusiness.UpdateDeliveryReceipt(
 		ctx,
 		receipt.GetRoomId(),
 		authenticatedContact,
 		receipt.GetEventId()...)
 	if err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"room_id":  receipt.GetRoomId(),
-			"event_id": receipt.GetEventId(),
-		}).Error("Failed to send delivery receipt")
 		return fmt.Errorf("failed to update delivery receipts for events: %w", err)
 	}
 
@@ -992,11 +964,6 @@ func (ps *ChatServer) processReadMarkerState(
 		authenticatedContact,
 		readMarker.GetUpToEventId(),
 	); err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"auth":           authenticatedContact,
-			"room_id":        readMarker.GetRoomId(),
-			"up_to_event_id": readMarker.GetUpToEventId(),
-		}).Error("Failed to mark messages as read")
 		return fmt.Errorf("failed to mark messages as read: %w", err)
 	}
 
@@ -1029,11 +996,6 @@ func (ps *ChatServer) processTypingState(
 		authenticatedContact,
 		typing.GetTyping(),
 	); err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"auth":    authenticatedContact,
-			"room_id": typing.GetRoomId(),
-			"typing":  typing.GetTyping(),
-		}).Error("Failed to send typing indicator")
 		return fmt.Errorf("failed to send typing indicator: %w", err)
 	}
 
@@ -1065,10 +1027,6 @@ func (ps *ChatServer) processPresenceState(
 
 	// Send presence update
 	if err := ps.ConnectBusiness.UpdatePresence(ctx, presenceEvent); err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"auth":   authenticatedContact,
-			"status": presence.GetStatus(),
-		}).Error("Failed to send presence update")
 		return fmt.Errorf("failed to send presence update: %w", err)
 	}
 
@@ -1097,11 +1055,6 @@ func (ps *ChatServer) processRoomEventState(
 
 	_, err := ps.MessageBusiness.SendEvents(ctx, sendReq, sender)
 	if err != nil {
-		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"sender":     sender,
-			"room_id":    roomEvent.GetRoomId(),
-			"event_type": roomEvent.GetType(),
-		}).Error("Failed to send room event")
 		return fmt.Errorf("failed to send room event: %w", err)
 	}
 

@@ -524,18 +524,14 @@ func (cm *connectionManager) HandleConnection(
 	workerWg.Add(1)
 	go func() {
 		defer workerWg.Done()
-		if err := cm.handleInboundStream(ctx, conn, stream, errChan, doneCh); err != nil {
-			util.Log(ctx).WithError(err).Error("Inbound stream handler error")
-		}
+		_ = cm.handleInboundStream(ctx, conn, stream, errChan, doneCh)
 	}()
 
 	// Outbound message handler (server -> client)
 	workerWg.Add(1)
 	go func() {
 		defer workerWg.Done()
-		if err := cm.handleOutboundStream(ctx, conn, stream, errChan, doneCh); err != nil {
-			util.Log(ctx).WithError(err).Error("Outbound stream handler error")
-		}
+		_ = cm.handleOutboundStream(ctx, conn, stream, errChan, doneCh)
 	}()
 
 	// Wait for error or context cancellation
@@ -608,7 +604,11 @@ func (cm *connectionManager) handleInboundStream(
 		// Receive with timeout
 		req, err := stream.Receive()
 		if err != nil {
-			util.Log(ctx).WithError(err).WithField("error_type", "stream.receive.error").Error("Stream receive failed")
+			util.Log(ctx).WithError(err).WithFields(map[string]any{
+				"error_type": "stream.receive.error",
+				"profile_id": conn.Metadata().ProfileID,
+				"device_id":  conn.Metadata().DeviceID,
+			}).Debug("stream receive ended")
 			select {
 			case errChan <- fmt.Errorf("%w: %w", ErrStreamReceiveFailed, err):
 			default:
@@ -692,10 +692,11 @@ func (cm *connectionManager) handleOutboundStream(
 			// Send to device
 			err := conn.Stream().Send(finalMsg)
 			if err != nil {
-				util.Log(ctx).
-					WithError(err).
-					WithField("error_type", "outbound.send.error").
-					Error("Outbound send failed")
+				util.Log(ctx).WithError(err).WithFields(map[string]any{
+					"error_type": "outbound.send.error",
+					"profile_id": conn.Metadata().ProfileID,
+					"device_id":  conn.Metadata().DeviceID,
+				}).Warn("outbound send failed")
 				// Don't ack on send failure - will retry
 				select {
 				case errChan <- err:
@@ -724,7 +725,6 @@ func (cm *connectionManager) sendConnectionAck(ctx context.Context, stream Devic
 	}
 
 	if err := stream.Send(ack); err != nil {
-		util.Log(ctx).WithError(err).WithField("error_type", "connection.ack.failed").Error("connection ACK failed")
 		return fmt.Errorf("connection ack failed: %w", err)
 	}
 	return nil
@@ -958,7 +958,7 @@ func (cm *connectionManager) performHealthCheck(ctx context.Context) {
 //	defer cm.Shutdown(context.Background())
 func (cm *connectionManager) Shutdown(ctx context.Context) error {
 	cm.shutdownOnce.Do(func() {
-		util.Log(ctx).Info("Shutting down connection manager")
+		util.Log(ctx).WithField("gateway_id", cm.gatewayID).Info("shutting down connection manager")
 		close(cm.shutdownCh) // Signal all goroutines to stop
 
 		// Wait for background tasks with timeout
@@ -970,9 +970,10 @@ func (cm *connectionManager) Shutdown(ctx context.Context) error {
 
 		select {
 		case <-done:
-			util.Log(ctx).Info("connection manager shutdown complete")
+			util.Log(ctx).Debug("connection manager shutdown complete")
 		case <-time.After(connectionAckTimeout):
-			util.Log(ctx).Warn("connection manager shutdown timed out")
+			util.Log(ctx).WithField("gateway_id", cm.gatewayID).
+				Warn("connection manager shutdown timed out")
 		}
 	})
 
@@ -989,7 +990,7 @@ func (cm *connectionManager) DrainConnections(ctx context.Context) {
 	}
 
 	util.Log(ctx).WithField("active_connections", count).
-		Info("draining connections, waiting for clients to disconnect")
+		Debug("draining connections, waiting for clients to disconnect")
 
 	ticker := time.NewTicker(drainPollInterval)
 	defer ticker.Stop()
@@ -1006,7 +1007,7 @@ func (cm *connectionManager) DrainConnections(ctx context.Context) {
 		case <-ticker.C:
 			remaining := cm.connPool.size()
 			if remaining == 0 {
-				util.Log(ctx).Info("all connections drained successfully")
+				util.Log(ctx).Debug("all connections drained successfully")
 				return
 			}
 			util.Log(ctx).WithField("remaining", remaining).
@@ -1050,19 +1051,11 @@ func (cm *connectionManager) updatePresence(
 	go func() {
 		_, err := cm.deviceCli.UpdatePresence(presenceCtx, connect.NewRequest(presenceReq))
 		if err != nil {
-			util.Log(presenceCtx).WithError(err).
-				WithFields(map[string]any{
-					"profile_id": profileID,
-					"device_id":  deviceID,
-					"status":     status.String(),
-				}).Debug("Failed to update presence status")
-			return
+			util.Log(presenceCtx).WithError(err).WithFields(map[string]any{
+				"profile_id": profileID,
+				"device_id":  deviceID,
+				"status":     status.String(),
+			}).Debug("failed to update presence status")
 		}
-
-		util.Log(presenceCtx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
-			"status":     status.String(),
-		}).Debug("Presence status updated successfully")
 	}()
 }

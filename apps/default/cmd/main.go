@@ -37,13 +37,13 @@ func runService(ctx context.Context) error {
 	// Initialize configuration
 	cfg, err := config.LoadWithOIDC[aconfig.ChatConfig](ctx)
 	if err != nil {
-		util.Log(ctx).With("err", err).Error("could not process configs")
+		util.Log(ctx).WithError(err).Error("could not process configs")
 		return err
 	}
 
 	// Validate configuration (fail-fast on invalid config)
 	if err = cfg.Validate(); err != nil {
-		util.Log(ctx).With("err", err).Error("invalid configuration")
+		util.Log(ctx).WithError(err).Error("invalid configuration")
 		return err
 	}
 
