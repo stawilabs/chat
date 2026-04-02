@@ -48,7 +48,7 @@ func main() {
 	}
 
 	if cfg.Name() == "" {
-		cfg.ServiceName = "service_chat_gateway"
+		cfg.ServiceName = "service_chat"
 	}
 
 	rawCache, err := setupCache(ctx, cfg)
@@ -151,7 +151,7 @@ func setupChatServiceClient(
 	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.ChatServiceURI,
 		WorkloadAPITargetPath: cfg.ChatServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_chat_drone"},
+		Audiences:             []string{"service_chat"},
 	}, chatv1connect.NewChatServiceClient)
 }
 
