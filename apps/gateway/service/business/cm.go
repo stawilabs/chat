@@ -709,7 +709,7 @@ func (cm *connectionManager) handleOutboundStream(
 }
 
 // sendConnectionAck sends initial connection acknowledgment to device.
-func (cm *connectionManager) sendConnectionAck(ctx context.Context, stream DeviceStream) error {
+func (cm *connectionManager) sendConnectionAck(_ context.Context, stream DeviceStream) error {
 	// Connection acknowledgment as a system event (no payload needed)
 	ack := &chatv1.StreamResponse{
 		Payload: &chatv1.StreamResponse_Message{

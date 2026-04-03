@@ -72,7 +72,7 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 }
 
 func (dq *GatewayEventsQueueHandler) toPayloadToEventData(
-	ctx context.Context,
+	_ context.Context,
 	payload []byte,
 ) (*eventsv1.Delivery, error) {
 	eventDelivery := &eventsv1.Delivery{}

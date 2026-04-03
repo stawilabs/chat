@@ -204,16 +204,6 @@ func (ps *ChatServer) GetHistory(
 		)
 	}
 
-	// Validate pagination parameters
-	const defaultLimit = int32(50) // Default limit
-	limit := defaultLimit
-	if req.Msg.GetCursor() != nil && req.Msg.GetCursor().GetLimit() > 0 {
-		limit = req.Msg.GetCursor().GetLimit()
-		if limit > MaxBatchSize {
-			limit = MaxBatchSize // Cap at max batch size
-		}
-	}
-
 	// Create timeout context for the operation
 	timeoutCtx, cancel := ps.withTimeout(ctx, updateStateTimeout)
 	defer cancel()
