@@ -243,6 +243,62 @@ void main() {
       });
     });
 
+    group('sync metadata', () {
+      test('updateSyncMetadata stores and clears cursors', () async {
+        await repository.insertRoom(
+          const Room(id: 'room-1', name: 'Test Room', type: 'group'),
+        );
+
+        await repository.updateSyncMetadata(
+          'room-1',
+          historyBackwardCursor: 'cursor-back',
+          historyForwardCursor: 'cursor-forward',
+        );
+
+        var room = await repository.getRoomById('room-1');
+        expect(room!.metadata!['historyBackwardCursor'], equals('cursor-back'));
+        expect(room.metadata!['historyForwardCursor'], equals('cursor-forward'));
+
+        await repository.updateSyncMetadata(
+          'room-1',
+          historyBackwardCursor: '',
+          historyForwardCursor: '',
+        );
+
+        room = await repository.getRoomById('room-1');
+        expect(room!.metadata!.containsKey('historyBackwardCursor'), isFalse);
+        expect(room.metadata!.containsKey('historyForwardCursor'), isFalse);
+      });
+
+      test('updateLastEventId only moves forward lexicographically', () async {
+        await repository.insertRoom(
+          const Room(id: 'room-1', name: 'Test Room', type: 'group'),
+        );
+
+        await repository.updateLastEventId('room-1', 'c-event');
+        await repository.updateLastEventId('room-1', 'a-event');
+
+        final room = await repository.getRoomById('room-1');
+        expect(room!.lastEventId, equals('c-event'));
+      });
+
+      test('incrementUnreadCount adds one to existing unread count', () async {
+        await repository.insertRoom(
+          const Room(
+            id: 'room-1',
+            name: 'Test Room',
+            type: 'group',
+            unreadCount: 2,
+          ),
+        );
+
+        await repository.incrementUnreadCount('room-1');
+
+        final room = await repository.getRoomById('room-1');
+        expect(room!.unreadCount, equals(3));
+      });
+    });
+
     group('getRoomsWithLastMessage', () {
       test('returns empty list when no rooms', () async {
         final rooms = await repository.getRoomsWithLastMessage();

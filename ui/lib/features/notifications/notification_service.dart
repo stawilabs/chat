@@ -285,8 +285,9 @@ class NotificationService {
     final settingsAsync = _ref.read(settingsProvider);
     final settings = settingsAsync.value ?? {};
     final messageNotificationsEnabled =
-        settings['message_notifications'] ?? true;
-    final groupNotificationsEnabled = settings['group_notifications'] ?? true;
+        settings['message_notifications'] as bool? ?? true;
+    final groupNotificationsEnabled =
+        settings['group_notifications'] as bool? ?? true;
 
     if (!messageNotificationsEnabled) {
       AppLogger.debug(

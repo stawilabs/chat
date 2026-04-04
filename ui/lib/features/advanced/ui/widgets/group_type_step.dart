@@ -34,34 +34,40 @@ class GroupTypeStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        ...GroupType.values.map(
-          (type) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: RadioListTile<GroupType>(
-              value: type,
-              groupValue: selected,
-              onChanged: (v) {
-                if (v != null) onChanged(v);
-              },
-              title: Text(type.displayName),
-              subtitle: Text(
-                type.description,
-                style: theme.textTheme.bodySmall,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: selected == type
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outlineVariant,
+        RadioGroup<GroupType>(
+          groupValue: selected,
+          onChanged: (value) {
+            if (value != null) {
+              onChanged(value);
+            }
+          },
+          child: Column(
+            children: GroupType.values.map(
+              (type) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: RadioListTile<GroupType>(
+                  value: type,
+                  title: Text(type.displayName),
+                  subtitle: Text(
+                    type.description,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: selected == type
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant,
+                    ),
+                  ),
+                  selected: selected == type,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                 ),
               ),
-              selected: selected == type,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
-            ),
+            ).toList(),
           ),
         ),
       ],

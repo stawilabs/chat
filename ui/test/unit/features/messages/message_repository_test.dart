@@ -252,6 +252,124 @@ void main() {
       });
     });
 
+    group('sync helpers', () {
+      test('getOldestMessageId returns earliest message id', () async {
+        await createTestRoom('room-1');
+
+        await repository.insertMessage(
+          const RoomEvent(
+            id: 'c-event',
+            roomId: 'room-1',
+            senderId: 'sender-1',
+            type: RoomEventType.text,
+            content: {'text': 'third'},
+            createdAt: 3000,
+          ),
+        );
+        await repository.insertMessage(
+          const RoomEvent(
+            id: 'a-event',
+            roomId: 'room-1',
+            senderId: 'sender-1',
+            type: RoomEventType.text,
+            content: {'text': 'first'},
+            createdAt: 1000,
+          ),
+        );
+
+        final oldestId = await repository.getOldestMessageId('room-1');
+        expect(oldestId, equals('a-event'));
+      });
+
+      test('getIncomingEventIdsUpTo returns non-reader events up to cursor', () async {
+        await createTestRoom('room-1');
+
+        await repository.insertMessage(
+          const RoomEvent(
+            id: '01a',
+            roomId: 'room-1',
+            senderId: 'reader-sub',
+            type: RoomEventType.text,
+            content: {'text': 'own'},
+            createdAt: 1000,
+          ),
+        );
+        await repository.insertMessage(
+          const RoomEvent(
+            id: '01b',
+            roomId: 'room-1',
+            senderId: 'sender-sub',
+            type: RoomEventType.text,
+            content: {'text': 'other'},
+            createdAt: 2000,
+          ),
+        );
+        await repository.insertMessage(
+          const RoomEvent(
+            id: '01c',
+            roomId: 'room-1',
+            senderId: 'sender-sub',
+            type: RoomEventType.text,
+            content: {'text': 'other 2'},
+            createdAt: 3000,
+          ),
+        );
+
+        final ids = await repository.getIncomingEventIdsUpTo(
+          'room-1',
+          upToEventId: '01b',
+          excludingSenderId: 'reader-sub',
+        );
+
+        expect(ids, equals(['01b']));
+      });
+
+      test('getLatestIncomingUnreadMessageId returns latest unread incoming event', () async {
+        await createTestRoom('room-1');
+
+        await repository.insertMessage(
+          const RoomEvent(
+            id: 'read-event',
+            roomId: 'room-1',
+            senderId: 'sender-sub',
+            type: RoomEventType.text,
+            content: {'text': 'read'},
+            status: EventStatus.read,
+            createdAt: 1000,
+          ),
+        );
+        await repository.insertMessage(
+          const RoomEvent(
+            id: 'latest-unread',
+            roomId: 'room-1',
+            senderId: 'sender-sub',
+            type: RoomEventType.text,
+            content: {'text': 'latest'},
+            status: EventStatus.delivered,
+            createdAt: 2000,
+          ),
+        );
+        await repository.insertMessage(
+          const RoomEvent(
+            id: 'self-message',
+            roomId: 'room-1',
+            senderId: 'current-sub',
+            type: RoomEventType.text,
+            content: {'text': 'self'},
+            status: EventStatus.delivered,
+            createdAt: 3000,
+          ),
+        );
+
+        final latestId = await repository.getLatestIncomingUnreadMessageId(
+          'room-1',
+          excludingSenderId: 'current-sub',
+        );
+
+        expect(latestId, equals('latest-unread'));
+      });
+    });
+
     group('getOldestMessageTimestamp', () {
       test('returns null for room with no messages', () async {
         await createTestRoom('empty-room');

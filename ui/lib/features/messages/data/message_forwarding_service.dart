@@ -59,8 +59,13 @@ class MessageForwardingService {
     required domain.RoomEvent originalEvent,
     required List<String> destinationRoomIds,
   }) async {
+    final effectiveDestinationRoomIds =
+        destinationRoomIds.length > maxForwardDestinations
+        ? destinationRoomIds.take(maxForwardDestinations).toList()
+        : destinationRoomIds;
+
     // Validate destinations
-    if (destinationRoomIds.isEmpty) {
+    if (effectiveDestinationRoomIds.isEmpty) {
       AppLogger.warning('No destinations provided for forward');
       return [];
     }
@@ -73,10 +78,6 @@ class MessageForwardingService {
           'max': maxForwardDestinations,
         },
       );
-      // Take only first maxForwardDestinations
-      destinationRoomIds = destinationRoomIds
-          .take(maxForwardDestinations)
-          .toList();
     }
 
     // Check if message can be forwarded
@@ -89,7 +90,7 @@ class MessageForwardingService {
           'forwardRestricted': originalEvent.forwardRestricted,
         },
       );
-      return destinationRoomIds
+      return effectiveDestinationRoomIds
           .map(
             (roomId) => ForwardResult(
               success: false,
@@ -106,7 +107,7 @@ class MessageForwardingService {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     // Forward to each destination
-    for (final destinationRoomId in destinationRoomIds) {
+    for (final destinationRoomId in effectiveDestinationRoomIds) {
       try {
         // Get subscription ID for the destination room
         final senderId = await _getSubscriptionIdForRoom(destinationRoomId);

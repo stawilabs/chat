@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
 import 'package:antinvestor_api_common/antinvestor_api_common.dart'
     as common_types;
+import 'package:drift/drift.dart' show Value;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import '../../features/messages/data/message_providers.dart';
 import '../../features/messages/data/message_repository.dart';
 import '../../features/messages/data/read_receipt_repository.dart';
 import '../../features/messages/domain/room_event.dart' as domain;
+import '../../features/profile/domain/user_status.dart';
 import '../../features/rooms/data/room_repository.dart';
 import '../../features/rooms/data/room_subscription_repository.dart';
 import '../../features/rooms/data/room_subscription_service.dart';
@@ -26,6 +28,8 @@ import '../files/files_config_service.dart';
 import '../logging/app_logger.dart';
 import '../networking/api_config.dart';
 import '../networking/client.dart';
+import '../settings/settings_service.dart';
+import 'chat_event_codec.dart';
 import 'pending_job.dart' as domain_job;
 import 'pending_job_repository.dart';
 import 'sync_health_monitor.dart';
@@ -76,9 +80,11 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
   final coordinator = ref.watch(tokenRefreshCoordinatorProvider);
   final roomSyncManager = ref.watch(roomSyncManagerProvider);
   final healthMonitor = ref.watch(syncHealthMonitorProvider);
+  final settingsService = ref.watch(settingsServiceProvider);
 
   // Initialize encryption service
   await encryptionService.initialize();
+  await settingsService.initialize();
 
   // Start health monitoring
   healthMonitor.start();
@@ -95,6 +101,7 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
     ref.watch(readReceiptRepositoryProvider),
     roomSyncManager,
     RoomRepository(AppDatabase.instance),
+    settingsService: settingsService,
     healthMonitor: healthMonitor,
     onTokenRefresh: () async {
       // Delegate ALL token refresh logic to the coordinator
@@ -191,9 +198,11 @@ class SyncEngine with WidgetsBindingObserver {
     this._readReceiptRepo,
     this._roomSyncManager,
     this._roomRepository, {
+    required SettingsService settingsService,
     TokenRefreshCallback? onTokenRefresh,
     SyncHealthMonitor? healthMonitor,
-  }) : _onTokenRefresh = onTokenRefresh,
+  }) : _settingsService = settingsService,
+       _onTokenRefresh = onTokenRefresh,
        _healthMonitor = healthMonitor;
 
   final pb.GatewayServiceClient _gatewayClient;
@@ -207,6 +216,7 @@ class SyncEngine with WidgetsBindingObserver {
   final ReadReceiptRepository _readReceiptRepo;
   final RoomSyncManager _roomSyncManager;
   final RoomRepository _roomRepository;
+  final SettingsService _settingsService;
   final TokenRefreshCallback? _onTokenRefresh;
   final SyncHealthMonitor? _healthMonitor;
 
@@ -236,7 +246,7 @@ class SyncEngine with WidgetsBindingObserver {
 
   // Configuration
   static const _maxAuthErrors = 3; // Max auth errors before giving up
-  static const _streamReadTimeout = Duration(seconds: 60); // Read timeout
+  static const _resumeTokenLogPrefix = 'resume_token';
 
   final _typingEventsController = StreamController<pb.TypingEvent>.broadcast();
   Stream<pb.TypingEvent> get typingEvents => _typingEventsController.stream;
@@ -390,6 +400,7 @@ class SyncEngine with WidgetsBindingObserver {
     String roomId, {
     String? cursor,
     int limit = 50,
+    bool forward = false,
   }) async {
     try {
       // Don't pass manual headers - let the interceptor handle authorization
@@ -398,7 +409,7 @@ class SyncEngine with WidgetsBindingObserver {
       final request = pb.GetHistoryRequest(
         roomId: roomId,
         cursor: pageCursor,
-        forward: false, // Get newer->older by default
+        forward: forward,
       );
 
       final response = await _chatClient.getHistory(request);
@@ -407,6 +418,12 @@ class SyncEngine with WidgetsBindingObserver {
       for (final roomEvent in response.events) {
         await _processPbRoomEvent(roomEvent);
       }
+
+      await _roomRepository.updateSyncMetadata(
+        roomId,
+        historyBackwardCursor: response.nextCursor,
+        historyForwardCursor: response.prevCursor,
+      );
 
       return response.events.length;
     } catch (e, stackTrace) {
@@ -469,8 +486,11 @@ class SyncEngine with WidgetsBindingObserver {
         // This stays open so we can send multiple requests (hello, typing, receipts, etc.)
         _requestController = StreamController<pb.StreamRequest>();
 
+        final resumeToken = await _loadResumeToken();
+
         // Add client capabilities for server-side feature detection
         final hello = pb.StreamHello(
+          resumeToken: resumeToken ?? '',
           capabilities: {
             'version': '1.0.0',
             'platform': 'flutter',
@@ -500,18 +520,24 @@ class SyncEngine with WidgetsBindingObserver {
         // Proactively sync rooms that need it (provisional subscriptions, etc.)
         unawaited(_performPostConnectionSync());
 
-        // Process stream events with timeout to detect stalled connections
-        await _processStreamWithTimeout(stream);
+        if (resumeToken != null && resumeToken.isNotEmpty) {
+          AppLogger.info(
+            'Sync stream connected with resume token',
+            data: {_resumeTokenLogPrefix: _truncateForLog(resumeToken)},
+          );
+        }
+
+        // Process stream events sequentially for ordered delivery.
+        await _processStream(stream);
       } catch (e, stackTrace) {
         final errorStr = e.toString().toLowerCase();
         final isAuthError = _isAuthenticationError(errorStr);
         final isNormalDisconnect = _isNormalDisconnect(errorStr);
-        final isTimeout = e is TimeoutException;
 
         // Record failure with health monitor (not for normal disconnects)
         if (!isNormalDisconnect) {
           _healthMonitor?.recordConnectionFailure(
-            isAuthError ? 'auth_error' : (isTimeout ? 'timeout' : errorStr),
+            isAuthError ? 'auth_error' : errorStr,
           );
         }
 
@@ -519,10 +545,6 @@ class SyncEngine with WidgetsBindingObserver {
         if (isNormalDisconnect) {
           // Normal server disconnection - just log as debug, will auto-reconnect
           AppLogger.debug('Sync connection closed by server, will reconnect');
-        } else if (isTimeout) {
-          AppLogger.warning(
-            'Sync connection timed out (no data for ${_streamReadTimeout.inSeconds}s), reconnecting',
-          );
         } else {
           AppLogger.error(
             'Sync connection error',
@@ -640,32 +662,8 @@ class SyncEngine with WidgetsBindingObserver {
     _connectionLock = null;
   }
 
-  /// Process stream events with a timeout to detect stalled connections
-  ///
-  /// Uses Stream.timeout() for proper timeout detection - this triggers
-  /// even when no messages arrive (unlike manual checks which only run
-  /// when messages are received).
-  Future<void> _processStreamWithTimeout(
-    Stream<pb.StreamResponse> stream,
-  ) async {
-    // Use Stream.timeout() for proper timeout detection
-    // This will throw TimeoutException if no data arrives within the timeout
-    final timedStream = stream.timeout(
-      _streamReadTimeout,
-      onTimeout: (sink) {
-        sink.addError(
-          TimeoutException(
-            'No data received for ${_streamReadTimeout.inSeconds} seconds',
-          ),
-        );
-        sink.close();
-      },
-    );
-
-    // Process messages sequentially to maintain order and prevent queue overflow
-    // Using await for ensures backpressure - we won't accept new messages
-    // until the current one is processed
-    await for (final response in timedStream) {
+  Future<void> _processStream(Stream<pb.StreamResponse> stream) async {
+    await for (final response in stream) {
       // Check if we should stop
       if (_shouldStop) {
         AppLogger.debug('Stop requested during stream processing');
@@ -729,6 +727,40 @@ class SyncEngine with WidgetsBindingObserver {
     return Duration(milliseconds: delay + jitter);
   }
 
+  Future<String?> _loadResumeToken() async {
+    final key = await _resumeTokenSettingKey();
+    final token = _settingsService.getString(key);
+    return token.isEmpty ? null : token;
+  }
+
+  Future<void> _saveResumeToken(String token) async {
+    if (token.isEmpty) return;
+    final key = await _resumeTokenSettingKey();
+    await _settingsService.setString(key, token);
+  }
+
+  Future<String> _resumeTokenSettingKey() async {
+    final profileId = await _authRepository.getCurrentProfileId();
+    final suffix = (profileId == null || profileId.isEmpty)
+        ? 'anonymous'
+        : profileId;
+    return '${SettingsKeys.streamResumeTokenPrefix}_$suffix';
+  }
+
+  Future<void> _maybePersistResumeToken(pb.StreamResponse response) async {
+    if (!response.hasMessage() || response.id.isEmpty) {
+      return;
+    }
+    await _saveResumeToken(response.id);
+  }
+
+  String _truncateForLog(String value) {
+    if (value.length <= 8) {
+      return value;
+    }
+    return value.substring(0, 8);
+  }
+
   /// Send a request through the bidirectional stream
   ///
   /// Returns true if the request was sent, false if not connected
@@ -755,6 +787,8 @@ class SyncEngine with WidgetsBindingObserver {
     final startTime = DateTime.now();
 
     try {
+      await _maybePersistResumeToken(response);
+
       // Handle different event types
       if (response.hasMessage()) {
         await _processPbRoomEvent(response.message);
@@ -763,13 +797,23 @@ class SyncEngine with WidgetsBindingObserver {
         final latencyMs = DateTime.now().difference(startTime).inMilliseconds;
         _healthMonitor?.recordMessageSuccess(latencyMs: latencyMs);
       } else if (response.hasTypingEvent()) {
-        _typingEventsController.add(response.typingEvent);
+        if (_settingsService.typingIndicatorsEnabled) {
+          _typingEventsController.add(response.typingEvent);
+        }
       } else if (response.hasPresenceEvent()) {
-        // Note: Presence events will be handled when needed
+        await _processPresenceEvent(response.presenceEvent);
       } else if (response.hasReceiptEvent()) {
         await _processReceiptEvent(response.receiptEvent);
       } else if (response.hasReadEvent()) {
-        // Note: Read marker events will be handled when needed
+        await _processReadMarker(response.readEvent);
+      } else if (response.hasError()) {
+        AppLogger.warning(
+          'Gateway stream returned server error payload',
+          data: {
+            'code': response.error.code,
+            'message': response.error.message,
+          },
+        );
       }
     } catch (e) {
       // Track message processing failure
@@ -1068,6 +1112,15 @@ class SyncEngine with WidgetsBindingObserver {
     );
 
     await _messageRepo.insertMessage(roomEvent);
+    await _roomRepository.updateLastEventId(event.roomId, event.id);
+
+    final currentSubscriptionId = await getCurrentSubscriptionId(event.roomId);
+    if (subscriptionId.isNotEmpty &&
+        currentSubscriptionId != null &&
+        subscriptionId != currentSubscriptionId &&
+        !_isCallEvent(roomEvent.type)) {
+      await _roomRepository.incrementUnreadCount(event.roomId);
+    }
 
     // Note: Server handles message forwarding to off-platform members
     // No client-side forwarding needed - server determines routing based on
@@ -1387,63 +1440,116 @@ class SyncEngine with WidgetsBindingObserver {
   }
 
   Future<void> _processReceiptEvent(pb.ReceiptEvent event) async {
-    // Update status for received read receipts
     final eventIds = event.eventId.toList();
     if (eventIds.isEmpty) return;
 
-    // Get the subscription ID of the reader
+    await _messageRepo.updateMessagesStatus(eventIds, domain.EventStatus.delivered);
+
+    AppLogger.debug(
+      'Processed delivery receipt event',
+      data: {
+        'roomId': event.roomId,
+        'eventCount': eventIds.length,
+        'subscriptionId': event.hasSubscriptionId()
+            ? _truncateForLog(event.subscriptionId)
+            : null,
+      },
+    );
+  }
+
+  Future<void> _processReadMarker(pb.ReadMarker event) async {
+    if (!_settingsService.readReceiptsEnabled || event.upToEventId.isEmpty) {
+      return;
+    }
+
     final subscriptionId = event.hasSubscriptionId()
         ? event.subscriptionId
         : null;
+    if (subscriptionId == null || subscriptionId.isEmpty) {
+      AppLogger.warning(
+        'Cannot process read marker without subscription id',
+        data: {'roomId': event.hasRoomId() ? event.roomId : null},
+      );
+      return;
+    }
 
-    // Get the room ID from one of the events (for storing receipts)
-    String? roomId;
+    var roomId = event.hasRoomId() ? event.roomId : '';
     String? readerProfileId;
 
-    if (subscriptionId != null) {
-      // Look up the profile ID from the subscription
-      final member = await _roomSubscriptionRepository.getSubscription(
-        subscriptionId,
-      );
-      if (member != null) {
-        roomId = member.roomId;
-        readerProfileId = member.profileId;
-      }
+    final member = await _roomSubscriptionRepository.getSubscription(
+      subscriptionId,
+    );
+    if (member != null) {
+      roomId = roomId.isEmpty ? member.roomId : roomId;
+      readerProfileId = member.profileId;
     }
 
-    // If we have reader info, store read receipts
-    if (roomId != null && readerProfileId != null) {
-      final readAt = DateTime.now().millisecondsSinceEpoch;
-      for (final eventId in eventIds) {
-        await _readReceiptRepo.saveReadReceipt(
-          eventId: eventId,
-          roomId: roomId,
-          profileId: readerProfileId,
-          readAt: readAt,
-        );
-      }
-
-      // Mark messages as read (since someone read them)
-      await _messageRepo.updateMessagesStatus(
-        eventIds,
-        domain.EventStatus.read,
-      );
-
-      AppLogger.debug(
-        'Processed read receipts',
+    if (roomId.isEmpty || readerProfileId == null || readerProfileId.isEmpty) {
+      AppLogger.warning(
+        'Cannot process read marker: subscription not mapped locally',
         data: {
-          'eventCount': eventIds.length,
-          'reader': readerProfileId.substring(0, 8),
+          'subscriptionId': _truncateForLog(subscriptionId),
+          'upToEventId': event.upToEventId,
         },
       );
-    } else {
-      // Cannot identify the reader - log and skip rather than
-      // incorrectly setting delivered status for a read receipt
-      AppLogger.warning(
-        'Cannot process read receipt: reader subscription not found',
-        data: {'subscriptionId': subscriptionId, 'eventCount': eventIds.length},
+      return;
+    }
+
+    final eventIds = await _messageRepo.getIncomingEventIdsUpTo(
+      roomId,
+      upToEventId: event.upToEventId,
+      excludingSenderId: subscriptionId,
+    );
+    if (eventIds.isEmpty) {
+      return;
+    }
+
+    final readAt = DateTime.now().millisecondsSinceEpoch;
+    for (final eventId in eventIds) {
+      await _readReceiptRepo.saveReadReceipt(
+        eventId: eventId,
+        roomId: roomId,
+        profileId: readerProfileId,
+        readAt: readAt,
       );
     }
+
+    await _messageRepo.updateMessagesStatus(eventIds, domain.EventStatus.read);
+
+    AppLogger.debug(
+      'Processed read marker event',
+      data: {
+        'roomId': roomId,
+        'reader': _truncateForLog(readerProfileId),
+        'eventCount': eventIds.length,
+      },
+    );
+  }
+
+  Future<void> _processPresenceEvent(pb.PresenceEvent event) async {
+    if (!event.hasSource() || !event.source.hasProfileId()) {
+      return;
+    }
+
+    final profileId = event.source.profileId;
+    final status = switch (event.status) {
+      pb.PresenceStatus.PRESENCE_STATUS_ONLINE => UserStatus.online,
+      pb.PresenceStatus.PRESENCE_STATUS_OFFLINE => UserStatus.offline,
+      _ => UserStatus.offline,
+    };
+    final lastActive = event.hasLastActive()
+        ? event.lastActive.seconds.toInt() * 1000 +
+              event.lastActive.nanos ~/ 1000000
+        : DateTime.now().millisecondsSinceEpoch;
+
+    await AppDatabase.instance.into(AppDatabase.instance.profiles).insertOnConflictUpdate(
+      ProfilesCompanion.insert(
+        id: profileId,
+        status: Value(status.value),
+        statusMessage: Value(event.statusMsg.isNotEmpty ? event.statusMsg : null),
+        statusUpdatedAt: Value(lastActive),
+      ),
+    );
   }
 
   /// Process a roomKey event containing E2EE session key data
@@ -1898,20 +2004,22 @@ class SyncEngine with WidgetsBindingObserver {
       return;
     }
 
-    // Update the role locally (already done in RoomService.changeMemberRole)
-    // The server sync can be handled via UpdateRoomSubscription API when available
-    // For now, log the role change request
+    final request = pb.UpdateSubscriptionRoleRequest(
+      roomId: roomId,
+      subscriptionId: subscriptionId,
+      roles: [newRole],
+    );
+
+    await _chatClient.updateSubscriptionRole(request);
+
     AppLogger.info(
-      'Member role change queued for sync',
+      'Member role synced to server',
       data: {
         'roomId': roomId,
         'subscriptionId': subscriptionId,
         'newRole': newRole,
       },
     );
-
-    // TODO(antinvestor): Add server API call when backend supports role changes
-    // Example: await _chatClient.updateRoomSubscription(request);
   }
 
   Future<void> _processLeaveRoom(domain_job.PendingJob job) async {
@@ -1959,57 +2067,15 @@ class SyncEngine with WidgetsBindingObserver {
       (t) => t.toString() == payload['type'],
       orElse: () => domain.RoomEventType.text,
     );
-    final protoType = _mapLocalEventTypeToProto(localType);
-
-    // Build event with payload-based content
-    final pbPayload = pb.Payload();
-    if (content['encrypted'] == true && content['ciphertext'] != null) {
-      pbPayload.encrypted = pb.EncryptedContent(
-        algorithm: content['algorithm'] as String? ?? 'megolm.v1',
-        ciphertext: base64Decode(content['ciphertext'] as String),
-        senderKeyId: content['senderKey'] as String? ?? '',
-        sessionId: content['sessionId'] as String? ?? '',
-      );
-    } else if (localType == domain.RoomEventType.text) {
-      pbPayload.text = pb.TextContent(
-        body: content['text'] as String? ?? '',
-        format: 'plain',
-      );
-    } else if (localType == domain.RoomEventType.roomKey) {
-      // Room key events are sent as JSON-encoded text for key sharing
-      pbPayload.text = pb.TextContent(
-        body: content['text'] as String? ?? '',
-        format: 'plain',
-      );
-    } else if (localType == domain.RoomEventType.image ||
-        localType == domain.RoomEventType.video ||
-        localType == domain.RoomEventType.audio ||
-        localType == domain.RoomEventType.file) {
-      final attachmentId = content['attachmentId'] as String?;
-      if (attachmentId == null || attachmentId.isEmpty) {
-        throw StateError('Missing attachmentId for media message');
-      }
-      pbPayload.attachment = pb.AttachmentContent(
-        attachmentId: attachmentId,
-        filename: content['fileName'] as String? ?? '',
-        mimeType: content['mimeType'] as String? ?? '',
-        sizeBytes: Int64(content['size'] as int? ?? 0),
-      );
-    }
-
-    final event = pb.RoomEvent(
-      id: payload['localId'] as String? ?? '',
+    final event = ChatEventCodec.buildRoomEvent(
+      eventId: payload['localId'] as String? ?? '',
       roomId: roomId,
       subscriptionId: subscriptionId,
-      type: protoType,
-      sentAt: timestamp,
-      payload: pbPayload,
+      localType: localType,
+      content: content,
+      timestamp: timestamp,
+      parentId: payload['parentId'] as String?,
     );
-
-    // Add parentId if this is a reply
-    if (payload['parentId'] != null) {
-      event.parentId = payload['parentId'] as String;
-    }
 
     final request = pb.SendEventRequest(event: [event]);
     final response = await _chatClient.sendEvent(request);
@@ -2723,6 +2789,10 @@ class SyncEngine with WidgetsBindingObserver {
   /// If subscription is not found locally, attempts to sync room members
   /// and retry before giving up.
   Future<void> sendTyping(String roomId, bool isTyping) async {
+    if (!_settingsService.typingIndicatorsEnabled) {
+      return;
+    }
+
     try {
       // Get current profile's subscription ID with sync fallback
       final subscriptionId = await getCurrentSubscriptionId(
@@ -2773,6 +2843,10 @@ class SyncEngine with WidgetsBindingObserver {
   /// If subscription is not found locally, attempts to sync room members
   /// and retry before giving up.
   Future<void> sendReadReceipts(String roomId, List<String> messageIds) async {
+    if (!_settingsService.readReceiptsEnabled || messageIds.isEmpty) {
+      return;
+    }
+
     try {
       // Get current profile's subscription ID with sync fallback
       final subscriptionId = await getCurrentSubscriptionId(
@@ -2789,10 +2863,6 @@ class SyncEngine with WidgetsBindingObserver {
         );
         return;
       }
-
-      // For read receipts, we send the latest message ID as upToEventId
-      // This marks all messages up to and including this one as read
-      if (messageIds.isEmpty) return;
 
       final latestMessageId = messageIds.last; // Assuming messages are ordered
 

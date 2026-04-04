@@ -34,26 +34,32 @@ class PeriodicityStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        ...PeriodType.values.map(
-          (type) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: RadioListTile<PeriodType>(
-              value: type,
-              groupValue: selected,
-              onChanged: (v) {
-                if (v != null) onChanged(v);
-              },
-              title: Text(type.displayName),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: selected == type
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outlineVariant,
+        RadioGroup<PeriodType>(
+          groupValue: selected,
+          onChanged: (value) {
+            if (value != null) {
+              onChanged(value);
+            }
+          },
+          child: Column(
+            children: PeriodType.values.map(
+              (type) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: RadioListTile<PeriodType>(
+                  value: type,
+                  title: Text(type.displayName),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: selected == type
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant,
+                    ),
+                  ),
+                  selected: selected == type,
                 ),
               ),
-              selected: selected == type,
-            ),
+            ).toList(),
           ),
         ),
       ],

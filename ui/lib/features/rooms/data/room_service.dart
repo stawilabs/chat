@@ -495,6 +495,7 @@ class RoomService {
     await _jobRepo.addJob(JobType.removeRoomMembers, {
       'roomId': roomId,
       'profileIds': [profileId],
+      'subscriptionIds': [subscriptionId],
       'isAdminAction': true,
     });
 

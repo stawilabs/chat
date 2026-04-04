@@ -68,6 +68,16 @@ class MessageRepository {
     return result.serverTs ?? result.createdAt;
   }
 
+  Future<String?> getOldestMessageId(String roomId) async {
+    final query = _database.select(_database.roomEvents)
+      ..where((t) => t.roomId.equals(roomId))
+      ..orderBy([(t) => OrderingTerm.asc(_effectiveTimestamp(t))])
+      ..limit(1);
+
+    final result = await query.getSingleOrNull();
+    return result?.id;
+  }
+
   /// Get total message count for a room
   Future<int> getMessageCount(String roomId) async {
     final count =
@@ -215,6 +225,47 @@ class MessageRepository {
     await (_database.update(_database.roomEvents)
           ..where((t) => t.id.isIn(messageIds)))
         .write(RoomEventsCompanion(status: Value(status.index)));
+  }
+
+  Future<List<String>> getIncomingEventIdsUpTo(
+    String roomId, {
+    required String upToEventId,
+    String? excludingSenderId,
+  }) async {
+    final query = _database.selectOnly(_database.roomEvents)
+      ..addColumns([_database.roomEvents.id])
+      ..where(_database.roomEvents.roomId.equals(roomId))
+      ..where(_database.roomEvents.id.isSmallerOrEqualValue(upToEventId));
+
+    if (excludingSenderId != null && excludingSenderId.isNotEmpty) {
+      query.where(_database.roomEvents.senderId.equals(excludingSenderId).not());
+    }
+
+    query.orderBy([OrderingTerm.asc(_database.roomEvents.id)]);
+
+    final rows = await query.get();
+    return rows
+        .map((row) => row.read(_database.roomEvents.id))
+        .whereType<String>()
+        .toList();
+  }
+
+  Future<String?> getLatestIncomingUnreadMessageId(
+    String roomId, {
+    required String excludingSenderId,
+  }) async {
+    final query = _database.select(_database.roomEvents)
+      ..where(
+        (t) =>
+            t.roomId.equals(roomId) &
+            t.senderId.equals(excludingSenderId).not() &
+            t.status.isSmallerThanValue(domain.EventStatus.read.index),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
+      ..limit(1);
+
+    final result = await query.getSingleOrNull();
+    return result?.id;
   }
 
   /// Update the server timestamp for a message (when echo provides it)

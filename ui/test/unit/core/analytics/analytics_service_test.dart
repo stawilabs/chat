@@ -9,10 +9,18 @@ import 'package:stawi/core/db/database.dart' hide AnalyticsEvent;
 ///
 /// Stores events in a list so tests can run without a real database.
 class FakeAnalyticsRepository extends AnalyticsRepository {
-  FakeAnalyticsRepository()
-    : super(AppDatabase.forTesting(NativeDatabase.memory()));
+  factory FakeAnalyticsRepository() {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    return FakeAnalyticsRepository._withDatabase(database);
+  }
+
+  FakeAnalyticsRepository._withDatabase(this._database) : super(_database);
+
+  final AppDatabase _database;
 
   final List<AnalyticsEvent> _events = [];
+
+  Future<void> close() => _database.close();
 
   @override
   Future<int> insertEvent(AnalyticsEvent event) async {
@@ -106,6 +114,11 @@ void main() {
       await analyticsService.initialize();
     });
 
+    tearDown(() async {
+      await analyticsService.close();
+      await fakeRepository.close();
+    });
+
     group('configuration', () {
       test('can be disabled via config', () {
         final service = AnalyticsService(
@@ -176,19 +189,10 @@ void main() {
     });
 
     group('user management', () {
-      // TODO(developer): These tests require platform channels for path_provider.
-      // Consider adding a test-specific constructor to AnalyticsService that
-      // skips file system access, or use integration tests instead.
-      test(
-        'setUserId updates current user',
-        skip: 'Requires platform channels for path_provider',
-        () async {
-          // Initialize to start a session
-          await analyticsService.initialize();
-          analyticsService.setUserId('user-123');
-          expect(analyticsService.currentSession?.userId, equals('user-123'));
-        },
-      );
+      test('setUserId updates current user', () {
+        analyticsService.setUserId('user-123');
+        expect(analyticsService.currentSession?.userId, equals('user-123'));
+      });
 
       test('setUserId can clear user', () {
         analyticsService.setUserId('user-123');
@@ -217,66 +221,33 @@ void main() {
       });
     });
 
-    // TODO(developer): Session management tests require platform channels for
-    // path_provider which isn't available in unit tests. Consider using
-    // integration tests or a test-specific constructor.
     group('session management', () {
-      test(
-        'tracks screen view count in session',
-        skip: 'Requires platform channels for path_provider',
-        () async {
-          // Initialize to start a session
-          await analyticsService.initialize();
-          analyticsService.trackScreenView('Screen1');
-          analyticsService.trackScreenView('Screen2');
-          expect(analyticsService.currentSession?.screenViewCount, equals(2));
-        },
-      );
+      test('tracks screen view count in session', () {
+        analyticsService.trackScreenView('Screen1');
+        analyticsService.trackScreenView('Screen2');
+        expect(analyticsService.currentSession?.screenViewCount, equals(2));
+      });
 
-      test(
-        'tracks event count in session',
-        skip: 'Requires platform channels for path_provider',
-        () async {
-          // Initialize to start a session
-          await analyticsService.initialize();
-          analyticsService.trackEvent('event1');
-          analyticsService.trackEvent('event2');
-          analyticsService.trackEvent('event3');
-          expect(analyticsService.currentSession?.eventCount, equals(3));
-        },
-      );
+      test('tracks event count in session', () {
+        analyticsService.trackEvent('event1');
+        analyticsService.trackEvent('event2');
+        analyticsService.trackEvent('event3');
+        expect(analyticsService.currentSession?.eventCount, equals(3));
+      });
 
-      test(
-        'tracks entry and exit screens',
-        skip: 'Requires platform channels for path_provider',
-        () async {
-          // Initialize to start a session
-          await analyticsService.initialize();
-          analyticsService.trackScreenView('EntryScreen');
-          analyticsService.trackScreenView('MiddleScreen');
-          analyticsService.trackScreenView('ExitScreen');
-          expect(
-            analyticsService.currentSession?.entryScreen,
-            equals('EntryScreen'),
-          );
-          expect(
-            analyticsService.currentSession?.exitScreen,
-            equals('ExitScreen'),
-          );
-        },
-      );
+      test('tracks entry and exit screens', () {
+        analyticsService.trackScreenView('EntryScreen');
+        analyticsService.trackScreenView('MiddleScreen');
+        analyticsService.trackScreenView('ExitScreen');
+        expect(analyticsService.currentSession?.entryScreen, equals('EntryScreen'));
+        expect(analyticsService.currentSession?.exitScreen, equals('ExitScreen'));
+      });
 
-      test(
-        'trackUserLogout resets session',
-        skip: 'Requires platform channels for path_provider',
-        () async {
-          // Initialize to start a session
-          await analyticsService.initialize();
-          analyticsService.trackEvent('event1');
-          analyticsService.trackUserLogout();
-          expect(analyticsService.currentSession?.eventCount, equals(0));
-        },
-      );
+      test('trackUserLogout resets session', () {
+        analyticsService.trackEvent('event1');
+        analyticsService.trackUserLogout();
+        expect(analyticsService.currentSession?.eventCount, equals(0));
+      });
     });
 
     group('setting tracking', () {

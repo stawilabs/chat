@@ -65,6 +65,9 @@ class SettingsKeys {
   // Contact Sync
   static const contactSyncInitialized = 'contact_sync_initialized';
   static const contactPermissionDenied = 'contact_permission_denied';
+
+  // Sync
+  static const streamResumeTokenPrefix = 'stream_resume_token';
 }
 
 /// Default setting values

@@ -174,6 +174,58 @@ class RoomRepository {
         .write(RoomsCompanion(metadata: Value(jsonEncode(merged))));
   }
 
+  Future<void> updateSyncMetadata(
+    String roomId, {
+    String? historyBackwardCursor,
+    String? historyForwardCursor,
+  }) async {
+    final existing = await getRoomById(roomId);
+    if (existing == null) return;
+
+    final merged = <String, dynamic>{...?existing.metadata};
+
+    if (historyBackwardCursor != null) {
+      if (historyBackwardCursor.isEmpty) {
+        merged.remove('historyBackwardCursor');
+      } else {
+        merged['historyBackwardCursor'] = historyBackwardCursor;
+      }
+    }
+
+    if (historyForwardCursor != null) {
+      if (historyForwardCursor.isEmpty) {
+        merged.remove('historyForwardCursor');
+      } else {
+        merged['historyForwardCursor'] = historyForwardCursor;
+      }
+    }
+
+    await (_database.update(_database.rooms)..where((t) => t.id.equals(roomId)))
+        .write(RoomsCompanion(metadata: Value(jsonEncode(merged))));
+  }
+
+  Future<void> updateLastEventId(String roomId, String eventId) async {
+    final existing = await getRoomById(roomId);
+    if (existing == null) return;
+
+    final currentLastEventId = existing.lastEventId;
+    if (currentLastEventId != null &&
+        currentLastEventId.isNotEmpty &&
+        currentLastEventId.compareTo(eventId) >= 0) {
+      return;
+    }
+
+    await (_database.update(_database.rooms)..where((t) => t.id.equals(roomId)))
+        .write(RoomsCompanion(lastEventId: Value(eventId)));
+  }
+
+  Future<void> incrementUnreadCount(String roomId) async {
+    await _database.customStatement(
+      'UPDATE rooms SET unread_count = unread_count + 1 WHERE id = ?',
+      [roomId],
+    );
+  }
+
   /// Mark room as deleted from server-pushed change
   Future<void> markRoomDeleted(String roomId) async {
     final existing = await getRoomById(roomId);

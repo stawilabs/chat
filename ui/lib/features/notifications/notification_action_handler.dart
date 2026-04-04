@@ -1,9 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/db/database.dart';
 import '../../core/logging/app_logger.dart';
+import '../../core/sync/sync_engine.dart';
 import '../calls/services/signaling_service.dart';
+import '../messages/data/message_repository.dart';
 import '../messages/data/message_sending_service.dart';
 import '../messages/data/read_receipt_repository.dart';
+import '../rooms/data/room_repository.dart';
 import 'rich_notification_service.dart';
 
 /// Provider for NotificationActionHandler
@@ -122,6 +126,25 @@ class NotificationActionHandler {
     try {
       final readReceiptRepository = _ref.read(readReceiptRepositoryProvider);
       await readReceiptRepository.markRoomAsRead(roomId);
+
+      final syncEngine = await _ref.read(syncEngineProvider.future);
+      final currentSubscriptionId = await syncEngine.getCurrentSubscriptionId(
+        roomId,
+        syncIfMissing: true,
+        maxRetries: 1,
+      );
+      if (currentSubscriptionId != null && currentSubscriptionId.isNotEmpty) {
+        final messageRepo = MessageRepository(AppDatabase.instance);
+        final latestUnreadId = await messageRepo.getLatestIncomingUnreadMessageId(
+          roomId,
+          excludingSenderId: currentSubscriptionId,
+        );
+        if (latestUnreadId != null) {
+          await syncEngine.sendReadReceipts(roomId, [latestUnreadId]);
+        }
+      }
+
+      await RoomRepository(AppDatabase.instance).updateUnreadCount(roomId, 0);
 
       // Cancel the notification after marking as read
       final richNotificationService = _ref.read(

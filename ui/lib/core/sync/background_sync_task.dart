@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
@@ -19,6 +20,7 @@ import '../files/files_config_service.dart';
 import '../logging/app_logger.dart';
 import '../networking/api_config.dart';
 import '../settings/settings_service.dart';
+import 'chat_event_codec.dart';
 import 'pending_job.dart' as domain_job;
 import 'pending_job_repository.dart';
 
@@ -242,14 +244,16 @@ class BackgroundSyncTask {
 
       var totalMessages = 0;
 
-      // Fetch recent messages for each room (limit to prevent long background tasks)
-      for (final room in rooms.take(10)) {
-        // Limit to 10 rooms per background sync
+      for (final room in rooms) {
         try {
+          final hasCursor = room.lastEventId != null && room.lastEventId!.isNotEmpty;
           final request = pb.GetHistoryRequest(
             roomId: room.id,
-            cursor: common.PageCursor(limit: 20), // Get last 20 messages
-            forward: false,
+            cursor: common.PageCursor(
+              limit: hasCursor ? 50 : 20,
+              page: hasCursor ? room.lastEventId : '',
+            ),
+            forward: hasCursor,
           );
 
           final response = await chatClient.getHistory(
@@ -280,6 +284,16 @@ class BackgroundSyncTask {
                   'mediaId': payload.attachment.attachmentId,
                   'contentUri': contentUrl,
                   'url': contentUrl,
+                };
+              } else if (payload.hasEncrypted()) {
+                content = {
+                  'text': '[Encrypted message]',
+                  'encrypted': true,
+                  'decrypted': false,
+                  'algorithm': payload.encrypted.algorithm,
+                  'ciphertext': base64Encode(payload.encrypted.ciphertext),
+                  'sessionId': payload.encrypted.sessionId,
+                  'senderKey': payload.encrypted.senderKeyId,
                 };
               } else if (payload.hasRoomChange()) {
                 final roomChange = payload.roomChange;
@@ -326,6 +340,10 @@ class BackgroundSyncTask {
             );
 
             await messageRepo.insertMessage(roomEvent);
+            await database.customStatement(
+              'UPDATE rooms SET last_event_id = ? WHERE id = ?',
+              [event.id, event.roomId],
+            );
             totalMessages++;
           }
         } catch (e) {
@@ -382,6 +400,7 @@ class BackgroundSyncTask {
       case domain_job.JobType.sendMediaMessage:
         await _processSendMessage(
           job,
+          database,
           chatClient,
           messageRepo,
           authHeaders,
@@ -401,7 +420,10 @@ class BackgroundSyncTask {
         await _processAddRoomMembers(job, chatClient, authHeaders);
         break;
       case domain_job.JobType.removeRoomMembers:
-        await _processRemoveRoomMembers(job, chatClient, authHeaders);
+        await _processRemoveRoomMembers(job, database, chatClient, authHeaders);
+        break;
+      case domain_job.JobType.changeMemberRole:
+        await _processChangeMemberRole(job, chatClient, authHeaders);
         break;
       case domain_job.JobType.deleteMessage:
         await _processDeleteMessage(job, chatClient, authHeaders);
@@ -619,18 +641,48 @@ class BackgroundSyncTask {
   /// Remove members from a room
   static Future<void> _processRemoveRoomMembers(
     domain_job.PendingJob job,
+    AppDatabase database,
     ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
+    final roomId = payload['roomId'] as String;
+    final explicitIds = (payload['subscriptionIds'] as List<dynamic>?)
+        ?.cast<String>();
+    final subscriptionIds = <String>[];
 
-    // Note: The API now expects subscription_id instead of profileIds
-    // For now, we'll use profileIds as subscription IDs (they should match)
-    final subscriptionIds = (payload['profileIds'] as List<dynamic>)
-        .cast<String>();
+    if (explicitIds != null && explicitIds.isNotEmpty) {
+      subscriptionIds.addAll(explicitIds);
+    } else {
+      final profileIds =
+          (payload['profileIds'] as List<dynamic>?)?.cast<String>() ?? [];
+      for (final profileId in profileIds) {
+        final rows = await database
+            .customSelect(
+              '''
+              SELECT id
+              FROM room_subscriptions
+              WHERE room_id = ? AND profile_id = ?
+              LIMIT 1
+              ''',
+              variables: [
+                Variable.withString(roomId),
+                Variable.withString(profileId),
+              ],
+            )
+            .get();
+        if (rows.isNotEmpty) {
+          subscriptionIds.add(rows.first.read<String>('id'));
+        }
+      }
+    }
+
+    if (subscriptionIds.isEmpty) {
+      throw StateError('No subscription IDs found for background removal');
+    }
 
     final request = pb.RemoveRoomSubscriptionsRequest(
-      roomId: payload['roomId'] as String,
+      roomId: roomId,
       subscriptionId: subscriptionIds,
     );
 
@@ -681,12 +733,19 @@ class BackgroundSyncTask {
   /// Send a message
   static Future<void> _processSendMessage(
     domain_job.PendingJob job,
+    AppDatabase database,
     ChatServiceClient chatClient,
     MessageRepository messageRepo,
     connect.Headers authHeaders,
     String? currentProfileId,
   ) async {
     final payload = job.payload;
+    final roomId = payload['roomId'] as String;
+    final subscriptionId = await _resolveSubscriptionId(
+      database,
+      roomId: roomId,
+      currentProfileId: currentProfileId,
+    );
 
     // Create timestamp
     final now = DateTime.now();
@@ -704,33 +763,14 @@ class BackgroundSyncTask {
       (t) => t.toString() == payload['type'],
       orElse: () => domain.RoomEventType.text,
     );
-    final protoType = _mapLocalEventTypeToProto(localType);
-
-    // Build event with payload-based content
-    final pbPayload = pb.Payload();
-    if (localType == domain.RoomEventType.text) {
-      pbPayload.text = pb.TextContent(
-        body: content['text'] as String? ?? '',
-        format: 'plain',
-      );
-    } else if (localType == domain.RoomEventType.image ||
-        localType == domain.RoomEventType.video ||
-        localType == domain.RoomEventType.audio ||
-        localType == domain.RoomEventType.file) {
-      pbPayload.attachment = pb.AttachmentContent(
-        attachmentId: content['attachmentId'] as String? ?? '',
-        filename: content['fileName'] as String? ?? '',
-        mimeType: content['mimeType'] as String? ?? '',
-        sizeBytes: fixnum.Int64(content['size'] as int? ?? 0),
-      );
-    }
-
-    final event = pb.RoomEvent(
-      id: payload['localId'] as String? ?? '',
-      roomId: payload['roomId'] as String,
-      type: protoType,
-      sentAt: timestamp,
-      payload: pbPayload,
+    final event = ChatEventCodec.buildRoomEvent(
+      eventId: payload['localId'] as String? ?? '',
+      roomId: roomId,
+      subscriptionId: subscriptionId,
+      localType: localType,
+      content: content,
+      timestamp: timestamp,
+      parentId: payload['parentId'] as String?,
     );
 
     final request = pb.SendEventRequest(event: [event]);
@@ -739,15 +779,72 @@ class BackgroundSyncTask {
     // Update local message status
     if (payload['localId'] != null && response.ack.isNotEmpty) {
       final ackEventId = response.ack.first.eventId;
-      await messageRepo.updateMessageStatus(
-        ackEventId.first,
-        domain.EventStatus.sent,
+      await messageRepo.updateMessageIdAfterAck(
+        payload['localId'] as String,
+        serverId: ackEventId.first,
+        senderId: subscriptionId,
+        status: domain.EventStatus.sent,
+        serverTs: now.millisecondsSinceEpoch,
       );
       AppLogger.debug(
         'Message sent in background',
         data: {'localId': payload['localId'], 'serverId': ackEventId},
       );
     }
+  }
+
+  static Future<void> _processChangeMemberRole(
+    domain_job.PendingJob job,
+    ChatServiceClient chatClient,
+    connect.Headers authHeaders,
+  ) async {
+    final payload = job.payload;
+    final roomId = payload['roomId'] as String?;
+    final subscriptionId = payload['subscriptionId'] as String?;
+    final newRole = payload['role'] as String?;
+
+    if (roomId == null || subscriptionId == null || newRole == null) {
+      throw StateError('Invalid changeMemberRole payload');
+    }
+
+    final request = pb.UpdateSubscriptionRoleRequest(
+      roomId: roomId,
+      subscriptionId: subscriptionId,
+      roles: [newRole],
+    );
+
+    await chatClient.updateSubscriptionRole(request, headers: authHeaders);
+  }
+
+  static Future<String> _resolveSubscriptionId(
+    AppDatabase database, {
+    required String roomId,
+    required String? currentProfileId,
+  }) async {
+    if (currentProfileId == null || currentProfileId.isEmpty) {
+      throw StateError('Current profile ID unavailable for background send');
+    }
+
+    final rows = await database
+        .customSelect(
+          '''
+          SELECT id
+          FROM room_subscriptions
+          WHERE room_id = ? AND profile_id = ?
+          LIMIT 1
+          ''',
+          variables: [
+            Variable.withString(roomId),
+            Variable.withString(currentProfileId),
+          ],
+        )
+        .get();
+
+    if (rows.isEmpty) {
+      throw StateError('Subscription not found for background send');
+    }
+
+    return rows.first.read<String>('id');
   }
 
   // Helper methods for Struct conversion (copied from SyncEngine)
@@ -782,47 +879,5 @@ class BackgroundSyncTask {
     }
 
     return value;
-  }
-
-  static pb.RoomEventType _mapLocalEventTypeToProto(domain.RoomEventType type) {
-    switch (type) {
-      case domain.RoomEventType.text:
-        return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
-      case domain.RoomEventType.image:
-      case domain.RoomEventType.video:
-      case domain.RoomEventType.audio:
-      case domain.RoomEventType.file:
-        // All media types map to MESSAGE with attachment payload
-        return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
-      case domain.RoomEventType.reaction:
-        return pb.RoomEventType.ROOM_EVENT_TYPE_REACTION;
-      case domain.RoomEventType.callOffer:
-      case domain.RoomEventType.callAnswer:
-      case domain.RoomEventType.callIce:
-      case domain.RoomEventType.callEnd:
-      case domain.RoomEventType.groupCallStart:
-      case domain.RoomEventType.groupCallJoin:
-      case domain.RoomEventType.groupCallLeave:
-      case domain.RoomEventType.groupCallEnd:
-      case domain.RoomEventType.groupCallOffer:
-      case domain.RoomEventType.groupCallAnswer:
-      case domain.RoomEventType.groupCallIce:
-      case domain.RoomEventType.groupCallMuteUpdate:
-        // All call types (1-on-1 and group) map to a single ROOM_EVENT_TYPE_CALL
-        return pb.RoomEventType.ROOM_EVENT_TYPE_CALL;
-      case domain.RoomEventType.motion:
-        return pb.RoomEventType.ROOM_EVENT_TYPE_MOTION;
-      case domain.RoomEventType.vote:
-      case domain.RoomEventType.transaction:
-      case domain.RoomEventType.groupConfig:
-        // These might not be in protobuf yet, map to MESSAGE for now
-        return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
-      case domain.RoomEventType.roomKey:
-        // Room key events are sent as messages for E2EE key exchange
-        return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
-      case domain.RoomEventType.roomChange:
-        // Room change events are system events
-        return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
-    }
   }
 }

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../core/db/database.dart' hide RoomEvent;
 import '../../../core/logging/app_logger.dart';
 import '../../../core/navigation/navigation_helper.dart';
 import '../../../core/sync/sync_engine.dart';
@@ -16,6 +17,7 @@ import '../../calls/ui/call_screen.dart';
 import '../../notifications/notification_service.dart';
 import '../../notifications/ui/notification_permission_dialog.dart';
 import '../../rooms/data/room_providers.dart';
+import '../../rooms/data/room_repository.dart';
 import '../../rooms/data/room_subscription_service.dart';
 import '../../settings/data/settings_providers.dart';
 import '../data/message_providers.dart';
@@ -173,6 +175,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (unreadIds.isNotEmpty) {
           final syncEngine = await ref.read(syncEngineProvider.future);
           await syncEngine.sendReadReceipts(widget.roomId, unreadIds);
+          await RoomRepository(AppDatabase.instance).updateUnreadCount(
+            widget.roomId,
+            0,
+          );
         }
       } catch (e) {
         // Silently fail for read receipts - they're not critical

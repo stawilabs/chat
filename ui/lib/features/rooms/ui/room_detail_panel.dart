@@ -834,7 +834,7 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
     }
   }
 
-  String _formatDateFromValue(value) {
+  String _formatDateFromValue(Object? value) {
     if (value is DateTime) return _formatDate(value);
     if (value is int) {
       return _formatDate(DateTime.fromMillisecondsSinceEpoch(value));

@@ -4,6 +4,7 @@ import 'package:antinvestor_api_common/antinvestor_api_common.dart'
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/networking/api_config.dart';
 import 'auth_service.dart';
 
 part 'auth_repository.g.dart';
@@ -102,15 +103,11 @@ class AuthRepository {
 
 @riverpod
 AuthRepository authRepository(Ref ref) {
-  // Use centralized API config for OAuth2 settings
-  const issuerUrl = 'https://oauth2.stawi.org';
-  const clientId = '9bsv0s0hijjg02qk7l1g';
-
   const storage = FlutterSecureStorage();
   final authService = AuthService(
     storage,
-    issuerUrl: issuerUrl,
-    clientId: clientId,
+    issuerUrl: ApiConfig.oauth2IssuerUrl,
+    clientId: ApiConfig.oauth2ClientId,
   );
 
   return AuthRepository(authService);

@@ -7,6 +7,7 @@ import '../../../core/db/database.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/sync/pending_job.dart';
 import '../../../core/sync/sync_engine.dart';
+import '../../rooms/data/room_repository.dart';
 import '../domain/room_event.dart' as domain;
 import 'message_repository.dart';
 
@@ -76,6 +77,7 @@ class MessageList extends _$MessageList {
   /// Returns true if more messages were loaded, false if no more available
   Future<bool> loadOlderMessages(String roomId) async {
     final repo = ref.read(messageRepositoryProvider);
+    final roomRepo = RoomRepository(AppDatabase.instance);
 
     // Get the oldest message timestamp as the cursor
     final oldestTimestamp = await repo.getOldestMessageTimestamp(roomId);
@@ -109,11 +111,23 @@ class MessageList extends _$MessageList {
     // No local messages, try to fetch from server
     try {
       final syncEngine = await ref.read(syncEngineProvider.future);
-      // Convert timestamp to cursor format (server expects timestamp in seconds)
-      final cursorTimestamp = (oldestTimestamp ~/ 1000).toString();
+      final room = await roomRepo.getRoomById(roomId);
+      final metadata = room?.metadata ?? const <String, dynamic>{};
+      final cursor =
+          metadata['historyBackwardCursor'] as String? ??
+          await repo.getOldestMessageId(roomId);
+
+      if (cursor == null || cursor.isEmpty) {
+        AppLogger.debug(
+          'No backward history cursor available for room',
+          data: {'roomId': roomId},
+        );
+        return false;
+      }
+
       final fetchedCount = await syncEngine.getHistory(
         roomId,
-        cursor: cursorTimestamp,
+        cursor: cursor,
       );
 
       if (fetchedCount > 0) {
@@ -137,6 +151,7 @@ class MessageList extends _$MessageList {
   /// Check if there are more messages to load
   Future<bool> hasMoreMessages(String roomId) async {
     final repo = ref.read(messageRepositoryProvider);
+    final roomRepo = RoomRepository(AppDatabase.instance);
     final oldestTimestamp = await repo.getOldestMessageTimestamp(roomId);
 
     if (oldestTimestamp == null) return false;
@@ -149,7 +164,15 @@ class MessageList extends _$MessageList {
     );
 
     // If we have local older messages, there are more
-    // Otherwise we don't know for sure until we try to fetch
-    return olderMessages.isNotEmpty;
+    // Otherwise consult the persisted server cursor.
+    if (olderMessages.isNotEmpty) return true;
+
+    final room = await roomRepo.getRoomById(roomId);
+    final metadata = room?.metadata ?? const <String, dynamic>{};
+    if (!metadata.containsKey('historyBackwardCursor')) {
+      return await repo.getOldestMessageId(roomId) != null;
+    }
+    final cursor = metadata['historyBackwardCursor'] as String?;
+    return cursor != null && cursor.isNotEmpty;
   }
 }
