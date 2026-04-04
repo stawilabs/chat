@@ -168,7 +168,7 @@ func (bs *BaseTestSuite) CreateService(
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeviceEventDeliveryName,
 			cfg.QueueDeviceEventDeliveryURI,
-			queues.NewHotPathDeliveryQueueHandler(&cfg, queueMan, workMan, bs.GetDevice(t), nil),
+			queues.NewHotPathDeliveryQueueHandler(&cfg, queueMan, workMan, dbPool, bs.GetDevice(t), nil),
 		),
 		frame.WithRegisterEvents(
 			events.NewRoomCreatedQueue(ctx, eventsMan),

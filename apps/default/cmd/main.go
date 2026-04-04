@@ -107,7 +107,7 @@ func runService(ctx context.Context) error {
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI,
-			queues.NewHotPathDeliveryQueueHandler(&cfg, queueMan, workMan, deviceCli, dlp),
+			queues.NewHotPathDeliveryQueueHandler(&cfg, queueMan, workMan, dbPool, deviceCli, dlp),
 		),
 		frame.WithRegisterPublisher(cfg.QueueOfflineEventDeliveryName, cfg.QueueOfflineEventDeliveryURI),
 		frame.WithRegisterSubscriber(

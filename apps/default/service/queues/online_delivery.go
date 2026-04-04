@@ -8,13 +8,18 @@ import (
 	"strconv"
 	"time"
 
+	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/apps/default/config"
+	"github.com/antinvestor/service-chat/apps/default/service/models"
+	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/internal/streaming"
 	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
@@ -27,12 +32,14 @@ type hotPathDeliveryQueueHandler struct {
 	deviceCli   devicev1connect.DeviceServiceClient
 	dlp         *DeadLetterPublisher
 	deviceCache *profileDeviceCache
+	replayRepo  repository.DeviceReplayRepository
 }
 
 func NewHotPathDeliveryQueueHandler(
 	cfg *config.ChatConfig,
 	qMan queue.Manager,
-	_ workerpool.Manager,
+	workMan workerpool.Manager,
+	dbPool pool.Pool,
 	deviceCli devicev1connect.DeviceServiceClient,
 	dlp *DeadLetterPublisher,
 ) queue.SubscribeWorker {
@@ -41,6 +48,11 @@ func NewHotPathDeliveryQueueHandler(
 		qMan:      qMan,
 		deviceCli: deviceCli,
 		dlp:       dlp,
+		replayRepo: repository.NewDeviceReplayRepository(
+			context.Background(),
+			dbPool,
+			workMan,
+		),
 		deviceCache: newProfileDeviceCache(
 			time.Duration(cfg.ProfileDeviceCacheTTLSeconds)*time.Second,
 			cfg.ProfileDeviceCacheMaxEntries,
@@ -140,6 +152,19 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 	}
 
 	var deliveryErrs []error
+	replayEntries, replayErr := dq.indexReplayEntries(ctx, eventDelivery, profileID, devices)
+	if replayErr != nil {
+		return RetryOrDeadLetter(
+			ctx,
+			dq.qMan,
+			dq.dlp,
+			dq.cfg.QueueDeviceEventDeliveryName,
+			eventDelivery,
+			headers,
+			replayErr,
+		)
+	}
+
 	for _, dev := range devices {
 		eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
 		if !ok {
@@ -148,7 +173,7 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		}
 		eventCopy.DeviceId = dev.id
 
-		if deliverErr := dq.deliver(ctx, eventCopy, dev); deliverErr != nil {
+		if deliverErr := dq.deliver(ctx, eventCopy, dev, replayEntries[dev.id]); deliverErr != nil {
 			util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.id).
 				Error("failed to deliver event")
 			deliveryErrs = append(deliveryErrs, fmt.Errorf("device %s: %w", dev.id, deliverErr))
@@ -173,6 +198,7 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 	ctx context.Context,
 	msg *eventsv1.Delivery,
 	dev deliveryDevice,
+	replayEntry *models.DeviceReplayEvent,
 ) error {
 	util.Log(ctx).WithFields(map[string]any{
 		"device_id": dev.id,
@@ -180,7 +206,7 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 	}).Debug("HotPathDelivery routing decision")
 
 	if dq.deviceIsOnline(ctx, dev) {
-		err := dq.publishToOnlineDevice(ctx, dev, msg)
+		err := dq.publishToOnlineDevice(ctx, dev, msg, replayEntry)
 		if err == nil {
 			chattel.MessagesDeliveredCounter.Add(ctx, 1)
 			return nil
@@ -212,6 +238,7 @@ func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 	ctx context.Context,
 	dev deliveryDevice,
 	msg *eventsv1.Delivery,
+	replayEntry *models.DeviceReplayEvent,
 ) error {
 	destination := msg.GetDestination()
 	profileID := ""
@@ -233,8 +260,108 @@ func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 		internal.HeaderDeviceID:  deviceID,
 		internal.HeaderShardID:   strconv.Itoa(shardID),
 	}
+	if replayEntry != nil {
+		deviceHeader[internal.HeaderReplayCursor] = replayEntry.GetID()
+	}
 
 	return deliveryTopic.Publish(ctx, msg, deviceHeader)
+}
+
+//nolint:gocognit // Replay indexing coordinates dedupe, serialization, and bounded retention per device.
+func (dq *hotPathDeliveryQueueHandler) indexReplayEntries(
+	ctx context.Context,
+	delivery *eventsv1.Delivery,
+	profileID string,
+	devices []deliveryDevice,
+) (map[string]*models.DeviceReplayEvent, error) {
+	entries := make(map[string]*models.DeviceReplayEvent, len(devices))
+	if dq.replayRepo == nil || !isDurableRoomEvent(delivery.GetEvent().GetEventType()) || profileID == "" ||
+		len(devices) == 0 {
+		return entries, nil
+	}
+
+	deviceIDs := make([]string, 0, len(devices))
+	for _, dev := range devices {
+		if dev.id == "" {
+			continue
+		}
+		deviceIDs = append(deviceIDs, dev.id)
+	}
+
+	existing, err := dq.replayRepo.ListByEventAndDevices(ctx, profileID, delivery.GetEvent().GetEventId(), deviceIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range existing {
+		entries[entry.DeviceID] = entry
+	}
+
+	var missing []*models.DeviceReplayEvent
+	for _, dev := range devices {
+		if dev.id == "" {
+			continue
+		}
+		if _, ok := entries[dev.id]; ok {
+			continue
+		}
+
+		deviceDelivery, ok := proto.Clone(delivery).(*eventsv1.Delivery)
+		if !ok {
+			return nil, errors.New("failed to clone device delivery for replay indexing")
+		}
+		deviceDelivery.DeviceId = dev.id
+
+		entry := &models.DeviceReplayEvent{
+			ProfileID: profileID,
+			DeviceID:  dev.id,
+			EventID:   delivery.GetEvent().GetEventId(),
+			RoomID:    delivery.GetEvent().GetRoomId(),
+			EventType: int32(delivery.GetEvent().GetEventType().Number()),
+		}
+		entry.GenID(ctx)
+
+		responseBytes, marshalErr := proto.Marshal(streaming.ResponseFromDelivery(deviceDelivery, entry.GetID()))
+		if marshalErr != nil {
+			return nil, marshalErr
+		}
+		entry.ResponseData = responseBytes
+
+		missing = append(missing, entry)
+		entries[dev.id] = entry
+	}
+
+	if err = dq.replayRepo.CreateIgnoringDuplicates(ctx, missing); err != nil {
+		return nil, err
+	}
+
+	if len(missing) > 0 {
+		existing, err = dq.replayRepo.ListByEventAndDevices(ctx, profileID, delivery.GetEvent().GetEventId(), deviceIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range existing {
+			entries[entry.DeviceID] = entry
+		}
+	}
+
+	maxAge := time.Duration(dq.cfg.DeviceReplayRetentionHours) * time.Hour
+	for _, dev := range devices {
+		if dev.id == "" {
+			continue
+		}
+		if trimErr := dq.replayRepo.TrimDevice(
+			ctx,
+			profileID,
+			dev.id,
+			dq.cfg.DeviceReplayMaxEventsPerDevice,
+			maxAge,
+		); trimErr != nil {
+			return nil, trimErr
+		}
+	}
+
+	return entries, nil
 }
 
 func (dq *hotPathDeliveryQueueHandler) resolveDevicesForProfile(
@@ -287,4 +414,16 @@ func safeSearchPageSize(limit int) int32 {
 		return int32(^uint32(0) >> 1)
 	}
 	return int32(limit)
+}
+
+func isDurableRoomEvent(eventType chatv1.RoomEventType) bool {
+	//nolint:exhaustive // Only explicitly ephemeral event types are excluded from durable replay.
+	switch eventType {
+	case chatv1.RoomEventType_ROOM_EVENT_TYPE_TYPING,
+		chatv1.RoomEventType_ROOM_EVENT_TYPE_DELIVERED,
+		chatv1.RoomEventType_ROOM_EVENT_TYPE_READ:
+		return false
+	default:
+		return true
+	}
 }

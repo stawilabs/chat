@@ -39,21 +39,28 @@ func TestConnectionManager_ActiveConnections(t *testing.T) {
 }
 
 func TestNewConnectionManager_AppliesResourceOptions(t *testing.T) {
-	manager := NewConnectionManager(context.Background(), nil, nil, cache.NewInMemoryCache(), ConnectionManagerOptions{
-		MaxConnectionsPerDevice: 2,
-		ConnectionTimeoutSec:    120,
-		HeartbeatIntervalSec:    20,
-		PoolExpectedDevices:     10,
-		PoolMinSize:             32,
-		DispatchBufferSize:      8,
-		DispatchTimeout:         25 * time.Millisecond,
-		InboundRateLimit:        40,
-		InboundRateBurst:        10,
-		ResumeRoomPageSize:      20,
-		ResumeHistoryPageSize:   15,
-		ResumeMaxRooms:          60,
-		ResumeMaxEvents:         120,
-	})
+	manager := NewConnectionManager(
+		context.Background(),
+		nil,
+		nil,
+		nil,
+		cache.NewInMemoryCache(),
+		ConnectionManagerOptions{
+			MaxConnectionsPerDevice: 2,
+			ConnectionTimeoutSec:    120,
+			HeartbeatIntervalSec:    20,
+			PoolExpectedDevices:     10,
+			PoolMinSize:             32,
+			DispatchBufferSize:      8,
+			DispatchTimeout:         25 * time.Millisecond,
+			InboundRateLimit:        40,
+			InboundRateBurst:        10,
+			ResumeRoomPageSize:      20,
+			ResumeHistoryPageSize:   15,
+			ResumeMaxRooms:          60,
+			ResumeMaxEvents:         120,
+		},
+	)
 	cm, ok := manager.(*connectionManager)
 	require.True(t, ok)
 	defer func() {

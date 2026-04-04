@@ -14,7 +14,15 @@ func Migrate(ctx context.Context, dbManager datastore.Manager, migrationPath str
 		return errors.New("datastore pool is not initialised")
 	}
 
-	return dbManager.Migrate(ctx, pool, migrationPath,
-		&models.Room{}, &models.RoomSubscription{}, &models.RoomEvent{}, &models.RoomCall{},
-		&models.Proposal{})
+	return dbManager.Migrate(
+		ctx,
+		pool,
+		migrationPath,
+		&models.Room{},
+		&models.RoomSubscription{},
+		&models.RoomEvent{},
+		&models.DeviceReplayEvent{},
+		&models.RoomCall{},
+		&models.Proposal{},
+	)
 }

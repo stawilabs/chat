@@ -9,6 +9,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/queues"
 	"github.com/antinvestor/service-chat/apps/default/tests"
+	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
@@ -26,13 +27,15 @@ func TestHotPathDeliveryQueueHandlerTestSuite(t *testing.T) {
 
 func (s *HotPathDeliveryQueueHandlerTestSuite) createConfig() *config.ChatConfig {
 	return &config.ChatConfig{
-		QueueDeviceEventDeliveryName:  "gateway.event.delivery.%d",
-		QueueOfflineEventDeliveryName: "offline.event.delivery",
-		ShardCount:                    2,
-		DeviceSearchPageSize:          100,
-		ProfileDeviceCacheTTLSeconds:  5,
-		ProfileDeviceCacheMaxEntries:  32,
-		MaxDeliveryRetries:            5,
+		QueueDeviceEventDeliveryName:   "gateway.event.delivery.%d",
+		QueueOfflineEventDeliveryName:  "offline.event.delivery",
+		ShardCount:                     2,
+		DeviceSearchPageSize:           100,
+		ProfileDeviceCacheTTLSeconds:   5,
+		ProfileDeviceCacheMaxEntries:   32,
+		DeviceReplayMaxEventsPerDevice: 16,
+		DeviceReplayRetentionHours:     24,
+		MaxDeliveryRetries:             5,
 	}
 }
 
@@ -69,9 +72,10 @@ func (s *HotPathDeliveryQueueHandlerTestSuite) TestHandle_ValidDelivery() {
 		cfg := s.createConfig()
 		qMan := svc.QueueManager()
 		workMan := svc.WorkManager()
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 		deviceCli := s.GetDevice(t)
 
-		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, deviceCli, nil)
+		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, dbPool, deviceCli, nil)
 
 		profileID := util.IDString()
 		payload := s.createDeliveryPayload(profileID)
@@ -90,9 +94,10 @@ func (s *HotPathDeliveryQueueHandlerTestSuite) TestHandle_MalformedPayload() {
 		cfg := s.createConfig()
 		qMan := svc.QueueManager()
 		workMan := svc.WorkManager()
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 		deviceCli := s.GetDevice(t)
 
-		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, deviceCli, nil)
+		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, dbPool, deviceCli, nil)
 
 		// Send invalid protobuf data
 		invalidPayload := []byte("not a valid protobuf")
@@ -111,9 +116,10 @@ func (s *HotPathDeliveryQueueHandlerTestSuite) TestHandle_EmptyPayload() {
 		cfg := s.createConfig()
 		qMan := svc.QueueManager()
 		workMan := svc.WorkManager()
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 		deviceCli := s.GetDevice(t)
 
-		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, deviceCli, nil)
+		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, dbPool, deviceCli, nil)
 
 		// Send empty payload
 		err := handler.Handle(ctx, nil, []byte{})
@@ -131,9 +137,10 @@ func (s *HotPathDeliveryQueueHandlerTestSuite) TestHandle_DeliveryWithoutDestina
 		cfg := s.createConfig()
 		qMan := svc.QueueManager()
 		workMan := svc.WorkManager()
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 		deviceCli := s.GetDevice(t)
 
-		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, deviceCli, nil)
+		handler := queues.NewHotPathDeliveryQueueHandler(cfg, qMan, workMan, dbPool, deviceCli, nil)
 
 		// Create delivery without destination
 		delivery := &eventsv1.Delivery{

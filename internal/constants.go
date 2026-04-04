@@ -1,10 +1,11 @@
 package internal
 
 const (
-	HeaderPriority  = "priority"
-	HeaderProfileID = "profile_id"
-	HeaderDeviceID  = "device_id"
-	HeaderShardID   = "shard_id"
+	HeaderPriority     = "priority"
+	HeaderProfileID    = "profile_id"
+	HeaderDeviceID     = "device_id"
+	HeaderShardID      = "shard_id"
+	HeaderReplayCursor = "replay_cursor"
 
 	// HeaderDLQOriginalQueue is the header key for the original queue name in dead-letter messages.
 	HeaderDLQOriginalQueue = "dlq_original_queue"

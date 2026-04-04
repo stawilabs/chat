@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/otelconnect"
 	"github.com/antinvestor/common"
 	"github.com/antinvestor/common/connection"
+	defaultrepo "github.com/antinvestor/service-chat/apps/default/service/repository"
 	gtwconfig "github.com/antinvestor/service-chat/apps/gateway/config"
 	"github.com/antinvestor/service-chat/apps/gateway/service/business"
 	"github.com/antinvestor/service-chat/apps/gateway/service/handlers"
@@ -23,6 +24,7 @@ import (
 	"github.com/pitabwire/frame/cache/valkey"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/data"
+	"github.com/pitabwire/frame/datastore"
 	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
 )
@@ -59,11 +61,15 @@ func main() {
 
 	// Create service
 	ctx, svc := frame.NewServiceWithContext(ctx, frame.WithConfig(&cfg),
-		frame.WithCache(cfg.CacheName, rawCache))
+		frame.WithCache(cfg.CacheName, rawCache),
+		frame.WithDatastore(),
+	)
 	defer svc.Stop(ctx)
 	log := svc.Log(ctx)
 
 	qManager := svc.QueueManager()
+	workMan := svc.WorkManager()
+	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 
 	// Setup chat service client
 	chatServiceClient, err := setupChatServiceClient(ctx, cfg)
@@ -84,6 +90,7 @@ func main() {
 		ctx,
 		chatServiceClient,
 		deviceClient,
+		defaultrepo.NewDeviceReplayRepository(ctx, dbPool, workMan),
 		rawCache,
 		business.ConnectionManagerOptions{
 			MaxConnectionsPerDevice: cfg.MaxConnectionsPerDevice,

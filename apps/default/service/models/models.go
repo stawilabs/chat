@@ -2,12 +2,14 @@ package models
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"github.com/pitabwire/frame/data"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -256,6 +258,33 @@ type Proposal struct {
 	ResolvedAt   *time.Time
 	Reason       string
 	ExpiresAt    time.Time `gorm:"index:idx_proposal_expires"`
+}
+
+// DeviceReplayEvent stores the durable per-device replay log used by gateway
+// resume logic. The primary key is the replay cursor exposed to clients.
+type DeviceReplayEvent struct {
+	data.BaseModel
+	ProfileID    string `gorm:"type:varchar(50);index:idx_device_replay_lookup,priority:1;uniqueIndex:idx_device_replay_profile_device_event"`
+	DeviceID     string `gorm:"type:varchar(50);index:idx_device_replay_lookup,priority:2;uniqueIndex:idx_device_replay_profile_device_event"`
+	EventID      string `gorm:"type:varchar(50);uniqueIndex:idx_device_replay_profile_device_event"`
+	RoomID       string `gorm:"type:varchar(50)"`
+	EventType    int32
+	ResponseData []byte `gorm:"type:bytea;not null"`
+}
+
+var ErrNilDeviceReplayEvent = errors.New("device replay event is nil")
+
+func (dre *DeviceReplayEvent) ToStreamResponse() (*chatv1.StreamResponse, error) {
+	if dre == nil {
+		return nil, ErrNilDeviceReplayEvent
+	}
+
+	response := &chatv1.StreamResponse{}
+	if err := proto.Unmarshal(dre.ResponseData, response); err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // IsPending returns true if the proposal is still pending.

@@ -9,10 +9,10 @@ import (
 	"github.com/antinvestor/service-chat/apps/gateway/config"
 	"github.com/antinvestor/service-chat/apps/gateway/service/business"
 	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/internal/streaming"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type GatewayEventsQueueHandler struct {
@@ -72,7 +72,7 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 		return dq.publishToOfflineDevice(ctx, headers, evt)
 	}
 
-	data := dq.toStreamData(evt)
+	data := dq.toStreamData(evt, headers[internal.HeaderReplayCursor])
 
 	if !connection.Dispatch(data) {
 		util.Log(ctx).WithFields(map[string]any{
@@ -99,72 +99,13 @@ func (dq *GatewayEventsQueueHandler) toPayloadToEventData(
 	return eventDelivery, nil
 }
 
-func (dq *GatewayEventsQueueHandler) toStreamData(dlr *eventsv1.Delivery) *chatv1.StreamResponse {
-	evt := dlr.GetEvent()
-	source := evt.GetSource()
-	roomID := evt.GetRoomId()
-	subscriptionID := ""
-	if source != nil {
-		subscriptionID = source.GetSubscriptionId()
+func (dq *GatewayEventsQueueHandler) toStreamData(dlr *eventsv1.Delivery, replayCursor string) *chatv1.StreamResponse {
+	responseID := dlr.GetEvent().GetEventId()
+	if replayCursor != "" {
+		responseID = replayCursor
 	}
 
-	parentID := evt.GetParentId()
-
-	// Convert event type
-	eventType := chatv1.RoomEventType(dlr.GetEvent().GetEventType().Number())
-
-	// Create RoomEvent with appropriate payload based on type
-	roomEvent := &chatv1.RoomEvent{
-		Id:             evt.GetEventId(),
-		ParentId:       &parentID,
-		RoomId:         roomID,
-		SubscriptionId: subscriptionID,
-		Type:           eventType,
-		SentAt:         evt.GetCreatedAt(),
-		Edited:         false,
-		Redacted:       false,
-		Payload:        dlr.GetPayload(),
-	}
-
-	response := &chatv1.StreamResponse{
-		Id:        evt.GetEventId(),
-		Timestamp: timestamppb.Now(),
-	}
-
-	//nolint:exhaustive // All non-ephemeral room event types are forwarded as normal message payloads.
-	switch eventType {
-	case chatv1.RoomEventType_ROOM_EVENT_TYPE_TYPING:
-		response.Payload = &chatv1.StreamResponse_TypingEvent{
-			TypingEvent: &chatv1.TypingEvent{
-				RoomId:         roomID,
-				SubscriptionId: subscriptionID,
-				Typing:         true,
-				Since:          evt.GetCreatedAt(),
-			},
-		}
-	case chatv1.RoomEventType_ROOM_EVENT_TYPE_DELIVERED:
-		response.Payload = &chatv1.StreamResponse_ReceiptEvent{
-			ReceiptEvent: &chatv1.ReceiptEvent{
-				RoomId:         roomID,
-				SubscriptionId: subscriptionID,
-				EventId:        []string{parentID},
-			},
-		}
-	case chatv1.RoomEventType_ROOM_EVENT_TYPE_READ:
-		response.Payload = &chatv1.StreamResponse_ReadEvent{
-			ReadEvent: &chatv1.ReadMarker{
-				RoomId:         &roomID,
-				SubscriptionId: subscriptionID,
-				UpToEventId:    parentID,
-			},
-		}
-	default:
-		response.Payload = &chatv1.StreamResponse_Message{
-			Message: roomEvent,
-		}
-	}
-
-	return response
+	return streaming.ResponseFromDelivery(dlr, responseID)
 }
 
 func (dq *GatewayEventsQueueHandler) getOfflineDeliveryTopic() (queue.Publisher, error) {

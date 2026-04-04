@@ -105,6 +105,7 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
+	defaultrepo "github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/telemetry"
@@ -375,6 +376,7 @@ func NewConnectionManager(
 	ctx context.Context,
 	chatClient chatv1connect.ChatServiceClient,
 	deviceClient devicev1connect.DeviceServiceClient,
+	replayRepo defaultrepo.DeviceReplayRepository,
 	rawCache cache.RawCache,
 	options ConnectionManagerOptions,
 ) ConnectionManager {
@@ -402,7 +404,7 @@ func NewConnectionManager(
 
 	cm := &connectionManager{
 		chatClient: chatClient,
-		replayCli:  newChatReplayClient(chatClient),
+		replayCli:  newChatReplayClient(replayRepo),
 		deviceCli:  deviceClient,
 		connPool:   newConnectionPool(poolSizeInt32),
 		cache:      cache.NewGenericCache[string, *Metadata](rawCache, nil),

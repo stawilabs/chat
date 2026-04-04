@@ -36,6 +36,39 @@ type RoomEventRepository interface {
 	CreateIgnoringDuplicates(ctx context.Context, events []*models.RoomEvent) (map[string]bool, error)
 }
 
+type DeviceReplayRepository interface {
+	datastore.BaseRepository[*models.DeviceReplayEvent]
+	ListAfterCursor(
+		ctx context.Context,
+		profileID string,
+		deviceID string,
+		afterCursor string,
+		upperBoundCursor string,
+		limit int,
+	) ([]*models.DeviceReplayEvent, error)
+	GetByCursor(
+		ctx context.Context,
+		profileID string,
+		deviceID string,
+		cursor string,
+	) (*models.DeviceReplayEvent, error)
+	GetByEventID(
+		ctx context.Context,
+		profileID string,
+		deviceID string,
+		eventID string,
+	) (*models.DeviceReplayEvent, error)
+	GetLatestCursor(ctx context.Context, profileID string, deviceID string) (string, error)
+	CreateIgnoringDuplicates(ctx context.Context, entries []*models.DeviceReplayEvent) error
+	ListByEventAndDevices(
+		ctx context.Context,
+		profileID string,
+		eventID string,
+		deviceIDs []string,
+	) ([]*models.DeviceReplayEvent, error)
+	TrimDevice(ctx context.Context, profileID string, deviceID string, keep int, maxAge time.Duration) error
+}
+
 // RoomSubscriptionRepository defines the interface for room subscription data access operations.
 type RoomSubscriptionRepository interface {
 	datastore.BaseRepository[*models.RoomSubscription]

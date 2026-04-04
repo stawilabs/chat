@@ -2,7 +2,6 @@ package business
 
 import (
 	"context"
-	"errors"
 	"io"
 	"testing"
 
@@ -15,35 +14,49 @@ import (
 )
 
 type stubReplayClient struct {
-	listRoomsFn  func(ctx context.Context, offset, limit int) ([]*chatv1.Room, error)
-	getHistoryFn func(ctx context.Context, roomID, cursor string, limit int) ([]*chatv1.RoomEvent, error)
-	getEventFn   func(ctx context.Context, eventID string) (*chatv1.RoomEvent, error)
+	resolveCursorFn func(ctx context.Context, profileID, deviceID, token string) (string, bool, error)
+	latestCursorFn  func(ctx context.Context, profileID, deviceID string) (string, error)
+	listAfterFn     func(
+		ctx context.Context,
+		profileID string,
+		deviceID string,
+		afterCursor string,
+		upperBoundCursor string,
+		limit int,
+	) ([]*chatv1.StreamResponse, error)
 }
 
-func (s *stubReplayClient) ListRooms(ctx context.Context, offset, limit int) ([]*chatv1.Room, error) {
-	if s.listRoomsFn == nil {
-		return nil, nil
-	}
-	return s.listRoomsFn(ctx, offset, limit)
-}
-
-func (s *stubReplayClient) GetHistory(
+func (s *stubReplayClient) ResolveCursor(
 	ctx context.Context,
-	roomID string,
-	cursor string,
-	limit int,
-) ([]*chatv1.RoomEvent, error) {
-	if s.getHistoryFn == nil {
-		return nil, nil
+	profileID string,
+	deviceID string,
+	token string,
+) (string, bool, error) {
+	if s.resolveCursorFn == nil {
+		return "", false, nil
 	}
-	return s.getHistoryFn(ctx, roomID, cursor, limit)
+	return s.resolveCursorFn(ctx, profileID, deviceID, token)
 }
 
-func (s *stubReplayClient) GetEvent(ctx context.Context, eventID string) (*chatv1.RoomEvent, error) {
-	if s.getEventFn == nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("not found"))
+func (s *stubReplayClient) LatestCursor(ctx context.Context, profileID, deviceID string) (string, error) {
+	if s.latestCursorFn == nil {
+		return "", nil
 	}
-	return s.getEventFn(ctx, eventID)
+	return s.latestCursorFn(ctx, profileID, deviceID)
+}
+
+func (s *stubReplayClient) ListAfterCursor(
+	ctx context.Context,
+	profileID string,
+	deviceID string,
+	afterCursor string,
+	upperBoundCursor string,
+	limit int,
+) ([]*chatv1.StreamResponse, error) {
+	if s.listAfterFn == nil {
+		return nil, nil
+	}
+	return s.listAfterFn(ctx, profileID, deviceID, afterCursor, upperBoundCursor, limit)
 }
 
 type replayTestStream struct {
@@ -101,39 +114,59 @@ func TestConnectionManagerResolveResumeCursorRejectsUnknownToken(t *testing.T) {
 	assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
 }
 
-func TestConnectionManagerReplayMissedEventsMergesRooms(t *testing.T) {
+func TestConnectionManagerReplayMissedEventsUsesDurableDeviceLog(t *testing.T) {
 	rawCache := cache.NewInMemoryCache()
 	resumeCache := cache.NewGenericCache[string, string](rawCache, nil)
-
-	historyByRoom := map[string]map[string][]*chatv1.RoomEvent{
-		"room-a": {
-			"evt-001": {
-				{Id: "evt-002", RoomId: "room-a", SentAt: timestamppb.Now()},
-				{Id: "evt-004", RoomId: "room-a", SentAt: timestamppb.Now()},
-				{Id: "evt-006", RoomId: "room-a", SentAt: timestamppb.Now()},
+	responses := []*chatv1.StreamResponse{
+		{
+			Id:        "cur-002",
+			Timestamp: timestamppb.Now(),
+			Payload: &chatv1.StreamResponse_Message{
+				Message: &chatv1.RoomEvent{Id: "evt-002", RoomId: "room-a", SentAt: timestamppb.Now()},
 			},
 		},
-		"room-b": {
-			"evt-001": {
-				{Id: "evt-003", RoomId: "room-b", SentAt: timestamppb.Now()},
-				{Id: "evt-005", RoomId: "room-b", SentAt: timestamppb.Now()},
+		{
+			Id:        "cur-003",
+			Timestamp: timestamppb.Now(),
+			Payload: &chatv1.StreamResponse_Message{
+				Message: &chatv1.RoomEvent{Id: "evt-003", RoomId: "room-b", SentAt: timestamppb.Now()},
+			},
+		},
+		{
+			Id:        "cur-004",
+			Timestamp: timestamppb.Now(),
+			Payload: &chatv1.StreamResponse_Message{
+				Message: &chatv1.RoomEvent{Id: "evt-004", RoomId: "room-a", SentAt: timestamppb.Now()},
+			},
+		},
+		{
+			Id:        "cur-005",
+			Timestamp: timestamppb.Now(),
+			Payload: &chatv1.StreamResponse_Message{
+				Message: &chatv1.RoomEvent{Id: "evt-005", RoomId: "room-b", SentAt: timestamppb.Now()},
 			},
 		},
 	}
 
 	cm := &connectionManager{
 		replayCli: &stubReplayClient{
-			listRoomsFn: func(_ context.Context, offset, _ int) ([]*chatv1.Room, error) {
-				if offset > 0 {
-					return nil, nil
-				}
-				return []*chatv1.Room{
-					{Id: "room-a"},
-					{Id: "room-b"},
-				}, nil
+			latestCursorFn: func(_ context.Context, _, _ string) (string, error) {
+				return "cur-005", nil
 			},
-			getHistoryFn: func(_ context.Context, roomID, cursor string, _ int) ([]*chatv1.RoomEvent, error) {
-				return historyByRoom[roomID][cursor], nil
+			listAfterFn: func(
+				_ context.Context,
+				_, _ string,
+				afterCursor string,
+				upperBoundCursor string,
+				_ int,
+			) ([]*chatv1.StreamResponse, error) {
+				filtered := make([]*chatv1.StreamResponse, 0, len(responses))
+				for _, response := range responses {
+					if response.GetId() > afterCursor && response.GetId() <= upperBoundCursor {
+						filtered = append(filtered, response)
+					}
+				}
+				return filtered, nil
 			},
 		},
 		resume:                resumeCache,
@@ -152,19 +185,19 @@ func TestConnectionManagerReplayMissedEventsMergesRooms(t *testing.T) {
 		DeviceID:  "device-1",
 	}, ConnectionOptions{}.withDefaults())
 
-	lastCursor, replayed, err := cm.replayMissedEvents(t.Context(), conn, stream, "evt-001", "evt-006")
+	lastCursor, replayed, err := cm.replayMissedEvents(t.Context(), conn, stream, "cur-001")
 	require.NoError(t, err)
 	assert.Equal(t, 4, replayed)
-	assert.Equal(t, "evt-005", lastCursor)
+	assert.Equal(t, "cur-005", lastCursor)
 
 	var ids []string
 	for _, response := range stream.sent {
 		ids = append(ids, response.GetId())
 	}
-	assert.Equal(t, []string{"evt-002", "evt-003", "evt-004", "evt-005"}, ids)
+	assert.Equal(t, []string{"cur-002", "cur-003", "cur-004", "cur-005"}, ids)
 
-	cursor, found, err := resumeCache.Get(t.Context(), resumeTokenKey("profile-1", "device-1", "evt-005"))
+	cursor, found, err := resumeCache.Get(t.Context(), resumeTokenKey("profile-1", "device-1", "cur-005"))
 	require.NoError(t, err)
 	assert.True(t, found)
-	assert.Equal(t, "evt-005", cursor)
+	assert.Equal(t, "cur-005", cursor)
 }

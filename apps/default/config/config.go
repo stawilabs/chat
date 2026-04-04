@@ -35,12 +35,14 @@ type ChatConfig struct {
 	ShardCount int `envDefault:"1" env:"SHARD_COUNT"`
 
 	// Dead-letter queue for deliveries that exceed max retries
-	QueueDeadLetterName          string `envDefault:"dead.letter.queue"       env:"QUEUE_DEAD_LETTER_NAME"`
-	QueueDeadLetterURI           string `envDefault:"mem://dead.letter.queue" env:"QUEUE_DEAD_LETTER_URI"`
-	MaxDeliveryRetries           int    `envDefault:"5"                       env:"MAX_DELIVERY_RETRIES"`
-	DeviceSearchPageSize         int    `envDefault:"100"                     env:"DEVICE_SEARCH_PAGE_SIZE"`
-	ProfileDeviceCacheTTLSeconds int    `envDefault:"5" env:"PROFILE_DEVICE_CACHE_TTL_SECONDS"`
-	ProfileDeviceCacheMaxEntries int    `envDefault:"512" env:"PROFILE_DEVICE_CACHE_MAX_ENTRIES"`
+	QueueDeadLetterName            string `envDefault:"dead.letter.queue"       env:"QUEUE_DEAD_LETTER_NAME"`
+	QueueDeadLetterURI             string `envDefault:"mem://dead.letter.queue" env:"QUEUE_DEAD_LETTER_URI"`
+	MaxDeliveryRetries             int    `envDefault:"5"                       env:"MAX_DELIVERY_RETRIES"`
+	DeviceSearchPageSize           int    `envDefault:"100"                     env:"DEVICE_SEARCH_PAGE_SIZE"`
+	ProfileDeviceCacheTTLSeconds   int    `envDefault:"5" env:"PROFILE_DEVICE_CACHE_TTL_SECONDS"`
+	ProfileDeviceCacheMaxEntries   int    `envDefault:"512" env:"PROFILE_DEVICE_CACHE_MAX_ENTRIES"`
+	DeviceReplayMaxEventsPerDevice int    `envDefault:"1000" env:"DEVICE_REPLAY_MAX_EVENTS_PER_DEVICE"`
+	DeviceReplayRetentionHours     int    `envDefault:"168" env:"DEVICE_REPLAY_RETENTION_HOURS"`
 }
 
 // Validate checks that the configuration is valid.
@@ -82,6 +84,12 @@ func (c *ChatConfig) Validate() error {
 	}
 	if c.ProfileDeviceCacheMaxEntries <= 0 {
 		errs = append(errs, errors.New("ProfileDeviceCacheMaxEntries must be > 0"))
+	}
+	if c.DeviceReplayMaxEventsPerDevice <= 0 {
+		errs = append(errs, errors.New("DeviceReplayMaxEventsPerDevice must be > 0"))
+	}
+	if c.DeviceReplayRetentionHours <= 0 {
+		errs = append(errs, errors.New("DeviceReplayRetentionHours must be > 0"))
 	}
 
 	return errors.Join(errs...)

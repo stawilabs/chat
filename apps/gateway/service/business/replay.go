@@ -1,7 +1,6 @@
 package business
 
 import (
-	"container/heap"
 	"context"
 	"errors"
 	"fmt"
@@ -10,55 +9,12 @@ import (
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
 	minResumeTokenTTL         = 15 * time.Minute
 	emptyResumeCursorSentinel = "__empty__"
 )
-
-type replayState struct {
-	roomID    string
-	cursor    string
-	buffer    []*chatv1.RoomEvent
-	index     int
-	hasMore   bool
-	exhausted bool
-}
-
-type replayItem struct {
-	event      *chatv1.RoomEvent
-	stateIndex int
-}
-
-type replayHeap []*replayItem
-
-func (h *replayHeap) Len() int { return len(*h) }
-
-func (h *replayHeap) Less(i, j int) bool {
-	return (*h)[i].event.GetId() < (*h)[j].event.GetId()
-}
-
-func (h *replayHeap) Swap(i, j int) {
-	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
-}
-
-func (h *replayHeap) Push(x any) {
-	item, ok := x.(*replayItem)
-	if !ok {
-		return
-	}
-	*h = append(*h, item)
-}
-
-func (h *replayHeap) Pop() any {
-	old := *h
-	n := len(old)
-	item := old[n-1]
-	*h = old[:n-1]
-	return item
-}
 
 func (cm *connectionManager) resumeConnection(
 	ctx context.Context,
@@ -84,8 +40,7 @@ func (cm *connectionManager) resumeConnection(
 		return "", 0, nil
 	}
 
-	boundary := util.IDString()
-	replayedCursor, replayedCount, err := cm.replayMissedEvents(ctx, conn, stream, cursor, boundary)
+	replayedCursor, replayedCount, err := cm.replayMissedEvents(ctx, conn, stream, cursor)
 	if err != nil {
 		return "", 0, err
 	}
@@ -123,73 +78,52 @@ func (cm *connectionManager) resolveResumeCursor(
 		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("resume replay unavailable"))
 	}
 
-	_, err := cm.replayCli.GetEvent(lookupCtx, token)
-	if err == nil {
-		return token, nil
+	cursor, found, err := cm.replayCli.ResolveCursor(lookupCtx, profileID, deviceID, token)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve resume token: %w", err)
+	}
+	if found {
+		return cursor, nil
 	}
 
-	//nolint:exhaustive // All non-retryable token resolution failures are handled explicitly; the rest bubble up.
-	switch connect.CodeOf(err) {
-	case connect.CodeNotFound,
-		connect.CodePermissionDenied,
-		connect.CodeInvalidArgument,
-		connect.CodeFailedPrecondition:
-		util.Log(ctx).WithFields(map[string]any{
-			"profile_id":   profileID,
-			"device_id":    deviceID,
-			"resume_token": token,
-		}).Warn("resume token could not be resolved; client must resync")
-		return "", connect.NewError(
-			connect.CodeFailedPrecondition,
-			errors.New("resume token is invalid or expired; perform a full sync and reconnect"),
-		)
-	default:
-		return "", fmt.Errorf("failed to verify resume token: %w", err)
-	}
+	util.Log(ctx).WithFields(map[string]any{
+		"profile_id":   profileID,
+		"device_id":    deviceID,
+		"resume_token": token,
+	}).Warn("resume token could not be resolved; client must resync")
+	return "", connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("resume token is invalid or expired; perform a full sync and reconnect"),
+	)
 }
 
-//nolint:gocognit // Merge-replay logic coordinates pagination, ordering, and bounded catch-up safety.
+//nolint:gocognit // Replay must enforce boundaries, page iteratively, and fail closed on oversized catch-up windows.
 func (cm *connectionManager) replayMissedEvents(
 	ctx context.Context,
 	conn Connection,
 	stream DeviceStream,
 	cursor string,
-	boundary string,
 ) (string, int, error) {
-	roomIDs, err := cm.listReplayRoomIDs(ctx)
-	if err != nil {
-		return "", 0, err
-	}
-	if len(roomIDs) == 0 {
+	if cm.replayCli == nil {
 		return cursor, 0, nil
 	}
 
-	states := make([]*replayState, 0, len(roomIDs))
-	queue := &replayHeap{}
-	heap.Init(queue)
+	boundaryCtx, cancel := context.WithTimeout(ctx, resumeReplayTimeout)
+	defer cancel()
 
-	for _, roomID := range roomIDs {
-		state := &replayState{roomID: roomID, cursor: cursor}
-		fillErr := cm.fillReplayState(ctx, state, boundary)
-		if fillErr != nil {
-			return "", 0, fillErr
-		}
-		if state.exhausted && len(state.buffer) == 0 {
-			continue
-		}
-
-		stateIndex := len(states)
-		states = append(states, state)
-		heap.Push(queue, &replayItem{
-			event:      state.buffer[state.index],
-			stateIndex: stateIndex,
-		})
+	boundary, err := cm.replayCli.LatestCursor(boundaryCtx, conn.Metadata().ProfileID, conn.Metadata().DeviceID)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to determine replay boundary: %w", err)
+	}
+	if boundary == "" || (cursor != "" && boundary <= cursor) {
+		return cursor, 0, nil
 	}
 
 	lastDurableCursor := cursor
 	replayedCount := 0
+	nextCursor := cursor
 
-	for queue.Len() > 0 {
+	for {
 		if replayedCount >= cm.resumeMaxEvents {
 			return "", 0, connect.NewError(
 				connect.CodeFailedPrecondition,
@@ -197,135 +131,49 @@ func (cm *connectionManager) replayMissedEvents(
 			)
 		}
 
-		rawItem := heap.Pop(queue)
-		item, ok := rawItem.(*replayItem)
-		if !ok {
-			return "", 0, errors.New("invalid replay heap item")
+		reqCtx, reqCancel := context.WithTimeout(ctx, resumeReplayTimeout)
+		responses, listErr := cm.replayCli.ListAfterCursor(
+			reqCtx,
+			conn.Metadata().ProfileID,
+			conn.Metadata().DeviceID,
+			nextCursor,
+			boundary,
+			cm.resumeHistoryPageSize,
+		)
+		reqCancel()
+		if listErr != nil {
+			return "", 0, fmt.Errorf("failed to fetch replay responses: %w", listErr)
 		}
-		state := states[item.stateIndex]
-
-		resp := &chatv1.StreamResponse{
-			Id:        item.event.GetId(),
-			Timestamp: replayTimestamp(item.event),
-			Payload: &chatv1.StreamResponse_Message{
-				Message: item.event,
-			},
+		if len(responses) == 0 {
+			break
 		}
 
-		sendErr := cm.sendStreamResponse(ctx, conn, stream, resp, &lastDurableCursor)
-		if sendErr != nil {
-			return "", 0, sendErr
-		}
-		replayedCount++
-
-		state.index++
-		if state.index >= len(state.buffer) {
-			if state.exhausted || !state.hasMore {
+		for _, response := range responses {
+			if response == nil || response.GetId() == "" {
 				continue
 			}
-			fillErr := cm.fillReplayState(ctx, state, boundary)
-			if fillErr != nil {
-				return "", 0, fillErr
+			if response.GetMessage() != nil {
+				lastDurableCursor = response.GetId()
 			}
-			if len(state.buffer) == 0 {
-				continue
+			if sendErr := cm.sendStreamResponse(ctx, conn, stream, response, &lastDurableCursor); sendErr != nil {
+				return "", 0, sendErr
 			}
-		}
-
-		heap.Push(queue, &replayItem{
-			event:      state.buffer[state.index],
-			stateIndex: item.stateIndex,
-		})
-	}
-
-	return lastDurableCursor, replayedCount, nil
-}
-
-func (cm *connectionManager) listReplayRoomIDs(ctx context.Context) ([]string, error) {
-	if cm.replayCli == nil {
-		return nil, nil
-	}
-
-	roomIDs := make([]string, 0, cm.resumeRoomPageSize)
-	seen := make(map[string]struct{})
-
-	for offset := 0; offset < cm.resumeMaxRooms; offset += cm.resumeRoomPageSize {
-		reqCtx, cancel := context.WithTimeout(ctx, resumeReplayTimeout)
-		rooms, err := cm.replayCli.ListRooms(reqCtx, offset, cm.resumeRoomPageSize)
-		cancel()
-		if err != nil {
-			return nil, fmt.Errorf("failed to list subscribed rooms for resume replay: %w", err)
-		}
-
-		for _, room := range rooms {
-			if room == nil || room.GetId() == "" {
-				continue
-			}
-			if _, ok := seen[room.GetId()]; ok {
-				continue
-			}
-			seen[room.GetId()] = struct{}{}
-			roomIDs = append(roomIDs, room.GetId())
-			if len(roomIDs) > cm.resumeMaxRooms {
-				return nil, connect.NewError(
+			replayedCount++
+			nextCursor = response.GetId()
+			if replayedCount >= cm.resumeMaxEvents && nextCursor < boundary {
+				return "", 0, connect.NewError(
 					connect.CodeFailedPrecondition,
-					errors.New("too many subscribed rooms for resume replay; perform a full sync and reconnect"),
+					errors.New("resume replay window exceeded; perform a full sync and reconnect"),
 				)
 			}
 		}
 
-		if len(rooms) < cm.resumeRoomPageSize {
+		if nextCursor >= boundary || len(responses) < cm.resumeHistoryPageSize {
 			break
 		}
 	}
 
-	return roomIDs, nil
-}
-
-func (cm *connectionManager) fillReplayState(
-	ctx context.Context,
-	state *replayState,
-	boundary string,
-) error {
-	if state == nil || state.exhausted {
-		return nil
-	}
-
-	reqCtx, cancel := context.WithTimeout(ctx, resumeReplayTimeout)
-	defer cancel()
-
-	events, err := cm.replayCli.GetHistory(reqCtx, state.roomID, state.cursor, cm.resumeHistoryPageSize)
-	if err != nil {
-		return fmt.Errorf("failed to fetch replay history for room %s: %w", state.roomID, err)
-	}
-
-	state.buffer = state.buffer[:0]
-	state.index = 0
-	state.hasMore = false
-
-	for _, event := range events {
-		if event == nil || event.GetId() == "" {
-			continue
-		}
-		if boundary != "" && event.GetId() >= boundary {
-			state.exhausted = true
-			break
-		}
-		state.buffer = append(state.buffer, event)
-	}
-
-	if len(state.buffer) == 0 {
-		state.exhausted = state.exhausted || len(events) < cm.resumeHistoryPageSize
-		return nil
-	}
-
-	state.cursor = state.buffer[len(state.buffer)-1].GetId()
-	state.hasMore = !state.exhausted && len(events) == cm.resumeHistoryPageSize
-	if !state.hasMore {
-		state.exhausted = true
-	}
-
-	return nil
+	return lastDurableCursor, replayedCount, nil
 }
 
 func (cm *connectionManager) sendStreamResponse(
@@ -393,11 +241,4 @@ func (cm *connectionManager) resumeTokenTTL() time.Duration {
 
 func resumeTokenKey(profileID string, deviceID string, token string) string {
 	return fmt.Sprintf("gateway:resume:%s:%s:%s", profileID, deviceID, token)
-}
-
-func replayTimestamp(event *chatv1.RoomEvent) *timestamppb.Timestamp {
-	if event != nil && event.GetSentAt() != nil {
-		return event.GetSentAt()
-	}
-	return timestamppb.Now()
 }

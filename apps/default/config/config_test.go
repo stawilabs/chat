@@ -82,6 +82,8 @@ func TestChatConfig_Validate(t *testing.T) {
 		cfg.DeviceSearchPageSize = 0
 		cfg.ProfileDeviceCacheTTLSeconds = 0
 		cfg.ProfileDeviceCacheMaxEntries = 0
+		cfg.DeviceReplayMaxEventsPerDevice = 0
+		cfg.DeviceReplayRetentionHours = 0
 
 		err := cfg.Validate()
 		require.Error(t, err)
@@ -89,26 +91,30 @@ func TestChatConfig_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "DeviceSearchPageSize")
 		assert.Contains(t, err.Error(), "ProfileDeviceCacheTTLSeconds")
 		assert.Contains(t, err.Error(), "ProfileDeviceCacheMaxEntries")
+		assert.Contains(t, err.Error(), "DeviceReplayMaxEventsPerDevice")
+		assert.Contains(t, err.Error(), "DeviceReplayRetentionHours")
 	})
 }
 
 func validChatConfig() config.ChatConfig {
 	return config.ChatConfig{
-		DeviceServiceURI:              "127.0.0.1:7020",
-		NotificationServiceURI:        "127.0.0.1:7020",
-		ProfileServiceURI:             "127.0.0.1:7003",
-		TenancyServiceURI:             "127.0.0.1:7003",
-		SystemAccessID:                "test-access-id",
-		QueueDeviceEventDeliveryName:  "device.event.delivery",
-		QueueDeviceEventDeliveryURI:   "mem://device.event.delivery",
-		QueueOfflineEventDeliveryName: "offline.event.delivery",
-		QueueOfflineEventDeliveryURI:  "mem://offline.device.event.delivery",
-		QueueGatewayEventDeliveryName: "gateway.event.delivery.%d",
-		QueueGatewayEventDeliveryURI:  []string{"mem://gateway.event.delivery.0"},
-		ShardCount:                    1,
-		MaxDeliveryRetries:            5,
-		DeviceSearchPageSize:          100,
-		ProfileDeviceCacheTTLSeconds:  5,
-		ProfileDeviceCacheMaxEntries:  512,
+		DeviceServiceURI:               "127.0.0.1:7020",
+		NotificationServiceURI:         "127.0.0.1:7020",
+		ProfileServiceURI:              "127.0.0.1:7003",
+		TenancyServiceURI:              "127.0.0.1:7003",
+		SystemAccessID:                 "test-access-id",
+		QueueDeviceEventDeliveryName:   "device.event.delivery",
+		QueueDeviceEventDeliveryURI:    "mem://device.event.delivery",
+		QueueOfflineEventDeliveryName:  "offline.event.delivery",
+		QueueOfflineEventDeliveryURI:   "mem://offline.device.event.delivery",
+		QueueGatewayEventDeliveryName:  "gateway.event.delivery.%d",
+		QueueGatewayEventDeliveryURI:   []string{"mem://gateway.event.delivery.0"},
+		ShardCount:                     1,
+		MaxDeliveryRetries:             5,
+		DeviceSearchPageSize:           100,
+		ProfileDeviceCacheTTLSeconds:   5,
+		ProfileDeviceCacheMaxEntries:   512,
+		DeviceReplayMaxEventsPerDevice: 1000,
+		DeviceReplayRetentionHours:     168,
 	}
 }

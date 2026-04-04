@@ -223,6 +223,36 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_AllPayloadTypes() {
 	s.Equal(initialDispatchCount+len(testCases), mockConn.dispatchCount)
 }
 
+func (s *GatewayDeliveryHandlerTestSuite) TestHandle_UsesReplayCursorAsStreamID() {
+	profileID := "user123"
+	deviceID := "device456"
+	replayCursor := "cur_001"
+
+	mockConn := newMockConnection(profileID, deviceID)
+	mockCM := &mockConnectionManager{
+		connections: map[string]business.Connection{
+			internal.MetadataKey(profileID, deviceID): mockConn,
+		},
+	}
+
+	handler := queues.NewGatewayEventsQueueHandler(s.cfg, nil, mockCM)
+	delivery := s.createTextDelivery("Hello, replay!")
+	payload, err := proto.Marshal(delivery)
+	s.Require().NoError(err)
+
+	headers := map[string]string{
+		internal.HeaderProfileID:    profileID,
+		internal.HeaderDeviceID:     deviceID,
+		internal.HeaderReplayCursor: replayCursor,
+	}
+
+	err = handler.Handle(context.Background(), headers, payload)
+	s.Require().NoError(err)
+	s.Require().NotNil(mockConn.lastResponse)
+	s.Equal(replayCursor, mockConn.lastResponse.GetId())
+	s.Equal(delivery.GetEvent().GetEventId(), mockConn.lastResponse.GetMessage().GetId())
+}
+
 // Helper methods.
 func (s *GatewayDeliveryHandlerTestSuite) createTextDelivery(body string) *eventsv1.Delivery {
 	return s.createDeliveryWithPayload(&chatv1.Payload{
@@ -255,6 +285,7 @@ type mockConnection struct {
 	dispatchCount   int
 	dispatchSuccess bool
 	stream          business.DeviceStream
+	lastResponse    *chatv1.StreamResponse
 }
 
 func newMockConnection(profileID, deviceID string) *mockConnection {
@@ -278,8 +309,9 @@ func (m *mockConnection) Metadata() *business.Metadata {
 	return m.metadata
 }
 
-func (m *mockConnection) Dispatch(_ *chatv1.StreamResponse) bool {
+func (m *mockConnection) Dispatch(response *chatv1.StreamResponse) bool {
 	m.dispatchCount++
+	m.lastResponse = response
 	return m.dispatchSuccess
 }
 

@@ -2,101 +2,97 @@ package business
 
 import (
 	"context"
-	"math"
-	"strconv"
+	"errors"
 
-	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"connectrpc.com/connect"
+	defaultrepo "github.com/antinvestor/service-chat/apps/default/service/repository"
+	"github.com/pitabwire/frame/data"
 )
 
 type replayClient interface {
-	ListRooms(ctx context.Context, offset, limit int) ([]*chatv1.Room, error)
-	GetHistory(ctx context.Context, roomID, cursor string, limit int) ([]*chatv1.RoomEvent, error)
-	GetEvent(ctx context.Context, eventID string) (*chatv1.RoomEvent, error)
+	ResolveCursor(ctx context.Context, profileID, deviceID, token string) (string, bool, error)
+	LatestCursor(ctx context.Context, profileID, deviceID string) (string, error)
+	ListAfterCursor(
+		ctx context.Context,
+		profileID string,
+		deviceID string,
+		afterCursor string,
+		upperBoundCursor string,
+		limit int,
+	) ([]*chatv1.StreamResponse, error)
 }
 
-type chatReplayClient struct {
-	chatClient chatv1connect.ChatServiceClient
+type durableReplayClient struct {
+	repo defaultrepo.DeviceReplayRepository
 }
 
-func newChatReplayClient(chatClient chatv1connect.ChatServiceClient) replayClient {
-	if chatClient == nil {
+func newChatReplayClient(repo defaultrepo.DeviceReplayRepository) replayClient {
+	if repo == nil {
 		return nil
 	}
 
-	return &chatReplayClient{chatClient: chatClient}
+	return &durableReplayClient{repo: repo}
 }
 
-func (rc *chatReplayClient) ListRooms(ctx context.Context, offset, limit int) ([]*chatv1.Room, error) {
-	stream, err := rc.chatClient.SearchRooms(ctx, connect.NewRequest(&chatv1.SearchRoomsRequest{
-		Query: "",
-		Cursor: &commonv1.PageCursor{
-			Page:  strconv.Itoa(offset),
-			Limit: safeInt32Limit(limit),
-		},
-	}))
+func (rc *durableReplayClient) ResolveCursor(
+	ctx context.Context,
+	profileID string,
+	deviceID string,
+	token string,
+) (string, bool, error) {
+	if token == "" {
+		return "", false, nil
+	}
+
+	entry, err := rc.repo.GetByCursor(ctx, profileID, deviceID, token)
+	if err == nil && entry != nil {
+		return entry.GetID(), true, nil
+	}
+	if err != nil && !data.ErrorIsNoRows(err) {
+		return "", false, err
+	}
+
+	// Support in-flight rolling upgrades where the client may still present the
+	// older event-id-based token from before the gateway switched to replay cursors.
+	entry, err = rc.repo.GetByEventID(ctx, profileID, deviceID, token)
+	if err == nil && entry != nil {
+		return entry.GetID(), true, nil
+	}
+	if err != nil && !data.ErrorIsNoRows(err) {
+		return "", false, err
+	}
+
+	return "", false, nil
+}
+
+func (rc *durableReplayClient) LatestCursor(ctx context.Context, profileID, deviceID string) (string, error) {
+	return rc.repo.GetLatestCursor(ctx, profileID, deviceID)
+}
+
+func (rc *durableReplayClient) ListAfterCursor(
+	ctx context.Context,
+	profileID string,
+	deviceID string,
+	afterCursor string,
+	upperBoundCursor string,
+	limit int,
+) ([]*chatv1.StreamResponse, error) {
+	entries, err := rc.repo.ListAfterCursor(ctx, profileID, deviceID, afterCursor, upperBoundCursor, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = stream.Close() }()
 
-	rooms := make([]*chatv1.Room, 0, limit)
-	for stream.Receive() {
-		msg := stream.Msg()
-		if msg == nil {
+	responses := make([]*chatv1.StreamResponse, 0, len(entries))
+	for _, entry := range entries {
+		response, convErr := entry.ToStreamResponse()
+		if convErr != nil {
+			return nil, errors.New("failed to decode stored replay response")
+		}
+		if response == nil {
 			continue
 		}
-		rooms = append(rooms, msg.GetData()...)
+		responses = append(responses, response)
 	}
 
-	streamErr := stream.Err()
-	if streamErr != nil {
-		return nil, streamErr
-	}
-
-	return rooms, nil
-}
-
-func (rc *chatReplayClient) GetHistory(
-	ctx context.Context,
-	roomID string,
-	cursor string,
-	limit int,
-) ([]*chatv1.RoomEvent, error) {
-	resp, err := rc.chatClient.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
-		RoomId:  roomID,
-		Forward: true,
-		Cursor: &commonv1.PageCursor{
-			Page:  cursor,
-			Limit: safeInt32Limit(limit),
-		},
-	}))
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Msg.GetEvents(), nil
-}
-
-func (rc *chatReplayClient) GetEvent(ctx context.Context, eventID string) (*chatv1.RoomEvent, error) {
-	resp, err := rc.chatClient.GetEvent(ctx, connect.NewRequest(&chatv1.GetEventRequest{
-		EventId: eventID,
-	}))
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Msg.GetEvent(), nil
-}
-
-func safeInt32Limit(limit int) int32 {
-	if limit <= 0 {
-		return 0
-	}
-	if limit > math.MaxInt32 {
-		return math.MaxInt32
-	}
-	return int32(limit)
+	return responses, nil
 }
