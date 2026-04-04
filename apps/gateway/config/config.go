@@ -27,6 +27,19 @@ type GatewayConfig struct {
 
 	// Rate limiting
 	MaxEventsPerSecond int `envDefault:"100" env:"MAX_EVENTS_PER_SECOND"`
+	MaxEventBurst      int `envDefault:"20"  env:"MAX_EVENT_BURST"`
+
+	// Resource tuning for constrained environments
+	ConnectionPoolExpectedDevices int `envDefault:"128" env:"CONNECTION_POOL_EXPECTED_DEVICES"`
+	ConnectionPoolMinSize         int `envDefault:"256" env:"CONNECTION_POOL_MIN_SIZE"`
+	DispatchBufferSize            int `envDefault:"16"  env:"DISPATCH_BUFFER_SIZE"`
+	DispatchTimeoutMs             int `envDefault:"100" env:"DISPATCH_TIMEOUT_MS"`
+
+	// Resume replay limits
+	ResumeReplayRoomPageSize    int `envDefault:"50"   env:"RESUME_REPLAY_ROOM_PAGE_SIZE"`
+	ResumeReplayHistoryPageSize int `envDefault:"50"   env:"RESUME_REPLAY_HISTORY_PAGE_SIZE"`
+	ResumeReplayMaxRooms        int `envDefault:"250"  env:"RESUME_REPLAY_MAX_ROOMS"`
+	ResumeReplayMaxEvents       int `envDefault:"1000" env:"RESUME_REPLAY_MAX_EVENTS"`
 
 	// Cache configuration (Redis or similar)
 	// Connection metadata is stored in cache to enable horizontal scaling
@@ -54,47 +67,10 @@ type GatewayConfig struct {
 func (c *GatewayConfig) Validate() error {
 	var errs []error
 
-	// Validate service URIs
-	if c.ChatServiceURI == "" {
-		errs = append(errs, errors.New("ChatServiceURI cannot be empty"))
-	}
-
-	// Validate connection management settings
-	if c.MaxConnectionsPerDevice < 1 {
-		errs = append(errs, errors.New("MaxConnectionsPerDevice must be >= 1"))
-	}
-
-	if c.ConnectionTimeoutSec <= 0 {
-		errs = append(errs, errors.New("ConnectionTimeoutSec must be > 0"))
-	}
-
-	if c.HeartbeatIntervalSec <= 0 {
-		errs = append(errs, errors.New("HeartbeatIntervalSec must be > 0"))
-	}
-
-	if c.ConnectionTimeoutSec <= c.HeartbeatIntervalSec {
-		errs = append(errs, fmt.Errorf("ConnectionTimeoutSec (%d) must be > HeartbeatIntervalSec (%d)",
-			c.ConnectionTimeoutSec, c.HeartbeatIntervalSec))
-	}
-
-	// Validate rate limiting
-	if c.MaxEventsPerSecond <= 0 {
-		errs = append(errs, errors.New("MaxEventsPerSecond must be > 0"))
-	}
-
-	// Validate shard configuration
-	if c.ShardID < 0 {
-		errs = append(errs, errors.New("ShardID must be >= 0"))
-	}
-
-	if c.TotalShards <= 0 {
-		errs = append(errs, errors.New("TotalShards must be > 0"))
-	}
-
-	if c.TotalShards > 0 && c.ShardID >= c.TotalShards {
-		errs = append(errs, fmt.Errorf("ShardID (%d) must be < TotalShards (%d)",
-			c.ShardID, c.TotalShards))
-	}
+	errs = append(errs, c.validateServiceSettings()...)
+	errs = append(errs, c.validateConnectionSettings()...)
+	errs = append(errs, c.validateResourceSettings()...)
+	errs = append(errs, c.validateShardSettings()...)
 
 	// Validate cache configuration
 	if err := validateCacheURI(c.CacheURI, "CacheURI"); err != nil {
@@ -110,6 +86,82 @@ func (c *GatewayConfig) Validate() error {
 	}
 
 	return errors.Join(errs...)
+}
+
+func (c *GatewayConfig) validateServiceSettings() []error {
+	var errs []error
+	if c.ChatServiceURI == "" {
+		errs = append(errs, errors.New("ChatServiceURI cannot be empty"))
+	}
+	return errs
+}
+
+func (c *GatewayConfig) validateConnectionSettings() []error {
+	var errs []error
+	if c.MaxConnectionsPerDevice < 1 {
+		errs = append(errs, errors.New("MaxConnectionsPerDevice must be >= 1"))
+	}
+	if c.ConnectionTimeoutSec <= 0 {
+		errs = append(errs, errors.New("ConnectionTimeoutSec must be > 0"))
+	}
+	if c.HeartbeatIntervalSec <= 0 {
+		errs = append(errs, errors.New("HeartbeatIntervalSec must be > 0"))
+	}
+	if c.ConnectionTimeoutSec <= c.HeartbeatIntervalSec {
+		errs = append(errs, fmt.Errorf("ConnectionTimeoutSec (%d) must be > HeartbeatIntervalSec (%d)",
+			c.ConnectionTimeoutSec, c.HeartbeatIntervalSec))
+	}
+	return errs
+}
+
+func (c *GatewayConfig) validateResourceSettings() []error {
+	var errs []error
+	if c.MaxEventsPerSecond <= 0 {
+		errs = append(errs, errors.New("MaxEventsPerSecond must be > 0"))
+	}
+	if c.MaxEventBurst <= 0 {
+		errs = append(errs, errors.New("MaxEventBurst must be > 0"))
+	}
+	if c.ConnectionPoolExpectedDevices <= 0 {
+		errs = append(errs, errors.New("ConnectionPoolExpectedDevices must be > 0"))
+	}
+	if c.ConnectionPoolMinSize <= 0 {
+		errs = append(errs, errors.New("ConnectionPoolMinSize must be > 0"))
+	}
+	if c.DispatchBufferSize <= 0 {
+		errs = append(errs, errors.New("DispatchBufferSize must be > 0"))
+	}
+	if c.DispatchTimeoutMs <= 0 {
+		errs = append(errs, errors.New("DispatchTimeoutMs must be > 0"))
+	}
+	if c.ResumeReplayRoomPageSize <= 0 {
+		errs = append(errs, errors.New("ResumeReplayRoomPageSize must be > 0"))
+	}
+	if c.ResumeReplayHistoryPageSize <= 0 {
+		errs = append(errs, errors.New("ResumeReplayHistoryPageSize must be > 0"))
+	}
+	if c.ResumeReplayMaxRooms <= 0 {
+		errs = append(errs, errors.New("ResumeReplayMaxRooms must be > 0"))
+	}
+	if c.ResumeReplayMaxEvents <= 0 {
+		errs = append(errs, errors.New("ResumeReplayMaxEvents must be > 0"))
+	}
+	return errs
+}
+
+func (c *GatewayConfig) validateShardSettings() []error {
+	var errs []error
+	if c.ShardID < 0 {
+		errs = append(errs, errors.New("ShardID must be >= 0"))
+	}
+	if c.TotalShards <= 0 {
+		errs = append(errs, errors.New("TotalShards must be > 0"))
+	}
+	if c.TotalShards > 0 && c.ShardID >= c.TotalShards {
+		errs = append(errs, fmt.Errorf("ShardID (%d) must be < TotalShards (%d)",
+			c.ShardID, c.TotalShards))
+	}
+	return errs
 }
 
 // validateCacheURI checks that a cache URI has a valid scheme.

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pitabwire/frame/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +36,39 @@ func TestConnectionManager_ShutdownRejectsNewConnections(t *testing.T) {
 func TestConnectionManager_ActiveConnections(t *testing.T) {
 	cm := newTestConnectionManager()
 	assert.Equal(t, int32(0), cm.ActiveConnections())
+}
+
+func TestNewConnectionManager_AppliesResourceOptions(t *testing.T) {
+	manager := NewConnectionManager(context.Background(), nil, nil, cache.NewInMemoryCache(), ConnectionManagerOptions{
+		MaxConnectionsPerDevice: 2,
+		ConnectionTimeoutSec:    120,
+		HeartbeatIntervalSec:    20,
+		PoolExpectedDevices:     10,
+		PoolMinSize:             32,
+		DispatchBufferSize:      8,
+		DispatchTimeout:         25 * time.Millisecond,
+		InboundRateLimit:        40,
+		InboundRateBurst:        10,
+		ResumeRoomPageSize:      20,
+		ResumeHistoryPageSize:   15,
+		ResumeMaxRooms:          60,
+		ResumeMaxEvents:         120,
+	})
+	cm, ok := manager.(*connectionManager)
+	require.True(t, ok)
+	defer func() {
+		require.NoError(t, cm.Shutdown(context.Background()))
+	}()
+
+	assert.Equal(t, int32(32), cm.connPool.maxSize)
+	assert.Equal(t, 8, cm.connectionOpts.DispatchBufferSize)
+	assert.Equal(t, 25*time.Millisecond, cm.connectionOpts.DispatchTimeout)
+	assert.Equal(t, 40, cm.connectionOpts.InboundRateLimit)
+	assert.Equal(t, 10, cm.connectionOpts.InboundRateBurst)
+	assert.Equal(t, 20, cm.resumeRoomPageSize)
+	assert.Equal(t, 15, cm.resumeHistoryPageSize)
+	assert.Equal(t, 60, cm.resumeMaxRooms)
+	assert.Equal(t, 120, cm.resumeMaxEvents)
 }
 
 func TestConnectionManager_DrainConnections_Empty(t *testing.T) {
@@ -104,7 +138,7 @@ func makeShutdownTestConnection(profileID, deviceID string) Connection {
 	return NewConnection(nil, &Metadata{
 		ProfileID: profileID,
 		DeviceID:  deviceID,
-	})
+	}, ConnectionOptions{}.withDefaults())
 }
 
 // newTestConnectionManager creates a minimal connectionManager for testing.
@@ -114,6 +148,11 @@ func newTestConnectionManager() *connectionManager {
 		maxConnectionsPerDevice: 5,
 		connectionTimeoutSec:    300,
 		heartbeatIntervalSec:    30,
+		connectionOpts:          ConnectionOptions{}.withDefaults(),
+		resumeRoomPageSize:      50,
+		resumeHistoryPageSize:   50,
+		resumeMaxRooms:          250,
+		resumeMaxEvents:         1000,
 		shutdownCh:              make(chan struct{}),
 	}
 }

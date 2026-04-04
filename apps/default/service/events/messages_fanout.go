@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
@@ -25,6 +26,7 @@ type FanoutEventHandler struct {
 	eventRepo        repository.RoomEventRepository
 	queueMan         queue.Manager
 	deliveryTopic    queue.Publisher
+	deliveryTopicMu  sync.Mutex
 	payloadConverter *models.PayloadConverter
 }
 
@@ -44,6 +46,9 @@ func NewFanoutEventHandler(
 }
 
 func (feh *FanoutEventHandler) getTopic() (queue.Publisher, error) {
+	feh.deliveryTopicMu.Lock()
+	defer feh.deliveryTopicMu.Unlock()
+
 	if feh.deliveryTopic != nil {
 		return feh.deliveryTopic, nil
 	}

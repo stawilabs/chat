@@ -64,9 +64,13 @@ func TestConnectionManagerResolveResumeCursorFromCache(t *testing.T) {
 	resumeCache := cache.NewGenericCache[string, string](rawCache, nil)
 
 	cm := &connectionManager{
-		resume:               resumeCache,
-		connectionTimeoutSec: 300,
-		heartbeatIntervalSec: 30,
+		resume:                resumeCache,
+		connectionTimeoutSec:  300,
+		heartbeatIntervalSec:  30,
+		resumeRoomPageSize:    50,
+		resumeHistoryPageSize: 50,
+		resumeMaxRooms:        250,
+		resumeMaxEvents:       1000,
 	}
 
 	err := resumeCache.Set(
@@ -84,7 +88,11 @@ func TestConnectionManagerResolveResumeCursorFromCache(t *testing.T) {
 
 func TestConnectionManagerResolveResumeCursorRejectsUnknownToken(t *testing.T) {
 	cm := &connectionManager{
-		replayCli: &stubReplayClient{},
+		replayCli:             &stubReplayClient{},
+		resumeRoomPageSize:    50,
+		resumeHistoryPageSize: 50,
+		resumeMaxRooms:        250,
+		resumeMaxEvents:       1000,
 	}
 
 	cursor, err := cm.resolveResumeCursor(t.Context(), "profile-1", "device-1", "missing-token")
@@ -128,16 +136,21 @@ func TestConnectionManagerReplayMissedEventsMergesRooms(t *testing.T) {
 				return historyByRoom[roomID][cursor], nil
 			},
 		},
-		resume:               resumeCache,
-		connectionTimeoutSec: 300,
-		heartbeatIntervalSec: 30,
+		resume:                resumeCache,
+		connectionTimeoutSec:  300,
+		heartbeatIntervalSec:  30,
+		connectionOpts:        ConnectionOptions{}.withDefaults(),
+		resumeRoomPageSize:    50,
+		resumeHistoryPageSize: 50,
+		resumeMaxRooms:        250,
+		resumeMaxEvents:       1000,
 	}
 
 	stream := &replayTestStream{}
 	conn := NewConnection(stream, &Metadata{
 		ProfileID: "profile-1",
 		DeviceID:  "device-1",
-	})
+	}, ConnectionOptions{}.withDefaults())
 
 	lastCursor, replayed, err := cm.replayMissedEvents(t.Context(), conn, stream, "evt-001", "evt-006")
 	require.NoError(t, err)

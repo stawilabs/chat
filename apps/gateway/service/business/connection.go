@@ -10,21 +10,34 @@ import (
 )
 
 const (
-	// dispatchChannelSize is the buffer size for outbound messages.
-	// Reduced from 100 to 32 to limit memory usage per connection.
-	// At ~1KB avg message size: 32 * 1KB = 32KB max buffer per connection.
-	dispatchChannelSize = 32
-
-	// dispatchTimeout is the maximum time to wait when channel is full
-	// before applying backpressure.
-	dispatchTimeout = 100 * time.Millisecond
-
-	// defaultRateLimit is the default maximum events per second per connection.
-	defaultRateLimit = 100
-
-	// rateLimitBurst is the burst capacity for the rate limiter.
-	rateLimitBurst = 20
+	defaultDispatchChannelSize = 16
+	defaultDispatchTimeout     = 100 * time.Millisecond
+	defaultRateLimit           = 100
+	defaultRateLimitBurst      = 20
 )
+
+type ConnectionOptions struct {
+	DispatchBufferSize int
+	DispatchTimeout    time.Duration
+	InboundRateLimit   int
+	InboundRateBurst   int
+}
+
+func (opts ConnectionOptions) withDefaults() ConnectionOptions {
+	if opts.DispatchBufferSize <= 0 {
+		opts.DispatchBufferSize = defaultDispatchChannelSize
+	}
+	if opts.DispatchTimeout <= 0 {
+		opts.DispatchTimeout = defaultDispatchTimeout
+	}
+	if opts.InboundRateLimit <= 0 {
+		opts.InboundRateLimit = defaultRateLimit
+	}
+	if opts.InboundRateBurst <= 0 {
+		opts.InboundRateBurst = defaultRateLimitBurst
+	}
+	return opts
+}
 
 // tokenBucket implements a simple token bucket rate limiter.
 // It allows bursting up to 'burst' tokens and refills at 'rate' tokens per second.
@@ -77,6 +90,7 @@ type connection struct {
 	mu           sync.RWMutex
 	closeOnce    sync.Once
 	closed       atomic.Bool
+	dispatchOpts ConnectionOptions
 
 	// Rate limiting
 	rateLimiter    *tokenBucket  // Token bucket for inbound rate limiting
@@ -104,12 +118,14 @@ func (c *connection) Unlock() {
 	c.mu.Unlock()
 }
 
-func NewConnection(stream DeviceStream, metadata *Metadata) Connection {
+func NewConnection(stream DeviceStream, metadata *Metadata, opts ConnectionOptions) Connection {
+	opts = opts.withDefaults()
 	return &connection{
 		metadata:     metadata,
 		stream:       stream,
-		dispatchChan: make(chan *chatv1.StreamResponse, dispatchChannelSize),
-		rateLimiter:  newTokenBucket(defaultRateLimit, rateLimitBurst),
+		dispatchChan: make(chan *chatv1.StreamResponse, opts.DispatchBufferSize),
+		dispatchOpts: opts,
+		rateLimiter:  newTokenBucket(opts.InboundRateLimit, opts.InboundRateBurst),
 	}
 }
 
@@ -150,7 +166,7 @@ func (c *connection) Dispatch(evt *chatv1.StreamResponse) bool {
 
 	// Channel full - apply backpressure with timeout
 	// This gives slow consumers a brief window to catch up
-	timer := time.NewTimer(dispatchTimeout)
+	timer := time.NewTimer(c.dispatchOpts.DispatchTimeout)
 	defer timer.Stop()
 
 	select {
@@ -176,7 +192,7 @@ func (c *connection) DispatchedMessages() uint64 {
 
 // ChannelUtilization returns the current channel buffer utilization (0.0 to 1.0).
 func (c *connection) ChannelUtilization() float64 {
-	return float64(len(c.dispatchChan)) / float64(dispatchChannelSize)
+	return float64(len(c.dispatchChan)) / float64(cap(c.dispatchChan))
 }
 
 func (c *connection) Stream() DeviceStream {

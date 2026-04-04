@@ -85,9 +85,21 @@ func main() {
 		chatServiceClient,
 		deviceClient,
 		rawCache,
-		cfg.MaxConnectionsPerDevice,
-		cfg.ConnectionTimeoutSec,
-		cfg.HeartbeatIntervalSec,
+		business.ConnectionManagerOptions{
+			MaxConnectionsPerDevice: cfg.MaxConnectionsPerDevice,
+			ConnectionTimeoutSec:    cfg.ConnectionTimeoutSec,
+			HeartbeatIntervalSec:    cfg.HeartbeatIntervalSec,
+			PoolExpectedDevices:     cfg.ConnectionPoolExpectedDevices,
+			PoolMinSize:             cfg.ConnectionPoolMinSize,
+			DispatchBufferSize:      cfg.DispatchBufferSize,
+			DispatchTimeout:         time.Duration(cfg.DispatchTimeoutMs) * time.Millisecond,
+			InboundRateLimit:        cfg.MaxEventsPerSecond,
+			InboundRateBurst:        cfg.MaxEventBurst,
+			ResumeRoomPageSize:      cfg.ResumeReplayRoomPageSize,
+			ResumeHistoryPageSize:   cfg.ResumeReplayHistoryPageSize,
+			ResumeMaxRooms:          cfg.ResumeReplayMaxRooms,
+			ResumeMaxEvents:         cfg.ResumeReplayMaxEvents,
+		},
 	)
 	// Graceful shutdown: drain connections and stop background tasks.
 	// Defers run LIFO: connectionManager shuts down before svc.Stop.

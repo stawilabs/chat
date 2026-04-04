@@ -71,6 +71,31 @@ func TestGatewayConfig_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "MaxEventsPerSecond")
 	})
 
+	t.Run("resource tuning fields must be positive", func(t *testing.T) {
+		cfg := validGatewayConfig()
+		cfg.MaxEventBurst = 0
+		cfg.ConnectionPoolExpectedDevices = 0
+		cfg.ConnectionPoolMinSize = 0
+		cfg.DispatchBufferSize = 0
+		cfg.DispatchTimeoutMs = 0
+		cfg.ResumeReplayRoomPageSize = 0
+		cfg.ResumeReplayHistoryPageSize = 0
+		cfg.ResumeReplayMaxRooms = 0
+		cfg.ResumeReplayMaxEvents = 0
+
+		err := cfg.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "MaxEventBurst")
+		assert.Contains(t, err.Error(), "ConnectionPoolExpectedDevices")
+		assert.Contains(t, err.Error(), "ConnectionPoolMinSize")
+		assert.Contains(t, err.Error(), "DispatchBufferSize")
+		assert.Contains(t, err.Error(), "DispatchTimeoutMs")
+		assert.Contains(t, err.Error(), "ResumeReplayRoomPageSize")
+		assert.Contains(t, err.Error(), "ResumeReplayHistoryPageSize")
+		assert.Contains(t, err.Error(), "ResumeReplayMaxRooms")
+		assert.Contains(t, err.Error(), "ResumeReplayMaxEvents")
+	})
+
 	t.Run("ShardID must be >= 0", func(t *testing.T) {
 		cfg := validGatewayConfig()
 		cfg.ShardID = -1
@@ -149,6 +174,15 @@ func validGatewayConfig() config.GatewayConfig {
 		ConnectionTimeoutSec:          300,
 		HeartbeatIntervalSec:          30,
 		MaxEventsPerSecond:            100,
+		MaxEventBurst:                 20,
+		ConnectionPoolExpectedDevices: 128,
+		ConnectionPoolMinSize:         256,
+		DispatchBufferSize:            16,
+		DispatchTimeoutMs:             100,
+		ResumeReplayRoomPageSize:      50,
+		ResumeReplayHistoryPageSize:   50,
+		ResumeReplayMaxRooms:          250,
+		ResumeReplayMaxEvents:         1000,
 		CacheName:                     "defaultCache",
 		CacheURI:                      "redis://localhost:6379",
 		CacheCredentialsFile:          "",

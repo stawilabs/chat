@@ -13,7 +13,7 @@ func makeTestConnection(profileID, deviceID string) Connection {
 	return NewConnection(nil, &Metadata{
 		ProfileID: profileID,
 		DeviceID:  deviceID,
-	})
+	}, ConnectionOptions{}.withDefaults())
 }
 
 func TestConnectionPool_NewPool(t *testing.T) {

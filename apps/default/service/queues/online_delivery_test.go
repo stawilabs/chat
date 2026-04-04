@@ -29,6 +29,10 @@ func (s *HotPathDeliveryQueueHandlerTestSuite) createConfig() *config.ChatConfig
 		QueueDeviceEventDeliveryName:  "gateway.event.delivery.%d",
 		QueueOfflineEventDeliveryName: "offline.event.delivery",
 		ShardCount:                    2,
+		DeviceSearchPageSize:          100,
+		ProfileDeviceCacheTTLSeconds:  5,
+		ProfileDeviceCacheMaxEntries:  32,
+		MaxDeliveryRetries:            5,
 	}
 }
 

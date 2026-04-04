@@ -14,10 +14,6 @@ import (
 )
 
 const (
-	resumeRoomPageSize        = 100
-	resumeHistoryPageSize     = 100
-	maxResumeReplayRooms      = 1000
-	maxResumeReplayEvents     = 5000
 	minResumeTokenTTL         = 15 * time.Minute
 	emptyResumeCursorSentinel = "__empty__"
 )
@@ -194,7 +190,7 @@ func (cm *connectionManager) replayMissedEvents(
 	replayedCount := 0
 
 	for queue.Len() > 0 {
-		if replayedCount >= maxResumeReplayEvents {
+		if replayedCount >= cm.resumeMaxEvents {
 			return "", 0, connect.NewError(
 				connect.CodeFailedPrecondition,
 				errors.New("resume replay window exceeded; perform a full sync and reconnect"),
@@ -250,12 +246,12 @@ func (cm *connectionManager) listReplayRoomIDs(ctx context.Context) ([]string, e
 		return nil, nil
 	}
 
-	roomIDs := make([]string, 0, resumeRoomPageSize)
+	roomIDs := make([]string, 0, cm.resumeRoomPageSize)
 	seen := make(map[string]struct{})
 
-	for offset := 0; offset < maxResumeReplayRooms; offset += resumeRoomPageSize {
+	for offset := 0; offset < cm.resumeMaxRooms; offset += cm.resumeRoomPageSize {
 		reqCtx, cancel := context.WithTimeout(ctx, resumeReplayTimeout)
-		rooms, err := cm.replayCli.ListRooms(reqCtx, offset, resumeRoomPageSize)
+		rooms, err := cm.replayCli.ListRooms(reqCtx, offset, cm.resumeRoomPageSize)
 		cancel()
 		if err != nil {
 			return nil, fmt.Errorf("failed to list subscribed rooms for resume replay: %w", err)
@@ -270,7 +266,7 @@ func (cm *connectionManager) listReplayRoomIDs(ctx context.Context) ([]string, e
 			}
 			seen[room.GetId()] = struct{}{}
 			roomIDs = append(roomIDs, room.GetId())
-			if len(roomIDs) > maxResumeReplayRooms {
+			if len(roomIDs) > cm.resumeMaxRooms {
 				return nil, connect.NewError(
 					connect.CodeFailedPrecondition,
 					errors.New("too many subscribed rooms for resume replay; perform a full sync and reconnect"),
@@ -278,7 +274,7 @@ func (cm *connectionManager) listReplayRoomIDs(ctx context.Context) ([]string, e
 			}
 		}
 
-		if len(rooms) < resumeRoomPageSize {
+		if len(rooms) < cm.resumeRoomPageSize {
 			break
 		}
 	}
@@ -298,7 +294,7 @@ func (cm *connectionManager) fillReplayState(
 	reqCtx, cancel := context.WithTimeout(ctx, resumeReplayTimeout)
 	defer cancel()
 
-	events, err := cm.replayCli.GetHistory(reqCtx, state.roomID, state.cursor, resumeHistoryPageSize)
+	events, err := cm.replayCli.GetHistory(reqCtx, state.roomID, state.cursor, cm.resumeHistoryPageSize)
 	if err != nil {
 		return fmt.Errorf("failed to fetch replay history for room %s: %w", state.roomID, err)
 	}
@@ -319,12 +315,12 @@ func (cm *connectionManager) fillReplayState(
 	}
 
 	if len(state.buffer) == 0 {
-		state.exhausted = state.exhausted || len(events) < resumeHistoryPageSize
+		state.exhausted = state.exhausted || len(events) < cm.resumeHistoryPageSize
 		return nil
 	}
 
 	state.cursor = state.buffer[len(state.buffer)-1].GetId()
-	state.hasMore = !state.exhausted && len(events) == resumeHistoryPageSize
+	state.hasMore = !state.exhausted && len(events) == cm.resumeHistoryPageSize
 	if !state.hasMore {
 		state.exhausted = true
 	}

@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func testConnectionOptions() ConnectionOptions {
+	return ConnectionOptions{}.withDefaults()
+}
+
 // --- Token Bucket Tests ---
 
 func TestTokenBucket_InitialBurst(t *testing.T) {
@@ -113,7 +117,7 @@ func TestTokenBucket_ConcurrentAccess(t *testing.T) {
 
 func TestConnection_New(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	require.NotNil(t, conn)
 	assert.Equal(t, meta, conn.Metadata())
@@ -123,7 +127,7 @@ func TestConnection_New(t *testing.T) {
 
 func TestConnection_Dispatch(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	evt := &chatv1.StreamResponse{Id: "evt1"}
 	ok := conn.Dispatch(evt)
@@ -132,7 +136,7 @@ func TestConnection_Dispatch(t *testing.T) {
 
 func TestConnection_DispatchAndConsume(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	evt := &chatv1.StreamResponse{Id: "evt1"}
 	ok := conn.Dispatch(evt)
@@ -146,7 +150,7 @@ func TestConnection_DispatchAndConsume(t *testing.T) {
 
 func TestConnection_ConsumeDispatch_CancelledContext(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
@@ -157,10 +161,10 @@ func TestConnection_ConsumeDispatch_CancelledContext(t *testing.T) {
 
 func TestConnection_DispatchFull(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	// Fill the channel
-	for i := range dispatchChannelSize {
+	for i := range testConnectionOptions().DispatchBufferSize {
 		evt := &chatv1.StreamResponse{Id: fmt.Sprintf("evt%d", i)}
 		ok := conn.Dispatch(evt)
 		require.True(t, ok, "dispatch %d should succeed", i)
@@ -174,10 +178,10 @@ func TestConnection_DispatchFull(t *testing.T) {
 
 func TestConnection_AllowInbound(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	// Should allow up to burst
-	for range rateLimitBurst {
+	for range testConnectionOptions().InboundRateBurst {
 		assert.True(t, conn.AllowInbound())
 	}
 
@@ -187,10 +191,10 @@ func TestConnection_AllowInbound(t *testing.T) {
 
 func TestConnection_RateLimitedCount(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta).(*connection)
+	conn := NewConnection(nil, meta, testConnectionOptions()).(*connection)
 
 	// Exhaust burst
-	for range rateLimitBurst {
+	for range testConnectionOptions().InboundRateBurst {
 		conn.AllowInbound()
 	}
 
@@ -206,7 +210,7 @@ func TestConnection_RateLimitedCount(t *testing.T) {
 
 func TestConnection_DispatchedMessages(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta).(*connection)
+	conn := NewConnection(nil, meta, testConnectionOptions()).(*connection)
 
 	for i := range 5 {
 		conn.Dispatch(&chatv1.StreamResponse{Id: fmt.Sprintf("evt%d", i)})
@@ -217,10 +221,10 @@ func TestConnection_DispatchedMessages(t *testing.T) {
 
 func TestConnection_DroppedMessages(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta).(*connection)
+	conn := NewConnection(nil, meta, testConnectionOptions()).(*connection)
 
 	// Fill the buffer
-	for range dispatchChannelSize {
+	for range testConnectionOptions().DispatchBufferSize {
 		conn.Dispatch(&chatv1.StreamResponse{Id: "fill"})
 	}
 
@@ -232,12 +236,12 @@ func TestConnection_DroppedMessages(t *testing.T) {
 
 func TestConnection_ChannelUtilization(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta).(*connection)
+	conn := NewConnection(nil, meta, testConnectionOptions()).(*connection)
 
 	assert.InDelta(t, 0.0, conn.ChannelUtilization(), 0.001)
 
 	// Fill half the channel
-	for range dispatchChannelSize / 2 {
+	for range testConnectionOptions().DispatchBufferSize / 2 {
 		conn.Dispatch(&chatv1.StreamResponse{Id: "msg"})
 	}
 
@@ -247,7 +251,7 @@ func TestConnection_ChannelUtilization(t *testing.T) {
 
 func TestConnection_Close(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	// Close should not panic
 	assert.NotPanics(t, func() {
@@ -257,7 +261,7 @@ func TestConnection_Close(t *testing.T) {
 
 func TestConnection_LockUnlock(t *testing.T) {
 	meta := &Metadata{ProfileID: "p1", DeviceID: "d1"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	// Lock/Unlock should not deadlock
 	assert.NotPanics(t, func() {
@@ -269,7 +273,7 @@ func TestConnection_LockUnlock(t *testing.T) {
 
 func TestConnection_MetadataKey(t *testing.T) {
 	meta := &Metadata{ProfileID: "user123", DeviceID: "device456"}
-	conn := NewConnection(nil, meta)
+	conn := NewConnection(nil, meta, testConnectionOptions())
 
 	assert.Equal(t, "user123:device456", conn.Metadata().Key())
 }

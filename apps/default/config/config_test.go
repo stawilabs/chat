@@ -75,6 +75,21 @@ func TestChatConfig_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "ShardCount")
 		assert.Contains(t, err.Error(), "QueueDeviceEventDeliveryURI")
 	})
+
+	t.Run("resource tuning fields must be positive", func(t *testing.T) {
+		cfg := validChatConfig()
+		cfg.MaxDeliveryRetries = 0
+		cfg.DeviceSearchPageSize = 0
+		cfg.ProfileDeviceCacheTTLSeconds = 0
+		cfg.ProfileDeviceCacheMaxEntries = 0
+
+		err := cfg.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "MaxDeliveryRetries")
+		assert.Contains(t, err.Error(), "DeviceSearchPageSize")
+		assert.Contains(t, err.Error(), "ProfileDeviceCacheTTLSeconds")
+		assert.Contains(t, err.Error(), "ProfileDeviceCacheMaxEntries")
+	})
 }
 
 func validChatConfig() config.ChatConfig {
@@ -91,5 +106,9 @@ func validChatConfig() config.ChatConfig {
 		QueueGatewayEventDeliveryName: "gateway.event.delivery.%d",
 		QueueGatewayEventDeliveryURI:  []string{"mem://gateway.event.delivery.0"},
 		ShardCount:                    1,
+		MaxDeliveryRetries:            5,
+		DeviceSearchPageSize:          100,
+		ProfileDeviceCacheTTLSeconds:  5,
+		ProfileDeviceCacheMaxEntries:  512,
 	}
 }

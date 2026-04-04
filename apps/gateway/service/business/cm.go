@@ -113,10 +113,8 @@ import (
 
 const (
 	// connection management constants.
-	errorChannelBufferSize = 2     // Buffer for inbound/outbound workers
-	defaultDevicePoolSize  = 1000  // Default number of devices to support
-	minPoolSize            = 10000 // Minimum pool size
-	millisecondsMultiplier = 1000  // For converting seconds to milliseconds
+	errorChannelBufferSize = 2    // Buffer for inbound/outbound workers
+	millisecondsMultiplier = 1000 // For converting seconds to milliseconds
 	cacheTTLMultiplier     = 2
 
 	// Timeouts and intervals.
@@ -136,6 +134,66 @@ const (
 	// maxInt32 is the maximum value for int32 to prevent overflow.
 	maxInt32 = 2147483647
 )
+
+type ConnectionManagerOptions struct {
+	MaxConnectionsPerDevice int
+	ConnectionTimeoutSec    int
+	HeartbeatIntervalSec    int
+	PoolExpectedDevices     int
+	PoolMinSize             int
+	DispatchBufferSize      int
+	DispatchTimeout         time.Duration
+	InboundRateLimit        int
+	InboundRateBurst        int
+	ResumeRoomPageSize      int
+	ResumeHistoryPageSize   int
+	ResumeMaxRooms          int
+	ResumeMaxEvents         int
+}
+
+func (opts ConnectionManagerOptions) withDefaults() ConnectionManagerOptions {
+	if opts.MaxConnectionsPerDevice <= 0 {
+		opts.MaxConnectionsPerDevice = 1
+	}
+	if opts.ConnectionTimeoutSec <= 0 {
+		opts.ConnectionTimeoutSec = 300
+	}
+	if opts.HeartbeatIntervalSec <= 0 {
+		opts.HeartbeatIntervalSec = 30
+	}
+	if opts.PoolExpectedDevices <= 0 {
+		opts.PoolExpectedDevices = 128
+	}
+	if opts.PoolMinSize <= 0 {
+		opts.PoolMinSize = 256
+	}
+
+	connOpts := ConnectionOptions{
+		DispatchBufferSize: opts.DispatchBufferSize,
+		DispatchTimeout:    opts.DispatchTimeout,
+		InboundRateLimit:   opts.InboundRateLimit,
+		InboundRateBurst:   opts.InboundRateBurst,
+	}.withDefaults()
+	opts.DispatchBufferSize = connOpts.DispatchBufferSize
+	opts.DispatchTimeout = connOpts.DispatchTimeout
+	opts.InboundRateLimit = connOpts.InboundRateLimit
+	opts.InboundRateBurst = connOpts.InboundRateBurst
+
+	if opts.ResumeRoomPageSize <= 0 {
+		opts.ResumeRoomPageSize = 50
+	}
+	if opts.ResumeHistoryPageSize <= 0 {
+		opts.ResumeHistoryPageSize = 50
+	}
+	if opts.ResumeMaxRooms <= 0 {
+		opts.ResumeMaxRooms = 250
+	}
+	if opts.ResumeMaxEvents <= 0 {
+		opts.ResumeMaxEvents = 1000
+	}
+
+	return opts
+}
 
 //nolint:gochecknoglobals // Global pool for efficient channel reuse across connections
 var (
@@ -262,6 +320,11 @@ type connectionManager struct {
 	maxConnectionsPerDevice int // Maximum concurrent connections per device
 	connectionTimeoutSec    int // Timeout for connection operations (also used for cache TTL)
 	heartbeatIntervalSec    int // Expected heartbeat interval (stale = 3x this value)
+	connectionOpts          ConnectionOptions
+	resumeRoomPageSize      int
+	resumeHistoryPageSize   int
+	resumeMaxRooms          int
+	resumeMaxEvents         int
 
 	// Shutdown coordination
 	shutdownCh   chan struct{}  // Closed to signal shutdown to all goroutines
@@ -313,10 +376,9 @@ func NewConnectionManager(
 	chatClient chatv1connect.ChatServiceClient,
 	deviceClient devicev1connect.DeviceServiceClient,
 	rawCache cache.RawCache,
-	maxConnectionsPerDevice int,
-	connectionTimeoutSec int,
-	heartbeatIntervalSec int,
+	options ConnectionManagerOptions,
 ) ConnectionManager {
+	options = options.withDefaults()
 	// Generate a unique gateway instance ID using nanosecond timestamp
 	// Format: "gateway-<nanoseconds>" - unique across restarts
 	gatewayID := fmt.Sprintf("gateway-%d", time.Now().UnixNano())
@@ -324,14 +386,18 @@ func NewConnectionManager(
 	// Calculate optimal pool size based on expected device count
 	// Formula: maxConnectionsPerDevice * expected_devices
 	// Minimum 10,000 to handle burst traffic
-	poolSize := maxConnectionsPerDevice * defaultDevicePoolSize
+	poolSize := options.MaxConnectionsPerDevice * options.PoolExpectedDevices
 	if poolSize > maxInt32 { // Max int32
 		poolSize = maxInt32
 	}
+	minPoolSize := options.PoolMinSize
+	if minPoolSize > maxInt32 {
+		minPoolSize = maxInt32
+	}
 
 	poolSizeInt32 := int32(poolSize) // Support 1000 devices by default
-	if poolSizeInt32 < minPoolSize {
-		poolSizeInt32 = 10000 // Minimum pool size for small deployments
+	if poolSizeInt32 < int32(minPoolSize) {
+		poolSizeInt32 = int32(minPoolSize)
 	}
 
 	cm := &connectionManager{
@@ -344,9 +410,19 @@ func NewConnectionManager(
 
 		gatewayID: gatewayID,
 
-		maxConnectionsPerDevice: maxConnectionsPerDevice,
-		connectionTimeoutSec:    connectionTimeoutSec,
-		heartbeatIntervalSec:    heartbeatIntervalSec,
+		maxConnectionsPerDevice: options.MaxConnectionsPerDevice,
+		connectionTimeoutSec:    options.ConnectionTimeoutSec,
+		heartbeatIntervalSec:    options.HeartbeatIntervalSec,
+		connectionOpts: ConnectionOptions{
+			DispatchBufferSize: options.DispatchBufferSize,
+			DispatchTimeout:    options.DispatchTimeout,
+			InboundRateLimit:   options.InboundRateLimit,
+			InboundRateBurst:   options.InboundRateBurst,
+		},
+		resumeRoomPageSize:    options.ResumeRoomPageSize,
+		resumeHistoryPageSize: options.ResumeHistoryPageSize,
+		resumeMaxRooms:        options.ResumeMaxRooms,
+		resumeMaxEvents:       options.ResumeMaxEvents,
 
 		shutdownCh: make(chan struct{}),
 	}
@@ -480,7 +556,7 @@ func (cm *connectionManager) HandleConnection(
 
 	// Create new connection
 	// Note: Outbound delivery handled by default service's queue system
-	conn := NewConnection(stream, metadata)
+	conn := NewConnection(stream, metadata, cm.connectionOpts)
 
 	if existing := cm.connPool.remove(metadata.Key()); existing != nil {
 		existing.Close()

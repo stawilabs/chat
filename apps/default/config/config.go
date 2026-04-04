@@ -35,9 +35,12 @@ type ChatConfig struct {
 	ShardCount int `envDefault:"1" env:"SHARD_COUNT"`
 
 	// Dead-letter queue for deliveries that exceed max retries
-	QueueDeadLetterName string `envDefault:"dead.letter.queue"       env:"QUEUE_DEAD_LETTER_NAME"`
-	QueueDeadLetterURI  string `envDefault:"mem://dead.letter.queue" env:"QUEUE_DEAD_LETTER_URI"`
-	MaxDeliveryRetries  int    `envDefault:"5"                       env:"MAX_DELIVERY_RETRIES"`
+	QueueDeadLetterName          string `envDefault:"dead.letter.queue"       env:"QUEUE_DEAD_LETTER_NAME"`
+	QueueDeadLetterURI           string `envDefault:"mem://dead.letter.queue" env:"QUEUE_DEAD_LETTER_URI"`
+	MaxDeliveryRetries           int    `envDefault:"5"                       env:"MAX_DELIVERY_RETRIES"`
+	DeviceSearchPageSize         int    `envDefault:"100"                     env:"DEVICE_SEARCH_PAGE_SIZE"`
+	ProfileDeviceCacheTTLSeconds int    `envDefault:"5" env:"PROFILE_DEVICE_CACHE_TTL_SECONDS"`
+	ProfileDeviceCacheMaxEntries int    `envDefault:"512" env:"PROFILE_DEVICE_CACHE_MAX_ENTRIES"`
 }
 
 // Validate checks that the configuration is valid.
@@ -67,6 +70,18 @@ func (c *ChatConfig) Validate() error {
 		if err := validateQueueURI(uri, fmt.Sprintf("QueueGatewayEventDeliveryURI[%d]", i)); err != nil {
 			errs = append(errs, err)
 		}
+	}
+	if c.MaxDeliveryRetries <= 0 {
+		errs = append(errs, errors.New("MaxDeliveryRetries must be > 0"))
+	}
+	if c.DeviceSearchPageSize <= 0 {
+		errs = append(errs, errors.New("DeviceSearchPageSize must be > 0"))
+	}
+	if c.ProfileDeviceCacheTTLSeconds <= 0 {
+		errs = append(errs, errors.New("ProfileDeviceCacheTTLSeconds must be > 0"))
+	}
+	if c.ProfileDeviceCacheMaxEntries <= 0 {
+		errs = append(errs, errors.New("ProfileDeviceCacheMaxEntries must be > 0"))
 	}
 
 	return errors.Join(errs...)

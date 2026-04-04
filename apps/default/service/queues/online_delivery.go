@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
@@ -20,16 +21,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	// DeviceSearchPageSize defines the number of devices to fetch per page when searching.
-	DeviceSearchPageSize = 100
-)
-
 type hotPathDeliveryQueueHandler struct {
-	qMan      queue.Manager
-	cfg       *config.ChatConfig
-	deviceCli devicev1connect.DeviceServiceClient
-	dlp       *DeadLetterPublisher
+	qMan        queue.Manager
+	cfg         *config.ChatConfig
+	deviceCli   devicev1connect.DeviceServiceClient
+	dlp         *DeadLetterPublisher
+	deviceCache *profileDeviceCache
 }
 
 func NewHotPathDeliveryQueueHandler(
@@ -44,6 +41,10 @@ func NewHotPathDeliveryQueueHandler(
 		qMan:      qMan,
 		deviceCli: deviceCli,
 		dlp:       dlp,
+		deviceCache: newProfileDeviceCache(
+			time.Duration(cfg.ProfileDeviceCacheTTLSeconds)*time.Second,
+			cfg.ProfileDeviceCacheMaxEntries,
+		),
 	}
 }
 
@@ -82,7 +83,7 @@ func (dq *hotPathDeliveryQueueHandler) getOnlineDeliveryTopic(
 }
 
 //
-//nolint:nonamedreturns,gocognit // named return for tracing; delivery pipeline requires device search, retry logic, and worker pool coordination
+//nolint:nonamedreturns // named return for tracing
 func (dq *hotPathDeliveryQueueHandler) Handle(
 	ctx context.Context,
 	headers map[string]string,
@@ -125,13 +126,8 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		"event_id":   eventDelivery.GetEvent().GetEventId(),
 	}).Debug("HotPathDelivery searching devices")
 
-	response, err := dq.deviceCli.Search(ctx, connect.NewRequest(&devicev1.SearchRequest{
-		Query: profileID,
-		Page:  0,
-		Count: DeviceSearchPageSize,
-	}))
+	devices, err := dq.resolveDevicesForProfile(ctx, profileID)
 	if err != nil {
-		// Retryable: increment retry count and republish
 		return RetryOrDeadLetter(
 			ctx,
 			dq.qMan,
@@ -143,43 +139,32 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		)
 	}
 
-	for response.Receive() {
-		deviceErr := response.Err()
-		if deviceErr != nil && !errors.Is(deviceErr, io.EOF) {
-			util.Log(ctx).WithError(deviceErr).WithField("profile_id", profileID).
-				Error("failed to receive device search stream")
+	var deliveryErrs []error
+	for _, dev := range devices {
+		eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
+		if !ok {
+			deliveryErrs = append(deliveryErrs, errors.New("failed to clone event delivery"))
+			continue
 		}
+		eventCopy.DeviceId = dev.id
 
-		resp := response.Msg()
-		var deliveryErrs []error
-
-		// Deliver synchronously so failures are observed and retried instead of being dropped.
-		for _, dev := range resp.GetData() {
-			eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
-			if !ok {
-				deliveryErrs = append(deliveryErrs, errors.New("failed to clone event delivery"))
-				continue
-			}
-			eventCopy.DeviceId = dev.GetId()
-
-			if deliverErr := dq.deliver(ctx, eventCopy, dev); deliverErr != nil {
-				util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.GetId()).
-					Error("failed to deliver event")
-				deliveryErrs = append(deliveryErrs, fmt.Errorf("device %s: %w", dev.GetId(), deliverErr))
-			}
+		if deliverErr := dq.deliver(ctx, eventCopy, dev); deliverErr != nil {
+			util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.id).
+				Error("failed to deliver event")
+			deliveryErrs = append(deliveryErrs, fmt.Errorf("device %s: %w", dev.id, deliverErr))
 		}
+	}
 
-		if len(deliveryErrs) > 0 {
-			return RetryOrDeadLetter(
-				ctx,
-				dq.qMan,
-				dq.dlp,
-				dq.cfg.QueueDeviceEventDeliveryName,
-				eventDelivery,
-				headers,
-				errors.Join(deliveryErrs...),
-			)
-		}
+	if len(deliveryErrs) > 0 {
+		return RetryOrDeadLetter(
+			ctx,
+			dq.qMan,
+			dq.dlp,
+			dq.cfg.QueueDeviceEventDeliveryName,
+			eventDelivery,
+			headers,
+			errors.Join(deliveryErrs...),
+		)
 	}
 
 	return nil
@@ -187,10 +172,10 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 func (dq *hotPathDeliveryQueueHandler) deliver(
 	ctx context.Context,
 	msg *eventsv1.Delivery,
-	dev *devicev1.DeviceObject,
+	dev deliveryDevice,
 ) error {
 	util.Log(ctx).WithFields(map[string]any{
-		"device_id": dev.GetId(),
+		"device_id": dev.id,
 		"online":    dq.deviceIsOnline(ctx, dev),
 	}).Debug("HotPathDelivery routing decision")
 
@@ -200,7 +185,7 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 			chattel.MessagesDeliveredCounter.Add(ctx, 1)
 			return nil
 		}
-		util.Log(ctx).WithError(err).WithField("device_id", dev.GetId()).
+		util.Log(ctx).WithError(err).WithField("device_id", dev.id).
 			Debug("direct delivery failed, falling back to offline delivery")
 	}
 
@@ -210,7 +195,7 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 	}
 
 	deviceHeader := map[string]string{
-		internal.HeaderDeviceID: dev.GetId(),
+		internal.HeaderDeviceID: dev.id,
 	}
 
 	return offlineDeliveryTopic.Publish(ctx, msg, deviceHeader)
@@ -218,14 +203,14 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 
 func (dq *hotPathDeliveryQueueHandler) deviceIsOnline(
 	_ context.Context,
-	dev *devicev1.DeviceObject,
+	dev deliveryDevice,
 ) bool {
-	return dev.GetPresence() != devicev1.PresenceStatus_OFFLINE
+	return dev.presence != devicev1.PresenceStatus_OFFLINE
 }
 
 func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 	ctx context.Context,
-	dev *devicev1.DeviceObject,
+	dev deliveryDevice,
 	msg *eventsv1.Delivery,
 ) error {
 	destination := msg.GetDestination()
@@ -236,7 +221,7 @@ func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 			profileID = contactLink.GetProfileId()
 		}
 	}
-	deviceID := dev.GetId()
+	deviceID := dev.id
 
 	deliveryTopic, shardID, err := dq.getOnlineDeliveryTopic(ctx, profileID, deviceID)
 	if err != nil {
@@ -250,4 +235,56 @@ func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 	}
 
 	return deliveryTopic.Publish(ctx, msg, deviceHeader)
+}
+
+func (dq *hotPathDeliveryQueueHandler) resolveDevicesForProfile(
+	ctx context.Context,
+	profileID string,
+) ([]deliveryDevice, error) {
+	if devices, ok := dq.deviceCache.Get(profileID); ok {
+		return devices, nil
+	}
+
+	response, err := dq.deviceCli.Search(ctx, connect.NewRequest(&devicev1.SearchRequest{
+		Query: profileID,
+		Page:  0,
+		Count: safeSearchPageSize(dq.cfg.DeviceSearchPageSize),
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	devices := make([]deliveryDevice, 0, dq.cfg.DeviceSearchPageSize)
+	for response.Receive() {
+		deviceErr := response.Err()
+		if deviceErr != nil && !errors.Is(deviceErr, io.EOF) {
+			util.Log(ctx).WithError(deviceErr).WithField("profile_id", profileID).
+				Error("failed to receive device search stream")
+		}
+
+		resp := response.Msg()
+		for _, dev := range resp.GetData() {
+			devices = append(devices, deliveryDevice{
+				id:       dev.GetId(),
+				presence: dev.GetPresence(),
+			})
+		}
+	}
+
+	if responseErr := response.Err(); responseErr != nil && !errors.Is(responseErr, io.EOF) {
+		return nil, responseErr
+	}
+
+	dq.deviceCache.Set(profileID, devices)
+	return devices, nil
+}
+
+func safeSearchPageSize(limit int) int32 {
+	if limit <= 0 {
+		return 0
+	}
+	if limit > int(^uint32(0)>>1) {
+		return int32(^uint32(0) >> 1)
+	}
+	return int32(limit)
 }
