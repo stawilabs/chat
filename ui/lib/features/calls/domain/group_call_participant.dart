@@ -64,6 +64,9 @@ abstract class GroupCallParticipant with _$GroupCallParticipant {
     /// Whether the participant is currently speaking
     @Default(false) bool isSpeaking,
 
+    /// Whether this participant currently holds a video publishing slot
+    @Default(false) bool hasVideoSlot,
+
     /// Whether this participant is the host of the call
     @Default(false) bool isHost,
 

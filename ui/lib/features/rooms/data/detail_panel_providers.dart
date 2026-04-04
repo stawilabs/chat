@@ -24,7 +24,9 @@ Stream<List<domain.RoomEvent>> activeMotions(Ref ref, String roomId) {
 
         return events
             .where((event) {
-              if (event.type != domain.RoomEventType.motion.index) return false;
+              if (event.type != domain.RoomEventType.motion.storageCode) {
+                return false;
+              }
 
               // Parse content to check deadline
               try {
@@ -117,8 +119,8 @@ Stream<List<domain.RoomEvent>> roomMedia(Ref ref, String roomId) {
         ..where((t) => t.roomId.equals(roomId))
         ..where(
           (t) =>
-              t.type.equals(domain.RoomEventType.image.index) |
-              t.type.equals(domain.RoomEventType.video.index),
+              t.type.equals(domain.RoomEventType.image.storageCode) |
+              t.type.equals(domain.RoomEventType.video.storageCode),
         )
         ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
         ..limit(50))
@@ -133,7 +135,9 @@ Stream<List<domain.RoomEvent>> roomTransactions(Ref ref, String roomId) {
 
   return (db.select(db.roomEvents)
         ..where((t) => t.roomId.equals(roomId))
-        ..where((t) => t.type.equals(domain.RoomEventType.transaction.index))
+        ..where(
+          (t) => t.type.equals(domain.RoomEventType.transaction.storageCode),
+        )
         ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
         ..limit(50))
       .watch()
@@ -146,12 +150,12 @@ domain.RoomEvent _toRoomEvent(RoomEvent row) => domain.RoomEvent(
   roomId: row.roomId,
   senderId: row.senderId,
   senderContactId: row.senderContactId,
-  type: domain.RoomEventType.values[row.type],
+  type: domain.roomEventTypeFromStorageCode(row.type),
   content: row.content != null
       ? (jsonDecode(row.content!) as Map<String, dynamic>)
       : {},
   parentId: row.parentId,
-  status: domain.EventStatus.values[row.status],
+  status: domain.eventStatusFromStorageCode(row.status),
   createdAt: row.createdAt ?? 0,
   serverTs: row.serverTs,
   localId: row.localId,

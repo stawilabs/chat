@@ -97,7 +97,7 @@ final class MessageListProvider
   }
 }
 
-String _$messageListHash() => r'0f67c333486756c1f527d8fa39856b65aa2d62b3';
+String _$messageListHash() => r'5c0f5a84819566ad7f54523f7c2c8536d8f918df';
 
 final class MessageListFamily extends $Family
     with

@@ -20,7 +20,9 @@ mixin _$GroupCall {
  String get roomId;/// Profile ID of the user who started the call
  String get hostProfileId;/// Timestamp when the call was started
  DateTime get startedAt;/// List of participants in the call
- List<GroupCallParticipant> get participants;/// Current state of the call
+ List<GroupCallParticipant> get participants;/// Profiles currently allowed to publish video
+ List<String> get activeVideoProfileIds;/// Maximum number of simultaneous video publishers
+ int get maxVideoPublishers;/// Current state of the call
  GroupCallState get state;/// Timestamp when the call ended (null if still active)
  DateTime? get endedAt;
 /// Create a copy of GroupCall
@@ -35,16 +37,16 @@ $GroupCallCopyWith<GroupCall> get copyWith => _$GroupCallCopyWithImpl<GroupCall>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.participants, participants)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.participants, participants)&&const DeepCollectionEquality().equals(other.activeVideoProfileIds, activeVideoProfileIds)&&(identical(other.maxVideoPublishers, maxVideoPublishers) || other.maxVideoPublishers == maxVideoPublishers)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(participants),state,endedAt);
+int get hashCode => Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(participants),const DeepCollectionEquality().hash(activeVideoProfileIds),maxVideoPublishers,state,endedAt);
 
 @override
 String toString() {
-  return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, state: $state, endedAt: $endedAt)';
+  return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, activeVideoProfileIds: $activeVideoProfileIds, maxVideoPublishers: $maxVideoPublishers, state: $state, endedAt: $endedAt)';
 }
 
 
@@ -55,7 +57,7 @@ abstract mixin class $GroupCallCopyWith<$Res>  {
   factory $GroupCallCopyWith(GroupCall value, $Res Function(GroupCall) _then) = _$GroupCallCopyWithImpl;
 @useResult
 $Res call({
- String callId, String roomId, String hostProfileId, DateTime startedAt, List<GroupCallParticipant> participants, GroupCallState state, DateTime? endedAt
+ String callId, String roomId, String hostProfileId, DateTime startedAt, List<GroupCallParticipant> participants, List<String> activeVideoProfileIds, int maxVideoPublishers, GroupCallState state, DateTime? endedAt
 });
 
 
@@ -72,14 +74,16 @@ class _$GroupCallCopyWithImpl<$Res>
 
 /// Create a copy of GroupCall
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? callId = null,Object? roomId = null,Object? hostProfileId = null,Object? startedAt = null,Object? participants = null,Object? state = null,Object? endedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? callId = null,Object? roomId = null,Object? hostProfileId = null,Object? startedAt = null,Object? participants = null,Object? activeVideoProfileIds = null,Object? maxVideoPublishers = null,Object? state = null,Object? endedAt = freezed,}) {
   return _then(_self.copyWith(
 callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,hostProfileId: null == hostProfileId ? _self.hostProfileId : hostProfileId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,participants: null == participants ? _self.participants : participants // ignore: cast_nullable_to_non_nullable
-as List<GroupCallParticipant>,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as List<GroupCallParticipant>,activeVideoProfileIds: null == activeVideoProfileIds ? _self.activeVideoProfileIds : activeVideoProfileIds // ignore: cast_nullable_to_non_nullable
+as List<String>,maxVideoPublishers: null == maxVideoPublishers ? _self.maxVideoPublishers : maxVideoPublishers // ignore: cast_nullable_to_non_nullable
+as int,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as GroupCallState,endedAt: freezed == endedAt ? _self.endedAt : endedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -166,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String callId,  String roomId,  String hostProfileId,  DateTime startedAt,  List<GroupCallParticipant> participants,  GroupCallState state,  DateTime? endedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String callId,  String roomId,  String hostProfileId,  DateTime startedAt,  List<GroupCallParticipant> participants,  List<String> activeVideoProfileIds,  int maxVideoPublishers,  GroupCallState state,  DateTime? endedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GroupCall() when $default != null:
-return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_that.participants,_that.state,_that.endedAt);case _:
+return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_that.participants,_that.activeVideoProfileIds,_that.maxVideoPublishers,_that.state,_that.endedAt);case _:
   return orElse();
 
 }
@@ -187,10 +191,10 @@ return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String callId,  String roomId,  String hostProfileId,  DateTime startedAt,  List<GroupCallParticipant> participants,  GroupCallState state,  DateTime? endedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String callId,  String roomId,  String hostProfileId,  DateTime startedAt,  List<GroupCallParticipant> participants,  List<String> activeVideoProfileIds,  int maxVideoPublishers,  GroupCallState state,  DateTime? endedAt)  $default,) {final _that = this;
 switch (_that) {
 case _GroupCall():
-return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_that.participants,_that.state,_that.endedAt);case _:
+return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_that.participants,_that.activeVideoProfileIds,_that.maxVideoPublishers,_that.state,_that.endedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +211,10 @@ return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String callId,  String roomId,  String hostProfileId,  DateTime startedAt,  List<GroupCallParticipant> participants,  GroupCallState state,  DateTime? endedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String callId,  String roomId,  String hostProfileId,  DateTime startedAt,  List<GroupCallParticipant> participants,  List<String> activeVideoProfileIds,  int maxVideoPublishers,  GroupCallState state,  DateTime? endedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _GroupCall() when $default != null:
-return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_that.participants,_that.state,_that.endedAt);case _:
+return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_that.participants,_that.activeVideoProfileIds,_that.maxVideoPublishers,_that.state,_that.endedAt);case _:
   return null;
 
 }
@@ -222,7 +226,7 @@ return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_t
 @JsonSerializable()
 
 class _GroupCall extends GroupCall {
-  const _GroupCall({required this.callId, required this.roomId, required this.hostProfileId, required this.startedAt, final  List<GroupCallParticipant> participants = const [], this.state = GroupCallState.initiating, this.endedAt}): _participants = participants,super._();
+  const _GroupCall({required this.callId, required this.roomId, required this.hostProfileId, required this.startedAt, final  List<GroupCallParticipant> participants = const [], final  List<String> activeVideoProfileIds = const [], this.maxVideoPublishers = 5, this.state = GroupCallState.initiating, this.endedAt}): _participants = participants,_activeVideoProfileIds = activeVideoProfileIds,super._();
   factory _GroupCall.fromJson(Map<String, dynamic> json) => _$GroupCallFromJson(json);
 
 /// Unique identifier for this call
@@ -242,6 +246,17 @@ class _GroupCall extends GroupCall {
   return EqualUnmodifiableListView(_participants);
 }
 
+/// Profiles currently allowed to publish video
+ final  List<String> _activeVideoProfileIds;
+/// Profiles currently allowed to publish video
+@override@JsonKey() List<String> get activeVideoProfileIds {
+  if (_activeVideoProfileIds is EqualUnmodifiableListView) return _activeVideoProfileIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_activeVideoProfileIds);
+}
+
+/// Maximum number of simultaneous video publishers
+@override@JsonKey() final  int maxVideoPublishers;
 /// Current state of the call
 @override@JsonKey() final  GroupCallState state;
 /// Timestamp when the call ended (null if still active)
@@ -260,16 +275,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other._participants, _participants)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other._participants, _participants)&&const DeepCollectionEquality().equals(other._activeVideoProfileIds, _activeVideoProfileIds)&&(identical(other.maxVideoPublishers, maxVideoPublishers) || other.maxVideoPublishers == maxVideoPublishers)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(_participants),state,endedAt);
+int get hashCode => Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(_participants),const DeepCollectionEquality().hash(_activeVideoProfileIds),maxVideoPublishers,state,endedAt);
 
 @override
 String toString() {
-  return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, state: $state, endedAt: $endedAt)';
+  return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, activeVideoProfileIds: $activeVideoProfileIds, maxVideoPublishers: $maxVideoPublishers, state: $state, endedAt: $endedAt)';
 }
 
 
@@ -280,7 +295,7 @@ abstract mixin class _$GroupCallCopyWith<$Res> implements $GroupCallCopyWith<$Re
   factory _$GroupCallCopyWith(_GroupCall value, $Res Function(_GroupCall) _then) = __$GroupCallCopyWithImpl;
 @override @useResult
 $Res call({
- String callId, String roomId, String hostProfileId, DateTime startedAt, List<GroupCallParticipant> participants, GroupCallState state, DateTime? endedAt
+ String callId, String roomId, String hostProfileId, DateTime startedAt, List<GroupCallParticipant> participants, List<String> activeVideoProfileIds, int maxVideoPublishers, GroupCallState state, DateTime? endedAt
 });
 
 
@@ -297,14 +312,16 @@ class __$GroupCallCopyWithImpl<$Res>
 
 /// Create a copy of GroupCall
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? callId = null,Object? roomId = null,Object? hostProfileId = null,Object? startedAt = null,Object? participants = null,Object? state = null,Object? endedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? callId = null,Object? roomId = null,Object? hostProfileId = null,Object? startedAt = null,Object? participants = null,Object? activeVideoProfileIds = null,Object? maxVideoPublishers = null,Object? state = null,Object? endedAt = freezed,}) {
   return _then(_GroupCall(
 callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,hostProfileId: null == hostProfileId ? _self.hostProfileId : hostProfileId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,participants: null == participants ? _self._participants : participants // ignore: cast_nullable_to_non_nullable
-as List<GroupCallParticipant>,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as List<GroupCallParticipant>,activeVideoProfileIds: null == activeVideoProfileIds ? _self._activeVideoProfileIds : activeVideoProfileIds // ignore: cast_nullable_to_non_nullable
+as List<String>,maxVideoPublishers: null == maxVideoPublishers ? _self.maxVideoPublishers : maxVideoPublishers // ignore: cast_nullable_to_non_nullable
+as int,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as GroupCallState,endedAt: freezed == endedAt ? _self.endedAt : endedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

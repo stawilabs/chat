@@ -2,6 +2,7 @@ import 'package:antinvestor_api_device/antinvestor_api_device.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../../core/networking/api_config.dart';
 import '../../../core/networking/client.dart';
 import '../../../core/storage/key_manager.dart';
 
@@ -118,12 +119,17 @@ class TurnCredentialsService {
           data: {'turnServerCount': turnCredentials.length},
         );
       } else {
-        // Use public TURN servers as fallback
-        iceServers.addAll(_publicTurnServers);
-        AppLogger.info(
-          'Using public TURN servers',
-          data: {'turnServerCount': _publicTurnServers.length},
-        );
+        if (ApiConfig.allowPublicTurnFallback) {
+          iceServers.addAll(_publicTurnServers);
+          AppLogger.warning(
+            'Using public TURN fallback servers',
+            data: {'turnServerCount': _publicTurnServers.length},
+          );
+        } else {
+          AppLogger.warning(
+            'TURN credentials unavailable, continuing with STUN only',
+          );
+        }
       }
     } catch (e, stackTrace) {
       AppLogger.error(
@@ -131,7 +137,13 @@ class TurnCredentialsService {
         error: e,
         stackTrace: stackTrace,
       );
-      // Continue with STUN-only configuration
+      if (ApiConfig.allowPublicTurnFallback) {
+        iceServers.addAll(_publicTurnServers);
+        AppLogger.warning(
+          'Falling back to public TURN after TURN credential failure',
+          data: {'turnServerCount': _publicTurnServers.length},
+        );
+      }
     }
 
     return {'iceServers': iceServers};

@@ -73,7 +73,7 @@ final class ActiveMotionsProvider
   }
 }
 
-String _$activeMotionsHash() => r'9f07e40ae2060d00619db6152dc9329216357b8f';
+String _$activeMotionsHash() => r'7b6fcb7e225fe320c25a3f486a1d74db93f43ec3';
 
 /// Provider for active motions in a room
 /// Returns motions that haven't expired yet
@@ -256,7 +256,7 @@ final class RoomMediaProvider
   }
 }
 
-String _$roomMediaHash() => r'20141edaab05647604febe0aeeb6997e37112d41';
+String _$roomMediaHash() => r'dd4d9d1b63b0102617e9e4f1bc0a40f8cdf27d9b';
 
 /// Provider for shared media in a room (images and videos)
 
@@ -342,7 +342,7 @@ final class RoomTransactionsProvider
   }
 }
 
-String _$roomTransactionsHash() => r'94954f1b3865693cc3f37217ae0dd42e81a542d1';
+String _$roomTransactionsHash() => r'e3ae055810bfdcf31d743439a205b5095e16aa14';
 
 /// Provider for recent transactions in a room
 

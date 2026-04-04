@@ -81,7 +81,7 @@ func (rcr *roomCallRepository) UpdateStatus(ctx context.Context, id, status stri
 	}
 
 	return rcr.Pool().DB(ctx, false).
-		Model(&models.RoomCall{}).
+		Table("room_calls").
 		Where("id = ?", id).
 		Updates(updates).Error
 }
@@ -89,7 +89,7 @@ func (rcr *roomCallRepository) UpdateStatus(ctx context.Context, id, status stri
 // UpdateSFUNode updates the SFU node ID for a call.
 func (rcr *roomCallRepository) UpdateSFUNode(ctx context.Context, id, sfuNodeID string) error {
 	return rcr.Pool().DB(ctx, false).
-		Model(&models.RoomCall{}).
+		Table("room_calls").
 		Where("id = ?", id).
 		Update("sfu_node_id", sfuNodeID).Error
 }

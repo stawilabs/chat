@@ -22,7 +22,8 @@ mixin _$GroupCallParticipant {
  String? get avatarUrl;/// Whether the participant's microphone is muted
  bool get isAudioMuted;/// Whether the participant's camera is turned off
  bool get isVideoOff;/// Whether the participant is currently speaking
- bool get isSpeaking;/// Whether this participant is the host of the call
+ bool get isSpeaking;/// Whether this participant currently holds a video publishing slot
+ bool get hasVideoSlot;/// Whether this participant is the host of the call
  bool get isHost;/// Current connection state of the participant
  ParticipantState get state;
 /// Create a copy of GroupCallParticipant
@@ -37,16 +38,16 @@ $GroupCallParticipantCopyWith<GroupCallParticipant> get copyWith => _$GroupCallP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.hasVideoSlot, hasVideoSlot) || other.hasVideoSlot == hasVideoSlot)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,isHost,state);
+int get hashCode => Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,hasVideoSlot,isHost,state);
 
 @override
 String toString() {
-  return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, isHost: $isHost, state: $state)';
+  return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, hasVideoSlot: $hasVideoSlot, isHost: $isHost, state: $state)';
 }
 
 
@@ -57,7 +58,7 @@ abstract mixin class $GroupCallParticipantCopyWith<$Res>  {
   factory $GroupCallParticipantCopyWith(GroupCallParticipant value, $Res Function(GroupCallParticipant) _then) = _$GroupCallParticipantCopyWithImpl;
 @useResult
 $Res call({
- String profileId, String displayName, DateTime joinedAt, String? avatarUrl, bool isAudioMuted, bool isVideoOff, bool isSpeaking, bool isHost, ParticipantState state
+ String profileId, String displayName, DateTime joinedAt, String? avatarUrl, bool isAudioMuted, bool isVideoOff, bool isSpeaking, bool hasVideoSlot, bool isHost, ParticipantState state
 });
 
 
@@ -74,7 +75,7 @@ class _$GroupCallParticipantCopyWithImpl<$Res>
 
 /// Create a copy of GroupCallParticipant
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? profileId = null,Object? displayName = null,Object? joinedAt = null,Object? avatarUrl = freezed,Object? isAudioMuted = null,Object? isVideoOff = null,Object? isSpeaking = null,Object? isHost = null,Object? state = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? profileId = null,Object? displayName = null,Object? joinedAt = null,Object? avatarUrl = freezed,Object? isAudioMuted = null,Object? isVideoOff = null,Object? isSpeaking = null,Object? hasVideoSlot = null,Object? isHost = null,Object? state = null,}) {
   return _then(_self.copyWith(
 profileId: null == profileId ? _self.profileId : profileId // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -83,6 +84,7 @@ as DateTime,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ign
 as String?,isAudioMuted: null == isAudioMuted ? _self.isAudioMuted : isAudioMuted // ignore: cast_nullable_to_non_nullable
 as bool,isVideoOff: null == isVideoOff ? _self.isVideoOff : isVideoOff // ignore: cast_nullable_to_non_nullable
 as bool,isSpeaking: null == isSpeaking ? _self.isSpeaking : isSpeaking // ignore: cast_nullable_to_non_nullable
+as bool,hasVideoSlot: null == hasVideoSlot ? _self.hasVideoSlot : hasVideoSlot // ignore: cast_nullable_to_non_nullable
 as bool,isHost: null == isHost ? _self.isHost : isHost // ignore: cast_nullable_to_non_nullable
 as bool,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as ParticipantState,
@@ -170,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String profileId,  String displayName,  DateTime joinedAt,  String? avatarUrl,  bool isAudioMuted,  bool isVideoOff,  bool isSpeaking,  bool isHost,  ParticipantState state)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String profileId,  String displayName,  DateTime joinedAt,  String? avatarUrl,  bool isAudioMuted,  bool isVideoOff,  bool isSpeaking,  bool hasVideoSlot,  bool isHost,  ParticipantState state)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GroupCallParticipant() when $default != null:
-return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl,_that.isAudioMuted,_that.isVideoOff,_that.isSpeaking,_that.isHost,_that.state);case _:
+return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl,_that.isAudioMuted,_that.isVideoOff,_that.isSpeaking,_that.hasVideoSlot,_that.isHost,_that.state);case _:
   return orElse();
 
 }
@@ -191,10 +193,10 @@ return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String profileId,  String displayName,  DateTime joinedAt,  String? avatarUrl,  bool isAudioMuted,  bool isVideoOff,  bool isSpeaking,  bool isHost,  ParticipantState state)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String profileId,  String displayName,  DateTime joinedAt,  String? avatarUrl,  bool isAudioMuted,  bool isVideoOff,  bool isSpeaking,  bool hasVideoSlot,  bool isHost,  ParticipantState state)  $default,) {final _that = this;
 switch (_that) {
 case _GroupCallParticipant():
-return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl,_that.isAudioMuted,_that.isVideoOff,_that.isSpeaking,_that.isHost,_that.state);case _:
+return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl,_that.isAudioMuted,_that.isVideoOff,_that.isSpeaking,_that.hasVideoSlot,_that.isHost,_that.state);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +213,10 @@ return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String profileId,  String displayName,  DateTime joinedAt,  String? avatarUrl,  bool isAudioMuted,  bool isVideoOff,  bool isSpeaking,  bool isHost,  ParticipantState state)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String profileId,  String displayName,  DateTime joinedAt,  String? avatarUrl,  bool isAudioMuted,  bool isVideoOff,  bool isSpeaking,  bool hasVideoSlot,  bool isHost,  ParticipantState state)?  $default,) {final _that = this;
 switch (_that) {
 case _GroupCallParticipant() when $default != null:
-return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl,_that.isAudioMuted,_that.isVideoOff,_that.isSpeaking,_that.isHost,_that.state);case _:
+return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl,_that.isAudioMuted,_that.isVideoOff,_that.isSpeaking,_that.hasVideoSlot,_that.isHost,_that.state);case _:
   return null;
 
 }
@@ -226,7 +228,7 @@ return $default(_that.profileId,_that.displayName,_that.joinedAt,_that.avatarUrl
 @JsonSerializable()
 
 class _GroupCallParticipant extends GroupCallParticipant {
-  const _GroupCallParticipant({required this.profileId, required this.displayName, required this.joinedAt, this.avatarUrl, this.isAudioMuted = false, this.isVideoOff = false, this.isSpeaking = false, this.isHost = false, this.state = ParticipantState.joining}): super._();
+  const _GroupCallParticipant({required this.profileId, required this.displayName, required this.joinedAt, this.avatarUrl, this.isAudioMuted = false, this.isVideoOff = false, this.isSpeaking = false, this.hasVideoSlot = false, this.isHost = false, this.state = ParticipantState.joining}): super._();
   factory _GroupCallParticipant.fromJson(Map<String, dynamic> json) => _$GroupCallParticipantFromJson(json);
 
 /// Unique profile ID of the participant
@@ -243,6 +245,8 @@ class _GroupCallParticipant extends GroupCallParticipant {
 @override@JsonKey() final  bool isVideoOff;
 /// Whether the participant is currently speaking
 @override@JsonKey() final  bool isSpeaking;
+/// Whether this participant currently holds a video publishing slot
+@override@JsonKey() final  bool hasVideoSlot;
 /// Whether this participant is the host of the call
 @override@JsonKey() final  bool isHost;
 /// Current connection state of the participant
@@ -261,16 +265,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.hasVideoSlot, hasVideoSlot) || other.hasVideoSlot == hasVideoSlot)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,isHost,state);
+int get hashCode => Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,hasVideoSlot,isHost,state);
 
 @override
 String toString() {
-  return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, isHost: $isHost, state: $state)';
+  return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, hasVideoSlot: $hasVideoSlot, isHost: $isHost, state: $state)';
 }
 
 
@@ -281,7 +285,7 @@ abstract mixin class _$GroupCallParticipantCopyWith<$Res> implements $GroupCallP
   factory _$GroupCallParticipantCopyWith(_GroupCallParticipant value, $Res Function(_GroupCallParticipant) _then) = __$GroupCallParticipantCopyWithImpl;
 @override @useResult
 $Res call({
- String profileId, String displayName, DateTime joinedAt, String? avatarUrl, bool isAudioMuted, bool isVideoOff, bool isSpeaking, bool isHost, ParticipantState state
+ String profileId, String displayName, DateTime joinedAt, String? avatarUrl, bool isAudioMuted, bool isVideoOff, bool isSpeaking, bool hasVideoSlot, bool isHost, ParticipantState state
 });
 
 
@@ -298,7 +302,7 @@ class __$GroupCallParticipantCopyWithImpl<$Res>
 
 /// Create a copy of GroupCallParticipant
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? profileId = null,Object? displayName = null,Object? joinedAt = null,Object? avatarUrl = freezed,Object? isAudioMuted = null,Object? isVideoOff = null,Object? isSpeaking = null,Object? isHost = null,Object? state = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? profileId = null,Object? displayName = null,Object? joinedAt = null,Object? avatarUrl = freezed,Object? isAudioMuted = null,Object? isVideoOff = null,Object? isSpeaking = null,Object? hasVideoSlot = null,Object? isHost = null,Object? state = null,}) {
   return _then(_GroupCallParticipant(
 profileId: null == profileId ? _self.profileId : profileId // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -307,6 +311,7 @@ as DateTime,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ign
 as String?,isAudioMuted: null == isAudioMuted ? _self.isAudioMuted : isAudioMuted // ignore: cast_nullable_to_non_nullable
 as bool,isVideoOff: null == isVideoOff ? _self.isVideoOff : isVideoOff // ignore: cast_nullable_to_non_nullable
 as bool,isSpeaking: null == isSpeaking ? _self.isSpeaking : isSpeaking // ignore: cast_nullable_to_non_nullable
+as bool,hasVideoSlot: null == hasVideoSlot ? _self.hasVideoSlot : hasVideoSlot // ignore: cast_nullable_to_non_nullable
 as bool,isHost: null == isHost ? _self.isHost : isHost // ignore: cast_nullable_to_non_nullable
 as bool,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as ParticipantState,

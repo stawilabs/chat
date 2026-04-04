@@ -620,6 +620,7 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
       case RoomEventType.groupCallAnswer:
       case RoomEventType.groupCallIce:
       case RoomEventType.groupCallMuteUpdate:
+      case RoomEventType.groupCallStageUpdate:
         // Call signaling events are handled by SignalingService
         // and should not appear in the message list
         return const SizedBox.shrink();

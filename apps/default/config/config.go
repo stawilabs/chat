@@ -43,6 +43,9 @@ type ChatConfig struct {
 	ProfileDeviceCacheMaxEntries   int    `envDefault:"512" env:"PROFILE_DEVICE_CACHE_MAX_ENTRIES"`
 	DeviceReplayMaxEventsPerDevice int    `envDefault:"1000" env:"DEVICE_REPLAY_MAX_EVENTS_PER_DEVICE"`
 	DeviceReplayRetentionHours     int    `envDefault:"168" env:"DEVICE_REPLAY_RETENTION_HOURS"`
+	CallDirectMaxParticipants      int    `envDefault:"2" env:"CALL_DIRECT_MAX_PARTICIPANTS"`
+	CallMeshMaxParticipants        int    `envDefault:"6" env:"CALL_MESH_MAX_PARTICIPANTS"`
+	CallMaxVideoPublishers         int    `envDefault:"5" env:"CALL_MAX_VIDEO_PUBLISHERS"`
 }
 
 // Validate checks that the configuration is valid.
@@ -50,18 +53,28 @@ type ChatConfig struct {
 func (c *ChatConfig) Validate() error {
 	var errs []error
 
-	// Validate ShardCount
+	errs = append(errs, c.validateShardConfig()...)
+	errs = append(errs, c.validateQueueURIs()...)
+	errs = append(errs, c.validatePositiveLimits()...)
+	errs = append(errs, c.validateCallLimits()...)
+
+	return errors.Join(errs...)
+}
+
+func (c *ChatConfig) validateShardConfig() []error {
+	var errs []error
 	if c.ShardCount <= 0 {
 		errs = append(errs, errors.New("ShardCount must be > 0"))
 	}
-
-	// Validate ShardCount matches gateway queue URIs
 	if len(c.QueueGatewayEventDeliveryURI) != c.ShardCount && !c.DoDatabaseMigrate() {
 		errs = append(errs, fmt.Errorf("QueueGatewayEventDeliveryURI count (%d) must match ShardCount (%d)",
 			len(c.QueueGatewayEventDeliveryURI), c.ShardCount))
 	}
+	return errs
+}
 
-	// Validate queue URIs
+func (c *ChatConfig) validateQueueURIs() []error {
+	var errs []error
 	if err := validateQueueURI(c.QueueDeviceEventDeliveryURI, "QueueDeviceEventDeliveryURI"); err != nil {
 		errs = append(errs, err)
 	}
@@ -73,26 +86,39 @@ func (c *ChatConfig) Validate() error {
 			errs = append(errs, err)
 		}
 	}
-	if c.MaxDeliveryRetries <= 0 {
-		errs = append(errs, errors.New("MaxDeliveryRetries must be > 0"))
-	}
-	if c.DeviceSearchPageSize <= 0 {
-		errs = append(errs, errors.New("DeviceSearchPageSize must be > 0"))
-	}
-	if c.ProfileDeviceCacheTTLSeconds <= 0 {
-		errs = append(errs, errors.New("ProfileDeviceCacheTTLSeconds must be > 0"))
-	}
-	if c.ProfileDeviceCacheMaxEntries <= 0 {
-		errs = append(errs, errors.New("ProfileDeviceCacheMaxEntries must be > 0"))
-	}
-	if c.DeviceReplayMaxEventsPerDevice <= 0 {
-		errs = append(errs, errors.New("DeviceReplayMaxEventsPerDevice must be > 0"))
-	}
-	if c.DeviceReplayRetentionHours <= 0 {
-		errs = append(errs, errors.New("DeviceReplayRetentionHours must be > 0"))
-	}
+	return errs
+}
 
-	return errors.Join(errs...)
+func (c *ChatConfig) validatePositiveLimits() []error {
+	var errs []error
+	errs = append(errs, validatePositiveInt(c.MaxDeliveryRetries, "MaxDeliveryRetries"))
+	errs = append(errs, validatePositiveInt(c.DeviceSearchPageSize, "DeviceSearchPageSize"))
+	errs = append(errs, validatePositiveInt(c.ProfileDeviceCacheTTLSeconds, "ProfileDeviceCacheTTLSeconds"))
+	errs = append(errs, validatePositiveInt(c.ProfileDeviceCacheMaxEntries, "ProfileDeviceCacheMaxEntries"))
+	errs = append(errs, validatePositiveInt(c.DeviceReplayMaxEventsPerDevice, "DeviceReplayMaxEventsPerDevice"))
+	errs = append(errs, validatePositiveInt(c.DeviceReplayRetentionHours, "DeviceReplayRetentionHours"))
+	return errs
+}
+
+func (c *ChatConfig) validateCallLimits() []error {
+	var errs []error
+	errs = append(errs, validatePositiveInt(c.CallDirectMaxParticipants, "CallDirectMaxParticipants"))
+	errs = append(errs, validatePositiveInt(c.CallMeshMaxParticipants, "CallMeshMaxParticipants"))
+	errs = append(errs, validatePositiveInt(c.CallMaxVideoPublishers, "CallMaxVideoPublishers"))
+	if c.CallMeshMaxParticipants < c.CallDirectMaxParticipants {
+		errs = append(errs, errors.New("CallMeshMaxParticipants must be >= CallDirectMaxParticipants"))
+	}
+	if c.CallMaxVideoPublishers > c.CallMeshMaxParticipants {
+		errs = append(errs, errors.New("CallMaxVideoPublishers must be <= CallMeshMaxParticipants"))
+	}
+	return errs
+}
+
+func validatePositiveInt(value int, name string) error {
+	if value > 0 {
+		return nil
+	}
+	return fmt.Errorf("%s must be > 0", name)
 }
 
 // validateQueueURI checks that a queue URI has a valid scheme.

@@ -2,6 +2,7 @@ package business
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,8 +34,25 @@ type messageBusiness struct {
 	subscriptionSvc SubscriptionService
 	eventsManager   frevents.Manager
 	authzMiddleware authz.Middleware
+	callPolicy      *callPolicy
 
 	payloadConverter *models.PayloadConverter
+}
+
+type MessageBusinessOption func(*messageBusiness)
+
+type preparedRoomEvent struct {
+	event       *models.RoomEvent
+	callPayload *chatv1.CallContent
+}
+
+func WithCallPolicy(
+	callRepo repository.RoomCallRepository,
+	cfg CallPolicyConfig,
+) MessageBusinessOption {
+	return func(mb *messageBusiness) {
+		mb.callPolicy = newCallPolicy(callRepo, mb.subRepo, cfg)
+	}
 }
 
 // NewMessageBusiness creates a new instance of MessageBusiness.
@@ -44,8 +62,9 @@ func NewMessageBusiness(
 	subRepo repository.RoomSubscriptionRepository,
 	subscriptionSvc SubscriptionService,
 	authzMiddleware authz.Middleware,
+	opts ...MessageBusinessOption,
 ) MessageBusiness {
-	return &messageBusiness{
+	mb := &messageBusiness{
 
 		eventsManager:   evtsManager,
 		eventRepo:       eventRepo,
@@ -55,6 +74,14 @@ func NewMessageBusiness(
 
 		payloadConverter: models.NewPayloadConverter(),
 	}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(mb)
+		}
+	}
+
+	return mb
 }
 
 //nolint:gocognit,funlen,nonamedreturns // Complex event validation; named return needed for deferred tracing
@@ -86,6 +113,7 @@ func (mb *messageBusiness) SendEvents(
 	responses := make([]*chatv1.AckEvent, len(requestEvents))
 	validEvents := make([]*models.RoomEvent, 0, len(requestEvents))
 	eventToIndex := make(map[string]int, len(requestEvents))
+	callPayloadsByEventID := make(map[string]*chatv1.CallContent)
 
 	// Extract unique room IDs for batch access checking
 	uniqueRoomIDs := make(map[string]bool)
@@ -170,54 +198,16 @@ func (mb *messageBusiness) SendEvents(
 			continue
 		}
 
-		// Check if user has access to this room
-		hasAccess := subscriptionIDAccessMap[subscriptionID]
-		if !hasAccess {
-			responses[i] = &chatv1.AckEvent{
-				EventId: []string{reqEvt.GetId()},
-				AckAt:   timestamppb.Now(),
-				Error: &commonv1.ErrorDetail{
-					Code:    int32(connect.CodePermissionDenied),
-					Message: service.ErrMessageSendDenied.Error(),
-				},
-			}
+		prepared, ack := mb.prepareEventForInsert(ctx, reqEvt, roomID, subscriptionID, subscriptionIDAccessMap)
+		if ack != nil {
+			responses[i] = ack
 			continue
 		}
 
-		// Create the message event using PayloadConverter
-		content, convertErr := mb.payloadConverter.FromProto(reqEvt.GetPayload())
-		if convertErr != nil {
-			responses[i] = &chatv1.AckEvent{
-				EventId: []string{reqEvt.GetId()},
-				AckAt:   timestamppb.Now(),
-				Error: &commonv1.ErrorDetail{
-					Code:    int32(connect.CodeInternal),
-					Message: fmt.Sprintf("failed to convert event: %v", convertErr),
-				},
-			}
-			continue
+		if prepared.callPayload != nil {
+			callPayloadsByEventID[reqEvt.GetId()] = prepared.callPayload
 		}
-
-		// Create the message event
-		event := &models.RoomEvent{
-			RoomID:    reqEvt.GetRoomId(),
-			EventType: int32(reqEvt.GetType()),
-			Content:   content,
-			SenderID:  subscriptionID,
-		}
-
-		if reqEvt.ParentId != nil {
-			event.ParentID = reqEvt.GetParentId()
-		}
-
-		// Use client-provided ID if available, otherwise generate
-		if reqEvt.GetId() != "" {
-			event.ID = reqEvt.GetId()
-		} else {
-			event.GenID(ctx)
-		}
-
-		validEvents = append(validEvents, event)
+		validEvents = append(validEvents, prepared.event)
 	}
 
 	// Phase 2: Deduplicate and bulk save valid events
@@ -271,10 +261,74 @@ func (mb *messageBusiness) SendEvents(
 	// Phase 3: Process each valid event - emit to outbox or report errors
 	for _, event := range validEvents {
 		responseIdx := eventToIndex[event.GetID()]
-		responses[responseIdx] = mb.emitOrAckEvent(ctx, event, insertedIDs, bulkCreateErr, subscriptionMap)
+		responses[responseIdx] = mb.emitOrAckEvent(
+			ctx,
+			event,
+			insertedIDs,
+			bulkCreateErr,
+			subscriptionMap,
+			callPayloadsByEventID,
+		)
 	}
 
 	return responses, nil
+}
+
+func (mb *messageBusiness) prepareEventForInsert(
+	ctx context.Context,
+	reqEvt *chatv1.RoomEvent,
+	roomID string,
+	subscriptionID string,
+	subscriptionIDAccessMap map[string]bool,
+) (*preparedRoomEvent, *chatv1.AckEvent) {
+	if !subscriptionIDAccessMap[subscriptionID] {
+		return nil, &chatv1.AckEvent{
+			EventId: []string{reqEvt.GetId()},
+			AckAt:   timestamppb.Now(),
+			Error: &commonv1.ErrorDetail{
+				Code:    int32(connect.CodePermissionDenied),
+				Message: service.ErrMessageSendDenied.Error(),
+			},
+		}
+	}
+
+	content, convertErr := mb.payloadConverter.FromProto(reqEvt.GetPayload())
+	if convertErr != nil {
+		return nil, ackEventError(reqEvt.GetId(), connect.NewError(
+			connect.CodeInternal,
+			fmt.Errorf("failed to convert event: %w", convertErr),
+		))
+	}
+
+	var callPayload *chatv1.CallContent
+	if reqEvt.GetType() == chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL && mb.callPolicy != nil {
+		callPayload = reqEvt.GetPayload().GetCall()
+		if callErr := mb.callPolicy.ValidateEvent(ctx, roomID, subscriptionID, callPayload); callErr != nil {
+			return nil, ackEventError(reqEvt.GetId(), callErr)
+		}
+	}
+
+	event := &models.RoomEvent{
+		RoomID:    reqEvt.GetRoomId(),
+		EventType: int32(reqEvt.GetType()),
+		Content:   content,
+		SenderID:  subscriptionID,
+	}
+
+	if reqEvt.ParentId != nil {
+		event.ParentID = reqEvt.GetParentId()
+	}
+
+	if reqEvt.GetId() != "" {
+		event.ID = reqEvt.GetId()
+	} else {
+		event.GenID(ctx)
+	}
+
+	return &preparedRoomEvent{
+		event:       event,
+		callPayload: callPayload,
+	}, nil
 }
 
 // emitOrAckEvent processes a single event after bulk save: emits to outbox if newly inserted,
@@ -285,16 +339,13 @@ func (mb *messageBusiness) emitOrAckEvent(
 	insertedIDs map[string]bool,
 	bulkCreateErr error,
 	subscriptionMap map[string]*models.RoomSubscription,
+	callPayloadsByEventID map[string]*chatv1.CallContent,
 ) *chatv1.AckEvent {
 	if bulkCreateErr != nil {
-		return &chatv1.AckEvent{
-			EventId: []string{event.GetID()},
-			AckAt:   timestamppb.Now(),
-			Error: &commonv1.ErrorDetail{
-				Code:    int32(connect.CodeInternal),
-				Message: fmt.Sprintf("failed to save event: %v", bulkCreateErr),
-			},
-		}
+		return ackEventError(event.GetID(), connect.NewError(
+			connect.CodeInternal,
+			fmt.Errorf("failed to save event: %w", bulkCreateErr),
+		))
 	}
 
 	// Skip events that were duplicates (already inserted by a concurrent request).
@@ -311,13 +362,25 @@ func (mb *messageBusiness) emitOrAckEvent(
 		util.Log(ctx).
 			WithField("subscription_id", event.SenderID).
 			Error("very unlikely, no such subscription exists")
-		return &chatv1.AckEvent{
-			EventId: []string{event.GetID()},
-			AckAt:   timestamppb.Now(),
-			Error: &commonv1.ErrorDetail{
-				Code:    int32(connect.CodeInternal),
-				Message: "no subscription found for sender",
-			},
+		return ackEventError(event.GetID(), connect.NewError(
+			connect.CodeInternal,
+			errors.New("no subscription found for sender"),
+		))
+	}
+
+	if callPayload := callPayloadsByEventID[event.GetID()]; callPayload != nil && mb.callPolicy != nil {
+		if callErr := mb.callPolicy.RecordPersistedEvent(
+			ctx,
+			event.RoomID,
+			subscription.GetID(),
+			callPayload,
+		); callErr != nil {
+			if delErr := mb.eventRepo.Delete(ctx, event.GetID()); delErr != nil {
+				util.Log(ctx).WithError(delErr).
+					WithField("event_id", event.GetID()).
+					Warn("failed to clean up call event after call state failure")
+			}
+			return ackEventError(event.GetID(), callErr)
 		}
 	}
 
@@ -342,19 +405,36 @@ func (mb *messageBusiness) emitOrAckEvent(
 				WithField("event_id", event.GetID()).
 				Warn("failed to clean up orphaned event after emit failure")
 		}
-		return &chatv1.AckEvent{
-			EventId: []string{event.GetID()},
-			AckAt:   timestamppb.Now(),
-			Error: &commonv1.ErrorDetail{
-				Code:    int32(connect.CodeInternal),
-				Message: fmt.Sprintf("failed to emit event: %v", emitErr),
-			},
-		}
+		return ackEventError(event.GetID(), connect.NewError(
+			connect.CodeInternal,
+			fmt.Errorf("failed to emit event: %w", emitErr),
+		))
 	}
 
 	return &chatv1.AckEvent{
 		EventId: []string{event.GetID()},
 		AckAt:   timestamppb.Now(),
+	}
+}
+
+func ackEventError(eventID string, err error) *chatv1.AckEvent {
+	code := connect.CodeInternal
+	message := err.Error()
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		code = connectErr.Code()
+		if unwrapped := connectErr.Unwrap(); unwrapped != nil {
+			message = unwrapped.Error()
+		}
+	}
+
+	return &chatv1.AckEvent{
+		EventId: []string{eventID},
+		AckAt:   timestamppb.Now(),
+		Error: &commonv1.ErrorDetail{
+			Code:    int32(code),
+			Message: message,
+		},
 	}
 }
 

@@ -83,6 +83,8 @@ class NotificationContentFormatter {
   /// Get a privacy-preserving body text based on message type
   String _getPrivateBody(RoomEventType type) {
     switch (type) {
+      case RoomEventType.unknown:
+        return 'New update';
       case RoomEventType.text:
         return 'New message';
       case RoomEventType.image:
@@ -114,6 +116,7 @@ class NotificationContentFormatter {
       case RoomEventType.groupCallAnswer:
       case RoomEventType.groupCallIce:
       case RoomEventType.groupCallMuteUpdate:
+      case RoomEventType.groupCallStageUpdate:
         return 'Group call activity';
       case RoomEventType.groupConfig:
         return 'Finance settings updated';
@@ -130,6 +133,9 @@ class NotificationContentFormatter {
       switch (event.type) {
         case RoomEventType.text:
           return (_formatTextMessage(event.content), null);
+
+        case RoomEventType.unknown:
+          return ('New update', null);
 
         case RoomEventType.image:
           return (
@@ -176,6 +182,7 @@ class NotificationContentFormatter {
         case RoomEventType.groupCallAnswer:
         case RoomEventType.groupCallIce:
         case RoomEventType.groupCallMuteUpdate:
+        case RoomEventType.groupCallStageUpdate:
           // These are internal events, shouldn't normally be shown
           return ('', null);
 

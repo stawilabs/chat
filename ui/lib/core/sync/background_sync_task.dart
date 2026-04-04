@@ -246,7 +246,8 @@ class BackgroundSyncTask {
 
       for (final room in rooms) {
         try {
-          final hasCursor = room.lastEventId != null && room.lastEventId!.isNotEmpty;
+          final hasCursor =
+              room.lastEventId != null && room.lastEventId!.isNotEmpty;
           final request = pb.GetHistoryRequest(
             roomId: room.id,
             cursor: common.PageCursor(
@@ -295,6 +296,28 @@ class BackgroundSyncTask {
                   'sessionId': payload.encrypted.sessionId,
                   'senderKey': payload.encrypted.senderKeyId,
                 };
+              } else if (payload.hasCall()) {
+                final call = payload.call;
+                final metadata = call.hasMetadata()
+                    ? _structToMap(call.metadata)
+                    : <String, dynamic>{};
+                content = {
+                  'callId': call.callId,
+                  'callType': _callTypeToString(call.type),
+                  ...metadata,
+                };
+                if (call.sdp.isNotEmpty) {
+                  content['sdp'] = call.sdp;
+                  content['type'] =
+                      call.action ==
+                          pb.CallContent_CallAction.CALL_ACTION_ANSWER
+                      ? 'answer'
+                      : 'offer';
+                }
+                if (call.iceCandidate.isNotEmpty) {
+                  content['candidate'] = call.iceCandidate;
+                }
+                eventType = _mapCallTypeToLocal(call);
               } else if (payload.hasRoomChange()) {
                 final roomChange = payload.roomChange;
                 content = {
@@ -383,6 +406,82 @@ class BackgroundSyncTask {
       default:
         return domain.RoomEventType.text;
     }
+  }
+
+  static domain.RoomEventType _mapCallTypeToLocal(pb.CallContent call) {
+    final metadata = call.hasMetadata()
+        ? _structToMap(call.metadata)
+        : const <String, dynamic>{};
+    switch (metadata['signalKind']) {
+      case 'group_start':
+        return domain.RoomEventType.groupCallStart;
+      case 'group_join':
+        return domain.RoomEventType.groupCallJoin;
+      case 'group_leave':
+        return domain.RoomEventType.groupCallLeave;
+      case 'group_end':
+        return domain.RoomEventType.groupCallEnd;
+      case 'group_offer':
+        return domain.RoomEventType.groupCallOffer;
+      case 'group_answer':
+        return domain.RoomEventType.groupCallAnswer;
+      case 'group_ice':
+        return domain.RoomEventType.groupCallIce;
+      case 'group_mute_update':
+        return domain.RoomEventType.groupCallMuteUpdate;
+      case 'group_stage_update':
+        return domain.RoomEventType.groupCallStageUpdate;
+    }
+
+    switch (call.action) {
+      case pb.CallContent_CallAction.CALL_ACTION_ANSWER:
+        return domain.RoomEventType.callAnswer;
+      case pb.CallContent_CallAction.CALL_ACTION_ICE_CANDIDATE:
+        return domain.RoomEventType.callIce;
+      case pb.CallContent_CallAction.CALL_ACTION_END:
+        return domain.RoomEventType.callEnd;
+      case pb.CallContent_CallAction.CALL_ACTION_OFFER:
+      case pb.CallContent_CallAction.CALL_ACTION_UNSPECIFIED:
+        return domain.RoomEventType.callOffer;
+    }
+
+    return domain.RoomEventType.callOffer;
+  }
+
+  static String _callTypeToString(pb.CallContent_CallType type) {
+    switch (type) {
+      case pb.CallContent_CallType.CALL_TYPE_AUDIO:
+        return 'audio';
+      case pb.CallContent_CallType.CALL_TYPE_SCREEN_SHARE:
+        return 'screen_share';
+      case pb.CallContent_CallType.CALL_TYPE_VIDEO:
+      case pb.CallContent_CallType.CALL_TYPE_UNSPECIFIED:
+        return 'video';
+    }
+
+    return 'video';
+  }
+
+  static Map<String, dynamic> _structToMap(common.Struct struct) {
+    final result = <String, dynamic>{};
+    for (final entry in struct.fields.entries) {
+      result[entry.key] = _valueToObject(entry.value);
+    }
+    return result;
+  }
+
+  static dynamic _valueToObject(common.Value value) {
+    if (value.hasStringValue()) return value.stringValue;
+    if (value.hasNumberValue()) return value.numberValue;
+    if (value.hasBoolValue()) return value.boolValue;
+    if (value.hasNullValue()) return null;
+    if (value.hasListValue()) {
+      return value.listValue.values.map(_valueToObject).toList();
+    }
+    if (value.hasStructValue()) {
+      return _structToMap(value.structValue);
+    }
+    return null;
   }
 
   /// Process a single job
@@ -759,10 +858,14 @@ class BackgroundSyncTask {
 
     // Extract content and type
     final content = payload['content'] as Map<String, dynamic>;
-    final localType = domain.RoomEventType.values.firstWhere(
-      (t) => t.toString() == payload['type'],
-      orElse: () => domain.RoomEventType.text,
+    final localType = domain.tryRoomEventTypeFromWireName(
+      payload['type'] as String?,
     );
+    if (localType == null || localType == domain.RoomEventType.unknown) {
+      throw StateError(
+        'Unsupported queued room event type: ${payload['type']}',
+      );
+    }
     final event = ChatEventCodec.buildRoomEvent(
       eventId: payload['localId'] as String? ?? '',
       roomId: roomId,

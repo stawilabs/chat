@@ -56,6 +56,12 @@ abstract class GroupCall with _$GroupCall {
     /// List of participants in the call
     @Default([]) List<GroupCallParticipant> participants,
 
+    /// Profiles currently allowed to publish video
+    @Default([]) List<String> activeVideoProfileIds,
+
+    /// Maximum number of simultaneous video publishers
+    @Default(5) int maxVideoPublishers,
+
     /// Current state of the call
     @Default(GroupCallState.initiating) GroupCallState state,
 
@@ -86,6 +92,16 @@ abstract class GroupCall with _$GroupCall {
   List<GroupCallParticipant> get activeParticipants =>
       participants.where((p) => p.isActive).toList();
 
+  /// Returns participants who currently occupy a video slot
+  List<GroupCallParticipant> get stageParticipants => participants
+      .where((p) => p.isActive && activeVideoProfileIds.contains(p.profileId))
+      .toList();
+
+  /// Returns active participants who are currently audience members
+  List<GroupCallParticipant> get audienceParticipants => participants
+      .where((p) => p.isActive && !activeVideoProfileIds.contains(p.profileId))
+      .toList();
+
   /// Returns the duration of the call
   Duration get duration {
     final end = endedAt ?? DateTime.now();
@@ -95,6 +111,10 @@ abstract class GroupCall with _$GroupCall {
   /// Returns true if a specific profile is in the call
   bool hasParticipant(String profileId) =>
       participants.any((p) => p.profileId == profileId);
+
+  /// Returns true if a specific profile currently has a video slot
+  bool canPublishVideo(String profileId) =>
+      activeVideoProfileIds.contains(profileId);
 
   /// Gets a participant by profile ID
   GroupCallParticipant? getParticipant(String profileId) =>

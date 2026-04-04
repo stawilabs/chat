@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:xid/xid.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../../features/auth/data/auth_repository.dart';
@@ -60,6 +61,10 @@ class CallManager {
   bool _isVideoDisabledByQuality = false;
   String? _callerSenderId;
   String? get callerSenderId => _callerSenderId;
+  String? _callerProfileId;
+  String? _currentCallId;
+  final List<RTCIceCandidate> _pendingRemoteCandidates = [];
+  bool _hasRemoteDescription = false;
 
   final _callStateController = StreamController<CallState>.broadcast();
   Stream<CallState> get callStateStream => _callStateController.stream;
@@ -91,10 +96,11 @@ class CallManager {
   }
 
   /// Start an outgoing call
-  Future<void> startCall(String roomId) async {
+  Future<void> startCall(String roomId, {String callType = 'video'}) async {
     if (_state != CallState.idle) return;
 
     _currentRoomId = roomId;
+    _currentCallId = Xid().toString();
     _setState(CallState.calling);
 
     try {
@@ -103,6 +109,9 @@ class CallManager {
       await _peerConnection!.setLocalDescription(offer);
 
       await _signalingService.sendOffer(roomId, {
+        'callId': _currentCallId,
+        'callType': callType,
+        'topology': 'p2p',
         'sdp': offer.sdp,
         'type': offer.type,
       });
@@ -130,6 +139,10 @@ class CallManager {
       await _peerConnection!.setLocalDescription(answer);
 
       await _signalingService.sendAnswer(_currentRoomId!, {
+        'callId': _currentCallId,
+        'callType': 'video',
+        'topology': 'p2p',
+        if (_callerProfileId != null) 'targetProfileId': _callerProfileId,
         'sdp': answer.sdp,
         'type': answer.type,
       });
@@ -152,7 +165,12 @@ class CallManager {
     _isReconnecting = false;
 
     if (_currentRoomId != null) {
-      await _signalingService.sendHangup(_currentRoomId!);
+      await _signalingService.sendHangup(_currentRoomId!, {
+        'callId': _currentCallId,
+        'callType': 'video',
+        'topology': 'p2p',
+        if (_callerProfileId != null) 'targetProfileId': _callerProfileId,
+      });
     }
     _close();
   }
@@ -204,7 +222,11 @@ class CallManager {
     _remoteStream = null;
     _remoteStreamController.add(null);
     _currentRoomId = null;
+    _currentCallId = null;
     _callerSenderId = null;
+    _callerProfileId = null;
+    _pendingRemoteCandidates.clear();
+    _hasRemoteDescription = false;
     _isMicMuted = false;
     _isCameraOff = false;
     _isVideoDisabledByQuality = false;
@@ -403,6 +425,10 @@ class CallManager {
       await _peerConnection!.setLocalDescription(offer);
 
       await _signalingService.sendOffer(_currentRoomId!, {
+        'callId': _currentCallId,
+        'callType': 'video',
+        'topology': 'p2p',
+        if (_callerProfileId != null) 'targetProfileId': _callerProfileId,
         'sdp': offer.sdp,
         'type': offer.type,
         'iceRestart': true,
@@ -450,9 +476,19 @@ class CallManager {
   }
 
   Future<void> _handleSignal(RoomEvent event) async {
-    // Ignore own signals
     final currentProfileId = await _authRepository.getCurrentProfileId();
-    if (currentProfileId != null && event.senderId == currentProfileId) return;
+    final senderProfileId = event.content['senderProfileId'] as String?;
+    if (currentProfileId != null &&
+        senderProfileId != null &&
+        senderProfileId == currentProfileId) {
+      return;
+    }
+    final targetProfileId = event.content['targetProfileId'] as String?;
+    if (targetProfileId != null &&
+        targetProfileId.isNotEmpty &&
+        targetProfileId != currentProfileId) {
+      return;
+    }
 
     switch (event.type) {
       case RoomEventType.callOffer:
@@ -483,11 +519,17 @@ class CallManager {
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(sdp, type),
       );
+      _hasRemoteDescription = true;
+      await _flushPendingRemoteCandidates();
 
       final answer = await _peerConnection!.createAnswer();
       await _peerConnection!.setLocalDescription(answer);
 
       await _signalingService.sendAnswer(_currentRoomId!, {
+        'callId': _currentCallId,
+        'callType': event.content['callType'] ?? 'video',
+        'topology': 'p2p',
+        if (_callerProfileId != null) 'targetProfileId': _callerProfileId,
         'sdp': answer.sdp,
         'type': answer.type,
         'iceRestart': true,
@@ -502,6 +544,8 @@ class CallManager {
 
     _currentRoomId = event.roomId;
     _callerSenderId = event.senderId;
+    _callerProfileId = event.content['senderProfileId'] as String?;
+    _currentCallId = event.content['callId'] as String? ?? event.id;
     _setState(CallState.incoming);
 
     await _initPeerConnection();
@@ -511,16 +555,27 @@ class CallManager {
     await _peerConnection!.setRemoteDescription(
       RTCSessionDescription(sdp, type),
     );
+    _hasRemoteDescription = true;
+    await _flushPendingRemoteCandidates();
   }
 
   Future<void> _handleAnswer(RoomEvent event) async {
     if (_state != CallState.calling && _state != CallState.reconnecting) return;
+    if (_currentCallId != null &&
+        event.content['callId'] != null &&
+        event.content['callId'] != _currentCallId) {
+      return;
+    }
+
+    _callerProfileId = event.content['senderProfileId'] as String?;
 
     final sdp = event.content['sdp'];
     final type = event.content['type'];
     await _peerConnection!.setRemoteDescription(
       RTCSessionDescription(sdp, type),
     );
+    _hasRemoteDescription = true;
+    await _flushPendingRemoteCandidates();
 
     // If this was a reconnection answer
     if (_isReconnecting) {
@@ -530,13 +585,35 @@ class CallManager {
 
   Future<void> _handleCandidate(RoomEvent event) async {
     if (_peerConnection == null) return;
+    if (_currentCallId != null &&
+        event.content['callId'] != null &&
+        event.content['callId'] != _currentCallId) {
+      return;
+    }
 
     final candidate = RTCIceCandidate(
       event.content['candidate'],
       event.content['sdpMid'],
       event.content['sdpMLineIndex'],
     );
+    if (!_hasRemoteDescription) {
+      _pendingRemoteCandidates.add(candidate);
+      return;
+    }
     await _peerConnection!.addCandidate(candidate);
+  }
+
+  Future<void> _flushPendingRemoteCandidates() async {
+    if (_peerConnection == null || !_hasRemoteDescription) {
+      return;
+    }
+
+    for (final candidate in List<RTCIceCandidate>.from(
+      _pendingRemoteCandidates,
+    )) {
+      await _peerConnection!.addCandidate(candidate);
+    }
+    _pendingRemoteCandidates.clear();
   }
 
   /// Dispose of resources

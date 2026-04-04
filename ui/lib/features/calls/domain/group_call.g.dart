@@ -16,6 +16,12 @@ _GroupCall _$GroupCallFromJson(Map<String, dynamic> json) => _GroupCall(
           ?.map((e) => GroupCallParticipant.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  activeVideoProfileIds:
+      (json['activeVideoProfileIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const [],
+  maxVideoPublishers: (json['maxVideoPublishers'] as num?)?.toInt() ?? 5,
   state:
       $enumDecodeNullable(_$GroupCallStateEnumMap, json['state']) ??
       GroupCallState.initiating,
@@ -31,6 +37,8 @@ Map<String, dynamic> _$GroupCallToJson(_GroupCall instance) =>
       'hostProfileId': instance.hostProfileId,
       'startedAt': instance.startedAt.toIso8601String(),
       'participants': instance.participants,
+      'activeVideoProfileIds': instance.activeVideoProfileIds,
+      'maxVideoPublishers': instance.maxVideoPublishers,
       'state': _$GroupCallStateEnumMap[instance.state]!,
       'endedAt': instance.endedAt?.toIso8601String(),
     };

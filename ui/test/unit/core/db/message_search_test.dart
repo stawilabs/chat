@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/core/db/database.dart';
+import 'package:stawi/features/messages/domain/room_event.dart';
 
 void main() {
   group('Message Search (FTS5)', () {
@@ -39,9 +40,9 @@ void main() {
               id: id,
               roomId: roomId,
               senderId: senderId,
-              type: 0, // text message type
+              type: RoomEventType.text.storageCode,
               content: Value(jsonEncode({'text': text})),
-              status: const Value(1),
+              status: Value(EventStatus.sent.storageCode),
             ),
           );
     }
@@ -258,9 +259,9 @@ void main() {
         expect(db, isNotNull);
       });
 
-      test('schema version is 18', () {
-        // Version 18: renamed room_members → room_subscriptions, subscription_id → id
-        expect(db.schemaVersion, equals(18));
+      test('schema version is 19', () {
+        // Version 19: normalized room event enum storage to stable explicit codes.
+        expect(db.schemaVersion, equals(19));
       });
     });
 
@@ -296,8 +297,8 @@ void main() {
                 id: 'msg1',
                 roomId: 'room1',
                 senderId: 'sender1',
-                type: 0,
-                status: const Value(1),
+                type: RoomEventType.text.storageCode,
+                status: Value(EventStatus.sent.storageCode),
               ),
             );
 
@@ -308,7 +309,7 @@ void main() {
 
       test('handles non-text message types', () async {
         await insertRoom('room1');
-        // Insert an image message (type = 1)
+        // Insert an image message
         await db
             .into(db.roomEvents)
             .insert(
@@ -316,11 +317,11 @@ void main() {
                 id: 'img1',
                 roomId: 'room1',
                 senderId: 'sender1',
-                type: 1, // image type
+                type: RoomEventType.image.storageCode,
                 content: Value(
                   jsonEncode({'url': 'image.jpg', 'text': 'photo'}),
                 ),
-                status: const Value(1),
+                status: Value(EventStatus.sent.storageCode),
               ),
             );
 

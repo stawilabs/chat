@@ -13,6 +13,7 @@ import (
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"connectrpc.com/connect"
+	aconfig "github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/business"
@@ -68,6 +69,7 @@ func NewChatServer(
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 
 	rawPresenceCache, ok := service.GetRawCache("presence")
@@ -78,7 +80,29 @@ func NewChatServer(
 
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
-	messageBusiness := business.NewMessageBusiness(eventsMan, eventRepo, subRepo, subscriptionSvc, authzMiddleware)
+	callPolicy := business.DefaultCallPolicyConfig()
+	switch cfg := service.Config().(type) {
+	case aconfig.ChatConfig:
+		callPolicy = business.CallPolicyConfig{
+			DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
+			MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
+			MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
+		}
+	case *aconfig.ChatConfig:
+		callPolicy = business.CallPolicyConfig{
+			DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
+			MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
+			MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
+		}
+	}
+	messageBusiness := business.NewMessageBusiness(
+		eventsMan,
+		eventRepo,
+		subRepo,
+		subscriptionSvc,
+		authzMiddleware,
+		business.WithCallPolicy(callRepo, callPolicy),
+	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
 	)

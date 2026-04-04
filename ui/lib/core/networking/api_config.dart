@@ -58,4 +58,17 @@ class ApiConfig {
   // Cache configuration
   static const Duration cacheMaxAge = Duration(hours: 1);
   static const int maxCacheEntries = 100;
+
+  // Calling configuration
+  static const bool allowPublicTurnFallback = bool.fromEnvironment(
+    'ALLOW_PUBLIC_TURN_FALLBACK',
+  );
+  static const int groupCallMeshMaxParticipants = int.fromEnvironment(
+    'GROUP_CALL_MESH_MAX_PARTICIPANTS',
+    defaultValue: 6,
+  );
+  static const int groupCallMaxVideoPublishers = int.fromEnvironment(
+    'GROUP_CALL_MAX_VIDEO_PUBLISHERS',
+    defaultValue: 5,
+  );
 }

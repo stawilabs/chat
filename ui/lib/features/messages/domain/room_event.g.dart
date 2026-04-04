@@ -64,6 +64,7 @@ Map<String, dynamic> _$RoomEventToJson(_RoomEvent instance) =>
     };
 
 const _$RoomEventTypeEnumMap = {
+  RoomEventType.unknown: 'unknown',
   RoomEventType.text: 'text',
   RoomEventType.image: 'image',
   RoomEventType.video: 'video',
@@ -88,6 +89,7 @@ const _$RoomEventTypeEnumMap = {
   RoomEventType.groupConfig: 'groupConfig',
   RoomEventType.roomKey: 'roomKey',
   RoomEventType.roomChange: 'roomChange',
+  RoomEventType.groupCallStageUpdate: 'groupCallStageUpdate',
 };
 
 const _$EventStatusEnumMap = {

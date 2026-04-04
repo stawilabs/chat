@@ -5,6 +5,8 @@ import 'package:sqlite3/common.dart' show SqliteException;
 
 part 'database.g.dart';
 
+const int _roomEventStatusPendingCode = 10;
+
 // Table definitions
 
 /// User profile information stored locally
@@ -169,7 +171,8 @@ class RoomEvents extends Table {
   /// Contact ID of the sender (nullable, for additional context)
   TextColumn get senderContactId => text().nullable()();
 
-  /// Event type as integer (text=0, image=1, video=2, etc.)
+  /// Event type as a stable explicit code.
+  /// Codes are intentionally not tied to Dart enum order.
   IntColumn get type => integer()();
 
   /// JSON-encoded event content (message text, attachment info, etc.)
@@ -178,8 +181,9 @@ class RoomEvents extends Table {
   /// Parent event ID for replies/threads
   TextColumn get parentId => text().nullable()();
 
-  /// Event status (pending=0, sent=1, delivered=2, read=3, failed=4)
-  IntColumn get status => integer().withDefault(const Constant(0))();
+  /// Event delivery status as a stable explicit code.
+  IntColumn get status =>
+      integer().withDefault(const Constant(_roomEventStatusPendingCode))();
 
   /// Client-side creation timestamp
   IntColumn get createdAt => integer().nullable()();
@@ -893,7 +897,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1117,6 +1121,11 @@ class AppDatabase extends _$AppDatabase {
           'ALTER TABLE room_subscriptions RENAME COLUMN subscription_id TO id',
         );
       }
+      if (from <= 18) {
+        // Migration from v18 to v19: normalize room event enum storage to
+        // explicit stable codes.
+        await _migrateRoomEventEnumStorage();
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -1152,6 +1161,52 @@ class AppDatabase extends _$AppDatabase {
     },
   );
 
+  Future<void> _migrateRoomEventEnumStorage() async {
+    await customStatement('''
+      UPDATE room_events
+      SET type = CASE type
+        WHEN 24 THEN 250
+        WHEN 0 THEN 10
+        WHEN 1 THEN 20
+        WHEN 2 THEN 30
+        WHEN 3 THEN 40
+        WHEN 4 THEN 50
+        WHEN 5 THEN 60
+        WHEN 6 THEN 70
+        WHEN 7 THEN 80
+        WHEN 8 THEN 90
+        WHEN 9 THEN 100
+        WHEN 10 THEN 110
+        WHEN 11 THEN 120
+        WHEN 12 THEN 130
+        WHEN 13 THEN 140
+        WHEN 14 THEN 150
+        WHEN 15 THEN 160
+        WHEN 16 THEN 170
+        WHEN 17 THEN 180
+        WHEN 18 THEN 190
+        WHEN 19 THEN 200
+        WHEN 20 THEN 210
+        WHEN 21 THEN 220
+        WHEN 22 THEN 230
+        WHEN 23 THEN 240
+        ELSE type
+      END
+    ''');
+    await customStatement('''
+      UPDATE room_events
+      SET status = CASE status
+        WHEN 0 THEN 10
+        WHEN 1 THEN 20
+        WHEN 2 THEN 30
+        WHEN 3 THEN 40
+        WHEN 4 THEN 50
+        ELSE status
+      END
+    ''');
+    await rebuildFtsIndex();
+  }
+
   /// Create the FTS5 virtual table for full-text message search
   Future<void> _createFtsTable() async {
     await customStatement('''
@@ -1164,11 +1219,14 @@ class AppDatabase extends _$AppDatabase {
     ''');
 
     // Create triggers to keep FTS index in sync with room_events table
+    await customStatement('DROP TRIGGER IF EXISTS room_events_ai');
+    await customStatement('DROP TRIGGER IF EXISTS room_events_au');
+    await customStatement('DROP TRIGGER IF EXISTS room_events_ad');
 
     // Trigger for new text messages
     await customStatement(r'''
       CREATE TRIGGER IF NOT EXISTS room_events_ai AFTER INSERT ON room_events
-      WHEN new.type = 0 AND new.content IS NOT NULL
+      WHEN new.type = 10 AND new.content IS NOT NULL
       BEGIN
         INSERT INTO room_events_fts(event_id, room_id, content)
         VALUES (new.id, new.room_id, json_extract(new.content, '$.text'));
@@ -1178,7 +1236,7 @@ class AppDatabase extends _$AppDatabase {
     // Trigger for updated messages (editing)
     await customStatement(r'''
       CREATE TRIGGER IF NOT EXISTS room_events_au AFTER UPDATE ON room_events
-      WHEN new.type = 0 AND new.content IS NOT NULL
+      WHEN new.type = 10 AND new.content IS NOT NULL
       BEGIN
         DELETE FROM room_events_fts WHERE event_id = old.id;
         INSERT INTO room_events_fts(event_id, room_id, content)
@@ -1201,7 +1259,7 @@ class AppDatabase extends _$AppDatabase {
       INSERT INTO room_events_fts(event_id, room_id, content)
       SELECT id, room_id, json_extract(content, '$.text')
       FROM room_events
-      WHERE type = 0 AND content IS NOT NULL
+      WHERE type = 10 AND content IS NOT NULL
         AND json_extract(content, '$.text') IS NOT NULL
     ''');
   }

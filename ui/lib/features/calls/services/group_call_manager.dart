@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../../core/networking/api_config.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../messages/domain/room_event.dart';
 import '../domain/group_call.dart';
@@ -20,6 +21,20 @@ final groupCallManagerProvider = FutureProvider<GroupCallManager>((ref) async {
   final turnService = await ref.watch(turnCredentialsServiceProvider.future);
   return GroupCallManager(signalingService, authRepo, turnService);
 });
+
+enum GroupCallCameraToggleResult { enabled, disabled, deniedNoStageSlot }
+
+class _PendingGroupCallState {
+  const _PendingGroupCallState({
+    required this.hostProfileId,
+    required this.maxVideoPublishers,
+    required this.activeVideoProfileIds,
+  });
+
+  final String hostProfileId;
+  final int maxVideoPublishers;
+  final List<String> activeVideoProfileIds;
+}
 
 /// Manager for group video/audio calls
 ///
@@ -40,6 +55,8 @@ class GroupCallManager {
 
   /// Peer connections mapped by participant profile ID
   final Map<String, RTCPeerConnection> _peerConnections = {};
+  final Map<String, List<RTCIceCandidate>> _pendingIceCandidates = {};
+  final Set<String> _remoteDescriptionsReady = <String>{};
 
   /// Remote streams mapped by participant profile ID
   final Map<String, MediaStream> _remoteStreams = {};
@@ -56,6 +73,7 @@ class GroupCallManager {
   /// Audio/video state
   bool _isAudioMuted = false;
   bool _isVideoOff = false;
+  bool _prefersVideoEnabled = true;
 
   /// Active speaker detection
   Timer? _activeSpeakerTimer;
@@ -90,6 +108,10 @@ class GroupCallManager {
   /// Media state getters
   bool get isAudioMuted => _isAudioMuted;
   bool get isVideoOff => _isVideoOff;
+  bool get canPublishVideo =>
+      _currentCall != null &&
+      _currentProfileId != null &&
+      _currentCall!.canPublishVideo(_currentProfileId!);
 
   /// Start a new group call as the host
   Future<void> startGroupCall(String roomId) async {
@@ -108,11 +130,17 @@ class GroupCallManager {
       await _initLocalMedia();
 
       // Create the call and send notification
-      final callId = await _signalingService.sendGroupCallStart(roomId);
+      final initialStageProfiles = <String>[_currentProfileId!];
+      final callId = await _signalingService.sendGroupCallStart(
+        roomId,
+        maxVideoPublishers: ApiConfig.groupCallMaxVideoPublishers,
+        activeVideoProfileIds: initialStageProfiles,
+      );
 
       final hostParticipant = GroupCallParticipant(
         profileId: _currentProfileId!,
         displayName: 'You', // Will be updated from profile
+        hasVideoSlot: true,
         isHost: true,
         joinedAt: DateTime.now(),
         state: ParticipantState.connected,
@@ -123,10 +151,12 @@ class GroupCallManager {
         roomId: roomId,
         hostProfileId: _currentProfileId!,
         participants: [hostParticipant],
+        activeVideoProfileIds: initialStageProfiles,
         state: GroupCallState.active,
         startedAt: DateTime.now(),
       );
 
+      _applyLocalVideoPolicy(notifyRemote: false);
       _callController.add(_currentCall);
       _startActiveSpeakerDetection();
 
@@ -161,25 +191,34 @@ class GroupCallManager {
       // Send join notification
       await _signalingService.sendGroupCallJoin(roomId, callId);
 
+      final pendingCallState = _pendingCallState.remove(callId);
+      final activeVideoProfileIds =
+          pendingCallState?.activeVideoProfileIds ?? const <String>[];
       final selfParticipant = GroupCallParticipant(
         profileId: _currentProfileId!,
         displayName: 'You',
+        hasVideoSlot: activeVideoProfileIds.contains(_currentProfileId),
         joinedAt: DateTime.now(),
         state: ParticipantState.connected,
       );
 
       // Get host info from pending call starts or leave empty to be updated later
-      final hostProfileId = _pendingCallHosts.remove(callId) ?? '';
+      final hostProfileId = pendingCallState?.hostProfileId ?? '';
 
       _currentCall = GroupCall(
         callId: callId,
         roomId: roomId,
         hostProfileId: hostProfileId,
         participants: [selfParticipant],
+        activeVideoProfileIds: activeVideoProfileIds,
+        maxVideoPublishers:
+            pendingCallState?.maxVideoPublishers ??
+            ApiConfig.groupCallMaxVideoPublishers,
         state: GroupCallState.active,
         startedAt: DateTime.now(),
       );
 
+      _applyLocalVideoPolicy(notifyRemote: false);
       _callController.add(_currentCall);
       _startActiveSpeakerDetection();
 
@@ -227,6 +266,43 @@ class GroupCallManager {
     AppLogger.info('Ended group call', data: {'callId': callId});
   }
 
+  Future<void> updateVideoStage(List<String> profileIds) async {
+    if (_currentCall == null) {
+      throw StateError('Cannot update stage without an active call');
+    }
+
+    final normalizedProfileIds = <String>[];
+    for (final profileId in profileIds) {
+      if (profileId.isEmpty || normalizedProfileIds.contains(profileId)) {
+        continue;
+      }
+      normalizedProfileIds.add(profileId);
+      if (normalizedProfileIds.length >= _currentCall!.maxVideoPublishers) {
+        break;
+      }
+    }
+
+    _applyStageState(
+      normalizedProfileIds,
+      maxVideoPublishers: _currentCall!.maxVideoPublishers,
+      notifyRemote: true,
+    );
+    await _signalingService.sendGroupCallStageUpdate(
+      _currentCall!.roomId,
+      _currentCall!.callId,
+      maxVideoPublishers: _currentCall!.maxVideoPublishers,
+      activeVideoProfileIds: normalizedProfileIds,
+    );
+
+    AppLogger.info(
+      'Updated group call video stage',
+      data: {
+        'callId': _currentCall!.callId,
+        'videoPublisherCount': normalizedProfileIds.length,
+      },
+    );
+  }
+
   /// Toggle microphone mute
   void toggleMic() {
     _isAudioMuted = !_isAudioMuted;
@@ -249,24 +325,28 @@ class GroupCallManager {
   }
 
   /// Toggle camera on/off
-  void toggleCamera() {
-    _isVideoOff = !_isVideoOff;
-    _localStream?.getVideoTracks().forEach((track) {
-      track.enabled = !_isVideoOff;
-    });
-
-    // Broadcast mute state to other participants
-    if (_currentCall != null) {
-      _signalingService.sendMuteUpdate(
-        _currentCall!.roomId,
-        _currentCall!.callId,
-        isAudioMuted: _isAudioMuted,
-        isVideoOff: _isVideoOff,
-      );
+  GroupCallCameraToggleResult toggleCamera() {
+    if (_isVideoOff) {
+      if (!canPublishVideo) {
+        AppLogger.warning(
+          'Rejected camera enable without an active video slot',
+          data: {
+            'callId': _currentCall?.callId,
+            'profileId': _currentProfileId,
+          },
+        );
+        return GroupCallCameraToggleResult.deniedNoStageSlot;
+      }
+      _prefersVideoEnabled = true;
+    } else {
+      _prefersVideoEnabled = false;
     }
 
-    _updateSelfParticipant();
+    _applyLocalVideoPolicy(notifyRemote: true);
     AppLogger.debug('Camera off: $_isVideoOff');
+    return _isVideoOff
+        ? GroupCallCameraToggleResult.disabled
+        : GroupCallCameraToggleResult.enabled;
   }
 
   /// Initialize local media stream
@@ -287,11 +367,17 @@ class GroupCallManager {
 
   /// Create a peer connection for a participant
   Future<RTCPeerConnection> _createPeerConnection(String profileId) async {
+    final existing = _peerConnections[profileId];
+    if (existing != null) {
+      return existing;
+    }
+
     // Get ICE server configuration
     final config = await _turnCredentialsService.getIceServers();
 
     final pc = await createPeerConnection(config);
     _peerConnections[profileId] = pc;
+    _pendingIceCandidates.putIfAbsent(profileId, () => <RTCIceCandidate>[]);
 
     // Add local tracks to the connection
     _localStream?.getTracks().forEach((track) {
@@ -379,7 +465,11 @@ class GroupCallManager {
 
     final updatedParticipants = _currentCall!.participants.map((p) {
       if (p.profileId == _currentProfileId) {
-        return p.copyWith(isAudioMuted: _isAudioMuted, isVideoOff: _isVideoOff);
+        return p.copyWith(
+          isAudioMuted: _isAudioMuted,
+          isVideoOff: _isVideoOff,
+          hasVideoSlot: _currentCall!.canPublishVideo(_currentProfileId!),
+        );
       }
       return p;
     }).toList();
@@ -388,10 +478,90 @@ class GroupCallManager {
     _callController.add(_currentCall);
   }
 
+  void _applyLocalVideoPolicy({required bool notifyRemote}) {
+    final shouldSendVideo = _prefersVideoEnabled && canPublishVideo;
+    _localStream?.getVideoTracks().forEach((track) {
+      track.enabled = shouldSendVideo;
+    });
+    _isVideoOff = !shouldSendVideo;
+    _updateSelfParticipant();
+
+    if (notifyRemote && _currentCall != null) {
+      unawaited(
+        _signalingService.sendMuteUpdate(
+          _currentCall!.roomId,
+          _currentCall!.callId,
+          isAudioMuted: _isAudioMuted,
+          isVideoOff: _isVideoOff,
+        ),
+      );
+    }
+  }
+
+  void _applyStageState(
+    List<String> activeVideoProfileIds, {
+    required int maxVideoPublishers,
+    required bool notifyRemote,
+  }) {
+    if (_currentCall == null) return;
+
+    final normalizedProfiles = <String>[];
+    for (final profileId in activeVideoProfileIds) {
+      if (profileId.isEmpty || normalizedProfiles.contains(profileId)) {
+        continue;
+      }
+      normalizedProfiles.add(profileId);
+      if (normalizedProfiles.length >= maxVideoPublishers) {
+        break;
+      }
+    }
+
+    final updatedParticipants = _currentCall!.participants.map((participant) {
+      final hasVideoSlot = normalizedProfiles.contains(participant.profileId);
+      return participant.copyWith(
+        hasVideoSlot: hasVideoSlot,
+        isVideoOff: !hasVideoSlot || participant.isVideoOff,
+      );
+    }).toList();
+
+    _currentCall = _currentCall!.copyWith(
+      activeVideoProfileIds: normalizedProfiles,
+      maxVideoPublishers: maxVideoPublishers,
+      participants: updatedParticipants,
+    );
+    _callController.add(_currentCall);
+
+    if (_currentProfileId != null) {
+      _applyLocalVideoPolicy(notifyRemote: notifyRemote);
+    }
+  }
+
+  List<String> _readStageProfiles(Map<String, dynamic> content) {
+    final raw = content['activeVideoProfileIds'];
+    if (raw is! List) {
+      return const <String>[];
+    }
+    return raw.whereType<String>().where((value) => value.isNotEmpty).toList();
+  }
+
+  int _readMaxVideoPublishers(Map<String, dynamic> content) {
+    final raw = content['maxVideoPublishers'];
+    if (raw is int) {
+      return raw > 0 ? raw : ApiConfig.groupCallMaxVideoPublishers;
+    }
+    if (raw is double) {
+      final parsed = raw.toInt();
+      return parsed > 0 ? parsed : ApiConfig.groupCallMaxVideoPublishers;
+    }
+    return ApiConfig.groupCallMaxVideoPublishers;
+  }
+
   /// Close a peer connection
   void _closePeerConnection(String profileId) {
     _peerConnections[profileId]?.close();
     _peerConnections.remove(profileId);
+    _pendingIceCandidates.remove(profileId);
+    _remoteDescriptionsReady.remove(profileId);
     _remoteStreams[profileId]?.dispose();
     _remoteStreams.remove(profileId);
     _remoteStreamsController.add(Map.from(_remoteStreams));
@@ -400,7 +570,8 @@ class GroupCallManager {
   /// Handle incoming signaling events
   Future<void> _handleSignal(RoomEvent event) async {
     final currentProfileId = await _authRepository.getCurrentProfileId();
-    if (currentProfileId != null && event.senderId == currentProfileId) return;
+    final senderProfileId = _eventSenderProfileId(event);
+    if (currentProfileId != null && senderProfileId == currentProfileId) return;
 
     switch (event.type) {
       case RoomEventType.groupCallStart:
@@ -427,13 +598,16 @@ class GroupCallManager {
       case RoomEventType.groupCallMuteUpdate:
         _handleMuteUpdate(event);
         break;
+      case RoomEventType.groupCallStageUpdate:
+        _handleStageUpdate(event);
+        break;
       default:
         break;
     }
   }
 
   /// Pending call info received from call start events (before joining)
-  final Map<String, String> _pendingCallHosts = {};
+  final Map<String, _PendingGroupCallState> _pendingCallState = {};
 
   /// Handle group call start notification
   Future<void> _handleGroupCallStart(RoomEvent event) async {
@@ -441,8 +615,11 @@ class GroupCallManager {
     // The UI can show a "call started" notification
     final callId = event.content['callId'] as String?;
     if (callId != null) {
-      // Store the host info for when we join this call
-      _pendingCallHosts[callId] = event.senderId;
+      _pendingCallState[callId] = _PendingGroupCallState(
+        hostProfileId: _eventSenderProfileId(event),
+        maxVideoPublishers: _readMaxVideoPublishers(event.content),
+        activeVideoProfileIds: _readStageProfiles(event.content),
+      );
     }
 
     AppLogger.info(
@@ -450,7 +627,7 @@ class GroupCallManager {
       data: {
         'roomId': event.roomId,
         'callId': callId,
-        'startedBy': event.senderId,
+        'startedBy': _eventSenderProfileId(event),
       },
     );
   }
@@ -462,18 +639,37 @@ class GroupCallManager {
     final callId = event.content['callId'] as String?;
     if (callId != _currentCall!.callId) return;
 
-    final joinedProfileId = event.senderId;
+    final joinedProfileId = _eventSenderProfileId(event);
+    if (_currentCall!.participants.length >=
+        ApiConfig.groupCallMeshMaxParticipants) {
+      AppLogger.warning(
+        'Skipping peer allocation: mesh participant limit reached',
+        data: {
+          'callId': _currentCall!.callId,
+          'limit': ApiConfig.groupCallMeshMaxParticipants,
+          'joinedProfileId': joinedProfileId,
+        },
+      );
+      return;
+    }
 
-    // Add participant to the call
-    final newParticipant = GroupCallParticipant(
-      profileId: joinedProfileId,
-      displayName: joinedProfileId, // Will be updated from profile
-      joinedAt: DateTime.now(),
-    );
+    if (!_currentCall!.participants.any(
+      (p) => p.profileId == joinedProfileId,
+    )) {
+      final newParticipant = GroupCallParticipant(
+        profileId: joinedProfileId,
+        displayName: joinedProfileId, // Will be updated from profile
+        hasVideoSlot: _currentCall!.canPublishVideo(joinedProfileId),
+        joinedAt: DateTime.now(),
+      );
 
-    final updatedParticipants = [..._currentCall!.participants, newParticipant];
-    _currentCall = _currentCall!.copyWith(participants: updatedParticipants);
-    _callController.add(_currentCall);
+      final updatedParticipants = [
+        ..._currentCall!.participants,
+        newParticipant,
+      ];
+      _currentCall = _currentCall!.copyWith(participants: updatedParticipants);
+      _callController.add(_currentCall);
+    }
 
     // Create peer connection and send offer
     final pc = await _createPeerConnection(joinedProfileId);
@@ -491,6 +687,8 @@ class GroupCallManager {
         'type': offer.type,
         'hostProfileId': _currentCall!.hostProfileId,
         'isHost': isHost,
+        'maxVideoPublishers': _currentCall!.maxVideoPublishers,
+        'activeVideoProfileIds': _currentCall!.activeVideoProfileIds,
       },
     );
 
@@ -507,14 +705,20 @@ class GroupCallManager {
     final callId = event.content['callId'] as String?;
     if (callId != _currentCall!.callId) return;
 
-    final leftProfileId = event.senderId;
+    final leftProfileId = _eventSenderProfileId(event);
     _closePeerConnection(leftProfileId);
 
     final updatedParticipants = _currentCall!.participants
         .where((p) => p.profileId != leftProfileId)
         .toList();
 
-    _currentCall = _currentCall!.copyWith(participants: updatedParticipants);
+    final updatedActiveVideoProfileIds = _currentCall!.activeVideoProfileIds
+        .where((profileId) => profileId != leftProfileId)
+        .toList();
+    _currentCall = _currentCall!.copyWith(
+      participants: updatedParticipants,
+      activeVideoProfileIds: updatedActiveVideoProfileIds,
+    );
     _callController.add(_currentCall);
 
     AppLogger.info(
@@ -544,13 +748,20 @@ class GroupCallManager {
     final targetProfileId = event.content['targetProfileId'] as String?;
     if (targetProfileId != _currentProfileId) return;
 
-    final fromProfileId = event.senderId;
+    final fromProfileId = _eventSenderProfileId(event);
 
     // Extract host info from offer if present and update call state
     final hostProfileId = event.content['hostProfileId'] as String?;
     if (hostProfileId != null && _currentCall!.hostProfileId.isEmpty) {
       _currentCall = _currentCall!.copyWith(hostProfileId: hostProfileId);
       _callController.add(_currentCall);
+    }
+    if (event.content.containsKey('activeVideoProfileIds')) {
+      _applyStageState(
+        _readStageProfiles(event.content),
+        maxVideoPublishers: _readMaxVideoPublishers(event.content),
+        notifyRemote: false,
+      );
     }
 
     // Add the sender as a participant if not already present
@@ -559,6 +770,7 @@ class GroupCallManager {
       final newParticipant = GroupCallParticipant(
         profileId: fromProfileId,
         displayName: fromProfileId,
+        hasVideoSlot: _currentCall!.canPublishVideo(fromProfileId),
         isHost: isHost,
         joinedAt: DateTime.now(),
       );
@@ -582,6 +794,8 @@ class GroupCallManager {
     if (sdp == null || type == null) return;
 
     await pc.setRemoteDescription(RTCSessionDescription(sdp, type));
+    _remoteDescriptionsReady.add(fromProfileId);
+    await _flushPendingCandidates(fromProfileId);
 
     final answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -604,7 +818,7 @@ class GroupCallManager {
     final targetProfileId = event.content['targetProfileId'] as String?;
     if (targetProfileId != _currentProfileId) return;
 
-    final fromProfileId = event.senderId;
+    final fromProfileId = _eventSenderProfileId(event);
     final pc = _peerConnections[fromProfileId];
     if (pc == null) return;
 
@@ -613,6 +827,8 @@ class GroupCallManager {
     if (sdp == null || type == null) return;
 
     await pc.setRemoteDescription(RTCSessionDescription(sdp, type));
+    _remoteDescriptionsReady.add(fromProfileId);
+    await _flushPendingCandidates(fromProfileId);
   }
 
   /// Handle incoming ICE candidate
@@ -625,16 +841,27 @@ class GroupCallManager {
     final targetProfileId = event.content['targetProfileId'] as String?;
     if (targetProfileId != _currentProfileId) return;
 
-    final fromProfileId = event.senderId;
+    final fromProfileId = _eventSenderProfileId(event);
     final pc = _peerConnections[fromProfileId];
     if (pc == null) return;
 
     final candidateStr = event.content['candidate'] as String?;
     final sdpMid = event.content['sdpMid'] as String?;
-    final sdpMLineIndex = event.content['sdpMLineIndex'] as int?;
+    final rawSdpMLineIndex = event.content['sdpMLineIndex'];
+    final sdpMLineIndex = rawSdpMLineIndex is int
+        ? rawSdpMLineIndex
+        : rawSdpMLineIndex is double
+        ? rawSdpMLineIndex.toInt()
+        : null;
 
     if (candidateStr != null) {
       final candidate = RTCIceCandidate(candidateStr, sdpMid, sdpMLineIndex);
+      if (!_remoteDescriptionsReady.contains(fromProfileId)) {
+        _pendingIceCandidates
+            .putIfAbsent(fromProfileId, () => <RTCIceCandidate>[])
+            .add(candidate);
+        return;
+      }
       await pc.addCandidate(candidate);
     }
   }
@@ -646,7 +873,7 @@ class GroupCallManager {
     final callId = event.content['callId'] as String?;
     if (callId != _currentCall!.callId) return;
 
-    final fromProfileId = event.senderId;
+    final fromProfileId = _eventSenderProfileId(event);
     final isAudioMuted = event.content['isAudioMuted'] as bool? ?? false;
     final isVideoOff = event.content['isVideoOff'] as bool? ?? false;
 
@@ -659,6 +886,19 @@ class GroupCallManager {
 
     _currentCall = _currentCall!.copyWith(participants: updatedParticipants);
     _callController.add(_currentCall);
+  }
+
+  void _handleStageUpdate(RoomEvent event) {
+    if (_currentCall == null) return;
+
+    final callId = event.content['callId'] as String?;
+    if (callId != _currentCall!.callId) return;
+
+    _applyStageState(
+      _readStageProfiles(event.content),
+      maxVideoPublishers: _readMaxVideoPublishers(event.content),
+      notifyRemote: true,
+    );
   }
 
   /// Start active speaker detection
@@ -761,6 +1001,8 @@ class GroupCallManager {
       await pc.close();
     }
     _peerConnections.clear();
+    _pendingIceCandidates.clear();
+    _remoteDescriptionsReady.clear();
 
     // Dispose remote streams
     for (final stream in _remoteStreams.values) {
@@ -788,6 +1030,7 @@ class GroupCallManager {
     _callController.add(null);
     _isAudioMuted = false;
     _isVideoOff = false;
+    _prefersVideoEnabled = true;
   }
 
   /// Dispose of resources
@@ -797,5 +1040,30 @@ class GroupCallManager {
     _localStreamController.close();
     _remoteStreamsController.close();
     _activeSpeakerController.close();
+  }
+
+  String _eventSenderProfileId(RoomEvent event) {
+    final senderProfileId = event.content['senderProfileId'] as String?;
+    if (senderProfileId != null && senderProfileId.isNotEmpty) {
+      return senderProfileId;
+    }
+    return event.senderId;
+  }
+
+  Future<void> _flushPendingCandidates(String profileId) async {
+    final pc = _peerConnections[profileId];
+    if (pc == null || !_remoteDescriptionsReady.contains(profileId)) {
+      return;
+    }
+
+    final pending = _pendingIceCandidates[profileId];
+    if (pending == null || pending.isEmpty) {
+      return;
+    }
+
+    for (final candidate in List<RTCIceCandidate>.from(pending)) {
+      await pc.addCandidate(candidate);
+    }
+    pending.clear();
   }
 }

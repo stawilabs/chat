@@ -2,7 +2,9 @@ package business_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
+	"time"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
@@ -15,8 +17,10 @@ import (
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type MessageBusinessTestSuite struct {
@@ -30,6 +34,14 @@ func TestMessageBusinessTestSuite(t *testing.T) {
 func (s *MessageBusinessTestSuite) setupBusinessLayer(
 	ctx context.Context, svc *frame.Service,
 ) (business.MessageBusiness, business.RoomBusiness) {
+	return s.setupBusinessLayerWithCallPolicy(ctx, svc, business.DefaultCallPolicyConfig())
+}
+
+func (s *MessageBusinessTestSuite) setupBusinessLayerWithCallPolicy(
+	ctx context.Context,
+	svc *frame.Service,
+	callPolicy business.CallPolicyConfig,
+) (business.MessageBusiness, business.RoomBusiness) {
 	workMan := svc.WorkManager()
 	evtsMan := svc.EventsManager()
 	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
@@ -37,9 +49,17 @@ func (s *MessageBusinessTestSuite) setupBusinessLayer(
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
+	messageBusiness := business.NewMessageBusiness(
+		evtsMan,
+		eventRepo,
+		subRepo,
+		subscriptionSvc,
+		s.AuthzMiddleware,
+		business.WithCallPolicy(callRepo, callPolicy),
+	)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,
@@ -1480,4 +1500,438 @@ func (s *MessageBusinessTestSuite) TestSendEvents_ConcurrentDuplicate() {
 		require.Len(t, acks2, 1)
 		require.Nil(t, acks2[0].GetError(), "duplicate send should succeed idempotently")
 	})
+}
+
+func (s *MessageBusinessTestSuite) TestCallEvents_CreateAndTransitionRoomCall() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		messageBusiness, roomBusiness := s.setupBusinessLayerWithCallPolicy(
+			ctx,
+			svc,
+			business.CallPolicyConfig{DirectCallMemberLimit: 2, MeshCallMemberLimit: 4},
+		)
+
+		workMan := svc.WorkManager()
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+		callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
+
+		ownerID := util.IDString()
+		ownerContactID := util.IDString()
+		memberID := util.IDString()
+		memberContactID := util.IDString()
+		owner := &commonv1.ContactLink{ProfileId: ownerID, ContactId: ownerContactID}
+		member := &commonv1.ContactLink{ProfileId: memberID, ContactId: memberContactID}
+
+		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+			Name:      "Direct Call Room",
+			IsPrivate: false,
+			Members:   []*commonv1.ContactLink{member},
+		}, owner)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), ownerID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), memberID, t)
+		s.WaitForAuthzAccess(ctx, svc, ownerID, room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, memberID, room.GetId(), t)
+
+		callID := util.IDString()
+		offerSDP := "offer-sdp"
+		offerReq := &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{
+					Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+						CallId: callID,
+						Type:   chatv1.CallContent_CALL_TYPE_VIDEO,
+						Action: chatv1.CallContent_CALL_ACTION_OFFER,
+						Sdp:    &offerSDP,
+						Metadata: &structpb.Struct{Fields: map[string]*structpb.Value{
+							"topology": {Kind: &structpb.Value_StringValue{StringValue: "p2p"}},
+						}},
+					}},
+				},
+			}},
+		}
+
+		acks, err := messageBusiness.SendEvents(ctx, offerReq, owner)
+		require.NoError(t, err)
+		require.Len(t, acks, 1)
+		require.Nil(t, acks[0].GetError())
+
+		callRecord, err := callRepo.GetByCallID(ctx, callID)
+		require.NoError(t, err)
+		require.Equal(t, repository.CallStatusRinging, callRecord.Status)
+
+		answerSDP := "answer-sdp"
+		answerReq := &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{
+					Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+						CallId: callID,
+						Type:   chatv1.CallContent_CALL_TYPE_VIDEO,
+						Action: chatv1.CallContent_CALL_ACTION_ANSWER,
+						Sdp:    &answerSDP,
+					}},
+				},
+			}},
+		}
+
+		acks, err = messageBusiness.SendEvents(ctx, answerReq, member)
+		require.NoError(t, err)
+		require.Len(t, acks, 1)
+		require.Nil(t, acks[0].GetError())
+
+		callRecord, err = callRepo.GetByCallID(ctx, callID)
+		require.NoError(t, err)
+		require.Equal(t, repository.CallStatusActive, callRecord.Status)
+
+		endReq := &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{
+					Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+						CallId: callID,
+						Type:   chatv1.CallContent_CALL_TYPE_VIDEO,
+						Action: chatv1.CallContent_CALL_ACTION_END,
+					}},
+				},
+			}},
+		}
+
+		acks, err = messageBusiness.SendEvents(ctx, endReq, owner)
+		require.NoError(t, err)
+		require.Len(t, acks, 1)
+		require.Nil(t, acks[0].GetError())
+
+		callRecord, err = callRepo.GetByCallID(ctx, callID)
+		require.NoError(t, err)
+		require.Equal(t, repository.CallStatusEnded, callRecord.Status)
+	})
+}
+
+func (s *MessageBusinessTestSuite) TestCallEvents_RejectOversizedDirectRoomWithoutSFU() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		messageBusiness, roomBusiness := s.setupBusinessLayerWithCallPolicy(
+			ctx,
+			svc,
+			business.CallPolicyConfig{DirectCallMemberLimit: 2, MeshCallMemberLimit: 4},
+		)
+
+		ownerID := util.IDString()
+		ownerContactID := util.IDString()
+		member1ID := util.IDString()
+		member2ID := util.IDString()
+		owner := &commonv1.ContactLink{ProfileId: ownerID, ContactId: ownerContactID}
+
+		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+			Name:      "Oversized Direct Call Room",
+			IsPrivate: false,
+			Members: []*commonv1.ContactLink{
+				{ProfileId: member1ID, ContactId: util.IDString()},
+				{ProfileId: member2ID, ContactId: util.IDString()},
+			},
+		}, owner)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), ownerID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member1ID, t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member2ID, t)
+		s.WaitForAuthzAccess(ctx, svc, ownerID, room.GetId(), t)
+
+		offerSDP := "offer-sdp"
+		acks, err := messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{
+					Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+						CallId: util.IDString(),
+						Type:   chatv1.CallContent_CALL_TYPE_VIDEO,
+						Action: chatv1.CallContent_CALL_ACTION_OFFER,
+						Sdp:    &offerSDP,
+						Metadata: &structpb.Struct{Fields: map[string]*structpb.Value{
+							"topology": {Kind: &structpb.Value_StringValue{StringValue: "p2p"}},
+						}},
+					}},
+				},
+			}},
+		}, owner)
+		require.NoError(t, err)
+		require.Len(t, acks, 1)
+		require.NotNil(t, acks[0].GetError())
+		require.Contains(t, acks[0].GetError().GetMessage(), "without SFU assignment")
+	})
+}
+
+func (s *MessageBusinessTestSuite) TestGroupCallStageUpdate_PersistsAndCapsVideoStage() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		messageBusiness, roomBusiness := s.setupBusinessLayerWithCallPolicy(
+			ctx,
+			svc,
+			business.CallPolicyConfig{
+				DirectCallMemberLimit: 2,
+				MeshCallMemberLimit:   8,
+				MaxVideoPublishers:    5,
+			},
+		)
+
+		workMan := svc.WorkManager()
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+		callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
+
+		owner := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		admin := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		member := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+
+		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+			Name:      "Stage Room",
+			IsPrivate: false,
+			Members:   []*commonv1.ContactLink{admin, member},
+		}, owner)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), admin.GetProfileId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, svc, owner.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, admin.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, member.GetProfileId(), room.GetId(), t)
+
+		adminSubs, err := roomBusiness.SearchRoomSubscriptions(
+			ctx,
+			&chatv1.SearchRoomSubscriptionsRequest{RoomId: room.GetId()},
+			owner,
+		)
+		require.NoError(t, err)
+		var adminSubscriptionID string
+		for _, sub := range adminSubs {
+			if sub.GetMember().GetProfileId() == admin.GetProfileId() {
+				adminSubscriptionID = sub.GetId()
+				break
+			}
+		}
+		require.NotEmpty(t, adminSubscriptionID)
+		require.NoError(t, roomBusiness.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{
+			RoomId:         room.GetId(),
+			SubscriptionId: adminSubscriptionID,
+			Roles:          []string{repository.RoleAdmin},
+		}, owner))
+
+		callID := util.IDString()
+		startedAt := time.Now().UnixMilli()
+		stageMeta := &structpb.Struct{Fields: map[string]*structpb.Value{
+			"signalKind":         {Kind: &structpb.Value_StringValue{StringValue: "group_start"}},
+			"topology":           {Kind: &structpb.Value_StringValue{StringValue: "mesh"}},
+			"maxVideoPublishers": {Kind: &structpb.Value_NumberValue{NumberValue: 5}},
+			"activeVideoProfileIds": {Kind: &structpb.Value_ListValue{ListValue: &structpb.ListValue{
+				Values: []*structpb.Value{
+					{Kind: &structpb.Value_StringValue{StringValue: owner.GetProfileId()}},
+				},
+			}}},
+		}}
+		acks, err := messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+					CallId:   callID,
+					Type:     chatv1.CallContent_CALL_TYPE_VIDEO,
+					Action:   chatv1.CallContent_CALL_ACTION_UNSPECIFIED,
+					Metadata: stageMeta,
+				}}},
+			}},
+		}, owner)
+		require.NoError(t, err)
+		require.Nil(t, acks[0].GetError())
+
+		for _, caller := range []*commonv1.ContactLink{admin, member} {
+			joinMeta := &structpb.Struct{Fields: map[string]*structpb.Value{
+				"signalKind": {Kind: &structpb.Value_StringValue{StringValue: "group_join"}},
+				"topology":   {Kind: &structpb.Value_StringValue{StringValue: "mesh"}},
+				"joinedAt":   {Kind: &structpb.Value_NumberValue{NumberValue: float64(startedAt)}},
+			}}
+			acks, err = messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+				Event: []*chatv1.RoomEvent{{
+					RoomId: room.GetId(),
+					Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+					Payload: &chatv1.Payload{Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+						CallId:   callID,
+						Type:     chatv1.CallContent_CALL_TYPE_VIDEO,
+						Action:   chatv1.CallContent_CALL_ACTION_UNSPECIFIED,
+						Metadata: joinMeta,
+					}}},
+				}},
+			}, caller)
+			require.NoError(t, err)
+			require.Nil(t, acks[0].GetError())
+		}
+
+		stageUpdateMeta := &structpb.Struct{Fields: map[string]*structpb.Value{
+			"signalKind":         {Kind: &structpb.Value_StringValue{StringValue: "group_stage_update"}},
+			"topology":           {Kind: &structpb.Value_StringValue{StringValue: "mesh"}},
+			"maxVideoPublishers": {Kind: &structpb.Value_NumberValue{NumberValue: 5}},
+			"activeVideoProfileIds": {Kind: &structpb.Value_ListValue{ListValue: &structpb.ListValue{
+				Values: []*structpb.Value{
+					{Kind: &structpb.Value_StringValue{StringValue: owner.GetProfileId()}},
+					{Kind: &structpb.Value_StringValue{StringValue: admin.GetProfileId()}},
+				},
+			}}},
+		}}
+		acks, err = messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+					CallId:   callID,
+					Type:     chatv1.CallContent_CALL_TYPE_VIDEO,
+					Action:   chatv1.CallContent_CALL_ACTION_UNSPECIFIED,
+					Metadata: stageUpdateMeta,
+				}}},
+			}},
+		}, admin)
+		require.NoError(t, err)
+		require.Nil(t, acks[0].GetError())
+
+		callRecord, err := callRepo.GetByCallID(ctx, callID)
+		require.NoError(t, err)
+		assert.Equal(t, 5, toInt(callRecord.Metadata["maxVideoPublishers"]))
+		assert.ElementsMatch(t, []string{
+			owner.GetProfileId(),
+			admin.GetProfileId(),
+		}, toStringSlice(callRecord.Metadata["activeVideoProfileIds"]))
+	})
+}
+
+func (s *MessageBusinessTestSuite) TestGroupCallStageUpdate_RejectsUnauthorizedParticipant() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		messageBusiness, roomBusiness := s.setupBusinessLayerWithCallPolicy(
+			ctx,
+			svc,
+			business.CallPolicyConfig{
+				DirectCallMemberLimit: 2,
+				MeshCallMemberLimit:   8,
+				MaxVideoPublishers:    5,
+			},
+		)
+
+		owner := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		member := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+
+		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+			Name:      "Unauthorized Stage Room",
+			IsPrivate: false,
+			Members:   []*commonv1.ContactLink{member},
+		}, owner)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), member.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, svc, owner.GetProfileId(), room.GetId(), t)
+		s.WaitForAuthzAccess(ctx, svc, member.GetProfileId(), room.GetId(), t)
+
+		callID := util.IDString()
+		startMeta := &structpb.Struct{Fields: map[string]*structpb.Value{
+			"signalKind": {Kind: &structpb.Value_StringValue{StringValue: "group_start"}},
+			"topology":   {Kind: &structpb.Value_StringValue{StringValue: "mesh"}},
+		}}
+		acks, err := messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+					CallId:   callID,
+					Type:     chatv1.CallContent_CALL_TYPE_VIDEO,
+					Action:   chatv1.CallContent_CALL_ACTION_UNSPECIFIED,
+					Metadata: startMeta,
+				}}},
+			}},
+		}, owner)
+		require.NoError(t, err)
+		require.Nil(t, acks[0].GetError())
+
+		joinMeta := &structpb.Struct{Fields: map[string]*structpb.Value{
+			"signalKind": {Kind: &structpb.Value_StringValue{StringValue: "group_join"}},
+			"topology":   {Kind: &structpb.Value_StringValue{StringValue: "mesh"}},
+		}}
+		acks, err = messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+					CallId:   callID,
+					Type:     chatv1.CallContent_CALL_TYPE_VIDEO,
+					Action:   chatv1.CallContent_CALL_ACTION_UNSPECIFIED,
+					Metadata: joinMeta,
+				}}},
+			}},
+		}, member)
+		require.NoError(t, err)
+		require.Nil(t, acks[0].GetError())
+
+		stageMeta := &structpb.Struct{Fields: map[string]*structpb.Value{
+			"signalKind": {Kind: &structpb.Value_StringValue{StringValue: "group_stage_update"}},
+			"topology":   {Kind: &structpb.Value_StringValue{StringValue: "mesh"}},
+			"activeVideoProfileIds": {Kind: &structpb.Value_ListValue{ListValue: &structpb.ListValue{
+				Values: []*structpb.Value{
+					{Kind: &structpb.Value_StringValue{StringValue: member.GetProfileId()}},
+				},
+			}}},
+		}}
+		acks, err = messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{{
+				RoomId: room.GetId(),
+				Type:   chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL,
+				Payload: &chatv1.Payload{Data: &chatv1.Payload_Call{Call: &chatv1.CallContent{
+					CallId:   callID,
+					Type:     chatv1.CallContent_CALL_TYPE_VIDEO,
+					Action:   chatv1.CallContent_CALL_ACTION_UNSPECIFIED,
+					Metadata: stageMeta,
+				}}},
+			}},
+		}, member)
+		require.NoError(t, err)
+		require.NotNil(t, acks[0].GetError())
+		require.Contains(t, acks[0].GetError().GetMessage(), "initiator or room admins")
+	})
+}
+
+func toStringSlice(raw any) []string {
+	switch typed := raw.(type) {
+	case []string:
+		return typed
+	case []any:
+		result := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if value, ok := item.(string); ok && value != "" {
+				result = append(result, value)
+			}
+		}
+		return result
+	default:
+		return nil
+	}
+}
+
+func toInt(raw any) int {
+	switch typed := raw.(type) {
+	case int:
+		return typed
+	case int32:
+		return int(typed)
+	case int64:
+		return int(typed)
+	case float64:
+		return int(typed)
+	case json.Number:
+		value, err := typed.Int64()
+		if err == nil {
+			return int(value)
+		}
+		return 0
+	default:
+		return 0
+	}
 }

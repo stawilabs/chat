@@ -133,7 +133,7 @@ class MessageSendingService {
     // Queue for upload
     await _jobRepo.addJob(JobType.sendMessage, {
       'roomId': roomId,
-      'type': event.type.toString(),
+      'type': event.type.wireName,
       'content': content,
       'localId': localId,
       'parentId': replyToId,
@@ -558,7 +558,7 @@ class MessageSendingService {
 
     await _jobRepo.addJob(JobType.sendMessage, {
       'roomId': roomId,
-      'type': event.type.toString(),
+      'type': event.type.wireName,
       'content': event.content,
       'localId': localId,
       'parentId': targetEventId,
@@ -596,7 +596,7 @@ class MessageSendingService {
     // Just queue for sending
     await _jobRepo.addJob(JobType.sendMessage, {
       'roomId': payload.roomId,
-      'type': event.type.toString(),
+      'type': event.type.wireName,
       'content': {'text': jsonEncode(content)}, // Encode as JSON text for wire
       'localId': localId,
     });
@@ -656,7 +656,7 @@ class MessageSendingService {
     }
 
     final row = results.first;
-    final type = domain.RoomEventType.values[row.type];
+    final type = domain.roomEventTypeFromStorageCode(row.type);
 
     // Re-queue the job
     final jobType = _isMediaType(type)
@@ -679,7 +679,7 @@ class MessageSendingService {
 
     await _jobRepo.addJob(jobType, {
       'roomId': row.roomId,
-      'type': type.toString(),
+      'type': type.wireName,
       'content': contentMap,
       'localId': localId,
       'parentId': row.parentId,
@@ -697,7 +697,7 @@ class MessageSendingService {
     await (db.delete(db.roomEvents)..where(
           (t) =>
               t.localId.equals(localId) &
-              t.status.equals(domain.EventStatus.pending.index),
+              t.status.equals(domain.EventStatus.pending.storageCode),
         ))
         .go();
   }

@@ -16,6 +16,7 @@ _GroupCallParticipant _$GroupCallParticipantFromJson(
   isAudioMuted: json['isAudioMuted'] as bool? ?? false,
   isVideoOff: json['isVideoOff'] as bool? ?? false,
   isSpeaking: json['isSpeaking'] as bool? ?? false,
+  hasVideoSlot: json['hasVideoSlot'] as bool? ?? false,
   isHost: json['isHost'] as bool? ?? false,
   state:
       $enumDecodeNullable(_$ParticipantStateEnumMap, json['state']) ??
@@ -32,6 +33,7 @@ Map<String, dynamic> _$GroupCallParticipantToJson(
   'isAudioMuted': instance.isAudioMuted,
   'isVideoOff': instance.isVideoOff,
   'isSpeaking': instance.isSpeaking,
+  'hasVideoSlot': instance.hasVideoSlot,
   'isHost': instance.isHost,
   'state': _$ParticipantStateEnumMap[instance.state]!,
 };

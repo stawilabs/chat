@@ -84,6 +84,9 @@ func TestChatConfig_Validate(t *testing.T) {
 		cfg.ProfileDeviceCacheMaxEntries = 0
 		cfg.DeviceReplayMaxEventsPerDevice = 0
 		cfg.DeviceReplayRetentionHours = 0
+		cfg.CallDirectMaxParticipants = 0
+		cfg.CallMeshMaxParticipants = 0
+		cfg.CallMaxVideoPublishers = 0
 
 		err := cfg.Validate()
 		require.Error(t, err)
@@ -93,6 +96,29 @@ func TestChatConfig_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "ProfileDeviceCacheMaxEntries")
 		assert.Contains(t, err.Error(), "DeviceReplayMaxEventsPerDevice")
 		assert.Contains(t, err.Error(), "DeviceReplayRetentionHours")
+		assert.Contains(t, err.Error(), "CallDirectMaxParticipants")
+		assert.Contains(t, err.Error(), "CallMeshMaxParticipants")
+		assert.Contains(t, err.Error(), "CallMaxVideoPublishers")
+	})
+
+	t.Run("mesh call limit must not be smaller than direct call limit", func(t *testing.T) {
+		cfg := validChatConfig()
+		cfg.CallDirectMaxParticipants = 3
+		cfg.CallMeshMaxParticipants = 2
+
+		err := cfg.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "CallMeshMaxParticipants must be >=")
+	})
+
+	t.Run("video publisher limit must not exceed mesh call limit", func(t *testing.T) {
+		cfg := validChatConfig()
+		cfg.CallMeshMaxParticipants = 4
+		cfg.CallMaxVideoPublishers = 5
+
+		err := cfg.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "CallMaxVideoPublishers must be <=")
 	})
 }
 
@@ -116,5 +142,8 @@ func validChatConfig() config.ChatConfig {
 		ProfileDeviceCacheMaxEntries:   512,
 		DeviceReplayMaxEventsPerDevice: 1000,
 		DeviceReplayRetentionHours:     168,
+		CallDirectMaxParticipants:      2,
+		CallMeshMaxParticipants:        6,
+		CallMaxVideoPublishers:         5,
 	}
 }

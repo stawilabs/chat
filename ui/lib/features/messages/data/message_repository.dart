@@ -112,10 +112,10 @@ class MessageRepository {
             id: event.id,
             roomId: event.roomId,
             senderId: event.senderId,
-            type: event.type.index,
+            type: event.type.storageCode,
             content: Value(jsonEncode(event.content)),
             parentId: Value(event.parentId),
-            status: Value(event.status.index),
+            status: Value(event.status.storageCode),
             createdAt: Value(event.createdAt),
             serverTs: Value(event.serverTs),
             localId: Value(event.localId),
@@ -156,7 +156,7 @@ class MessageRepository {
               RoomEventsCompanion(
                 id: Value(serverId),
                 senderId: Value(senderId),
-                status: Value(status.index),
+                status: Value(status.storageCode),
                 serverTs: serverTs != null
                     ? Value(serverTs)
                     : const Value.absent(),
@@ -168,7 +168,7 @@ class MessageRepository {
       // Only update status if it would advance (sent is the ack status,
       // but echo may have already set delivered)
       final existing = await getEventById(serverId);
-      if (existing != null && existing.status.index < status.index) {
+      if (existing != null && !existing.status.isAtLeast(status)) {
         await updateMessageStatus(serverId, status);
       }
     }
@@ -214,7 +214,7 @@ class MessageRepository {
   ) async {
     await (_database.update(_database.roomEvents)
           ..where((t) => t.id.equals(messageId)))
-        .write(RoomEventsCompanion(status: Value(status.index)));
+        .write(RoomEventsCompanion(status: Value(status.storageCode)));
   }
 
   Future<void> updateMessagesStatus(
@@ -224,7 +224,7 @@ class MessageRepository {
     if (messageIds.isEmpty) return;
     await (_database.update(_database.roomEvents)
           ..where((t) => t.id.isIn(messageIds)))
-        .write(RoomEventsCompanion(status: Value(status.index)));
+        .write(RoomEventsCompanion(status: Value(status.storageCode)));
   }
 
   Future<List<String>> getIncomingEventIdsUpTo(
@@ -238,7 +238,9 @@ class MessageRepository {
       ..where(_database.roomEvents.id.isSmallerOrEqualValue(upToEventId));
 
     if (excludingSenderId != null && excludingSenderId.isNotEmpty) {
-      query.where(_database.roomEvents.senderId.equals(excludingSenderId).not());
+      query.where(
+        _database.roomEvents.senderId.equals(excludingSenderId).not(),
+      );
     }
 
     query.orderBy([OrderingTerm.asc(_database.roomEvents.id)]);
@@ -259,7 +261,7 @@ class MessageRepository {
         (t) =>
             t.roomId.equals(roomId) &
             t.senderId.equals(excludingSenderId).not() &
-            t.status.isSmallerThanValue(domain.EventStatus.read.index),
+            t.status.isSmallerThanValue(domain.EventStatus.read.storageCode),
       )
       ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
       ..limit(1);
@@ -359,7 +361,7 @@ class MessageRepository {
       RoomEventsCompanion(
         id: Value(serverId),
         senderId: Value(senderId),
-        status: Value(domain.EventStatus.delivered.index),
+        status: Value(domain.EventStatus.delivered.storageCode),
         serverTs: serverTs != null ? Value(serverTs) : const Value.absent(),
       ),
     );
@@ -370,7 +372,7 @@ class MessageRepository {
       ..where(
         (t) =>
             t.parentId.equals(eventId) &
-            t.type.equals(domain.RoomEventType.reaction.index),
+            t.type.equals(domain.RoomEventType.reaction.storageCode),
       );
 
     final results = await query.get();
@@ -579,10 +581,10 @@ class MessageRepository {
     id: row.id,
     roomId: row.roomId,
     senderId: row.senderId,
-    type: domain.RoomEventType.values[row.type],
+    type: domain.roomEventTypeFromStorageCode(row.type),
     content: row.content != null ? jsonDecode(row.content!) : {},
     parentId: row.parentId,
-    status: domain.EventStatus.values[row.status],
+    status: domain.eventStatusFromStorageCode(row.status),
     createdAt: row.createdAt ?? 0,
     serverTs: row.serverTs,
     localId: row.localId,

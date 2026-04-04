@@ -66,7 +66,7 @@ class MessageList extends _$MessageList {
     // the direct send even though the client got an error).
     await jobRepo.addJob(JobType.sendMessage, {
       'roomId': event.roomId,
-      'type': event.type.toString(),
+      'type': event.type.wireName,
       'localId': event.localId,
       'content': event.content,
     });
@@ -125,10 +125,7 @@ class MessageList extends _$MessageList {
         return false;
       }
 
-      final fetchedCount = await syncEngine.getHistory(
-        roomId,
-        cursor: cursor,
-      );
+      final fetchedCount = await syncEngine.getHistory(roomId, cursor: cursor);
 
       if (fetchedCount > 0) {
         // Messages were fetched and stored, refresh view

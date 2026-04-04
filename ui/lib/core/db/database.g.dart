@@ -2471,7 +2471,7 @@ class $RoomEventsTable extends RoomEvents
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: const Constant(_roomEventStatusPendingCode),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -3023,7 +3023,8 @@ class RoomEvent extends DataClass implements Insertable<RoomEvent> {
   /// Contact ID of the sender (nullable, for additional context)
   final String? senderContactId;
 
-  /// Event type as integer (text=0, image=1, video=2, etc.)
+  /// Event type as a stable explicit code.
+  /// Codes are intentionally not tied to Dart enum order.
   final int type;
 
   /// JSON-encoded event content (message text, attachment info, etc.)
@@ -3032,7 +3033,7 @@ class RoomEvent extends DataClass implements Insertable<RoomEvent> {
   /// Parent event ID for replies/threads
   final String? parentId;
 
-  /// Event status (pending=0, sent=1, delivered=2, read=3, failed=4)
+  /// Event delivery status as a stable explicit code.
   final int status;
 
   /// Client-side creation timestamp

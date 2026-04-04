@@ -143,24 +143,12 @@ class _ParticipantTileState extends State<ParticipantTile> {
                   // Host indicator
                   if (widget.participant.isHost) ...[
                     const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Host',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    _buildLabelChip('Host', theme.colorScheme.primary),
+                  ],
+                  if (widget.participant.hasVideoSlot &&
+                      !widget.participant.isHost) ...[
+                    const SizedBox(width: 4),
+                    _buildLabelChip('Stage', Colors.green),
                   ],
                 ],
               ),
@@ -258,6 +246,24 @@ class _ParticipantTileState extends State<ParticipantTile> {
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: Colors.white, size: 16),
+    );
+  }
+
+  Widget _buildLabelChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 

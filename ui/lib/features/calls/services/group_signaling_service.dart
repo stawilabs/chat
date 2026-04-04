@@ -42,17 +42,26 @@ class GroupSignalingService {
         type == domain.RoomEventType.groupCallOffer ||
         type == domain.RoomEventType.groupCallAnswer ||
         type == domain.RoomEventType.groupCallIce ||
-        type == domain.RoomEventType.groupCallMuteUpdate;
+        type == domain.RoomEventType.groupCallMuteUpdate ||
+        type == domain.RoomEventType.groupCallStageUpdate;
   }
 
   /// Start a new group call in a room
   ///
   /// Sends a groupCallStart event to notify room members
   /// that a group call is being initiated.
-  Future<String> sendGroupCallStart(String roomId) async {
+  Future<String> sendGroupCallStart(
+    String roomId, {
+    required int maxVideoPublishers,
+    required List<String> activeVideoProfileIds,
+  }) async {
     final callId = Xid().toString();
     await _sendSignal(roomId, domain.RoomEventType.groupCallStart, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
+      'maxVideoPublishers': maxVideoPublishers,
+      'activeVideoProfileIds': activeVideoProfileIds,
       'startedAt': DateTime.now().millisecondsSinceEpoch,
     });
     return callId;
@@ -64,6 +73,8 @@ class GroupSignalingService {
   Future<void> sendGroupCallJoin(String roomId, String callId) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallJoin, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'joinedAt': DateTime.now().millisecondsSinceEpoch,
     });
   }
@@ -74,6 +85,8 @@ class GroupSignalingService {
   Future<void> sendGroupCallLeave(String roomId, String callId) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallLeave, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'leftAt': DateTime.now().millisecondsSinceEpoch,
     });
   }
@@ -84,6 +97,8 @@ class GroupSignalingService {
   Future<void> sendGroupCallEnd(String roomId, String callId) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallEnd, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'endedAt': DateTime.now().millisecondsSinceEpoch,
     });
   }
@@ -99,9 +114,18 @@ class GroupSignalingService {
   ) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallOffer, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'targetProfileId': targetProfileId,
       'sdp': offer['sdp'],
       'type': offer['type'],
+      if (offer['hostProfileId'] != null)
+        'hostProfileId': offer['hostProfileId'],
+      if (offer['isHost'] != null) 'isHost': offer['isHost'],
+      if (offer['maxVideoPublishers'] != null)
+        'maxVideoPublishers': offer['maxVideoPublishers'],
+      if (offer['activeVideoProfileIds'] != null)
+        'activeVideoProfileIds': offer['activeVideoProfileIds'],
     });
   }
 
@@ -116,6 +140,8 @@ class GroupSignalingService {
   ) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallAnswer, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'targetProfileId': targetProfileId,
       'sdp': answer['sdp'],
       'type': answer['type'],
@@ -133,6 +159,8 @@ class GroupSignalingService {
   ) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallIce, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'targetProfileId': targetProfileId,
       'candidate': candidate['candidate'],
       'sdpMid': candidate['sdpMid'],
@@ -151,8 +179,27 @@ class GroupSignalingService {
   }) async {
     await _sendSignal(roomId, domain.RoomEventType.groupCallMuteUpdate, {
       'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
       'isAudioMuted': isAudioMuted,
       'isVideoOff': isVideoOff,
+    });
+  }
+
+  /// Broadcast the current authoritative video stage membership.
+  Future<void> sendGroupCallStageUpdate(
+    String roomId,
+    String callId, {
+    required int maxVideoPublishers,
+    required List<String> activeVideoProfileIds,
+  }) async {
+    await _sendSignal(roomId, domain.RoomEventType.groupCallStageUpdate, {
+      'callId': callId,
+      'callType': 'video',
+      'topology': 'mesh',
+      'maxVideoPublishers': maxVideoPublishers,
+      'activeVideoProfileIds': activeVideoProfileIds,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
     });
   }
 
@@ -163,13 +210,17 @@ class GroupSignalingService {
     Map<String, dynamic> content,
   ) async {
     final currentProfileId = await _authRepository.getCurrentProfileId();
+    final signalContent = Map<String, dynamic>.from(content);
+    if (currentProfileId != null && currentProfileId.isNotEmpty) {
+      signalContent['senderProfileId'] = currentProfileId;
+    }
 
     final message = domain.RoomEvent(
       id: Xid().toString(),
       roomId: roomId,
       senderId: currentProfileId ?? 'unknown',
       type: type,
-      content: content,
+      content: signalContent,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       localId: Xid().toString(),
     );

@@ -35,8 +35,11 @@ class SignalingService {
     await _sendSignal(roomId, domain.RoomEventType.callIce, candidate);
   }
 
-  Future<void> sendHangup(String roomId) async {
-    await _sendSignal(roomId, domain.RoomEventType.callEnd, {});
+  Future<void> sendHangup(
+    String roomId, [
+    Map<String, dynamic> content = const {},
+  ]) async {
+    await _sendSignal(roomId, domain.RoomEventType.callEnd, content);
   }
 
   Future<void> _sendSignal(
@@ -45,13 +48,17 @@ class SignalingService {
     Map<String, dynamic> content,
   ) async {
     final currentProfileId = await _authRepository.getCurrentProfileId();
+    final signalContent = Map<String, dynamic>.from(content);
+    if (currentProfileId != null && currentProfileId.isNotEmpty) {
+      signalContent['senderProfileId'] = currentProfileId;
+    }
 
     final message = domain.RoomEvent(
       id: Xid().toString(),
       roomId: roomId,
       senderId: currentProfileId ?? 'unknown',
       type: type,
-      content: content,
+      content: signalContent,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       localId: Xid().toString(),
     );

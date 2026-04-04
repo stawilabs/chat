@@ -438,20 +438,80 @@ class SyncEngine with WidgetsBindingObserver {
   }
 
   Future<void> sendSignal(domain.RoomEvent event) async {
-    // Insert into DB first (optional for signals, but good for history)
     await _messageRepo.insertMessage(event);
 
-    // Create pending job
-    await _jobRepo.addJob(domain_job.JobType.sendMessage, {
-      'roomId': event.roomId,
-      'type': event.type.toString(),
-      'content': event.content,
-      'localId': event.localId,
-    });
+    try {
+      await _sendEventNow(event);
+      return;
+    } on MissingSubscriptionIdException {
+      rethrow;
+    } catch (e, stackTrace) {
+      AppLogger.warning(
+        'Immediate signal send failed, queuing for retry',
+        error: e,
+        stackTrace: stackTrace,
+        data: {'roomId': event.roomId, 'type': event.type.toString()},
+      );
+    }
 
-    // Trigger immediate upload if connected
+    await _enqueueSignalJob(event);
+
     if (_isConnected) {
       _startUploadLoop();
+    }
+  }
+
+  Future<void> _enqueueSignalJob(domain.RoomEvent event) async {
+    await _jobRepo.addJob(domain_job.JobType.sendMessage, {
+      'roomId': event.roomId,
+      'type': event.type.wireName,
+      'content': event.content,
+      'localId': event.localId,
+      'parentId': event.parentId,
+    });
+  }
+
+  Future<void> _sendEventNow(domain.RoomEvent event) async {
+    final subscriptionId = await getCurrentSubscriptionId(
+      event.roomId,
+      syncIfMissing: true,
+    );
+    if (subscriptionId == null || subscriptionId.isEmpty) {
+      throw MissingSubscriptionIdException(event.roomId);
+    }
+
+    final now = DateTime.now();
+    final pbEvent = ChatEventCodec.buildRoomEvent(
+      eventId: event.localId ?? event.id,
+      roomId: event.roomId,
+      subscriptionId: subscriptionId,
+      localType: event.type,
+      content: event.content,
+      timestamp: common_types.Timestamp.fromDateTime(now),
+      parentId: event.parentId,
+    );
+
+    final response = await _chatClient.sendEvent(
+      pb.SendEventRequest(event: [pbEvent]),
+    );
+    if (response.ack.isEmpty) {
+      return;
+    }
+
+    final ack = response.ack.first;
+    if (ack.hasError()) {
+      throw StateError(ack.error.message);
+    }
+
+    final ackEventIds = ack.eventId;
+    if ((event.localId ?? '').isNotEmpty && ackEventIds.isNotEmpty) {
+      await _messageRepo.updateMessageIdAfterAck(
+        event.localId!,
+        serverId: ackEventIds.first,
+        senderId: subscriptionId,
+        status: domain.EventStatus.sent,
+        serverTs: now.millisecondsSinceEpoch,
+      );
     }
   }
 
@@ -980,11 +1040,7 @@ class SyncEngine with WidgetsBindingObserver {
           };
         }
       } else if (payload.hasCall()) {
-        // Extract call data
-        content = {
-          'callId': payload.call.callId,
-          'callType': payload.call.action.toString(),
-        };
+        content = _decodeCallPayload(payload.call);
       } else if (payload.hasRoomChange()) {
         // Handle room change events (typed replacement for moderation)
         await _processRoomChangeEvent(
@@ -1045,14 +1101,17 @@ class SyncEngine with WidgetsBindingObserver {
     final domainType =
         (content['isRoomChange'] == true || content['isModeration'] == true)
         ? domain.RoomEventType.roomChange
-        : _mapProtoEventType(event.type);
+        : _resolveDomainEventType(
+            event.type,
+            event.hasPayload() ? event.payload : null,
+          );
 
     // Check if this event already exists locally (e.g. own message echo from server)
     // If it does and its status is already >= sent, only advance status - never regress.
     final existingEvent = await _messageRepo.getEventById(event.id);
     if (existingEvent != null) {
       // Event already exists by server ID - ack was processed first (normal case)
-      if (existingEvent.status.index >= domain.EventStatus.sent.index) {
+      if (existingEvent.status.isAtLeast(domain.EventStatus.sent)) {
         // Already sent/delivered/read - only advance status, never regress
         if (existingEvent.status == domain.EventStatus.sent) {
           // Advance from sent → delivered (server confirmed delivery to stream)
@@ -1136,7 +1195,16 @@ class SyncEngine with WidgetsBindingObserver {
       type == domain.RoomEventType.callOffer ||
       type == domain.RoomEventType.callAnswer ||
       type == domain.RoomEventType.callIce ||
-      type == domain.RoomEventType.callEnd;
+      type == domain.RoomEventType.callEnd ||
+      type == domain.RoomEventType.groupCallStart ||
+      type == domain.RoomEventType.groupCallJoin ||
+      type == domain.RoomEventType.groupCallLeave ||
+      type == domain.RoomEventType.groupCallEnd ||
+      type == domain.RoomEventType.groupCallOffer ||
+      type == domain.RoomEventType.groupCallAnswer ||
+      type == domain.RoomEventType.groupCallIce ||
+      type == domain.RoomEventType.groupCallMuteUpdate ||
+      type == domain.RoomEventType.groupCallStageUpdate;
 
   /// Process system events that don't have roomId (like auth events, token refresh, etc.)
   Future<void> _processSystemEvent(pb.RoomEvent event) async {
@@ -1443,7 +1511,10 @@ class SyncEngine with WidgetsBindingObserver {
     final eventIds = event.eventId.toList();
     if (eventIds.isEmpty) return;
 
-    await _messageRepo.updateMessagesStatus(eventIds, domain.EventStatus.delivered);
+    await _messageRepo.updateMessagesStatus(
+      eventIds,
+      domain.EventStatus.delivered,
+    );
 
     AppLogger.debug(
       'Processed delivery receipt event',
@@ -1542,14 +1613,18 @@ class SyncEngine with WidgetsBindingObserver {
               event.lastActive.nanos ~/ 1000000
         : DateTime.now().millisecondsSinceEpoch;
 
-    await AppDatabase.instance.into(AppDatabase.instance.profiles).insertOnConflictUpdate(
-      ProfilesCompanion.insert(
-        id: profileId,
-        status: Value(status.value),
-        statusMessage: Value(event.statusMsg.isNotEmpty ? event.statusMsg : null),
-        statusUpdatedAt: Value(lastActive),
-      ),
-    );
+    await AppDatabase.instance
+        .into(AppDatabase.instance.profiles)
+        .insertOnConflictUpdate(
+          ProfilesCompanion.insert(
+            id: profileId,
+            status: Value(status.value),
+            statusMessage: Value(
+              event.statusMsg.isNotEmpty ? event.statusMsg : null,
+            ),
+            statusUpdatedAt: Value(lastActive),
+          ),
+        );
   }
 
   /// Process a roomKey event containing E2EE session key data
@@ -2063,10 +2138,14 @@ class SyncEngine with WidgetsBindingObserver {
 
     // Extract content and type
     final content = payload['content'] as Map<String, dynamic>;
-    final localType = domain.RoomEventType.values.firstWhere(
-      (t) => t.toString() == payload['type'],
-      orElse: () => domain.RoomEventType.text,
+    final localType = domain.tryRoomEventTypeFromWireName(
+      payload['type'] as String?,
     );
+    if (localType == null || localType == domain.RoomEventType.unknown) {
+      throw StateError(
+        'Unsupported queued room event type: ${payload['type']}',
+      );
+    }
     final event = ChatEventCodec.buildRoomEvent(
       eventId: payload['localId'] as String? ?? '',
       roomId: roomId,
@@ -2227,10 +2306,14 @@ class SyncEngine with WidgetsBindingObserver {
 
     // Get original message content
     final content = payload['content'] as Map<String, dynamic>;
-    final localType = domain.RoomEventType.values.firstWhere(
-      (t) => t.toString() == payload['type'],
-      orElse: () => domain.RoomEventType.text,
+    final localType = domain.tryRoomEventTypeFromWireName(
+      payload['type'] as String?,
     );
+    if (localType == null || localType == domain.RoomEventType.unknown) {
+      throw StateError(
+        'Unsupported queued room event type: ${payload['type']}',
+      );
+    }
     final protoType = _mapLocalEventTypeToProto(localType);
 
     // Build event with forwarded content
@@ -2294,6 +2377,18 @@ class SyncEngine with WidgetsBindingObserver {
 
   // Helper methods for type conversion
 
+  domain.RoomEventType _resolveDomainEventType(
+    pb.RoomEventType type,
+    pb.Payload? payload,
+  ) {
+    if (type == pb.RoomEventType.ROOM_EVENT_TYPE_CALL &&
+        payload != null &&
+        payload.hasCall()) {
+      return _mapCallContentToDomainType(payload.call);
+    }
+    return _mapProtoEventType(type);
+  }
+
   // ignore: unused_element - kept for future use in reconnection logic
   domain.RoomEventType _mapProtoEventType(pb.RoomEventType type) {
     switch (type) {
@@ -2317,8 +2412,98 @@ class SyncEngine with WidgetsBindingObserver {
     }
   }
 
+  domain.RoomEventType _mapCallContentToDomainType(pb.CallContent call) {
+    final metadata = call.hasMetadata()
+        ? _structToMap(call.metadata)
+        : const <String, dynamic>{};
+    switch (metadata['signalKind']) {
+      case 'group_start':
+        return domain.RoomEventType.groupCallStart;
+      case 'group_join':
+        return domain.RoomEventType.groupCallJoin;
+      case 'group_leave':
+        return domain.RoomEventType.groupCallLeave;
+      case 'group_end':
+        return domain.RoomEventType.groupCallEnd;
+      case 'group_offer':
+        return domain.RoomEventType.groupCallOffer;
+      case 'group_answer':
+        return domain.RoomEventType.groupCallAnswer;
+      case 'group_ice':
+        return domain.RoomEventType.groupCallIce;
+      case 'group_mute_update':
+        return domain.RoomEventType.groupCallMuteUpdate;
+      case 'group_stage_update':
+        return domain.RoomEventType.groupCallStageUpdate;
+    }
+
+    switch (call.action) {
+      case pb.CallContent_CallAction.CALL_ACTION_ANSWER:
+        return domain.RoomEventType.callAnswer;
+      case pb.CallContent_CallAction.CALL_ACTION_ICE_CANDIDATE:
+        return domain.RoomEventType.callIce;
+      case pb.CallContent_CallAction.CALL_ACTION_END:
+        return domain.RoomEventType.callEnd;
+      case pb.CallContent_CallAction.CALL_ACTION_OFFER:
+      case pb.CallContent_CallAction.CALL_ACTION_UNSPECIFIED:
+        return domain.RoomEventType.callOffer;
+    }
+
+    return domain.RoomEventType.callOffer;
+  }
+
+  Map<String, dynamic> _decodeCallPayload(pb.CallContent call) {
+    final metadata = call.hasMetadata()
+        ? _structToMap(call.metadata)
+        : <String, dynamic>{};
+    final content = <String, dynamic>{
+      'callId': call.callId,
+      'callType': _callTypeToString(call.type),
+      ...metadata,
+    };
+
+    if (call.sdp.isNotEmpty) {
+      content['sdp'] = call.sdp;
+    }
+    if (call.iceCandidate.isNotEmpty) {
+      content['candidate'] = call.iceCandidate;
+    }
+
+    switch (call.action) {
+      case pb.CallContent_CallAction.CALL_ACTION_OFFER:
+        content['type'] = 'offer';
+        break;
+      case pb.CallContent_CallAction.CALL_ACTION_ANSWER:
+        content['type'] = 'answer';
+        break;
+      case pb.CallContent_CallAction.CALL_ACTION_ICE_CANDIDATE:
+      case pb.CallContent_CallAction.CALL_ACTION_END:
+      case pb.CallContent_CallAction.CALL_ACTION_UNSPECIFIED:
+        break;
+    }
+
+    return content;
+  }
+
+  String _callTypeToString(pb.CallContent_CallType callType) {
+    switch (callType) {
+      case pb.CallContent_CallType.CALL_TYPE_AUDIO:
+        return 'audio';
+      case pb.CallContent_CallType.CALL_TYPE_SCREEN_SHARE:
+        return 'screen_share';
+      case pb.CallContent_CallType.CALL_TYPE_VIDEO:
+        return 'video';
+      case pb.CallContent_CallType.CALL_TYPE_UNSPECIFIED:
+        return 'video';
+    }
+
+    return 'video';
+  }
+
   pb.RoomEventType _mapLocalEventTypeToProto(domain.RoomEventType type) {
     switch (type) {
+      case domain.RoomEventType.unknown:
+        return pb.RoomEventType.ROOM_EVENT_TYPE_UNSPECIFIED;
       case domain.RoomEventType.text:
         return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
       case domain.RoomEventType.image:
@@ -2341,6 +2526,7 @@ class SyncEngine with WidgetsBindingObserver {
       case domain.RoomEventType.groupCallAnswer:
       case domain.RoomEventType.groupCallIce:
       case domain.RoomEventType.groupCallMuteUpdate:
+      case domain.RoomEventType.groupCallStageUpdate:
         // All call types (1-on-1 and group) map to a single ROOM_EVENT_TYPE_CALL
         return pb.RoomEventType.ROOM_EVENT_TYPE_CALL;
       case domain.RoomEventType.motion:
