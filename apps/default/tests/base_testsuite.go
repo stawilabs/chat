@@ -45,6 +45,7 @@ const (
 	waitTimeout      = 10 * time.Second
 	waitPollInterval = 50 * time.Millisecond
 	startupDelay     = 200 * time.Millisecond
+	shutdownTimeout  = 5 * time.Second
 )
 
 type BaseTestSuite struct {
@@ -181,13 +182,8 @@ func (bs *BaseTestSuite) CreateService(
 	// Initialize the service with all options
 	svc.Init(ctx, serviceOptions...)
 
-	// Stop the service and close DB connections when this test finishes.
-	// Without this, connections accumulate across tests and exhaust the pool.
-	// Use context.Background() since t.Context() is already cancelled by cleanup time.
-	t.Cleanup(func() {
-		svc.Stop(context.Background())
-		svc.DatastoreManager().Close(context.Background())
-	})
+	runCtx, cancelRun := context.WithCancel(context.Background())
+	runDone := make(chan error, 1)
 
 	// Run the service in a goroutine with a random port so the queue
 	// subscribers stay alive for the full event chain (RoomCreated →
@@ -195,8 +191,26 @@ func (bs *BaseTestSuite) CreateService(
 	// causes Run to exit immediately, which kills the queue subscriber
 	// before all async events are processed.
 	go func() {
-		_ = svc.Run(ctx, ":0")
+		runDone <- svc.Run(runCtx, ":0")
 	}()
+
+	// Stop the service and close DB connections when this test finishes.
+	// The run goroutine owns service shutdown; cleanup only cancels and waits.
+	t.Cleanup(func() {
+		cancelRun()
+
+		select {
+		case <-runDone:
+		case <-time.After(shutdownTimeout):
+			svc.Stop(context.Background())
+			select {
+			case <-runDone:
+			case <-time.After(shutdownTimeout):
+			}
+		}
+
+		svc.DatastoreManager().Close(context.Background())
+	})
 
 	// Give queue listeners time to start before the test proceeds
 	time.Sleep(startupDelay)

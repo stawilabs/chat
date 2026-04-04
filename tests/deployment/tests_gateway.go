@@ -262,9 +262,32 @@ func (t *GatewayReconnectTest) Run(ctx context.Context, client *Client) error {
 		return nil
 	}
 
-	// Send a message
-	_, err = client.SendTextMessage(ctx, room.GetId(), "Before reconnect")
+	// Send and receive a message so we have a valid resume token from the stream.
+	firstAcks, err := client.SendTextMessage(ctx, room.GetId(), "Before reconnect")
 	if err := a.NoError(err, "SendTextMessage should succeed"); err != nil {
+		stream1.Close()
+		cancel1()
+		return err
+	}
+	if err := a.MinLen(len(firstAcks), 1, "Expected at least one ack"); err != nil {
+		stream1.Close()
+		cancel1()
+		return err
+	}
+
+	firstEvent, err := stream1.WaitForRoomEvent(10*time.Second, room.GetId())
+	if err := a.NoError(err, "Gateway should deliver the initial message"); err != nil {
+		stream1.Close()
+		cancel1()
+		return err
+	}
+
+	resumeToken := firstEvent.GetId()
+	if err := a.Equal(
+		firstAcks[0].GetEventId()[0],
+		resumeToken,
+		"Resume token should match delivered event",
+	); err != nil {
 		stream1.Close()
 		cancel1()
 		return err
@@ -277,6 +300,16 @@ func (t *GatewayReconnectTest) Run(ctx context.Context, client *Client) error {
 	// Brief pause
 	time.Sleep(500 * time.Millisecond)
 
+	// Send another message while disconnected; the replay path must deliver it.
+	secondAcks, err := client.SendTextMessage(ctx, room.GetId(), "During reconnect")
+	if err := a.NoError(err, "SendTextMessage during disconnect should succeed"); err != nil {
+		return err
+	}
+	if err := a.MinLen(len(secondAcks), 1, "Expected at least one ack for replayed message"); err != nil {
+		return err
+	}
+	expectedReplayID := secondAcks[0].GetEventId()[0]
+
 	// Second connection (simulating reconnect)
 	streamCtx2, cancel2 := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel2()
@@ -287,25 +320,19 @@ func (t *GatewayReconnectTest) Run(ctx context.Context, client *Client) error {
 	}
 	defer stream2.Close()
 
-	// Reconnect with no resume token (testing fresh reconnect)
-	err = stream2.SendHello("", nil)
-	if err != nil {
-		return nil
-	}
-
-	// Send another message after reconnect
-	_, err = client.SendTextMessage(ctx, room.GetId(), "After reconnect")
-	if err := a.NoError(err, "SendTextMessage after reconnect should succeed"); err != nil {
+	// Reconnect with the last delivered stream token and expect the missed
+	// message to be replayed before new live traffic resumes.
+	err = stream2.SendHello(resumeToken, nil)
+	if err := a.NoError(err, "Reconnect with resume token should succeed"); err != nil {
 		return err
 	}
 
-	// Verify the room still has messages
-	history, err := client.GetHistory(ctx, room.GetId(), 10, "")
-	if err := a.NoError(err, "GetHistory should succeed"); err != nil {
+	replayedEvent, err := stream2.WaitForRoomEvent(10*time.Second, room.GetId())
+	if err := a.NoError(err, "Reconnect should replay the missed message"); err != nil {
 		return err
 	}
 
-	if err := a.MinLen(len(history.GetEvents()), 2, "Should have at least 2 messages"); err != nil {
+	if err := a.Equal(expectedReplayID, replayedEvent.GetId(), "Replay should deliver the missed event"); err != nil {
 		return err
 	}
 

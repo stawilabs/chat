@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -83,6 +84,7 @@ func main() {
 		ctx,
 		chatServiceClient,
 		deviceClient,
+		rawCache,
 		cfg.MaxConnectionsPerDevice,
 		cfg.ConnectionTimeoutSec,
 		cfg.HeartbeatIntervalSec,
@@ -103,8 +105,11 @@ func main() {
 		cfg.QueueOfflineEventDeliveryURI,
 	)
 
+	shardQueueName := fmt.Sprintf(cfg.QueueGatewayEventDeliveryName, cfg.ShardID)
+	shardQueueURI := fmt.Sprintf(cfg.QueueGatewayEventDeliveryURI, cfg.ShardID)
+
 	gatewayEventQueueSubscriber := frame.WithRegisterSubscriber(
-		cfg.QueueGatewayEventDeliveryName, cfg.QueueGatewayEventDeliveryURI,
+		shardQueueName, shardQueueURI,
 		queues.NewGatewayEventsQueueHandler(&cfg, qManager, connectionManager),
 	)
 

@@ -49,7 +49,7 @@ func (cm *connectionManager) handleInboundRequests(
 		}
 		return cm.processClientCommand(ctx, cmd.Command)
 	case *chatv1.StreamRequest_Hello:
-		log.Debug("Received Hello message after connection established")
+		log.Warn("Received unexpected Hello message after stream initialization")
 		return nil
 	default:
 		log.With("payload_type", fmt.Sprintf("%T", req.GetPayload())).
@@ -94,9 +94,7 @@ func (cm *connectionManager) processAcknowledgement(
 	ack *chatv1.AckEvent,
 ) error {
 	if ack == nil {
-		util.Log(ctx).With(
-			"event_id", ack.GetEventId(),
-		).Warn("Received nil ack event")
+		util.Log(ctx).Warn("Received nil ack event")
 		return nil
 	}
 
@@ -130,10 +128,7 @@ func (cm *connectionManager) processReceiptEvent(
 	receipt *chatv1.ReceiptEvent,
 ) error {
 	if receipt == nil {
-		util.Log(ctx).With(
-			"event_id", receipt.GetEventId(),
-			"room_id", receipt.GetRoomId(),
-		).Warn("Received nil receipt event")
+		util.Log(ctx).Warn("Received nil receipt event")
 		return nil
 	}
 
@@ -148,10 +143,7 @@ func (cm *connectionManager) processTypingEvent(
 	typing *chatv1.TypingEvent,
 ) error {
 	if typing == nil {
-		util.Log(ctx).With(
-			"room_id", typing.GetRoomId(),
-			"typing", typing.GetTyping(),
-		).Warn("Received nil typing event")
+		util.Log(ctx).Warn("Received nil typing event")
 		return nil
 	}
 
@@ -240,6 +232,7 @@ func (cm *connectionManager) processLiveRequest(
 			"message":      clErr.GetMessage(),
 			"command_type": fmt.Sprintf("%T", command.GetState()),
 		}).Warn("live request returned error")
+		return fmt.Errorf("live request returned error: %s", clErr.GetMessage())
 	}
 
 	return nil

@@ -156,9 +156,9 @@ func (s *FanoutEventHandlerTestSuite) TestExecute_EventNotFound() {
 			},
 		}
 
-		// Should return nil when event not found (logs error but doesn't fail)
+		// Missing persisted events are retryable because delivery would otherwise be lost.
 		err := handler.Execute(ctx, broadcast)
-		assert.NoError(t, err)
+		require.Error(t, err)
 	})
 }
 

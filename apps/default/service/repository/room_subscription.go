@@ -77,6 +77,31 @@ func (rsr *roomSubscriptionRepository) GetByRoomID(
 ) ([]*models.RoomSubscription, error) {
 	var subscriptions []*models.RoomSubscription
 
+	query := rsr.Pool().DB(ctx, true).
+		Order("id ASC").
+		Where("room_id = ? AND subscription_state IN ?", roomID, rsr.activeSubscriptionStates)
+
+	if cursor != nil {
+		if cursor.GetPage() != "" {
+			query = query.Where("id > ?", cursor.GetPage())
+		}
+
+		if cursor.GetLimit() > 0 {
+			query = query.Limit(int(cursor.GetLimit()))
+		}
+	}
+
+	err := query.Find(&subscriptions).Error
+	return subscriptions, err
+}
+
+func (rsr *roomSubscriptionRepository) GetAllByRoomID(
+	ctx context.Context,
+	roomID string,
+	cursor *commonv1.PageCursor,
+) ([]*models.RoomSubscription, error) {
+	var subscriptions []*models.RoomSubscription
+
 	query := rsr.Pool().DB(ctx, true).Order("id ASC").Where("room_id = ?", roomID)
 
 	if cursor != nil {

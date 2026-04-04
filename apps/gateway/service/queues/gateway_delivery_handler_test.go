@@ -112,7 +112,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_MalformedPayload_ReturnsNil
 	s.Require().NoError(err) // Should consume message even on parse error
 }
 
-func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_PublishesToOfflineQueue() {
+func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_ReturnsRetryableError() {
 	profileID := "user123"
 	deviceID := "device456"
 
@@ -130,15 +130,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_Publish
 		},
 	}
 
-	// Create mock queue manager with offline publisher
-	mockPub := &mockPublisher{}
-	mockQueueManager := &mockQueueManager{
-		publishers: map[string]queue.Publisher{
-			s.cfg.QueueOfflineEventDeliveryName: mockPub,
-		},
-	}
-
-	handler := queues.NewGatewayEventsQueueHandler(s.cfg, mockQueueManager, mockCM)
+	handler := queues.NewGatewayEventsQueueHandler(s.cfg, nil, mockCM)
 
 	delivery := s.createTextDelivery("Hello")
 	payload, err := proto.Marshal(delivery)
@@ -150,10 +142,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_Publish
 	}
 
 	err = handler.Handle(context.Background(), headers, payload)
-	s.Require().NoError(err)
-
-	// Verify message was published to offline queue
-	s.Equal(1, mockPub.publishCount)
+	s.Require().Error(err)
 }
 
 func (s *GatewayDeliveryHandlerTestSuite) TestHandle_AllPayloadTypes() {
@@ -310,6 +299,8 @@ func (m *mockConnection) Close() {}
 
 type mockConnectionManager struct {
 	connections map[string]business.Connection
+	metadata    map[string]*business.Metadata
+	gatewayID   string
 }
 
 func (m *mockConnectionManager) HandleConnection(
@@ -329,6 +320,26 @@ func (m *mockConnectionManager) GetConnection(
 	key := internal.MetadataKey(profileID, deviceID)
 	conn, ok := m.connections[key]
 	return conn, ok
+}
+
+func (m *mockConnectionManager) GetConnectionMetadata(
+	_ context.Context,
+	profileID string,
+	deviceID string,
+) (*business.Metadata, bool, error) {
+	key := internal.MetadataKey(profileID, deviceID)
+	if m.metadata == nil {
+		return nil, false, nil
+	}
+	metadata, ok := m.metadata[key]
+	return metadata, ok, nil
+}
+
+func (m *mockConnectionManager) GatewayID() string {
+	if m.gatewayID == "" {
+		return "gateway-test"
+	}
+	return m.gatewayID
 }
 
 func (m *mockConnectionManager) Shutdown(_ context.Context) error {

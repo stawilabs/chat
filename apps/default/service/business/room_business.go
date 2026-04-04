@@ -10,14 +10,12 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/apps/default/service"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
-	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
@@ -31,6 +29,8 @@ import (
 // proposalExpiryHours is the number of hours before a proposal expires.
 const proposalExpiryHours = 72
 const defaultGroupType = "group"
+const defaultSearchLimit = 50
+const maxSearchLimit = 100
 
 type roomBusiness struct {
 	service          *frame.Service
@@ -108,8 +108,12 @@ func (rb *roomBusiness) CreateRoom(
 	err = rb.roomRepo.Create(ctx, createdRoom)
 	if err != nil {
 		if data.ErrorIsDuplicateKey(err) {
-			// Return the already existing room
-			return createdRoom.ToAPI(), nil
+			existingRoom, getErr := rb.roomRepo.GetByID(ctx, createdRoom.GetID())
+			if getErr != nil {
+				return nil, fmt.Errorf("failed to load existing room after duplicate create: %w", getErr)
+			}
+
+			return existingRoom.ToAPI(), nil
 		}
 		return nil, fmt.Errorf("failed to save room: %w", err)
 	}
@@ -373,14 +377,21 @@ func (rb *roomBusiness) SearchRooms(
 		))
 	}
 
+	page := 0
+	limit := defaultSearchLimit
 	cursor := req.GetCursor()
 	if cursor != nil {
-		page, strErr := strconv.Atoi(cursor.GetPage())
-		if strErr != nil {
-			page = 0
+		if cursor.GetPage() != "" {
+			page, _ = strconv.Atoi(cursor.GetPage())
 		}
-		searchOpts = append(searchOpts, data.WithSearchOffset(page), data.WithSearchLimit(int(cursor.GetLimit())))
+		if cursor.GetLimit() > 0 {
+			limit = int(cursor.GetLimit())
+		}
 	}
+	if limit > maxSearchLimit {
+		limit = maxSearchLimit
+	}
+	searchOpts = append(searchOpts, data.WithSearchOffset(page), data.WithSearchLimit(limit))
 
 	query := data.NewSearchQuery(searchOpts...)
 
@@ -550,7 +561,7 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		return service.ErrRoomMemberNotFound
 	}
 
-	// Update roles: sync authz first, then DB
+	// Update roles with DB-first semantics so we can compensate cleanly if authz update fails.
 	if err = rb.syncRoleUpdate(ctx, req, sub); err != nil {
 		return err
 	}
@@ -567,7 +578,8 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 	return nil
 }
 
-// syncRoleUpdate updates the authz tuple first, then the DB subscription role.
+// syncRoleUpdate updates the DB subscription role first, then syncs the authz tuple.
+// If the authz update fails, the DB change is rolled back to preserve consistency.
 func (rb *roomBusiness) syncRoleUpdate(
 	ctx context.Context,
 	req *chatv1.UpdateSubscriptionRoleRequest,
@@ -576,24 +588,32 @@ func (rb *roomBusiness) syncRoleUpdate(
 	oldRole := sub.Role
 	var newRole string
 	if len(req.GetRoles()) > 0 {
-		newRole = req.GetRoles()[0]
-	}
-
-	// Sync authorization tuple first to maintain consistency
-	if rb.authzMiddleware != nil && newRole != "" {
-		if authzErr := rb.authzMiddleware.UpdateRoomMemberRole(
-			ctx, req.GetRoomId(), sub.GetID(), oldRole, newRole,
-		); authzErr != nil {
-			return fmt.Errorf("failed to update authorization tuple for role change: %w", authzErr)
-		}
+		newRole = strings.Join(req.GetRoles(), ",")
 	}
 
 	if newRole != "" {
-		sub.Role = strings.Join(req.GetRoles(), ",")
+		sub.Role = newRole
 	}
 
 	if _, updateErr := rb.subscriptionRepo.Update(ctx, sub, "role"); updateErr != nil {
 		return fmt.Errorf("failed to update member role: %w", updateErr)
+	}
+
+	if rb.authzMiddleware != nil && newRole != "" {
+		if authzErr := rb.authzMiddleware.UpdateRoomMemberRole(
+			ctx, req.GetRoomId(), sub.GetID(), oldRole, req.GetRoles()[0],
+		); authzErr != nil {
+			sub.Role = oldRole
+			if _, rollbackErr := rb.subscriptionRepo.Update(ctx, sub, "role"); rollbackErr != nil {
+				util.Log(ctx).WithError(rollbackErr).WithFields(map[string]any{
+					"room_id":         req.GetRoomId(),
+					"subscription_id": sub.GetID(),
+				}).Error("failed to roll back role change after authz update failure")
+				return fmt.Errorf("failed to update authorization tuple for role change: %w", authzErr)
+			}
+
+			return fmt.Errorf("failed to update authorization tuple for role change: %w", authzErr)
+		}
 	}
 
 	return nil
@@ -623,7 +643,17 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 	}
 
 	// Get active subscriptions for the room with pagination
-	subscriptions, err := rb.subscriptionRepo.GetByRoomID(ctx, req.GetRoomId(), req.GetCursor())
+	cursor := req.GetCursor()
+	switch {
+	case cursor == nil:
+		cursor = &commonv1.PageCursor{Limit: defaultSearchLimit}
+	case cursor.GetLimit() <= 0:
+		cursor = &commonv1.PageCursor{Page: cursor.GetPage(), Limit: defaultSearchLimit}
+	case cursor.GetLimit() > maxSearchLimit:
+		cursor = &commonv1.PageCursor{Page: cursor.GetPage(), Limit: maxSearchLimit}
+	}
+
+	subscriptions, err := rb.subscriptionRepo.GetByRoomID(ctx, req.GetRoomId(), cursor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get room members: %w", err)
 	}
@@ -718,6 +748,8 @@ func (rb *roomBusiness) UpdateSubscriptionSettings(
 }
 
 // Helper function to add members to a room with specific roles.
+//
+//nolint:gocognit,nestif,funlen // Membership sync is intentionally synchronous and idempotent across repo/authz boundaries.
 func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 	roomID string, subscriptionList []*chatv1.RoomSubscription,
 	actorSubscriptionID string, actorLink *commonv1.ContactLink) error {
@@ -739,12 +771,18 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 		"dedup_members": len(dedupList),
 	}).Debug("addRoomMembersWithRoles deduplication")
 
-	// Create new subscriptions for profiles via event service.
-	// Continue processing after individual validation failures so that
-	// valid members are still added (partial success).
+	// Create subscriptions synchronously so the room is usable immediately on success.
 	var itemErrors []service.ItemError
-	roomActionList := &eventsv1.RoomActionList{}
-	for idx, subscription := range subscriptionList {
+	var addedSubscriptionIDs []string
+	for idx, subscription := range dedupList {
+		if subscription == nil || subscription.GetMember() == nil {
+			itemErrors = append(itemErrors, service.ItemError{
+				Index:   idx,
+				Message: "subscription member must be specified",
+			})
+			continue
+		}
+
 		// Validate Contact and Profile ID via Profile Service
 		if validateErr := rb.validateContactProfile(ctx, subscription.GetMember()); validateErr != nil {
 			itemErrors = append(itemErrors, service.ItemError{
@@ -760,38 +798,103 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 			roles = []string{roleMember}
 		}
 
-		action := &eventsv1.RoomAction{
-			RoomId: roomID,
-			Action: chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED,
-			Actor: &eventsv1.Subscription{
-				SubscriptionId: actorSubscriptionID,
-				ContactLink:    actorLink,
-			},
-			Targets: []*eventsv1.Subscription{
-				{
-					SubscriptionId: subscription.GetId(),
-					ContactLink:    subscription.GetMember(),
-				},
-			},
-			Roles: roles,
+		subscriptionModel := &models.RoomSubscription{
+			RoomID:            roomID,
+			ProfileID:         subscription.GetMember().GetProfileId(),
+			ContactID:         subscription.GetMember().GetContactId(),
+			SubscriptionState: models.RoomSubscriptionStateActive,
+			Role:              strings.Join(roles, ","),
+		}
+		createdSubscription := false
+		if subscription.GetId() != "" {
+			subscriptionModel.ID = subscription.GetId()
 		}
 
-		roomActionList.Actions = append(roomActionList.Actions, action)
+		err := rb.subscriptionRepo.Create(ctx, subscriptionModel)
+		if err != nil {
+			if !data.ErrorIsDuplicateKey(err) {
+				itemErrors = append(itemErrors, service.ItemError{
+					Index:   idx,
+					ItemID:  subscription.GetMember().GetProfileId(),
+					Message: fmt.Sprintf("failed to create subscription: %v", err),
+				})
+				continue
+			}
+
+			existingSubs, lookupErr := rb.subscriptionRepo.GetByRoomIDAndContactLinks(
+				ctx, roomID, subscription.GetMember(),
+			)
+			if lookupErr != nil || len(existingSubs) == 0 {
+				itemErrors = append(itemErrors, service.ItemError{
+					Index:   idx,
+					ItemID:  subscription.GetMember().GetProfileId(),
+					Message: fmt.Sprintf("failed to resolve duplicate subscription: %v", err),
+				})
+				continue
+			}
+
+			subscriptionModel = existingSubs[0]
+			if !subscriptionModel.IsActive() {
+				if activateErr := rb.subscriptionRepo.Activate(ctx, subscriptionModel.GetID()); activateErr != nil {
+					itemErrors = append(itemErrors, service.ItemError{
+						Index:   idx,
+						ItemID:  subscription.GetMember().GetProfileId(),
+						Message: fmt.Sprintf("failed to reactivate subscription: %v", activateErr),
+					})
+					continue
+				}
+			}
+			if subscriptionModel.Role != strings.Join(roles, ",") {
+				subscriptionModel.Role = strings.Join(roles, ",")
+				if _, updateErr := rb.subscriptionRepo.Update(ctx, subscriptionModel, "role"); updateErr != nil {
+					itemErrors = append(itemErrors, service.ItemError{
+						Index:   idx,
+						ItemID:  subscription.GetMember().GetProfileId(),
+						Message: fmt.Sprintf("failed to sync subscription role: %v", updateErr),
+					})
+					continue
+				}
+			}
+		} else {
+			createdSubscription = true
+		}
+
+		if rb.authzMiddleware != nil {
+			if authzErr := rb.authzMiddleware.AddRoomMember(
+				ctx,
+				roomID,
+				subscriptionModel.GetID(),
+				roles[0],
+			); authzErr != nil {
+				if createdSubscription {
+					_ = rb.subscriptionRepo.Deactivate(ctx, subscriptionModel.GetID())
+				}
+				itemErrors = append(itemErrors, service.ItemError{
+					Index:   idx,
+					ItemID:  subscription.GetMember().GetProfileId(),
+					Message: fmt.Sprintf("failed to authorize subscription: %v", authzErr),
+				})
+				continue
+			}
+		}
+
+		addedSubscriptionIDs = append(addedSubscriptionIDs, subscriptionModel.GetID())
+		chattel.SubscriptionsAddedCounter.Add(ctx, 1)
 	}
 
-	util.Log(ctx).WithFields(map[string]any{
-		"room_id":      roomID,
-		"action_count": len(roomActionList.GetActions()),
-	}).Debug("addRoomMembersWithRoles emitting RoomCreated event")
-
-	err := rb.eventsManager.Emit(ctx, events.RoomCreatedEventName, roomActionList)
-	if err != nil {
-		return fmt.Errorf("failed to emit subscription add event: %w", err)
+	if len(addedSubscriptionIDs) > 0 {
+		if err := rb.sendRoomChangeEvent(ctx, roomID, actorLink,
+			chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED,
+			actorSubscriptionID, "Member(s) added to room",
+			addedSubscriptionIDs...); err != nil {
+			util.Log(ctx).WithError(err).WithField("room_id", roomID).
+				Warn("failed to emit room member add event")
+		}
 	}
 
 	if len(itemErrors) > 0 {
 		return &service.PartialBatchError{
-			Succeeded: len(dedupList) - len(itemErrors),
+			Succeeded: len(addedSubscriptionIDs),
 			Failed:    len(itemErrors),
 			Errors:    itemErrors,
 		}
@@ -876,7 +979,7 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 
 // deactivateAllRoomSubscriptions deactivates all subscriptions for a room and removes authz tuples.
 func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, roomID string) error {
-	allSubs, subErr := rb.subscriptionRepo.GetByRoomID(ctx, roomID, nil)
+	allSubs, subErr := rb.subscriptionRepo.GetAllByRoomID(ctx, roomID, nil)
 	if subErr != nil {
 		return fmt.Errorf("failed to get room subscriptions for cleanup: %w", subErr)
 	}

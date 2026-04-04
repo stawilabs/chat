@@ -29,8 +29,8 @@ type ChatConfig struct {
 	QueueOfflineEventDeliveryName string `envDefault:"offline.event.delivery"              env:"QUEUE_OFFLINE_EVENT_DELIVERY_NAME"`
 	QueueOfflineEventDeliveryURI  string `envDefault:"mem://offline.device.event.delivery" env:"QUEUE_OFFLINE_EVENT_DELIVERY_URI"`
 
-	QueueGatewayEventDeliveryName string   `envDefault:"gateway.event.delivery.%d"                                     env:"QUEUE_GATEWAY_EVENT_DELIVERY_NAME"`
-	QueueGatewayEventDeliveryURI  []string `envDefault:"mem://gateway.event.delivery.0,mem://gateway.event.delivery.1" env:"QUEUE_GATEWAY_EVENT_DELIVERY_URI"`
+	QueueGatewayEventDeliveryName string   `envDefault:"gateway.event.delivery.%d"                env:"QUEUE_GATEWAY_EVENT_DELIVERY_NAME"`
+	QueueGatewayEventDeliveryURI  []string `envDefault:"mem://gateway.event.delivery.0" env:"QUEUE_GATEWAY_EVENT_DELIVERY_URI"`
 
 	ShardCount int `envDefault:"1" env:"SHARD_COUNT"`
 

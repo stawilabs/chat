@@ -7,6 +7,7 @@ import (
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/workerpool"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -67,11 +68,12 @@ func (rer *roomEventRepository) GetHistory(
 		query = query.Where("id > ?", afterEventID)
 	}
 
-	// Order by ID descending for "before" queries, ascending for "after"
-	if beforeEventID != "" {
-		query = query.Order("id DESC")
-	} else {
+	// "before" queries page backwards from the newest entries, while "after"
+	// queries page forward from an existing cursor.
+	if afterEventID != "" {
 		query = query.Order("id ASC")
+	} else {
+		query = query.Order("id DESC")
 	}
 
 	if limit > 0 {
@@ -116,14 +118,20 @@ func (rer *roomEventRepository) CreateIgnoringDuplicates(
 	}
 
 	db := rer.Pool().DB(ctx, false)
-	for _, event := range events {
-		result := db.Clauses(clause.OnConflict{DoNothing: true}).Create(event)
-		if result.Error != nil {
-			return insertedIDs, result.Error
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, event := range events {
+			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(event)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected > 0 {
+				insertedIDs[event.GetID()] = true
+			}
 		}
-		if result.RowsAffected > 0 {
-			insertedIDs[event.GetID()] = true
-		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return insertedIDs, nil
 }

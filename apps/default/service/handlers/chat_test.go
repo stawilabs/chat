@@ -811,13 +811,9 @@ func (s *ChatServerTestSuite) TestLive_Presence() {
 			},
 		})
 
-		// Presence update currently panics due to nil presenceCache in
-		// connectBusiness (not initialized in NewConnectBusiness). Use
-		// require.Panics to document this known issue until the cache
-		// is wired up.
-		require.Panics(t, func() {
-			_, _ = chatServer.Live(ctx, liveReq)
-		})
+		resp, err := chatServer.Live(ctx, liveReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 	})
 }
 

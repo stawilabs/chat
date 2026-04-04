@@ -22,6 +22,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	defaultHistoryLimit = 50
+	maxHistoryLimit     = 100
+)
+
 type messageBusiness struct {
 	eventRepo       repository.RoomEventRepository
 	subRepo         repository.RoomSubscriptionRepository
@@ -423,7 +428,7 @@ func (mb *messageBusiness) GetHistory(
 	}
 
 	// Build the query - use cursor for pagination
-	var limit = 50 // default limit
+	limit := defaultHistoryLimit
 	var cursor string
 	if req.GetCursor() != nil {
 		if req.GetCursor().GetLimit() > 0 {
@@ -431,9 +436,20 @@ func (mb *messageBusiness) GetHistory(
 		}
 		cursor = req.GetCursor().GetPage()
 	}
+	if limit > maxHistoryLimit {
+		limit = maxHistoryLimit
+	}
 
-	// Get messages
-	evts, err := mb.eventRepo.GetHistory(ctx, req.GetRoomId(), cursor, "", limit)
+	var evts []*models.RoomEvent
+	if req.GetForward() {
+		if cursor == "" {
+			evts, err = mb.eventRepo.GetByRoomID(ctx, req.GetRoomId(), limit)
+		} else {
+			evts, err = mb.eventRepo.GetHistory(ctx, req.GetRoomId(), "", cursor, limit)
+		}
+	} else {
+		evts, err = mb.eventRepo.GetHistory(ctx, req.GetRoomId(), cursor, "", limit)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get message history: %w", err)
 	}
@@ -447,12 +463,6 @@ func (mb *messageBusiness) GetHistory(
 	protoEvents := make([]*chatv1.RoomEvent, 0, len(evts))
 	for _, event := range evts {
 		protoEvents = append(protoEvents, event.ToAPI(ctx, mb.payloadConverter))
-	}
-
-	// Update last read sequence for the user if we have evts
-	// When cursor is empty (first load), events are sorted ASC so last element is newest
-	if len(evts) > 0 && cursor == "" {
-		_ = mb.MarkMessagesAsRead(ctx, req.GetRoomId(), evts[len(evts)-1].GetID(), gottenBy)
 	}
 
 	return protoEvents, nil

@@ -54,6 +54,10 @@ func (cb *connectBusiness) UpdatePresence(
 	ctx context.Context,
 	presenceEvt *chatv1.PresenceEvent,
 ) error {
+	if presenceEvt == nil {
+		return service.ErrUnspecifiedID
+	}
+
 	source := presenceEvt.GetSource()
 	if source == nil || source.GetProfileId() == "" {
 		return service.ErrUnspecifiedID
@@ -63,6 +67,12 @@ func (cb *connectBusiness) UpdatePresence(
 		"profile_id": source.GetProfileId(),
 		"status":     presenceEvt.GetStatus(),
 	}).Debug("UpdatePresence")
+
+	if cb.presenceCache == nil {
+		util.Log(ctx).WithField("profile_id", source.GetProfileId()).
+			Warn("presence cache not configured, skipping presence update")
+		return nil
+	}
 
 	return cb.presenceCache.Set(ctx, source.GetProfileId(), presenceEvt, 1*time.Minute)
 }

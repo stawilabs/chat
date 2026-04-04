@@ -83,10 +83,12 @@ func (p *connectionPool) add(conn Connection) error {
 	shard := p.getShard(key)
 
 	shard.mu.Lock()
-	if _, exists := shard.connections[key]; !exists {
-		shard.connections[key] = conn
-		atomic.AddInt32(&p.currentSize, 1)
+	if _, exists := shard.connections[key]; exists {
+		shard.mu.Unlock()
+		return ErrConnectionExists
 	}
+	shard.connections[key] = conn
+	atomic.AddInt32(&p.currentSize, 1)
 	shard.mu.Unlock()
 	return nil
 }

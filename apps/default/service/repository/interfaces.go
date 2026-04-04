@@ -45,6 +45,7 @@ type RoomSubscriptionRepository interface {
 		roomID ...string,
 	) ([]*models.RoomSubscription, error)
 	GetByRoomID(ctx context.Context, roomID string, cursor *commonv1.PageCursor) ([]*models.RoomSubscription, error)
+	GetAllByRoomID(ctx context.Context, roomID string, cursor *commonv1.PageCursor) ([]*models.RoomSubscription, error)
 	GetByRoomIDAndContactLinks(
 		ctx context.Context,
 		roomID string,

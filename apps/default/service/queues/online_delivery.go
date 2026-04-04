@@ -27,7 +27,6 @@ const (
 
 type hotPathDeliveryQueueHandler struct {
 	qMan      queue.Manager
-	workMan   workerpool.Manager
 	cfg       *config.ChatConfig
 	deviceCli devicev1connect.DeviceServiceClient
 	dlp       *DeadLetterPublisher
@@ -36,14 +35,13 @@ type hotPathDeliveryQueueHandler struct {
 func NewHotPathDeliveryQueueHandler(
 	cfg *config.ChatConfig,
 	qMan queue.Manager,
-	workMan workerpool.Manager,
+	_ workerpool.Manager,
 	deviceCli devicev1connect.DeviceServiceClient,
 	dlp *DeadLetterPublisher,
 ) queue.SubscribeWorker {
 	return &hotPathDeliveryQueueHandler{
 		cfg:       cfg,
 		qMan:      qMan,
-		workMan:   workMan,
 		deviceCli: deviceCli,
 		dlp:       dlp,
 	}
@@ -153,55 +151,39 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		}
 
 		resp := response.Msg()
+		var deliveryErrs []error
 
-		// Process devices concurrently for faster delivery
+		// Deliver synchronously so failures are observed and retried instead of being dropped.
 		for _, dev := range resp.GetData() {
-			job := dq.createDeviceJob(ctx, dev, eventDelivery)
-
-			submitErr := workerpool.SubmitJob(ctx, dq.workMan, job)
-			if submitErr != nil {
-				// Worker pool full - fall back to synchronous delivery
-				util.Log(ctx).WithError(submitErr).WithField("device_id", dev.GetId()).
-					Warn("worker pool full, delivering synchronously")
-				eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
-				if ok {
-					eventCopy.DeviceId = dev.GetId()
-					if deliverErr := dq.deliver(ctx, eventCopy, dev); deliverErr != nil {
-						util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.GetId()).
-							Error("synchronous delivery also failed")
-					}
-				}
+			eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
+			if !ok {
+				deliveryErrs = append(deliveryErrs, errors.New("failed to clone event delivery"))
+				continue
 			}
+			eventCopy.DeviceId = dev.GetId()
+
+			if deliverErr := dq.deliver(ctx, eventCopy, dev); deliverErr != nil {
+				util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.GetId()).
+					Error("failed to deliver event")
+				deliveryErrs = append(deliveryErrs, fmt.Errorf("device %s: %w", dev.GetId(), deliverErr))
+			}
+		}
+
+		if len(deliveryErrs) > 0 {
+			return RetryOrDeadLetter(
+				ctx,
+				dq.qMan,
+				dq.dlp,
+				dq.cfg.QueueDeviceEventDeliveryName,
+				eventDelivery,
+				headers,
+				errors.Join(deliveryErrs...),
+			)
 		}
 	}
 
 	return nil
 }
-
-func (dq *hotPathDeliveryQueueHandler) createDeviceJob(
-	_ context.Context,
-	dev *devicev1.DeviceObject,
-	eventDelivery *eventsv1.Delivery,
-) workerpool.Job[any] {
-	return workerpool.NewJob[any](
-		func(ctx context.Context, resultPipe workerpool.JobResultPipe[any]) error {
-			eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
-			if !ok {
-				return resultPipe.WriteError(ctx, errors.New("failed to clone event delivery"))
-			}
-			eventCopy.DeviceId = dev.GetId()
-
-			deliveryErr := dq.deliver(ctx, eventCopy, dev)
-			if deliveryErr != nil {
-				util.Log(ctx).WithError(deliveryErr).WithField("device_id", dev.GetId()).
-					Error("failed to deliver event")
-				return resultPipe.WriteError(ctx, deliveryErr)
-			}
-			return nil
-		},
-	)
-}
-
 func (dq *hotPathDeliveryQueueHandler) deliver(
 	ctx context.Context,
 	msg *eventsv1.Delivery,

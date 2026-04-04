@@ -106,9 +106,9 @@ import (
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/internal"
+	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/telemetry"
 	"github.com/pitabwire/util"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -117,6 +117,7 @@ const (
 	defaultDevicePoolSize  = 1000  // Default number of devices to support
 	minPoolSize            = 10000 // Minimum pool size
 	millisecondsMultiplier = 1000  // For converting seconds to milliseconds
+	cacheTTLMultiplier     = 2
 
 	// Timeouts and intervals.
 	staleCheckInterval    = 30 * time.Second
@@ -125,6 +126,8 @@ const (
 	connectionAckTimeout  = 30 * time.Second
 	presenceUpdateTimeout = 3 * time.Second
 	drainPollInterval     = 500 * time.Millisecond
+	resumeLookupTimeout   = 10 * time.Second
+	resumeReplayTimeout   = 15 * time.Second
 
 	// Thresholds.
 	staleThresholdMultiplier = 3   // Multiplier for heartbeat interval to determine staleness
@@ -154,6 +157,8 @@ var (
 	ErrConnectionSetupFailed = errors.New("connection setup failed")
 	ErrStreamSendFailed      = errors.New("stream send failed")
 	ErrStreamReceiveFailed   = errors.New("stream receive failed")
+	ErrHelloRequired         = errors.New("first stream message must be hello")
+	ErrConnectionExists      = errors.New("connection already exists")
 
 	// Telemetry counters for tracking connection metrics using OpenTelemetry.
 	//
@@ -243,9 +248,12 @@ var (
 // - Health monitoring: Checks pool utilization every 60 seconds.
 type connectionManager struct {
 	connPool *connectionPool // Local connection pool for this gateway
+	cache    cache.Cache[string, *Metadata]
+	resume   cache.Cache[string, string]
 
 	deviceCli  devicev1connect.DeviceServiceClient
 	chatClient chatv1connect.ChatServiceClient
+	replayCli  replayClient
 
 	// Gateway instance ID
 	gatewayID string // Unique ID for this gateway instance (format: "gateway-<nano-timestamp>")
@@ -304,6 +312,7 @@ func NewConnectionManager(
 	ctx context.Context,
 	chatClient chatv1connect.ChatServiceClient,
 	deviceClient devicev1connect.DeviceServiceClient,
+	rawCache cache.RawCache,
 	maxConnectionsPerDevice int,
 	connectionTimeoutSec int,
 	heartbeatIntervalSec int,
@@ -327,8 +336,11 @@ func NewConnectionManager(
 
 	cm := &connectionManager{
 		chatClient: chatClient,
+		replayCli:  newChatReplayClient(chatClient),
 		deviceCli:  deviceClient,
 		connPool:   newConnectionPool(poolSizeInt32),
+		cache:      cache.NewGenericCache[string, *Metadata](rawCache, nil),
+		resume:     cache.NewGenericCache[string, string](rawCache, nil),
 
 		gatewayID: gatewayID,
 
@@ -408,7 +420,7 @@ func (cm *connectionManager) startBackgroundTasks(ctx context.Context) {
 //	    log.Error("connection failed", "error", err)
 //	}
 //
-//nolint:funlen // connection lifecycle management requires coordination of multiple goroutines and cleanup
+//nolint:funlen,gocognit,nestif // connection lifecycle management requires coordination of multiple goroutines and cleanup
 func (cm *connectionManager) HandleConnection(
 	ctx context.Context,
 	profileID string,
@@ -445,8 +457,14 @@ func (cm *connectionManager) HandleConnection(
 		connectionDurationHistogram.Add(ctx, int64(duration.Seconds()*millisecondsMultiplier)) // milliseconds
 	}()
 
-	// Setup connection with timeout
-	connCtx, cancel := context.WithTimeout(ctx, time.Duration(cm.connectionTimeoutSec)*time.Second)
+	hello, err := cm.requireHello(ctx, stream, profileID, deviceID)
+	if err != nil {
+		atomic.AddUint64(&cm.failedConns, 1)
+		connectionsFailedCounter.Add(ctx, 1)
+		return err
+	}
+
+	connCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Create connection metadata
@@ -464,10 +482,41 @@ func (cm *connectionManager) HandleConnection(
 	// Note: Outbound delivery handled by default service's queue system
 	conn := NewConnection(stream, metadata)
 
+	if existing := cm.connPool.remove(metadata.Key()); existing != nil {
+		existing.Close()
+		atomic.AddUint64(&cm.replacedConns, 1)
+		util.Log(connCtx).WithFields(map[string]any{
+			"profile_id": profileID,
+			"device_id":  deviceID,
+			"gateway_id": cm.gatewayID,
+		}).Warn("replacing existing local connection for device")
+	}
+
 	// Add to pool first for tracking
-	if err := cm.connPool.add(conn); err != nil {
+	addErr := cm.connPool.add(conn)
+	if addErr != nil {
+		if errors.Is(addErr, ErrConnectionExists) {
+			if existing := cm.connPool.remove(metadata.Key()); existing != nil {
+				existing.Close()
+				atomic.AddUint64(&cm.replacedConns, 1)
+			}
+			if retryErr := cm.connPool.add(conn); retryErr != nil {
+				atomic.AddUint64(&cm.failedConns, 1)
+				return retryErr
+			}
+		} else {
+			atomic.AddUint64(&cm.failedConns, 1)
+			return addErr
+		}
+	}
+
+	persistErr := cm.persistMetadata(connCtx, metadata)
+	if persistErr != nil {
+		_ = cm.deleteMetadata(connCtx, metadata)
+		cm.connPool.remove(metadata.Key())
+		conn.Close()
 		atomic.AddUint64(&cm.failedConns, 1)
-		return err
+		return fmt.Errorf("%w: failed to persist connection metadata: %w", ErrConnectionSetupFailed, persistErr)
 	}
 
 	util.Log(connCtx).WithFields(map[string]any{
@@ -476,6 +525,24 @@ func (cm *connectionManager) HandleConnection(
 		"gateway_id": cm.gatewayID,
 		"pool_size":  cm.connPool.size(),
 	}).Debug("Device connected to gateway")
+
+	lastDurableCursor, replayedCount, replayErr := cm.resumeConnection(connCtx, conn, stream, hello)
+	if replayErr != nil {
+		_ = cm.deleteMetadata(connCtx, metadata)
+		cm.connPool.remove(metadata.Key())
+		conn.Close()
+		atomic.AddUint64(&cm.failedConns, 1)
+		return replayErr
+	}
+
+	if hello.GetResumeToken() != "" {
+		util.Log(connCtx).WithFields(map[string]any{
+			"profile_id":     profileID,
+			"device_id":      deviceID,
+			"resume_token":   hello.GetResumeToken(),
+			"replayed_count": replayedCount,
+		}).Info("resume replay completed")
+	}
 
 	// Update presence to ONLINE when device connects
 	cm.updatePresence(connCtx, profileID, deviceID, devicev1.PresenceStatus_ONLINE, "")
@@ -487,6 +554,13 @@ func (cm *connectionManager) HandleConnection(
 
 		// Remove from pool
 		c := cm.connPool.remove(metadata.Key())
+		if delErr := cm.deleteMetadata(ctx, metadata); delErr != nil {
+			util.Log(ctx).WithError(delErr).WithFields(map[string]any{
+				"profile_id": profileID,
+				"device_id":  deviceID,
+				"gateway_id": cm.gatewayID,
+			}).Warn("failed to delete connection metadata from cache")
+		}
 
 		atomic.AddUint64(&cm.disconnectedConns, 1)
 		connectionsDisconnectedCounter.Add(ctx, 1)
@@ -524,22 +598,22 @@ func (cm *connectionManager) HandleConnection(
 	workerWg.Add(1)
 	go func() {
 		defer workerWg.Done()
-		_ = cm.handleInboundStream(ctx, conn, stream, errChan, doneCh)
+		_ = cm.handleInboundStream(connCtx, conn, stream, errChan, doneCh)
 	}()
 
 	// Outbound message handler (server -> client)
 	workerWg.Add(1)
 	go func() {
 		defer workerWg.Done()
-		_ = cm.handleOutboundStream(ctx, conn, stream, errChan, doneCh)
+		_ = cm.handleOutboundStream(connCtx, conn, stream, lastDurableCursor, errChan, doneCh)
 	}()
 
 	// Wait for error or context cancellation
 	select {
-	case err := <-errChan:
+	case workerErr := <-errChan:
 		close(doneCh)
 		workerWg.Wait()
-		return err
+		return workerErr
 	case <-ctx.Done():
 		close(doneCh)
 		workerWg.Wait()
@@ -558,6 +632,18 @@ func (cm *connectionManager) GetConnection(
 ) (Connection, bool) {
 	metadataKey := internal.MetadataKey(profileID, deviceID)
 	return cm.connPool.get(metadataKey)
+}
+
+func (cm *connectionManager) GetConnectionMetadata(
+	ctx context.Context,
+	profileID string,
+	deviceID string,
+) (*Metadata, bool, error) {
+	return cm.cache.Get(ctx, internal.MetadataKey(profileID, deviceID))
+}
+
+func (cm *connectionManager) GatewayID() string {
+	return cm.gatewayID
 }
 
 // handleInboundStream processes incoming messages from the device (client → server).
@@ -616,6 +702,8 @@ func (cm *connectionManager) handleInboundStream(
 			return err
 		}
 
+		cm.touchConnection(ctx, conn, true)
+
 		// Process inbound request
 		err = cm.handleInboundRequests(ctx, conn, req)
 		if err != nil {
@@ -664,18 +752,10 @@ func (cm *connectionManager) handleOutboundStream(
 	ctx context.Context,
 	conn Connection,
 	stream DeviceStream,
+	lastDurableCursor string,
 	errChan chan error,
 	doneCh chan struct{},
 ) error {
-	// Send connection acknowledgment first - client expects this
-	if err := cm.sendConnectionAck(ctx, stream); err != nil {
-		select {
-		case errChan <- err:
-		default:
-		}
-		return err
-	}
-
 	for {
 		select {
 		case <-doneCh:
@@ -689,45 +769,21 @@ func (cm *connectionManager) handleOutboundStream(
 				continue
 			}
 
-			// Send to device
-			err := conn.Stream().Send(finalMsg)
-			if err != nil {
-				util.Log(ctx).WithError(err).WithFields(map[string]any{
+			if sendErr := cm.sendStreamResponse(ctx, conn, stream, finalMsg, &lastDurableCursor); sendErr != nil {
+				util.Log(ctx).WithError(sendErr).WithFields(map[string]any{
 					"error_type": "outbound.send.error",
 					"profile_id": conn.Metadata().ProfileID,
 					"device_id":  conn.Metadata().DeviceID,
 				}).Warn("outbound send failed")
 				// Don't ack on send failure - will retry
 				select {
-				case errChan <- err:
+				case errChan <- sendErr:
 				default:
 				}
-				return err
+				return sendErr
 			}
 		}
 	}
-}
-
-// sendConnectionAck sends initial connection acknowledgment to device.
-func (cm *connectionManager) sendConnectionAck(_ context.Context, stream DeviceStream) error {
-	// Connection acknowledgment as a system event (no payload needed)
-	ack := &chatv1.StreamResponse{
-		Payload: &chatv1.StreamResponse_Message{
-			Message: &chatv1.RoomEvent{
-				Id:   util.IDString(),
-				Type: chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT,
-				// No payload for system events
-				SentAt:   timestamppb.Now(),
-				Edited:   false,
-				Redacted: false,
-			},
-		},
-	}
-
-	if err := stream.Send(ack); err != nil {
-		return fmt.Errorf("connection ack failed: %w", err)
-	}
-	return nil
 }
 
 // cleanupStaleConnections periodically removes stale connections.
@@ -794,6 +850,11 @@ func (cm *connectionManager) performCleanup(ctx context.Context) {
 
 			// Remove from pool
 			cm.connPool.remove(conn.Metadata().Key())
+			if delErr := cm.deleteMetadata(ctx, conn.Metadata()); delErr != nil {
+				util.Log(ctx).WithError(delErr).WithField("metadata_key", conn.Metadata().Key()).
+					Warn("failed to delete stale connection metadata")
+			}
+			conn.Close()
 			staleCount++
 		}
 	})
@@ -1037,10 +1098,6 @@ func (cm *connectionManager) updatePresence(
 		return
 	}
 
-	// Use a background context with timeout to avoid blocking
-	presenceCtx, cancel := context.WithTimeout(ctx, presenceUpdateTimeout)
-	defer cancel()
-
 	presenceReq := &devicev1.UpdatePresenceRequest{
 		DeviceId:      deviceID,
 		Status:        status,
@@ -1049,6 +1106,9 @@ func (cm *connectionManager) updatePresence(
 
 	// Fire and forget - don't block on presence update
 	go func() {
+		presenceCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), presenceUpdateTimeout)
+		defer cancel()
+
 		_, err := cm.deviceCli.UpdatePresence(presenceCtx, connect.NewRequest(presenceReq))
 		if err != nil {
 			util.Log(presenceCtx).WithError(err).WithFields(map[string]any{
@@ -1058,4 +1118,90 @@ func (cm *connectionManager) updatePresence(
 			}).Debug("failed to update presence status")
 		}
 	}()
+}
+
+func (cm *connectionManager) requireHello(
+	ctx context.Context,
+	stream DeviceStream,
+	profileID string,
+	deviceID string,
+) (*chatv1.StreamHello, error) {
+	req, err := stream.Receive()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStreamReceiveFailed, err)
+	}
+	if req == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired)
+	}
+
+	hello := req.GetHello()
+	if hello == nil {
+		util.Log(ctx).WithFields(map[string]any{
+			"profile_id": profileID,
+			"device_id":  deviceID,
+		}).Warn("stream opened without initial hello frame")
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired)
+	}
+
+	return hello, nil
+}
+
+func (cm *connectionManager) touchConnection(ctx context.Context, conn Connection, persist bool) {
+	now := time.Now().Unix()
+
+	conn.Lock()
+	metadata := conn.Metadata()
+	metadata.LastActive = now
+	if now > metadata.LastHeartbeat {
+		metadata.LastHeartbeat = now
+	}
+
+	metadataCopy := *metadata
+	conn.Unlock()
+
+	if !persist {
+		return
+	}
+
+	if err := cm.persistMetadata(ctx, &metadataCopy); err != nil {
+		util.Log(ctx).WithError(err).WithField("metadata_key", metadataCopy.Key()).
+			Warn("failed to refresh connection metadata")
+	}
+}
+
+func (cm *connectionManager) persistMetadata(ctx context.Context, metadata *Metadata) error {
+	if metadata == nil || cm.cache == nil {
+		return nil
+	}
+
+	return cm.cache.Set(ctx, metadata.Key(), metadata, cm.metadataTTL())
+}
+
+func (cm *connectionManager) deleteMetadata(ctx context.Context, metadata *Metadata) error {
+	if metadata == nil || cm.cache == nil {
+		return nil
+	}
+
+	cachedMetadata, found, err := cm.cache.Get(ctx, metadata.Key())
+	if err != nil {
+		return err
+	}
+	if found && cachedMetadata != nil && cachedMetadata.GatewayID != metadata.GatewayID {
+		return nil
+	}
+
+	return cm.cache.Delete(ctx, metadata.Key())
+}
+
+func (cm *connectionManager) metadataTTL() time.Duration {
+	ttlSeconds := cm.connectionTimeoutSec * cacheTTLMultiplier
+	minTTL := cm.heartbeatIntervalSec * staleThresholdMultiplier
+	if ttlSeconds < minTTL {
+		ttlSeconds = minTTL
+	}
+	if ttlSeconds <= 0 {
+		ttlSeconds = staleThresholdMultiplier
+	}
+
+	return time.Duration(ttlSeconds) * time.Second
 }

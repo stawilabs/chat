@@ -2,6 +2,7 @@ package queues
 
 import (
 	"context"
+	"errors"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
@@ -49,7 +50,21 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 
 	connection, ok := dq.connectionManager.GetConnection(ctx, profileID, deviceID)
 	if !ok {
-		// Device disconnected - fall back to offline delivery (push notification)
+		metadata, found, lookupErr := dq.connectionManager.GetConnectionMetadata(ctx, profileID, deviceID)
+		if lookupErr != nil {
+			return lookupErr
+		}
+		if found && metadata != nil && metadata.GatewayID != dq.connectionManager.GatewayID() {
+			util.Log(ctx).WithFields(map[string]any{
+				"profile_id":       profileID,
+				"device_id":        deviceID,
+				"owner_gateway_id": metadata.GatewayID,
+				"gateway_id":       dq.connectionManager.GatewayID(),
+			}).Warn("delivery consumed by non-owning gateway, retrying")
+			return errors.New("delivery routed to non-owning gateway instance")
+		}
+
+		// Device is no longer connected to any gateway - fall back to offline delivery.
 		util.Log(ctx).WithFields(map[string]any{
 			"profile_id": profileID,
 			"device_id":  deviceID,
@@ -65,7 +80,7 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 			"device_id":  deviceID,
 		}).Debug("dispatch channel full: slow consumer detected")
 
-		return dq.publishToOfflineDevice(ctx, headers, evt)
+		return errors.New("slow consumer: dispatch buffer full")
 	}
 
 	return nil
@@ -87,6 +102,11 @@ func (dq *GatewayEventsQueueHandler) toPayloadToEventData(
 func (dq *GatewayEventsQueueHandler) toStreamData(dlr *eventsv1.Delivery) *chatv1.StreamResponse {
 	evt := dlr.GetEvent()
 	source := evt.GetSource()
+	roomID := evt.GetRoomId()
+	subscriptionID := ""
+	if source != nil {
+		subscriptionID = source.GetSubscriptionId()
+	}
 
 	parentID := evt.GetParentId()
 
@@ -97,8 +117,8 @@ func (dq *GatewayEventsQueueHandler) toStreamData(dlr *eventsv1.Delivery) *chatv
 	roomEvent := &chatv1.RoomEvent{
 		Id:             evt.GetEventId(),
 		ParentId:       &parentID,
-		RoomId:         evt.GetRoomId(),
-		SubscriptionId: source.GetSubscriptionId(),
+		RoomId:         roomID,
+		SubscriptionId: subscriptionID,
 		Type:           eventType,
 		SentAt:         evt.GetCreatedAt(),
 		Edited:         false,
@@ -106,14 +126,45 @@ func (dq *GatewayEventsQueueHandler) toStreamData(dlr *eventsv1.Delivery) *chatv
 		Payload:        dlr.GetPayload(),
 	}
 
-	data := &chatv1.StreamResponse{
+	response := &chatv1.StreamResponse{
 		Id:        evt.GetEventId(),
 		Timestamp: timestamppb.Now(),
-		Payload: &chatv1.StreamResponse_Message{
-			Message: roomEvent,
-		},
 	}
-	return data
+
+	//nolint:exhaustive // All non-ephemeral room event types are forwarded as normal message payloads.
+	switch eventType {
+	case chatv1.RoomEventType_ROOM_EVENT_TYPE_TYPING:
+		response.Payload = &chatv1.StreamResponse_TypingEvent{
+			TypingEvent: &chatv1.TypingEvent{
+				RoomId:         roomID,
+				SubscriptionId: subscriptionID,
+				Typing:         true,
+				Since:          evt.GetCreatedAt(),
+			},
+		}
+	case chatv1.RoomEventType_ROOM_EVENT_TYPE_DELIVERED:
+		response.Payload = &chatv1.StreamResponse_ReceiptEvent{
+			ReceiptEvent: &chatv1.ReceiptEvent{
+				RoomId:         roomID,
+				SubscriptionId: subscriptionID,
+				EventId:        []string{parentID},
+			},
+		}
+	case chatv1.RoomEventType_ROOM_EVENT_TYPE_READ:
+		response.Payload = &chatv1.StreamResponse_ReadEvent{
+			ReadEvent: &chatv1.ReadMarker{
+				RoomId:         &roomID,
+				SubscriptionId: subscriptionID,
+				UpToEventId:    parentID,
+			},
+		}
+	default:
+		response.Payload = &chatv1.StreamResponse_Message{
+			Message: roomEvent,
+		}
+	}
+
+	return response
 }
 
 func (dq *GatewayEventsQueueHandler) getOfflineDeliveryTopic() (queue.Publisher, error) {

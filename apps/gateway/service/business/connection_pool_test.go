@@ -61,7 +61,7 @@ func TestConnectionPool_AddDuplicate(t *testing.T) {
 	require.NoError(t, err)
 
 	err = pool.add(conn2)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrConnectionExists)
 
 	// Duplicate should not increase size
 	assert.Equal(t, int32(1), pool.size())

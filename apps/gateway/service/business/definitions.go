@@ -50,6 +50,12 @@ type ConnectionManager interface {
 		profileID string,
 		deviceID string,
 	) (Connection, bool)
+	GetConnectionMetadata(
+		ctx context.Context,
+		profileID string,
+		deviceID string,
+	) (*Metadata, bool, error)
+	GatewayID() string
 	// Shutdown signals all background goroutines to stop and waits for them
 	// to complete (with timeout). Active connections are terminated via context
 	// cancellation by the caller.

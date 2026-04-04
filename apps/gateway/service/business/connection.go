@@ -75,6 +75,8 @@ type connection struct {
 	dispatchChan chan *chatv1.StreamResponse
 	stream       DeviceStream
 	mu           sync.RWMutex
+	closeOnce    sync.Once
+	closed       atomic.Bool
 
 	// Rate limiting
 	rateLimiter    *tokenBucket  // Token bucket for inbound rate limiting
@@ -134,6 +136,10 @@ func (c *connection) Metadata() *Metadata {
 }
 
 func (c *connection) Dispatch(evt *chatv1.StreamResponse) bool {
+	if c.closed.Load() {
+		return false
+	}
+
 	// First try non-blocking send
 	select {
 	case c.dispatchChan <- evt:
@@ -178,5 +184,8 @@ func (c *connection) Stream() DeviceStream {
 }
 
 func (c *connection) Close() {
-	close(c.dispatchChan)
+	c.closeOnce.Do(func() {
+		c.closed.Store(true)
+		close(c.dispatchChan)
+	})
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
 	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/util"
@@ -69,10 +70,18 @@ func NewChatServer(
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 
+	rawPresenceCache, ok := service.GetRawCache("presence")
+	if !ok {
+		rawPresenceCache = cache.NewInMemoryCache()
+	}
+	presenceCache := cache.NewGenericCache[string, *chatv1.PresenceEvent](rawPresenceCache, nil)
+
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
 	messageBusiness := business.NewMessageBusiness(eventsMan, eventRepo, subRepo, subscriptionSvc, authzMiddleware)
-	connectBusiness := business.NewConnectBusiness(eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, nil)
+	connectBusiness := business.NewConnectBusiness(
+		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
+	)
 	roomBusiness := business.NewRoomBusiness(
 		service,
 		roomRepo,
@@ -214,7 +223,9 @@ func (ps *ChatServer) GetHistory(
 	}
 
 	return connect.NewResponse(&chatv1.GetHistoryResponse{
-		Events: events,
+		Events:     events,
+		NextCursor: nextCursorFromEvents(events),
+		PrevCursor: prevCursorFromEvents(events),
 	}), nil
 }
 
@@ -342,7 +353,9 @@ func (ps *ChatServer) SearchRooms(
 
 	// Send all rooms in a single response
 	return stream.Send(&chatv1.SearchRoomsResponse{
-		Data: rooms,
+		Data:       rooms,
+		NextCursor: nextCursorFromRooms(rooms),
+		PrevCursor: prevCursorFromRooms(rooms),
 	})
 }
 
@@ -622,7 +635,10 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 	}).Debug("SearchRoomSubscriptions success")
 
 	return connect.NewResponse(&chatv1.SearchRoomSubscriptionsResponse{
-		Members: subscriptions,
+		RoomId:     req.Msg.GetRoomId(),
+		Members:    subscriptions,
+		NextCursor: nextCursorFromSubscriptions(subscriptions),
+		PrevCursor: prevCursorFromSubscriptions(subscriptions),
 	}), nil
 }
 
@@ -801,12 +817,6 @@ func (ps *ChatServer) Live(
 	ctx context.Context,
 	req *connect.Request[chatv1.LiveRequest],
 ) (*connect.Response[chatv1.LiveResponse], error) {
-	// Authentication check
-	authenticatedContact, err := internal.AuthContactLink(ctx, "internal")
-	if err != nil {
-		return nil, err
-	}
-
 	// Input validation
 	if req.Msg == nil {
 		return nil, connect.NewError(
@@ -831,6 +841,11 @@ func (ps *ChatServer) Live(
 			connect.CodeInvalidArgument,
 			status.Error(codes.InvalidArgument, fmt.Sprintf("too many client states: max %d allowed", MaxBatchSize)),
 		)
+	}
+
+	authenticatedContact, err := ps.liveRequestSource(ctx, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
 	// Process each client state
@@ -1021,6 +1036,74 @@ func (ps *ChatServer) processPresenceState(
 	}
 
 	return nil
+}
+
+func (ps *ChatServer) liveRequestSource(
+	ctx context.Context,
+	req *chatv1.LiveRequest,
+) (*commonv1.ContactLink, error) {
+	if internalContact, err := internal.AuthContactLink(ctx, "internal"); err == nil {
+		source := req.GetSource()
+		if source == nil {
+			return internalContact, nil
+		}
+
+		if err = internal.IsValidContactLink(source); err != nil {
+			return nil, err
+		}
+
+		return source, nil
+	}
+
+	return internal.AuthContactLink(ctx)
+}
+
+func nextCursorFromEvents(events []*chatv1.RoomEvent) string {
+	if len(events) == 0 {
+		return ""
+	}
+
+	return events[len(events)-1].GetId()
+}
+
+func prevCursorFromEvents(events []*chatv1.RoomEvent) string {
+	if len(events) == 0 {
+		return ""
+	}
+
+	return events[0].GetId()
+}
+
+func nextCursorFromRooms(rooms []*chatv1.Room) string {
+	if len(rooms) == 0 {
+		return ""
+	}
+
+	return rooms[len(rooms)-1].GetId()
+}
+
+func prevCursorFromRooms(rooms []*chatv1.Room) string {
+	if len(rooms) == 0 {
+		return ""
+	}
+
+	return rooms[0].GetId()
+}
+
+func nextCursorFromSubscriptions(subscriptions []*chatv1.RoomSubscription) string {
+	if len(subscriptions) == 0 {
+		return ""
+	}
+
+	return subscriptions[len(subscriptions)-1].GetId()
+}
+
+func prevCursorFromSubscriptions(subscriptions []*chatv1.RoomSubscription) string {
+	if len(subscriptions) == 0 {
+		return ""
+	}
+
+	return subscriptions[0].GetId()
 }
 
 // processRoomEventState handles room events (messages, etc.)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
@@ -71,7 +72,7 @@ func (feh *FanoutEventHandler) Validate(_ context.Context, payload any) error {
 	return nil
 }
 
-//nolint:nonamedreturns // named return required for deferred tracing
+//nolint:nonamedreturns,nestif // fanout coordinates retryable persistence lookups and per-target publish errors.
 func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err error) {
 	ctx, span := chattel.EventTracer.Start(ctx, "Fanout")
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
@@ -96,15 +97,27 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 	})
 	logger.Debug("Fanout processing")
 
-	// Get event data to extract payload
-	eventLinkData, err := feh.eventRepo.GetByID(ctx, eventLink.GetEventId())
-	if err != nil {
-		if data.ErrorIsNoRows(err) {
-			logger.WithError(err).Error("no such chat event exists")
-			return nil
+	var eventPayload *chatv1.Payload
+	if isEphemeralRoomEvent(eventLink.GetEventType()) {
+		logger.WithField("event_type", eventLink.GetEventType().String()).
+			Debug("fanout handling ephemeral room event")
+	} else {
+		eventLinkData, getErr := feh.eventRepo.GetByID(ctx, eventLink.GetEventId())
+		if getErr != nil {
+			if data.ErrorIsNoRows(getErr) {
+				logger.WithError(getErr).Warn("persisted room event missing, will retry fanout")
+				return getErr
+			}
+			logger.WithError(getErr).Error("failed to get chat event data")
+			return getErr
 		}
-		logger.WithError(err).Error("failed to get chat event data")
-		return err
+
+		// Convert event content to typed payload
+		eventPayload, err = feh.payloadConverter.ToProto(eventLinkData.Content)
+		if err != nil {
+			logger.WithError(err).Error("failed to convert event content to payload")
+			return fmt.Errorf("failed to convert event content to payload: %w", err)
+		}
 	}
 
 	deliveryTopic, err := feh.getTopic()
@@ -113,15 +126,9 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 		return err
 	}
 
-	// Convert event content to typed payload
-	eventPayload, payloadErr := feh.payloadConverter.ToProto(eventLinkData.Content)
-	if payloadErr != nil {
-		logger.WithError(payloadErr).Error("failed to convert event content to payload")
-		return fmt.Errorf("failed to convert event content to payload: %w", payloadErr)
-	}
-
-	// Publish all deliveries - continue on individual failures
+	// Publish all deliveries and retry the whole fanout when any target fails.
 	var failCount int
+	var publishErrs []error
 	for _, destination := range destinations {
 		eventDelivery := &eventsv1.Delivery{
 			Event:        eventLink,
@@ -133,6 +140,7 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 
 		if pubErr := deliveryTopic.Publish(ctx, eventDelivery); pubErr != nil {
 			failCount++
+			publishErrs = append(publishErrs, pubErr)
 			logger.WithError(pubErr).
 				WithField("subscription_id", destination.GetSubscriptionId()).
 				Warn("failed to publish delivery")
@@ -147,7 +155,21 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 	if failCount > 0 {
 		chattel.MessagesFailedCounter.Add(ctx, int64(failCount))
 		logger.WithField("fail_count", failCount).Warn("some deliveries failed")
+		return fmt.Errorf("failed to publish %d/%d deliveries: %w",
+			failCount, len(destinations), errors.Join(publishErrs...))
 	}
 
 	return nil
+}
+
+func isEphemeralRoomEvent(eventType chatv1.RoomEventType) bool {
+	//nolint:exhaustive // Only the explicitly ephemeral room event types should return true.
+	switch eventType {
+	case chatv1.RoomEventType_ROOM_EVENT_TYPE_TYPING,
+		chatv1.RoomEventType_ROOM_EVENT_TYPE_DELIVERED,
+		chatv1.RoomEventType_ROOM_EVENT_TYPE_READ:
+		return true
+	default:
+		return false
+	}
 }

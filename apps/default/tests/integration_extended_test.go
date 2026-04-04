@@ -206,10 +206,10 @@ func (s *ExtendedIntegrationTestSuite) TestLargeMessageHistoryWithLimit() {
 		require.NoError(t, err)
 		s.Len(events1, 1)
 
-		// Events should be ordered by ID ascending
+		// Backward history should return newest entries first.
 		for i := 1; i < len(eventsAll); i++ {
-			s.Less(eventsAll[i-1].GetId(), eventsAll[i].GetId(),
-				"events should be ordered by ID ascending")
+			s.Greater(eventsAll[i-1].GetId(), eventsAll[i].GetId(),
+				"events should be ordered by ID descending for backward pagination")
 		}
 	})
 }

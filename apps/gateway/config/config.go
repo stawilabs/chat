@@ -39,8 +39,8 @@ type GatewayConfig struct {
 	QueueOfflineEventDeliveryURI  string `envDefault:"mem://offline.device.event.delivery" env:"QUEUE_OFFLINE_EVENT_DELIVERY_URI"`
 
 	// Queue for receiving user-targeted deliveries from default service
-	QueueGatewayEventDeliveryName string `envDefault:"gateway.event.delivery"       env:"QUEUE_GATEWAY_EVENT_DELIVERY_NAME"`
-	QueueGatewayEventDeliveryURI  string `envDefault:"mem://gateway.event.delivery" env:"QUEUE_GATEWAY_EVENT_DELIVERY_URI"`
+	QueueGatewayEventDeliveryName string `envDefault:"gateway.event.delivery.%d"       env:"QUEUE_GATEWAY_EVENT_DELIVERY_NAME"`
+	QueueGatewayEventDeliveryURI  string `envDefault:"mem://gateway.event.delivery.%d" env:"QUEUE_GATEWAY_EVENT_DELIVERY_URI"`
 
 	// Shard configuration - must be coordinated with the default service's ShardCount.
 	// ShardID identifies this gateway instance's shard (0-indexed).
