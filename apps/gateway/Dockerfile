@@ -18,6 +18,8 @@ RUN go mod download
 
 # Copy the actual source
 COPY ./internal ./internal
+COPY ./apps/default/service/models ./apps/default/service/models
+COPY ./apps/default/service/repository ./apps/default/service/repository
 COPY ./apps/gateway ./apps/gateway
 
 # Build static binary for target platform
