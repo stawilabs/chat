@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -424,12 +424,15 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
 
   // Document functionality
   Future<void> _pickDocument() async {
-    final result = await FilePicker.pickFiles();
+    final file = await openFile();
 
-    if (result != null && result.files.single.path != null) {
-      final file = result.files.single;
-      // Process and send selected document
-      await _sendMessage(ref, file.path!, 'file', file.name);
+    if (file != null) {
+      final sendingService = ref.read(messageSendingServiceProvider);
+      await sendingService.sendFileBytesMessage(
+        roomId: widget.roomId,
+        fileName: file.name,
+        bytes: await file.readAsBytes(),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

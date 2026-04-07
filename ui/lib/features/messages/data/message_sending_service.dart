@@ -299,6 +299,120 @@ class MessageSendingService {
     onProgress: onProgress,
   );
 
+  /// Send a file message from raw bytes.
+  ///
+  /// This is used for platforms where a local filesystem path may not be
+  /// available, such as Flutter web.
+  Future<domain.RoomEvent> sendFileBytesMessage({
+    required String roomId,
+    required String fileName,
+    required Uint8List bytes,
+    String? replyToId,
+    bool encrypt = false,
+    void Function(double progress)? onProgress,
+  }) async {
+    final localId = Xid().toString();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final senderId = await _getSubscriptionIdOrProvisional(roomId);
+    final fileSize = bytes.length;
+
+    var content = <String, dynamic>{
+      'fileName': fileName,
+      'fileSize': fileSize,
+      'uploading': true,
+    };
+
+    final event = domain.RoomEvent(
+      id: localId,
+      roomId: roomId,
+      senderId: senderId,
+      type: domain.RoomEventType.file,
+      content: content,
+      parentId: replyToId,
+      createdAt: now,
+      localId: localId,
+    );
+
+    await _messageRepo.insertMessage(event);
+
+    try {
+      final maxSize = await _filesConfigService.getMaxUploadSize();
+      if (fileSize > maxSize) {
+        throw StateError(
+          'File size ($fileSize bytes) exceeds maximum ($maxSize bytes)',
+        );
+      }
+
+      final uploadResult = await _filesUploadService.uploadBytes(
+        bytes,
+        fileName,
+        _detectMimeType(fileName),
+        onProgress: onProgress,
+      );
+
+      content = {
+        'contentUri': uploadResult.contentUri,
+        'mediaId': uploadResult.mediaId,
+        'attachmentId': uploadResult.mediaId,
+        'size': fileSize,
+        'url': uploadResult.contentUri,
+        'fileName': fileName,
+        'fileSize': fileSize,
+        'mimeType': _detectMimeType(fileName),
+      };
+
+      if (encrypt) {
+        try {
+          final encrypted = await _encryptionService.encryptGroup(
+            roomId,
+            jsonEncode(content),
+          );
+          content = {
+            'encrypted': true,
+            'algorithm': 'megolm.v1',
+            'ciphertext': encrypted.ciphertext,
+            'sessionId': encrypted.sessionId,
+            'senderKey': encrypted.senderKey,
+            'originalType': domain.RoomEventType.file.toString(),
+          };
+        } catch (e) {
+          AppLogger.warning(
+            'Media encryption failed',
+            data: {'error': e.toString()},
+          );
+        }
+      }
+
+      final updatedEvent = event.copyWith(content: content);
+      await _messageRepo.insertMessage(updatedEvent);
+
+      await _jobRepo.addJob(JobType.sendMediaMessage, {
+        'roomId': roomId,
+        'type': domain.RoomEventType.file.toString(),
+        'content': content,
+        'localId': localId,
+        'parentId': replyToId,
+      });
+
+      return updatedEvent;
+    } catch (e, stackTrace) {
+      AppLogger.error('Media upload failed', error: e, stackTrace: stackTrace);
+
+      final current = await _messageRepo.getEventByLocalId(localId);
+      final base = current ?? event;
+      final failedContent = Map<String, dynamic>.from(base.content)
+        ..remove('uploading')
+        ..['error'] = e.toString();
+
+      final failedEvent = base.copyWith(
+        status: domain.EventStatus.failed,
+        content: failedContent,
+      );
+      await _messageRepo.insertMessage(failedEvent);
+      return failedEvent;
+    }
+  }
+
   /// Internal method for sending media messages
   ///
   /// Uses [FilesUploadService] for streaming uploads via proto API.

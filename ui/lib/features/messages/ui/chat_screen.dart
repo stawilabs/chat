@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -323,9 +323,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _pickAndSendFile() async {
-    final result = await FilePicker.pickFiles();
-    if (result != null && result.files.single.path != null) {
-      await _sendMediaFile(File(result.files.single.path!), RoomEventType.file);
+    final file = await openFile();
+    if (file != null) {
+      try {
+        final messagingService = ref.read(messageSendingServiceProvider);
+        await messagingService.sendFileBytesMessage(
+          roomId: widget.roomId,
+          fileName: file.name,
+          bytes: await file.readAsBytes(),
+          encrypt: _isEncryptionEnabled,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File sent successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to send file: $e')));
+        }
+      }
     }
   }
 

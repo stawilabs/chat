@@ -15,6 +15,7 @@ analyzer:
     - "**/*.pb.dart"
     - "**/*.freezed.dart"
     - "e2e_test/**"
+    - "third_party/sentry_flutter/**"
   errors:
     # Treat missing required parameters as errors
     missing_required_param: error

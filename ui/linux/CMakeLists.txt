@@ -57,6 +57,9 @@ pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# Keep sentry_flutter's native crashpad backend disabled for Linux builds.
+set(ENV{SENTRY_NATIVE_BACKEND} "none")
+
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
 

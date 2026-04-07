@@ -52,6 +52,8 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# Keep sentry_flutter's native crashpad backend disabled for Windows builds.
+set(ENV{SENTRY_NATIVE_BACKEND} "none")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
