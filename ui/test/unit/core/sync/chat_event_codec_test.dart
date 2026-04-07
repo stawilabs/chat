@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
-import 'package:antinvestor_api_common/antinvestor_api_common.dart'
-    as common_types;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/core/sync/chat_event_codec.dart';
 import 'package:stawi/features/messages/domain/room_event.dart' as domain;
@@ -32,7 +30,7 @@ void main() {
         subscriptionId: 'sub-1',
         localType: domain.RoomEventType.text,
         content: {'text': 'hello'},
-        timestamp: common_types.Timestamp.fromDateTime(DateTime(2026)),
+        timestamp: pb.Timestamp.fromDateTime(DateTime(2026)),
         parentId: 'parent-1',
       );
 

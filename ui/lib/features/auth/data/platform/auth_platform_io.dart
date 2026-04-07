@@ -105,7 +105,7 @@ class _DesktopAuthenticator {
           try {
             final credential = await flow.callback({
               'code': code,
-              if (state != null) 'state': state,
+              'state': ?state,
             });
             AppLogger.debug('Code exchange successful');
             if (!completer.isCompleted) {
@@ -232,7 +232,7 @@ class _MobileAuthenticator {
         try {
           final credential = await flow.callback({
             'code': code,
-            if (state != null) 'state': state,
+            'state': ?state,
           });
           AppLogger.debug('Code exchange successful');
           if (!completer.isCompleted) {

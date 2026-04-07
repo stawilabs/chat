@@ -406,7 +406,7 @@ class AnalyticsService {
     trackEvent(
       'user_login',
       properties: {
-        if (method != null) 'method': method,
+        'method': ?method,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       },
     );

@@ -259,9 +259,9 @@ void main() {
         expect(db, isNotNull);
       });
 
-      test('schema version is 20', () {
-        // Version 20: added composite indexes on room_events(room_id, server_ts/created_at).
-        expect(db.schemaVersion, equals(20));
+      test('schema version is 1', () {
+        // Version 1: reset to a fresh baseline with no historical migrations.
+        expect(db.schemaVersion, equals(1));
       });
     });
 

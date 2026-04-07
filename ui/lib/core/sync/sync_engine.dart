@@ -4,7 +4,7 @@ import 'dart:math';
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
 import 'package:antinvestor_api_common/antinvestor_api_common.dart'
-    as common_types;
+    show TokenRefreshResult;
 import 'package:drift/drift.dart' show Value;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart';
@@ -114,7 +114,7 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
       final result = await coordinator.refresh(source: 'SyncEngine');
 
       if (!result.success) {
-        if (result.result == common_types.TokenRefreshResult.permanentError) {
+        if (result.result == TokenRefreshResult.permanentError) {
           throw TokenRefreshPermanentError(
             result.error ?? 'User must re-authenticate',
           );
@@ -404,7 +404,7 @@ class SyncEngine with WidgetsBindingObserver {
   }) async {
     try {
       // Don't pass manual headers - let the interceptor handle authorization
-      final pageCursor = common_types.PageCursor(limit: limit, page: cursor);
+      final pageCursor = pb.PageCursor(limit: limit, page: cursor);
 
       final request = pb.GetHistoryRequest(
         roomId: roomId,
@@ -487,7 +487,7 @@ class SyncEngine with WidgetsBindingObserver {
       subscriptionId: subscriptionId,
       localType: event.type,
       content: event.content,
-      timestamp: common_types.Timestamp.fromDateTime(now),
+      timestamp: pb.Timestamp.fromDateTime(now),
       parentId: event.parentId,
     );
 
@@ -558,7 +558,7 @@ class SyncEngine with WidgetsBindingObserver {
             'calls': 'webrtc',
             'offline': 'true',
           },
-          clientTime: common_types.Timestamp.fromDateTime(DateTime.now()),
+          clientTime: pb.Timestamp.fromDateTime(DateTime.now()),
         );
         final helloRequest = pb.StreamRequest(hello: hello);
 
@@ -1889,7 +1889,7 @@ class SyncEngine with WidgetsBindingObserver {
     final contactIds =
         (payload['contactIds'] as List<dynamic>?)?.cast<String>() ?? [];
     final memberLinks = contactIds
-        .map((id) => common_types.ContactLink(contactId: id))
+        .map((id) => pb.ContactLink(contactId: id))
         .toList();
 
     final request = pb.CreateRoomRequest(
@@ -2005,7 +2005,7 @@ class SyncEngine with WidgetsBindingObserver {
         .map(
           (profileId) => pb.RoomSubscription(
             roomId: roomId,
-            member: common_types.ContactLink(profileId: profileId),
+            member: pb.ContactLink(profileId: profileId),
           ),
         )
         .toList();
@@ -2139,7 +2139,7 @@ class SyncEngine with WidgetsBindingObserver {
 
     // Create timestamp
     final now = DateTime.now();
-    final timestamp = common_types.Timestamp.fromDateTime(now);
+    final timestamp = pb.Timestamp.fromDateTime(now);
 
     // Extract content and type
     final content = payload['content'] as Map<String, dynamic>;
@@ -2188,7 +2188,7 @@ class SyncEngine with WidgetsBindingObserver {
 
     // Create timestamp
     final now = DateTime.now();
-    final timestamp = common_types.Timestamp.fromDateTime(now);
+    final timestamp = pb.Timestamp.fromDateTime(now);
     // Source is no longer used in new API
 
     // Build vote payload - use text content since VoteContent doesn't exist yet
@@ -2249,7 +2249,7 @@ class SyncEngine with WidgetsBindingObserver {
     final content = payload['content'] as Map<String, dynamic>;
 
     // Build the edit request
-    final timestamp = common_types.Timestamp.fromDateTime(DateTime.now());
+    final timestamp = pb.Timestamp.fromDateTime(DateTime.now());
 
     final pbPayload = pb.Payload();
     pbPayload.text = pb.TextContent(
@@ -2280,7 +2280,7 @@ class SyncEngine with WidgetsBindingObserver {
     final roomId = payload['roomId'] as String;
 
     // Send a redacted event to mark the message as deleted
-    final timestamp = common_types.Timestamp.fromDateTime(DateTime.now());
+    final timestamp = pb.Timestamp.fromDateTime(DateTime.now());
 
     final event = pb.RoomEvent(
       id: messageId,
@@ -2322,7 +2322,7 @@ class SyncEngine with WidgetsBindingObserver {
     final protoType = _mapLocalEventTypeToProto(localType);
 
     // Build event with forwarded content
-    final timestamp = common_types.Timestamp.fromDateTime(DateTime.now());
+    final timestamp = pb.Timestamp.fromDateTime(DateTime.now());
     final pbPayload = pb.Payload();
 
     if (localType == domain.RoomEventType.text) {
@@ -2551,7 +2551,7 @@ class SyncEngine with WidgetsBindingObserver {
   }
 
   // Convert protobuf Struct to Dart Map
-  Map<String, dynamic> _structToMap(common_types.Struct struct) {
+  Map<String, dynamic> _structToMap(pb.Struct struct) {
     final result = <String, dynamic>{};
     for (final entry in struct.fields.entries) {
       result[entry.key] = _valueToObject(entry.value);
@@ -2559,7 +2559,7 @@ class SyncEngine with WidgetsBindingObserver {
     return result;
   }
 
-  dynamic _valueToObject(common_types.Value value) {
+  dynamic _valueToObject(pb.Value value) {
     if (value.hasStringValue()) return value.stringValue;
     if (value.hasNumberValue()) return value.numberValue;
     if (value.hasBoolValue()) return value.boolValue;
@@ -2574,18 +2574,18 @@ class SyncEngine with WidgetsBindingObserver {
   }
 
   // Convert Dart Map to protobuf Struct
-  common_types.Struct _mapToStruct(Map<String, dynamic> map) {
-    final struct = common_types.Struct();
+  pb.Struct _mapToStruct(Map<String, dynamic> map) {
+    final struct = pb.Struct();
     for (final entry in map.entries) {
       struct.fields[entry.key] = _objectToValue(entry.value);
     }
     return struct;
   }
 
-  common_types.Value _objectToValue(Object? obj) {
-    final value = common_types.Value();
+  pb.Value _objectToValue(Object? obj) {
+    final value = pb.Value();
     if (obj == null) {
-      value.nullValue = common_types.NullValue.NULL_VALUE;
+      value.nullValue = pb.NullValue.NULL_VALUE;
     } else if (obj is String) {
       value.stringValue = obj;
     } else if (obj is num) {
@@ -2593,7 +2593,7 @@ class SyncEngine with WidgetsBindingObserver {
     } else if (obj is bool) {
       value.boolValue = obj;
     } else if (obj is List) {
-      final listValue = common_types.ListValue();
+      final listValue = pb.ListValue();
       listValue.values.addAll(obj.map(_objectToValue));
       value.listValue = listValue;
     } else if (obj is Map) {
@@ -3006,7 +3006,7 @@ class SyncEngine with WidgetsBindingObserver {
         subscriptionId: subscriptionId,
         roomId: roomId,
         typing: isTyping,
-        since: common_types.Timestamp.fromDateTime(DateTime.now()),
+        since: pb.Timestamp.fromDateTime(DateTime.now()),
       );
 
       // Wrap in ClientCommand
@@ -3107,7 +3107,7 @@ class SyncEngine with WidgetsBindingObserver {
 
       // Create timestamp
       final now = DateTime.now();
-      final timestamp = common_types.Timestamp.fromDateTime(now);
+      final timestamp = pb.Timestamp.fromDateTime(now);
 
       // Create payload based on event type
       final pbPayload = pb.Payload();

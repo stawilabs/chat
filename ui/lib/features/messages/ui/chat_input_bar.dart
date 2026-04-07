@@ -424,7 +424,7 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
 
   // Document functionality
   Future<void> _pickDocument() async {
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.pickFiles();
 
     if (result != null && result.files.single.path != null) {
       final file = result.files.single;

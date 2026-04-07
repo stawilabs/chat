@@ -151,7 +151,7 @@ class MotionService {
     final content = {
       'motionId': motionId,
       'option': option,
-      if (existingVote != null) 'previousOption': existingVote,
+      'previousOption': ?existingVote,
     };
 
     final event = domain.RoomEvent(

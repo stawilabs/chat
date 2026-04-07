@@ -404,7 +404,7 @@ class CryptoIsolateService {
     final result = await _isolateManager
         .execute<Map<String, dynamic>>(_isolateName, CryptoTasks.deriveKey, {
           'password': password,
-          if (salt != null) 'salt': salt,
+          'salt': ?salt,
           'iterations': iterations,
           'keyLength': keyLength,
         });

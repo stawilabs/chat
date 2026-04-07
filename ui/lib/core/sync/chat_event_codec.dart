@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
-import 'package:antinvestor_api_common/antinvestor_api_common.dart'
-    as common_types;
 import 'package:fixnum/fixnum.dart';
 
 import '../../features/messages/domain/room_event.dart' as domain;
@@ -267,7 +265,7 @@ class ChatEventCodec {
     required String subscriptionId,
     required domain.RoomEventType localType,
     required Map<String, dynamic> content,
-    required common_types.Timestamp timestamp,
+    required pb.Timestamp timestamp,
     String? parentId,
   }) {
     final event = pb.RoomEvent(

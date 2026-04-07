@@ -668,11 +668,11 @@ class DbBatchProcessorService {
       DbBatchTasks.filterAndSort,
       {
         'rows': rows,
-        if (filters != null) 'filters': filters,
-        if (sortBy != null) 'sortBy': sortBy,
+        'filters': ?filters,
+        'sortBy': ?sortBy,
         'sortDescending': sortDescending,
-        if (limit != null) 'limit': limit,
-        if (offset != null) 'offset': offset,
+        'limit': ?limit,
+        'offset': ?offset,
       },
     );
   }

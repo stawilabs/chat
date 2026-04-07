@@ -145,7 +145,7 @@ abstract class AnalyticsEvent with _$AnalyticsEvent {
     properties: {
       'room_id': roomId,
       'call_type': callType,
-      if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      'duration_seconds': ?durationSeconds,
     },
   );
 
@@ -218,7 +218,7 @@ abstract class AnalyticsEvent with _$AnalyticsEvent {
     properties: {
       'room_id': roomId,
       'room_type': roomType,
-      if (memberCount != null) 'member_count': memberCount,
+      'member_count': ?memberCount,
     },
   );
 
@@ -240,7 +240,7 @@ abstract class AnalyticsEvent with _$AnalyticsEvent {
     properties: {
       'room_id': roomId,
       'room_type': roomType,
-      if (memberCount != null) 'member_count': memberCount,
+      'member_count': ?memberCount,
     },
   );
 
@@ -315,7 +315,7 @@ abstract class AnalyticsEvent with _$AnalyticsEvent {
     properties: {
       'error_type': errorType,
       'error_message': errorMessage,
-      if (stackTrace != null) 'stack_trace': stackTrace,
+      'stack_trace': ?stackTrace,
     },
   );
 

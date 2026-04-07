@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb_chat;
-import 'package:antinvestor_api_common/antinvestor_api_common.dart'
-    as pb_common;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/rooms/data/room_repository.dart';
@@ -145,7 +143,7 @@ class PostLoginSyncService {
     // Create request - empty query returns all rooms the user is a member of
     final request = pb_chat.SearchRoomsRequest(
       query: '',
-      cursor: pb_common.PageCursor(limit: _roomBatchSize),
+      cursor: pb_chat.PageCursor(limit: _roomBatchSize),
     );
 
     // searchRooms returns a stream, process each response
