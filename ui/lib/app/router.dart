@@ -2,10 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/auth_state_provider.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/calls/ui/call_history_screen.dart';
+import '../features/calls/ui/call_screen.dart';
 import '../features/contacts/ui/contacts_screen.dart';
 import '../features/messages/ui/chat_screen.dart';
 import '../features/messages/ui/starred_messages_screen.dart';
@@ -32,14 +32,51 @@ import '../features/settings/ui/two_factor_setup_screen.dart';
 
 part 'router.g.dart';
 
-/// Notifier that triggers router refresh when auth state changes
+/// Notifier that triggers router refresh when auth state changes.
+///
+/// Also caches the auth and onboarding state so the redirect callback can
+/// read them synchronously instead of hitting secure storage on every
+/// navigation.
 class AuthChangeNotifier extends ChangeNotifier {
   AuthChangeNotifier(Ref ref) {
+    // Seed from current value
+    final current = ref.read(authStateProvider);
+    _isLoggedIn = current.maybeWhen(
+      data: (state) => state == AuthState.authenticated,
+      orElse: () => false,
+    );
+
+    // Load initial onboarding state
+    final onboardingRepo = ref.read(onboardingRepositoryProvider);
+    onboardingRepo.isProfileSetupComplete().then((complete) {
+      _isProfileSetupComplete = complete;
+    });
+
     // Listen to auth state changes and notify router to re-evaluate redirects
     ref.listen(authStateProvider, (previous, next) {
+      _isLoggedIn = next.maybeWhen(
+        data: (state) => state == AuthState.authenticated,
+        orElse: () => _isLoggedIn,
+      );
+      // Re-check onboarding state when auth state changes
+      onboardingRepo.isProfileSetupComplete().then((complete) {
+        if (_isProfileSetupComplete != complete) {
+          _isProfileSetupComplete = complete;
+          notifyListeners();
+        }
+      });
       notifyListeners();
     });
   }
+
+  bool _isLoggedIn = false;
+  bool _isProfileSetupComplete = false;
+
+  /// Cached login status, updated reactively via [authStateProvider].
+  bool get isLoggedIn => _isLoggedIn;
+
+  /// Cached profile setup status, updated when auth state changes.
+  bool get isProfileSetupComplete => _isProfileSetupComplete;
 }
 
 /// Provider for the auth change notifier
@@ -48,15 +85,13 @@ AuthChangeNotifier authChangeNotifier(Ref ref) => AuthChangeNotifier(ref);
 
 @riverpod
 GoRouter router(Ref ref) {
-  final authRepository = ref.watch(authRepositoryProvider);
-  final onboardingRepo = ref.watch(onboardingRepositoryProvider);
   final authChangeNotifier = ref.watch(authChangeProvider);
 
   return GoRouter(
     initialLocation: '/',
     refreshListenable: authChangeNotifier,
-    redirect: (context, state) async {
-      final isLoggedIn = await authRepository.isLoggedIn();
+    redirect: (context, state) {
+      final isLoggedIn = authChangeNotifier.isLoggedIn;
       final location = state.matchedLocation;
       final isLoginRoute = location == '/login';
       final isSetupRoute = location == '/profile/setup';
@@ -73,8 +108,7 @@ GoRouter router(Ref ref) {
 
       // If logged in, check if profile setup is complete
       if (isLoggedIn && !isSetupRoute && !isLoginRoute) {
-        final setupComplete = await onboardingRepo.isProfileSetupComplete();
-        if (!setupComplete) {
+        if (!authChangeNotifier.isProfileSetupComplete) {
           return '/profile/setup';
         }
       }
@@ -179,6 +213,14 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/messages/starred',
         builder: (context, state) => const StarredMessagesScreen(),
+      ),
+      GoRoute(
+        path: '/call/:roomId',
+        builder: (context, state) {
+          final roomId = state.pathParameters['roomId']!;
+          final roomName = state.uri.queryParameters['name'] ?? 'Call';
+          return CallScreen(roomId: roomId, roomName: roomName);
+        },
       ),
       GoRoute(
         path: '/calls/history',

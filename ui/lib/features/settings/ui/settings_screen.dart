@@ -9,6 +9,14 @@ import '../../auth/data/user_info_provider.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  static const _cardShadow = [
+    BoxShadow(
+      color: Color(0x0D000000),
+      blurRadius: 10,
+      offset: Offset(0, 2),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userInfoAsync = ref.watch(userInfoProvider);
@@ -206,13 +214,7 @@ class SettingsScreen extends ConsumerWidget {
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 2),
-        ),
-      ],
+      boxShadow: _cardShadow,
     ),
     child: ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),

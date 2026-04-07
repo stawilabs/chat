@@ -39,7 +39,6 @@ class MessageReplyPreview extends ConsumerWidget {
     final profileIdAsync = ref.watch(
       profileIdFromSubscriptionProvider(senderId),
     );
-    final profilesAsync = ref.watch(profilesWithContactsStreamProvider);
 
     final profileId = profileIdAsync.when(
       data: (id) => id,
@@ -47,21 +46,24 @@ class MessageReplyPreview extends ConsumerWidget {
       error: (_, _) => null,
     );
 
-    return profilesAsync.when(
-      data: (profiles) {
-        if (profileId != null) {
-          final senderProfile = profiles
-              .where((p) => p.profile.id == profileId)
-              .firstOrNull;
-          if (senderProfile != null) {
-            return senderProfile.displayName;
-          }
-        }
-        return senderId;
-      },
-      loading: () => senderId,
-      error: (_, _) => senderId,
+    if (profileId == null) return senderId;
+
+    final displayName = ref.watch(
+      profilesWithContactsStreamProvider.select((asyncProfiles) {
+        return asyncProfiles.when(
+          data: (profiles) {
+            final senderProfile = profiles
+                .where((p) => p.profile.id == profileId)
+                .firstOrNull;
+            return senderProfile?.displayName ?? senderId;
+          },
+          loading: () => senderId,
+          error: (_, _) => senderId,
+        );
+      }),
     );
+
+    return displayName;
   }
 
   Widget _buildPreview(BuildContext context, RoomEvent parent, bool isDark) {

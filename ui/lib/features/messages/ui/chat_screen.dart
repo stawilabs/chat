@@ -13,7 +13,6 @@ import '../../../core/navigation/navigation_helper.dart';
 import '../../../core/sync/sync_engine.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../calls/services/call_manager.dart';
-import '../../calls/ui/call_screen.dart';
 import '../../notifications/notification_service.dart';
 import '../../notifications/ui/notification_permission_dialog.dart';
 import '../../rooms/data/room_providers.dart';
@@ -432,6 +431,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       )),
     );
 
+    // Hoist ref.watch calls out of _buildMessageList (fix #4)
+    final currentSubscriptionIdAsync = ref.watch(
+      currentUserSubscriptionIdProvider(widget.roomId),
+    );
+    final roomAsync = ref.watch(roomByIdProvider(widget.roomId));
+    final isGroupChat = roomAsync.when(
+      data: (room) => room?.type == 'group',
+      loading: () => false,
+      error: (_, _) => false,
+    );
+
+    // Handle side effects via ref.listen instead of inside build tree (fix #1)
+    ref.listen(
+      paginatedMessagesStreamProvider((
+        roomId: widget.roomId,
+        limit: _pageSize,
+      )),
+      (previous, next) {
+        final messages = next.value;
+        if (messages == null) return;
+
+        // Track new messages arriving while scrolled up
+        if (messages.length > _previousMessageCount && _showScrollToBottom) {
+          final newCount = messages.length - _previousMessageCount;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _newMessageCount += newCount);
+          });
+        }
+        _previousMessageCount = messages.length;
+
+        // Send read receipts for messages being viewed
+        _sendReadReceipts(messages);
+      },
+    );
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: _buildAppBar(context),
@@ -464,7 +498,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: Stack(
                   children: [
                     messagesAsync.when(
-                      data: _buildMessageList,
+                      data: (messages) => _buildMessageList(
+                        messages,
+                        currentSubscriptionId: currentSubscriptionIdAsync.value,
+                        isGroupChat: isGroupChat,
+                      ),
                       loading: _buildLoadingState,
                       error: _buildErrorState,
                     ),
@@ -636,43 +674,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ],
   );
 
-  Widget _buildMessageList(List<RoomEvent> messages) {
+  Widget _buildMessageList(
+    List<RoomEvent> messages, {
+    required String? currentSubscriptionId,
+    required bool isGroupChat,
+  }) {
     if (messages.isEmpty) {
       return _buildEmptyState();
     }
-
-    // Track new messages arriving while scrolled up
-    if (messages.length > _previousMessageCount && _showScrollToBottom) {
-      final newCount = messages.length - _previousMessageCount;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _newMessageCount += newCount);
-      });
-    }
-    _previousMessageCount = messages.length;
-
-    // Send read receipts for messages being viewed
-    _sendReadReceipts(messages);
-
-    // Get current user's subscription ID at the list level (not per-message)
-    // This ensures consistent "isMine" detection and avoids async race conditions
-    final currentSubscriptionIdAsync = ref.watch(
-      currentUserSubscriptionIdProvider(widget.roomId),
-    );
-
-    // Determine if this is a group chat for sender names/avatars
-    final roomAsync = ref.watch(roomByIdProvider(widget.roomId));
-    final isGroupChat = roomAsync.when(
-      data: (room) => room?.type == 'group',
-      loading: () => false,
-      error: (_, _) => false,
-    );
 
     // Use the optimized VirtualizedMessageList for better performance
     // with large message lists (10,000+ messages)
     return VirtualizedMessageList(
       roomId: widget.roomId,
       messages: messages,
-      currentUserSubscriptionId: currentSubscriptionIdAsync.value,
+      currentUserSubscriptionId: currentSubscriptionId,
       isGroupChat: isGroupChat,
       scrollController: _scrollController,
       isLoadingMore: _isLoadingMore,
@@ -874,11 +890,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final callManager = await ref.read(callManagerProvider.future);
     await callManager.startCall(widget.roomId);
     if (mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) =>
-              CallScreen(roomId: widget.roomId, roomName: widget.roomName),
-        ),
+      context.push(
+        '/call/${widget.roomId}?name=${Uri.encodeComponent(widget.roomName)}',
       );
     }
   }

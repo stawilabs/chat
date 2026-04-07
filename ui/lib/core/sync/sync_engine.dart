@@ -1579,14 +1579,16 @@ class SyncEngine with WidgetsBindingObserver {
     }
 
     final readAt = DateTime.now().millisecondsSinceEpoch;
-    for (final eventId in eventIds) {
-      await _readReceiptRepo.saveReadReceipt(
-        eventId: eventId,
-        roomId: roomId,
-        profileId: readerProfileId,
-        readAt: readAt,
-      );
-    }
+    final receipts = eventIds
+        .map(
+          (eventId) => ReadReceiptInfo(
+            eventId: eventId,
+            profileId: readerProfileId!,
+            readAt: readAt,
+          ),
+        )
+        .toList();
+    await _readReceiptRepo.saveReadReceipts(receipts, roomId);
 
     await _messageRepo.updateMessagesStatus(eventIds, domain.EventStatus.read);
 

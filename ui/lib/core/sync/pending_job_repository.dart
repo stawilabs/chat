@@ -398,53 +398,83 @@ class PendingJobRepository {
   }
 
   /// Get comprehensive health metrics for the job queue
+  ///
+  /// Uses SQL aggregate queries instead of loading all rows into memory.
   Future<JobQueueHealth> getQueueHealth() async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final stuckThreshold = now - _stuckJobThresholdMs;
+    final jobs = _database.pendingJobs;
 
-    // Get all jobs
-    final allJobs = await _database.select(_database.pendingJobs).get();
+    // Aggregate counts by status
+    final statusQuery = _database.selectOnly(jobs)
+      ..addColumns([jobs.status, jobs.id.count()])
+      ..groupBy([jobs.status]);
+    final statusRows = await statusQuery.get();
 
-    final pendingJobs = allJobs.where((j) => j.status == 'pending').toList();
-    final failedJobs = allJobs.where((j) => j.status == 'failed').toList();
-
-    // Calculate stuck jobs (pending for too long)
-    final stuckJobs = pendingJobs
-        .where((j) => (j.createdAt ?? now) < stuckThreshold)
-        .length;
-
-    // Calculate oldest pending job age
-    final oldestPendingAge = pendingJobs.isEmpty
-        ? 0
-        : now - (pendingJobs.map((j) => j.createdAt ?? now).reduce(min));
-
-    // Count by type
-    final pendingByType = <String, int>{};
-    for (final job in pendingJobs) {
-      pendingByType[job.type] = (pendingByType[job.type] ?? 0) + 1;
+    var pendingCount = 0;
+    var failedCount = 0;
+    for (final row in statusRows) {
+      final status = row.read(jobs.status);
+      final cnt = row.read(jobs.id.count()) ?? 0;
+      if (status == 'pending') pendingCount = cnt;
+      if (status == 'failed') failedCount = cnt;
     }
 
-    final failedByType = <String, int>{};
-    for (final job in failedJobs) {
-      failedByType[job.type] = (failedByType[job.type] ?? 0) + 1;
-    }
+    // Stuck jobs: pending jobs created before threshold
+    final stuckQuery = _database.selectOnly(jobs)
+      ..addColumns([jobs.id.count()])
+      ..where(
+        jobs.status.equals('pending') &
+            jobs.createdAt.isSmallerThanValue(stuckThreshold),
+      );
+    final stuckRow = await stuckQuery.getSingle();
+    final stuckJobs = stuckRow.read(jobs.id.count()) ?? 0;
 
-    // Calculate average retry count
-    final totalRetries = pendingJobs.fold<int>(
-      0,
-      (sum, j) => sum + j.retryCount,
-    );
-    final avgRetries = pendingJobs.isEmpty
-        ? 0.0
-        : totalRetries / pendingJobs.length;
+    // Oldest pending job age
+    final oldestQuery = _database.selectOnly(jobs)
+      ..addColumns([jobs.createdAt.min()])
+      ..where(jobs.status.equals('pending'));
+    final oldestRow = await oldestQuery.getSingle();
+    final oldestCreatedAt = oldestRow.read(jobs.createdAt.min());
+    final oldestPendingAge =
+        oldestCreatedAt != null ? now - oldestCreatedAt : 0;
+
+    // Average retry count for pending jobs
+    final retryQuery = _database.selectOnly(jobs)
+      ..addColumns([jobs.retryCount.avg()])
+      ..where(jobs.status.equals('pending'));
+    final retryRow = await retryQuery.getSingle();
+    final avgRetries = retryRow.read(jobs.retryCount.avg()) ?? 0.0;
+
+    // Pending count by type
+    final pendingByTypeQuery = _database.selectOnly(jobs)
+      ..addColumns([jobs.type, jobs.id.count()])
+      ..where(jobs.status.equals('pending'))
+      ..groupBy([jobs.type]);
+    final pendingByTypeRows = await pendingByTypeQuery.get();
+    final pendingByType = <String, int>{
+      for (final row in pendingByTypeRows)
+        row.read(jobs.type)!: row.read(jobs.id.count()) ?? 0,
+    };
+
+    // Failed count by type
+    final failedByTypeQuery = _database.selectOnly(jobs)
+      ..addColumns([jobs.type, jobs.id.count()])
+      ..where(jobs.status.equals('failed'))
+      ..groupBy([jobs.type]);
+    final failedByTypeRows = await failedByTypeQuery.get();
+    final failedByType = <String, int>{
+      for (final row in failedByTypeRows)
+        row.read(jobs.type)!: row.read(jobs.id.count()) ?? 0,
+    };
 
     // Determine health issues
     final issues = <String>[];
-    if (pendingJobs.length > _maxHealthyPendingCount) {
-      issues.add('High pending job count: ${pendingJobs.length}');
+    if (pendingCount > _maxHealthyPendingCount) {
+      issues.add('High pending job count: $pendingCount');
     }
-    if (failedJobs.length > _maxHealthyFailedCount) {
-      issues.add('High failed job count: ${failedJobs.length}');
+    if (failedCount > _maxHealthyFailedCount) {
+      issues.add('High failed job count: $failedCount');
     }
     if (stuckJobs > 0) {
       issues.add('Stuck jobs detected: $stuckJobs');
@@ -454,8 +484,8 @@ class PendingJobRepository {
     }
 
     return JobQueueHealth(
-      pendingCount: pendingJobs.length,
-      failedCount: failedJobs.length,
+      pendingCount: pendingCount,
+      failedCount: failedCount,
       stuckCount: stuckJobs,
       oldestPendingAgeMs: oldestPendingAge,
       pendingByType: pendingByType,

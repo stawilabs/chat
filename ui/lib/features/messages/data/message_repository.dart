@@ -232,6 +232,9 @@ class MessageRepository {
     required String upToEventId,
     String? excludingSenderId,
   }) async {
+    // NOTE: The lexicographic comparison on event IDs below assumes XID format
+    // (time-sortable, lexicographically ordered). If the ID format changes,
+    // this ordering logic must be revisited.
     final query = _database.selectOnly(_database.roomEvents)
       ..addColumns([_database.roomEvents.id])
       ..where(_database.roomEvents.roomId.equals(roomId))

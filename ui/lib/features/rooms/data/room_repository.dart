@@ -218,6 +218,10 @@ class RoomRepository {
     // Atomic compare-and-swap: only update if eventId is greater than the
     // current value. Avoids TOCTOU race when stream and history sync both
     // call this concurrently for the same room.
+    //
+    // NOTE: The lexicographic string comparison (last_event_id < ?) assumes
+    // XID format (time-sortable, lexicographically ordered). If the ID format
+    // changes, this ordering logic must be revisited.
     await _database.customStatement(
       'UPDATE rooms SET last_event_id = ? '
       'WHERE id = ? AND (last_event_id IS NULL OR last_event_id < ?)',

@@ -95,7 +95,17 @@ class AuthenticatedHttpClient {
   }
 }
 
-/// Factory for creating authenticated transports for different services
+/// Factory for creating transports for different services.
+///
+/// WARNING: This class does NOT attach auth interceptors to transports.
+/// Requests made through these transports will not include OAuth2 Bearer
+/// tokens. Use the Riverpod provider-based clients (e.g.,
+/// `chatClientProvider`, `gatewayClientProvider`) instead, which handle
+/// authentication automatically.
+@Deprecated(
+  'TransportFactory does not attach auth interceptors. '
+  'Use Riverpod provider-based clients instead.',
+)
 class TransportFactory {
   TransportFactory(this._tokenProvider);
   final TokenProvider _tokenProvider;

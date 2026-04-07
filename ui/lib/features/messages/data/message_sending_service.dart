@@ -457,9 +457,20 @@ class MessageSendingService {
       // Mark as failed
       AppLogger.error('Media upload failed', error: e, stackTrace: stackTrace);
 
-      final failedEvent = event.copyWith(
+      // Fetch the current DB state by localId to avoid overwriting a
+      // server-assigned ID that may have arrived via echo while we were
+      // uploading.
+      final current = await _messageRepo.getEventByLocalId(localId);
+      final base = current ?? event;
+
+      // Strip the 'uploading' flag and add the error to the content.
+      final failedContent = Map<String, dynamic>.from(base.content)
+        ..remove('uploading')
+        ..['error'] = e.toString();
+
+      final failedEvent = base.copyWith(
         status: domain.EventStatus.failed,
-        content: {...content, 'error': e.toString()},
+        content: failedContent,
       );
       await _messageRepo.insertMessage(failedEvent);
       return failedEvent;

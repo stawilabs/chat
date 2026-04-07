@@ -648,89 +648,83 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     AsyncValue<List<RoomWithLastMessage>> filteredRoomsAsync,
     RoomSearchState searchState, {
     required bool isMobile,
-  }) => Column(
-    children: [
-      Expanded(
-        child: roomsAsync.when(
-          data: (allRooms) {
-            // Get filtered rooms
-            final filteredRooms = filteredRoomsAsync.value ?? allRooms;
+  }) => roomsAsync.when(
+    data: (allRooms) {
+      // Get filtered rooms
+      final filteredRooms = filteredRoomsAsync.value ?? allRooms;
 
-            // Show empty state when no rooms exist
-            if (allRooms.isEmpty) {
-              return EmptyState(
-                icon: Icons.chat_bubble_outline,
-                title: 'No conversations yet',
-                message: 'Start a new conversation to begin chatting',
-                actionLabel: 'New Chat',
-                onAction: _navigateToNewChat,
-              );
-            }
+      // Show empty state when no rooms exist
+      if (allRooms.isEmpty) {
+        return EmptyState(
+          icon: Icons.chat_bubble_outline,
+          title: 'No conversations yet',
+          message: 'Start a new conversation to begin chatting',
+          actionLabel: 'New Chat',
+          onAction: _navigateToNewChat,
+        );
+      }
 
-            // Show search empty state when filtering returns no results
-            if (filteredRooms.isEmpty && searchState.isFiltering) {
-              return SearchEmptyState(
-                searchState: searchState,
-                onClearSearch: _clearSearch,
-              );
-            }
+      // Show search empty state when filtering returns no results
+      if (filteredRooms.isEmpty && searchState.isFiltering) {
+        return SearchEmptyState(
+          searchState: searchState,
+          onClearSearch: _clearSearch,
+        );
+      }
 
-            return ListView.builder(
-              itemCount: filteredRooms.length,
-              itemBuilder: (context, index) {
-                final room = filteredRooms[index];
-                final isSelected = !isMobile && room.id == _selectedRoomId;
+      return ListView.builder(
+        itemCount: filteredRooms.length,
+        itemBuilder: (context, index) {
+          final room = filteredRooms[index];
+          final isSelected = !isMobile && room.id == _selectedRoomId;
 
-                return Container(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.surfaceContainerHighest
-                      : null,
-                  child: RoomListTile(
-                    room: room,
-                    onTap: () {
-                      if (isMobile) {
-                        // Navigate to chat screen
-                        context.go(
-                          '/chat/${room.id}?name=${Uri.encodeComponent(room.name)}',
-                        );
-                      } else {
-                        // Update selected room for tablet/desktop
-                        setState(() {
-                          _selectedRoomId = room.id;
-                          _selectedRoomName = room.name;
-                        });
-                      }
-                    },
-                  ),
-                );
+          return Container(
+            color: isSelected
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : null,
+            child: RoomListTile(
+              room: room,
+              onTap: () {
+                if (isMobile) {
+                  // Navigate to chat screen
+                  context.go(
+                    '/chat/${room.id}?name=${Uri.encodeComponent(room.name)}',
+                  );
+                } else {
+                  // Update selected room for tablet/desktop
+                  setState(() {
+                    _selectedRoomId = room.id;
+                    _selectedRoomName = room.name;
+                  });
+                }
               },
-            );
-          },
-          loading: () => ListView.builder(
-            itemCount: 10,
-            itemBuilder: (context, index) => const RoomListSkeleton(),
-          ),
-          error: (error, stack) {
-            final appError = AppError.fromException(error, stack);
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ErrorBanner(
-                    error: appError,
-                    onRetry: () => ref.refresh(roomListWithMessagesProvider),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load rooms',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-            );
-          },
+            ),
+          );
+        },
+      );
+    },
+    loading: () => ListView.builder(
+      itemCount: 10,
+      itemBuilder: (context, index) => const RoomListSkeleton(),
+    ),
+    error: (error, stack) {
+      final appError = AppError.fromException(error, stack);
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ErrorBanner(
+              error: appError,
+              onRetry: () => ref.refresh(roomListWithMessagesProvider),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load rooms',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
         ),
-      ),
-    ],
+      );
+    },
   );
 }
