@@ -113,7 +113,7 @@ import (
 
 const (
 	// connection management constants.
-	errorChannelBufferSize = 2    // Buffer for inbound/outbound workers
+	errorChannelBufferSize = 4    // Buffer for inbound + outbound workers + panic recovery
 	millisecondsMultiplier = 1000 // For converting seconds to milliseconds
 	cacheTTLMultiplier     = 2
 
@@ -208,7 +208,7 @@ var (
 	// created and destroyed. Channels are drained before being returned to the pool.
 	errorChanPool = sync.Pool{
 		New: func() any {
-			return make(chan error, errorChannelBufferSize) // Buffer of 2 for inbound/outbound workers
+			return make(chan error, errorChannelBufferSize)
 		},
 	}
 
@@ -397,9 +397,8 @@ func NewConnectionManager(
 	options ConnectionManagerOptions,
 ) ConnectionManager {
 	options = options.withDefaults()
-	// Generate a unique gateway instance ID using nanosecond timestamp
-	// Format: "gateway-<nanoseconds>" - unique across restarts
-	gatewayID := fmt.Sprintf("gateway-%d", time.Now().UnixNano())
+	// Generate a globally unique gateway instance ID.
+	gatewayID := fmt.Sprintf("gateway-%s", util.IDString())
 
 	// Calculate optimal pool size based on expected device count
 	// Formula: maxConnectionsPerDevice * expected_devices
@@ -475,7 +474,7 @@ func (cm *connectionManager) startBackgroundTasks(ctx context.Context) {
 	// Bounded presence update worker pool
 	for range presenceWorkerCount {
 		cm.wg.Add(1)
-		go cm.presenceWorker(ctx)
+		go cm.presenceWorker()
 	}
 }
 
@@ -521,7 +520,7 @@ func (cm *connectionManager) startBackgroundTasks(ctx context.Context) {
 //	    log.Error("connection failed", "error", err)
 //	}
 //
-//nolint:funlen,gocognit,nestif // connection lifecycle management requires coordination of multiple goroutines and cleanup
+//nolint:funlen,gocognit // connection lifecycle management requires coordination of multiple goroutines and cleanup
 func (cm *connectionManager) HandleConnection(
 	ctx context.Context,
 	profileID string,
@@ -583,32 +582,22 @@ func (cm *connectionManager) HandleConnection(
 	// Note: Outbound delivery handled by default service's queue system
 	conn := NewConnection(stream, metadata, cm.connectionOpts)
 
-	if existing := cm.connPool.remove(metadata.Key()); existing != nil {
-		existing.Close()
+	// Atomic swap: insert new connection and retrieve old one under the same shard
+	// lock. This prevents a TOCTOU window where messages could be lost between
+	// remove and add if a delivery handler checks between those two operations.
+	old, swapErr := cm.connPool.swap(conn)
+	if swapErr != nil {
+		atomic.AddUint64(&cm.failedConns, 1)
+		return swapErr
+	}
+	if old != nil {
+		old.Close()
 		atomic.AddUint64(&cm.replacedConns, 1)
 		util.Log(connCtx).WithFields(map[string]any{
 			"profile_id": profileID,
 			"device_id":  deviceID,
 			"gateway_id": cm.gatewayID,
 		}).Warn("replacing existing local connection for device")
-	}
-
-	// Add to pool first for tracking
-	addErr := cm.connPool.add(conn)
-	if addErr != nil {
-		if errors.Is(addErr, ErrConnectionExists) {
-			if existing := cm.connPool.remove(metadata.Key()); existing != nil {
-				existing.Close()
-				atomic.AddUint64(&cm.replacedConns, 1)
-			}
-			if retryErr := cm.connPool.add(conn); retryErr != nil {
-				atomic.AddUint64(&cm.failedConns, 1)
-				return retryErr
-			}
-		} else {
-			atomic.AddUint64(&cm.failedConns, 1)
-			return addErr
-		}
 	}
 
 	persistErr := cm.persistMetadata(connCtx, metadata)
@@ -1241,7 +1230,7 @@ func (cm *connectionManager) updatePresence(
 }
 
 // presenceWorker drains the presence channel and sends updates to the device service.
-func (cm *connectionManager) presenceWorker(_ context.Context) {
+func (cm *connectionManager) presenceWorker() {
 	defer cm.wg.Done()
 
 	for {

@@ -138,7 +138,7 @@ func runService(ctx context.Context) error {
 			events.NewSubscriptionAddQueue(ctx, dbPool, workMan, eventsMan),
 			events.NewSubscriptionAuthorizeQueue(ctx, dbPool, workMan, eventsMan, authzMiddleware),
 			events.NewRoomOutboxLoggingQueue(ctx, dbPool, workMan, eventsMan),
-			events.NewFanoutEventHandler(ctx, &cfg, dbPool, workMan, queueMan),
+			events.NewFanoutEventHandler(ctx, &cfg, dbPool, workMan, queueMan, eventsMan),
 		))
 
 	// Initialize the service with all options

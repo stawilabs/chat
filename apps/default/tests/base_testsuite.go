@@ -175,7 +175,7 @@ func (bs *BaseTestSuite) CreateService(
 			events.NewSubscriptionAddQueue(ctx, dbPool, workMan, eventsMan),
 			events.NewSubscriptionAuthorizeQueue(ctx, dbPool, workMan, eventsMan, authzMw),
 			events.NewRoomOutboxLoggingQueue(ctx, dbPool, workMan, eventsMan),
-			events.NewFanoutEventHandler(ctx, &cfg, dbPool, workMan, queueMan),
+			events.NewFanoutEventHandler(ctx, &cfg, dbPool, workMan, queueMan, eventsMan),
 		),
 	}
 

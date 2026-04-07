@@ -34,7 +34,8 @@ func (s *FanoutEventHandlerTestSuite) createHandler(
 	workMan := svc.WorkManager()
 	queueMan := svc.QueueManager()
 	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
-	return events.NewFanoutEventHandler(ctx, cfg, dbPool, workMan, queueMan)
+	eventsMan := svc.EventsManager()
+	return events.NewFanoutEventHandler(ctx, cfg, dbPool, workMan, queueMan, eventsMan)
 }
 
 func (s *FanoutEventHandlerTestSuite) TestName() {

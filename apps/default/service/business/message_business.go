@@ -399,15 +399,15 @@ func (mb *messageBusiness) emitOrAckEvent(
 
 	emitErr := mb.eventsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &outboxEventLink)
 	if emitErr != nil {
-		// Emit failed - delete the orphaned event so client can retry cleanly
-		if delErr := mb.eventRepo.Delete(ctx, event.GetID()); delErr != nil {
-			util.Log(ctx).WithError(delErr).
-				WithField("event_id", event.GetID()).
-				Warn("failed to clean up orphaned event after emit failure")
-		}
+		// Keep the event in the DB rather than deleting it — the client's retry
+		// will be deduplicated by ExistsByIDs so no duplicates are created.
+		// Deleting risks an orphaned event if the delete itself fails.
+		util.Log(ctx).WithError(emitErr).
+			WithField("event_id", event.GetID()).
+			Warn("event saved but emit failed; client should retry")
 		return ackEventError(event.GetID(), connect.NewError(
-			connect.CodeInternal,
-			fmt.Errorf("failed to emit event: %w", emitErr),
+			connect.CodeUnavailable,
+			fmt.Errorf("event saved but delivery pending, retry later: %w", emitErr),
 		))
 	}
 

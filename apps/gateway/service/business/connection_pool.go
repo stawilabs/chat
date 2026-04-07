@@ -78,9 +78,9 @@ func (p *connectionPool) add(conn Connection) error {
 	shard := p.getShard(key)
 
 	shard.mu.Lock()
-	// Check capacity inside the lock to prevent races where multiple
-	// goroutines pass the fast-path and all increment past maxSize.
-	if atomic.LoadInt32(&p.currentSize) >= p.maxSize {
+	// Capacity check is inside the shard lock so concurrent goroutines
+	// cannot both pass and both increment past maxSize.
+	if p.currentSize >= p.maxSize {
 		shard.mu.Unlock()
 		return ErrConnectionPoolFull
 	}
@@ -92,6 +92,30 @@ func (p *connectionPool) add(conn Connection) error {
 	atomic.AddInt32(&p.currentSize, 1)
 	shard.mu.Unlock()
 	return nil
+}
+
+// swap atomically replaces an existing connection under the same key.
+// If no existing connection exists, the new one is simply added.
+// Returns the old connection (if any) for the caller to close.
+// Thread-safe: Holds shard write lock for the entire swap.
+func (p *connectionPool) swap(conn Connection) (Connection, error) {
+	key := conn.Metadata().Key()
+	shard := p.getShard(key)
+
+	shard.mu.Lock()
+	old, existed := shard.connections[key]
+	if !existed {
+		// No existing connection — check capacity before inserting.
+		if p.currentSize >= p.maxSize {
+			shard.mu.Unlock()
+			return nil, ErrConnectionPoolFull
+		}
+		atomic.AddInt32(&p.currentSize, 1)
+	}
+	shard.connections[key] = conn
+	shard.mu.Unlock()
+
+	return old, nil
 }
 
 // get retrieves a connection from the pool.

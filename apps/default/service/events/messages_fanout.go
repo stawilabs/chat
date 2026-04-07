@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
@@ -14,6 +13,7 @@ import (
 	chattel "github.com/antinvestor/service-chat/internal/telemetry"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/datastore/pool"
+	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
@@ -24,6 +24,7 @@ const RoomFanoutEventName = "room.message.fanout.event"
 type FanoutEventHandler struct {
 	cfg              *config.ChatConfig
 	eventRepo        repository.RoomEventRepository
+	evtsManager      frevents.Manager
 	queueMan         queue.Manager
 	deliveryTopic    queue.Publisher
 	deliveryTopicErr error
@@ -37,10 +38,12 @@ func NewFanoutEventHandler(
 	dbPool pool.Pool,
 	workMan workerpool.Manager,
 	queueMan queue.Manager,
+	evtsManager frevents.Manager,
 ) *FanoutEventHandler {
 	return &FanoutEventHandler{
 		cfg:              cfg,
 		queueMan:         queueMan,
+		evtsManager:      evtsManager,
 		eventRepo:        repository.NewRoomEventRepository(ctx, dbPool, workMan),
 		payloadConverter: models.NewPayloadConverter(),
 	}
@@ -122,9 +125,10 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 		return err
 	}
 
-	// Publish all deliveries and retry the whole fanout when any target fails.
-	var failCount int
-	var publishErrs []error
+	// Publish deliveries individually. On partial failure, re-emit a Broadcast
+	// containing only the failed destinations instead of retrying all destinations
+	// (which would cause duplicate delivery to already-succeeded recipients).
+	var failedDestinations []*eventsv1.Subscription
 	for _, destination := range destinations {
 		eventDelivery := &eventsv1.Delivery{
 			Event:        eventLink,
@@ -135,37 +139,32 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 		}
 
 		if pubErr := deliveryTopic.Publish(ctx, eventDelivery); pubErr != nil {
-			failCount++
-			publishErrs = append(publishErrs, pubErr)
+			failedDestinations = append(failedDestinations, destination)
 			logger.WithError(pubErr).
 				WithField("subscription_id", destination.GetSubscriptionId()).
 				Warn("failed to publish delivery")
 		}
 	}
 
-	successCount := int64(len(destinations)) - int64(failCount)
+	successCount := int64(len(destinations)) - int64(len(failedDestinations))
 	if successCount > 0 {
 		chattel.EventFanoutCounter.Add(ctx, successCount)
 		logger.WithField("success_count", successCount).Debug("Fanout delivery complete")
 	}
-	if failCount > 0 {
-		chattel.MessagesFailedCounter.Add(ctx, int64(failCount))
-		logger.WithField("fail_count", failCount).Warn("some deliveries failed")
-		return fmt.Errorf("failed to publish %d/%d deliveries: %w",
-			failCount, len(destinations), errors.Join(publishErrs...))
+	if len(failedDestinations) > 0 {
+		chattel.MessagesFailedCounter.Add(ctx, int64(len(failedDestinations)))
+		logger.WithField("fail_count", len(failedDestinations)).
+			Warn("some deliveries failed, re-emitting partial broadcast")
+
+		// Re-emit a partial Broadcast with only the failed destinations.
+		partialBroadcast := &eventsv1.Broadcast{
+			Event:        eventLink,
+			Destinations: failedDestinations,
+			Priority:     broadcast.GetPriority(),
+			Payload:      eventPayload,
+		}
+		return feh.evtsManager.Emit(ctx, RoomFanoutEventName, partialBroadcast)
 	}
 
 	return nil
-}
-
-func isEphemeralRoomEvent(eventType chatv1.RoomEventType) bool {
-	//nolint:exhaustive // Only the explicitly ephemeral room event types should return true.
-	switch eventType {
-	case chatv1.RoomEventType_ROOM_EVENT_TYPE_TYPING,
-		chatv1.RoomEventType_ROOM_EVENT_TYPE_DELIVERED,
-		chatv1.RoomEventType_ROOM_EVENT_TYPE_READ:
-		return true
-	default:
-		return false
-	}
 }

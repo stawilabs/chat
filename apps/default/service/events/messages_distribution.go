@@ -16,6 +16,7 @@ import (
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -71,7 +72,7 @@ func (csq *RoomOutboxLoggingQueue) Validate(_ context.Context, payload any) erro
 	return nil
 }
 
-//nolint:nonamedreturns,gocognit // named return for tracing; sequential batch/continue/emit phases.
+//nolint:nonamedreturns,gocognit,funlen // named return for tracing; sequential batch/continue/emit phases.
 func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (err error) {
 	ctx, span := chattel.EventTracer.Start(ctx, "OutboxLogging")
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
@@ -169,11 +170,15 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 		}
 
 		nextCursor := subscriptions[len(subscriptions)-1].GetID()
-		evtLink.SetCursor(&commonv1.PageCursor{
+		// Clone before mutation to avoid corrupting the Broadcast's shared reference.
+		cloned := proto.Clone(evtLink)
+
+		nextLink, _ := cloned.(*eventsv1.Link)
+		nextLink.SetCursor(&commonv1.PageCursor{
 			Limit: depth,
 			Page:  nextCursor,
 		})
-		if err = csq.evtsManager.Emit(ctx, RoomOutboxLoggingEventName, evtLink); err != nil {
+		if err = csq.evtsManager.Emit(ctx, RoomOutboxLoggingEventName, nextLink); err != nil {
 			logger.WithError(err).Error("failed to emit next batch job")
 			return err
 		}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"time"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
@@ -16,9 +15,7 @@ import (
 
 const (
 	// dlqExtraHeaders is the number of DLQ-specific headers added to the original headers.
-	dlqExtraHeaders  = 2
-	retryBackoffBase = 200 * time.Millisecond
-	retryBackoffCap  = 5 * time.Second
+	dlqExtraHeaders = 2
 )
 
 // DeadLetterPublisher publishes failed deliveries to the dead-letter queue
@@ -93,17 +90,8 @@ func RetryOrDeadLetter(
 		return dlp.Publish(ctx, delivery, queueName, originalErr.Error(), headers)
 	}
 
-	backoff := retryDelay(delivery.GetRetryCount())
-	timer := time.NewTimer(backoff)
-	defer timer.Stop()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-	}
-
-	// Republish to the same queue for retry
+	// Republish immediately — do not sleep inside the queue handler goroutine
+	// as that blocks all message processing for the consumer.
 	topic, err := qMan.GetPublisher(queueName)
 	if err != nil {
 		util.Log(ctx).WithError(err).WithField("queue_name", queueName).
@@ -120,25 +108,8 @@ func RetryOrDeadLetter(
 	chattel.DeliveryQueueRetriedCounter.Add(ctx, 1)
 	util.Log(ctx).WithFields(map[string]any{
 		"retry_count": delivery.GetRetryCount(),
-		"backoff":     backoff.String(),
 		"queue_name":  queueName,
 	}).
 		Debug("delivery republished for retry")
 	return nil
-}
-
-func retryDelay(retryCount int32) time.Duration {
-	if retryCount <= 0 {
-		return retryBackoffBase
-	}
-
-	backoff := retryBackoffBase
-	for range retryCount {
-		backoff *= 2
-		if backoff >= retryBackoffCap {
-			return retryBackoffCap
-		}
-	}
-
-	return backoff
 }
