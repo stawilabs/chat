@@ -727,8 +727,13 @@ class AuthService {
     }
   }
 
-  /// Logout and clear all stored tokens
+  /// Logout and clear all stored tokens.
+  /// Cancels any in-flight token refresh to prevent re-authentication after logout.
   Future<void> logout() async {
+    if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
+      _refreshCompleter!.completeError(StateError('Logout initiated'));
+      _refreshCompleter = null;
+    }
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
     await _storage.delete(key: 'id_token');

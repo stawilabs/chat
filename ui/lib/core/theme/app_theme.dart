@@ -67,8 +67,9 @@ class AppTheme {
   static const double elementGap = 8;
   static const double minTouchTarget = 48;
 
-  // Light Theme
-  static ThemeData get lightTheme => ThemeData(
+  // Light Theme — cached as static final to avoid reconstructing ThemeData
+  // (including ColorScheme.fromSeed) on every access.
+  static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: ColorScheme.fromSeed(seedColor: primaryGreen),
@@ -149,8 +150,8 @@ class AppTheme {
     highlightColor: Colors.transparent,
   );
 
-  // Dark Theme
-  static ThemeData get darkTheme => ThemeData(
+  // Dark Theme — cached as static final (same rationale as lightTheme).
+  static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(

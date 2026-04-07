@@ -72,82 +72,83 @@ class MessageBubble extends ConsumerWidget {
       return _buildDeletedMessage(context, isDark);
     }
 
-    return RepaintBoundary(
+    // RepaintBoundary is provided by the outer _OptimizedMessageItem in
+    // VirtualizedMessageList — adding a second one here would double
+    // GPU memory usage per message.
+    return MessageSwipeWrapper(
       key: ValueKey(message.id),
-      child: MessageSwipeWrapper(
-        messageId: message.id,
-        onSwipeReply: onReply != null
-            ? () => onReply!.call(message.id, text)
-            : null,
-        child: GestureDetector(
-          onLongPress: () => MessageActionMenu.show(
-            context,
-            message: message,
-            isMe: isMe,
-            text: text,
-            onReply: onReply,
-            onEdit: onEdit,
-            canEdit: canEdit,
-            onDelete: onDelete,
-            canDelete: canDelete,
-            onForward: onForward,
-            canForward: canForward,
-          ),
-          child: MessageBubbleContainer(
-            isMe: isMe,
-            removeTail: removeTail,
-            shouldGroupWithPrevious: shouldGroupWithPrevious,
-            isGroupChat: isGroupChat,
-            senderId: message.senderId,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Sender name (groups, received only, not grouped)
-                if (!isMe && isGroupChat && !shouldGroupWithPrevious)
-                  MessageSenderName(senderId: message.senderId),
+      messageId: message.id,
+      onSwipeReply: onReply != null
+          ? () => onReply!.call(message.id, text)
+          : null,
+      child: GestureDetector(
+        onLongPress: () => MessageActionMenu.show(
+          context,
+          message: message,
+          isMe: isMe,
+          text: text,
+          onReply: onReply,
+          onEdit: onEdit,
+          canEdit: canEdit,
+          onDelete: onDelete,
+          canDelete: canDelete,
+          onForward: onForward,
+          canForward: canForward,
+        ),
+        child: MessageBubbleContainer(
+          isMe: isMe,
+          removeTail: removeTail,
+          shouldGroupWithPrevious: shouldGroupWithPrevious,
+          isGroupChat: isGroupChat,
+          senderId: message.senderId,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sender name (groups, received only, not grouped)
+              if (!isMe && isGroupChat && !shouldGroupWithPrevious)
+                MessageSenderName(senderId: message.senderId),
 
-                // Forwarded label
-                if (message.isForwarded) MessageForwardedLabel(isMe: isMe),
+              // Forwarded label
+              if (message.isForwarded) MessageForwardedLabel(isMe: isMe),
 
-                // Reply preview
-                if (message.parentId != null)
-                  MessageReplyPreview(parentId: message.parentId!, isMe: isMe),
+              // Reply preview
+              if (message.parentId != null)
+                MessageReplyPreview(parentId: message.parentId!, isMe: isMe),
 
-                // Content + inline timestamp
-                Stack(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        12,
-                        _hasHeaderAbove ? 0 : 8,
-                        12,
-                        6,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildContent(context, ref),
-                          const SizedBox(height: 16), // Space for timestamp
-                        ],
-                      ),
+              // Content + inline timestamp
+              Stack(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      12,
+                      _hasHeaderAbove ? 0 : 8,
+                      12,
+                      6,
                     ),
-                    Positioned(
-                      bottom: 4,
-                      right: 8,
-                      child: MessageTimestampRow(
-                        message: message,
-                        isMe: isMe,
-                        isGroupChat: isGroupChat,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildContent(context, ref),
+                        const SizedBox(height: 16), // Space for timestamp
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    right: 8,
+                    child: MessageTimestampRow(
+                      message: message,
+                      isMe: isMe,
+                      isGroupChat: isGroupChat,
+                    ),
+                  ),
+                ],
+              ),
 
-                // Retry button for failed messages
-                if (isMe && message.status == EventStatus.failed)
-                  _buildRetryButton(context),
-              ],
-            ),
+              // Retry button for failed messages
+              if (isMe && message.status == EventStatus.failed)
+                _buildRetryButton(context),
+            ],
           ),
         ),
       ),

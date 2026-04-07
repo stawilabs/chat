@@ -155,6 +155,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _readReceiptDebounce?.cancel();
 
     _readReceiptDebounce = Timer(const Duration(milliseconds: 500), () async {
+      if (!mounted) return;
       try {
         // Get current user's subscription ID for this room
         final currentSubscriptionIdAsync = ref.read(

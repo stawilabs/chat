@@ -47,6 +47,7 @@ class _InputBarState extends ConsumerState<InputBar>
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   Timer? _typingDebounce;
+  bool _lastHasText = false;
   bool _isVoiceRecording = false;
   int _recordingDuration = 0;
   Timer? _recordingTimer;
@@ -99,7 +100,12 @@ class _InputBarState extends ConsumerState<InputBar>
       ref.read(typingProvider(widget.roomId).notifier).sendTyping(false);
     });
 
-    setState(() {});
+    // Only rebuild when the empty/non-empty state actually changes
+    // (to toggle camera vs send button), not on every keystroke.
+    if (hasText != _lastHasText) {
+      _lastHasText = hasText;
+      setState(() {});
+    }
   }
 
   void _sendMessage() {
