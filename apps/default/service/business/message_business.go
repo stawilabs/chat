@@ -292,6 +292,10 @@ func (mb *messageBusiness) prepareEventForInsert(
 		}
 	}
 
+	if formErr := mb.prepareFormPayload(ctx, reqEvt, roomID, subscriptionID); formErr != nil {
+		return nil, ackEventError(reqEvt.GetId(), formErr)
+	}
+
 	content, convertErr := mb.payloadConverter.FromProto(reqEvt.GetPayload())
 	if convertErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), connect.NewError(

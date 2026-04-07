@@ -37,6 +37,10 @@ class ChatEventCodec {
         return pb.RoomEventType.ROOM_EVENT_TYPE_CALL;
       case domain.RoomEventType.motion:
         return pb.RoomEventType.ROOM_EVENT_TYPE_MOTION;
+      case domain.RoomEventType.formRequest:
+        return pb.RoomEventType.ROOM_EVENT_TYPE_FORM_REQUEST;
+      case domain.RoomEventType.formSubmissionResult:
+        return pb.RoomEventType.ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT;
       case domain.RoomEventType.vote:
       case domain.RoomEventType.transaction:
       case domain.RoomEventType.groupConfig:
@@ -53,6 +57,7 @@ class ChatEventCodec {
     final payload = pb.Payload();
 
     if (content['encrypted'] == true && content['ciphertext'] != null) {
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_ENCRYPTED;
       payload.encrypted = pb.EncryptedContent(
         algorithm: content['algorithm'] as String? ?? 'megolm.v1',
         ciphertext: base64Decode(content['ciphertext'] as String),
@@ -64,6 +69,7 @@ class ChatEventCodec {
 
     if (localType == domain.RoomEventType.text ||
         localType == domain.RoomEventType.roomKey) {
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_TEXT;
       payload.text = pb.TextContent(
         body: content['text'] as String? ?? '',
         format: 'plain',
@@ -80,6 +86,7 @@ class ChatEventCodec {
         throw StateError('Missing attachmentId for media message');
       }
 
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_ATTACHMENT;
       payload.attachment = pb.AttachmentContent(
         attachmentId: attachmentId,
         filename: content['fileName'] as String? ?? '',
@@ -91,11 +98,27 @@ class ChatEventCodec {
 
     final callPayload = _buildCallPayload(content, localType);
     if (callPayload != null) {
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_CALL;
       payload.call = callPayload;
       return payload;
     }
 
+    if (localType == domain.RoomEventType.formRequest) {
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_FORM_REQUEST;
+      payload.formRequest = pb.FormRequestContent.fromJson(jsonEncode(content));
+      return payload;
+    }
+
+    if (localType == domain.RoomEventType.formSubmissionResult) {
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_FORM_SUBMISSION_RESULT;
+      payload.formSubmissionResult = pb.FormSubmissionResultContent.fromJson(
+        jsonEncode(content),
+      );
+      return payload;
+    }
+
     if (content.isNotEmpty) {
+      payload.type = pb.PayloadType.PAYLOAD_TYPE_TEXT;
       payload.text = pb.TextContent(body: jsonEncode(content), format: 'json');
     }
 

@@ -730,6 +730,7 @@ const FormStep$json = {
     {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
     {'1': 'sections', '3': 4, '4': 3, '5': 11, '6': '.chat.v1.FormSection', '10': 'sections'},
     {'1': 'ui_hints', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'uiHints'},
+    {'1': 'visibility_condition', '3': 6, '4': 1, '5': 11, '6': '.chat.v1.FormConditionGroup', '10': 'visibilityCondition'},
   ],
 };
 
@@ -738,7 +739,8 @@ final $typed_data.Uint8List formStepDescriptor = $convert.base64Decode(
     'CghGb3JtU3RlcBIOCgJpZBgBIAEoCVICaWQSFAoFdGl0bGUYAiABKAlSBXRpdGxlEiAKC2Rlc2'
     'NyaXB0aW9uGAMgASgJUgtkZXNjcmlwdGlvbhIwCghzZWN0aW9ucxgEIAMoCzIULmNoYXQudjEu'
     'Rm9ybVNlY3Rpb25SCHNlY3Rpb25zEjIKCHVpX2hpbnRzGAUgASgLMhcuZ29vZ2xlLnByb3RvYn'
-    'VmLlN0cnVjdFIHdWlIaW50cw==');
+    'VmLlN0cnVjdFIHdWlIaW50cxJOChR2aXNpYmlsaXR5X2NvbmRpdGlvbhgGIAEoCzIbLmNoYXQu'
+    'djEuRm9ybUNvbmRpdGlvbkdyb3VwUhN2aXNpYmlsaXR5Q29uZGl0aW9u');
 
 @$core.Deprecated('Use formSchemaDescriptor instead')
 const FormSchema$json = {
@@ -772,6 +774,7 @@ const FormPermissions$json = {
     {'1': 'can_submit', '3': 2, '4': 1, '5': 8, '10': 'canSubmit'},
     {'1': 'can_save_draft', '3': 3, '4': 1, '5': 8, '10': 'canSaveDraft'},
     {'1': 'can_go_back', '3': 4, '4': 1, '5': 8, '10': 'canGoBack'},
+    {'1': 'assignee_subscription_id', '3': 5, '4': 1, '5': 9, '10': 'assigneeSubscriptionId'},
   ],
 };
 
@@ -779,7 +782,8 @@ const FormPermissions$json = {
 final $typed_data.Uint8List formPermissionsDescriptor = $convert.base64Decode(
     'Cg9Gb3JtUGVybWlzc2lvbnMSGQoIY2FuX2VkaXQYASABKAhSB2NhbkVkaXQSHQoKY2FuX3N1Ym'
     '1pdBgCIAEoCFIJY2FuU3VibWl0EiQKDmNhbl9zYXZlX2RyYWZ0GAMgASgIUgxjYW5TYXZlRHJh'
-    'ZnQSHgoLY2FuX2dvX2JhY2sYBCABKAhSCWNhbkdvQmFjaw==');
+    'ZnQSHgoLY2FuX2dvX2JhY2sYBCABKAhSCWNhbkdvQmFjaxI4Chhhc3NpZ25lZV9zdWJzY3JpcH'
+    'Rpb25faWQYBSABKAlSFmFzc2lnbmVlU3Vic2NyaXB0aW9uSWQ=');
 
 @$core.Deprecated('Use formReviewItemDescriptor instead')
 const FormReviewItem$json = {

@@ -458,6 +458,36 @@ class Drafts extends Table {
   Set<Column> get primaryKey => {roomId};
 }
 
+/// Draft state for schema-driven form messages inside chat.
+///
+/// Stores in-progress answers, the current step, and whether the user had
+/// reached the review screen so the experience can recover after restarts.
+class FormMessageDrafts extends Table {
+  /// The originating chat event that owns this form instance.
+  TextColumn get eventId => text()();
+
+  /// Room that the form message belongs to.
+  TextColumn get roomId => text()();
+
+  /// Backend-issued form instance identifier.
+  TextColumn get formInstanceId => text()();
+
+  /// JSON-encoded draft answer map.
+  TextColumn get answersJson => text()();
+
+  /// Current zero-based step index in the form flow.
+  IntColumn get currentStep => integer().withDefault(const Constant(0))();
+
+  /// Current view mode: editing or review.
+  TextColumn get mode => text().withDefault(const Constant('editing'))();
+
+  /// Last update timestamp in milliseconds since epoch.
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {eventId};
+}
+
 /// Read receipts for tracking who has read messages in group chats
 ///
 /// Stores individual read events for messages, allowing the UI to
@@ -876,6 +906,7 @@ class CallHistory extends Table {
     SyncMetadata,
     UserSettings,
     Drafts,
+    FormMessageDrafts,
     ReadReceipts,
     Reports,
     InviteLinks,

@@ -1078,6 +1078,10 @@ class SyncEngine with WidgetsBindingObserver {
           'targetSubscriptionIds': moderation.targetSubscriptionIds.toList(),
           'isModeration': true,
         };
+      } else if (payload.hasFormRequest()) {
+        content = _messageToMap(payload.formRequest);
+      } else if (payload.hasFormSubmissionResult()) {
+        content = _messageToMap(payload.formSubmissionResult);
       }
     }
 
@@ -2407,6 +2411,10 @@ class SyncEngine with WidgetsBindingObserver {
         return domain.RoomEventType.callOffer;
       case pb.RoomEventType.ROOM_EVENT_TYPE_MOTION:
         return domain.RoomEventType.motion;
+      case pb.RoomEventType.ROOM_EVENT_TYPE_FORM_REQUEST:
+        return domain.RoomEventType.formRequest;
+      case pb.RoomEventType.ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT:
+        return domain.RoomEventType.formSubmissionResult;
       case pb.RoomEventType.ROOM_EVENT_TYPE_EVENT:
         // System event - map to a special type or text for now
         return domain
@@ -2536,6 +2544,10 @@ class SyncEngine with WidgetsBindingObserver {
         return pb.RoomEventType.ROOM_EVENT_TYPE_CALL;
       case domain.RoomEventType.motion:
         return pb.RoomEventType.ROOM_EVENT_TYPE_MOTION;
+      case domain.RoomEventType.formRequest:
+        return pb.RoomEventType.ROOM_EVENT_TYPE_FORM_REQUEST;
+      case domain.RoomEventType.formSubmissionResult:
+        return pb.RoomEventType.ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT;
       case domain.RoomEventType.vote:
       case domain.RoomEventType.transaction:
       case domain.RoomEventType.groupConfig:
@@ -2682,6 +2694,10 @@ class SyncEngine with WidgetsBindingObserver {
 
     return null;
   }
+
+  Map<String, dynamic> _messageToMap(Object message) =>
+      jsonDecode(jsonEncode((message as dynamic).toProto3Json()))
+          as Map<String, dynamic>;
 
   /// Sync room members from server if not recently synced
   ///

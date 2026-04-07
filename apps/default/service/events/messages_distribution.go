@@ -180,10 +180,10 @@ func (csq *RoomOutboxLoggingQueue) emitContinuation(
 
 	nextCursor := subscriptions[len(subscriptions)-1].GetID()
 	nextLink, _ := proto.Clone(evtLink).(*eventsv1.Link)
-	nextLink.SetCursor(&commonv1.PageCursor{
+	nextLink.Cursor = &commonv1.PageCursor{
 		Limit: depth,
 		Page:  nextCursor,
-	})
+	}
 
 	return csq.evtsManager.Emit(ctx, RoomOutboxLoggingEventName, nextLink)
 }

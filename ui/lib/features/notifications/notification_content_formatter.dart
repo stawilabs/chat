@@ -103,6 +103,10 @@ class NotificationContentFormatter {
         return 'New vote';
       case RoomEventType.transaction:
         return 'New transaction';
+      case RoomEventType.formRequest:
+        return 'New form';
+      case RoomEventType.formSubmissionResult:
+        return 'Form submitted';
       case RoomEventType.callOffer:
       case RoomEventType.callAnswer:
       case RoomEventType.callIce:
@@ -166,6 +170,18 @@ class NotificationContentFormatter {
 
         case RoomEventType.transaction:
           return (_formatTransactionMessage(event.content), null);
+
+        case RoomEventType.formRequest:
+          final schema = event.content['schema'] as Map?;
+          return (
+            event.content['title'] as String? ??
+                schema?['title'] as String? ??
+                'New form',
+            null,
+          );
+
+        case RoomEventType.formSubmissionResult:
+          return ('Form submitted', null);
 
         case RoomEventType.callOffer:
           return ('Incoming call', null);

@@ -474,6 +474,7 @@ message FormStep {
   string description = 3;
   repeated FormSection sections = 4;
   google.protobuf.Struct ui_hints = 5;
+  FormConditionGroup visibility_condition = 6;
 }
 
 message FormSchema {
@@ -492,6 +493,7 @@ message FormPermissions {
   bool can_submit = 2;
   bool can_save_draft = 3;
   bool can_go_back = 4;
+  string assignee_subscription_id = 5;
 }
 
 message FormReviewItem {

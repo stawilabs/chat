@@ -2709,6 +2709,7 @@ class FormStep extends $pb.GeneratedMessage {
     $core.String? description,
     $core.Iterable<FormSection>? sections,
     $4.Struct? uiHints,
+    FormConditionGroup? visibilityCondition,
   }) {
     final $result = create();
     if (id != null) {
@@ -2726,6 +2727,9 @@ class FormStep extends $pb.GeneratedMessage {
     if (uiHints != null) {
       $result.uiHints = uiHints;
     }
+    if (visibilityCondition != null) {
+      $result.visibilityCondition = visibilityCondition;
+    }
     return $result;
   }
   FormStep._() : super();
@@ -2738,6 +2742,7 @@ class FormStep extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'description')
     ..pc<FormSection>(4, _omitFieldNames ? '' : 'sections', $pb.PbFieldType.PM, subBuilder: FormSection.create)
     ..aOM<$4.Struct>(5, _omitFieldNames ? '' : 'uiHints', subBuilder: $4.Struct.create)
+    ..aOM<FormConditionGroup>(6, _omitFieldNames ? '' : 'visibilityCondition', subBuilder: FormConditionGroup.create)
     ..hasRequiredFields = false
   ;
 
@@ -2802,6 +2807,17 @@ class FormStep extends $pb.GeneratedMessage {
   void clearUiHints() => clearField(5);
   @$pb.TagNumber(5)
   $4.Struct ensureUiHints() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  FormConditionGroup get visibilityCondition => $_getN(5);
+  @$pb.TagNumber(6)
+  set visibilityCondition(FormConditionGroup v) { setField(6, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasVisibilityCondition() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearVisibilityCondition() => clearField(6);
+  @$pb.TagNumber(6)
+  FormConditionGroup ensureVisibilityCondition() => $_ensure(5);
 }
 
 class FormSchema extends $pb.GeneratedMessage {
@@ -2956,6 +2972,7 @@ class FormPermissions extends $pb.GeneratedMessage {
     $core.bool? canSubmit,
     $core.bool? canSaveDraft,
     $core.bool? canGoBack,
+    $core.String? assigneeSubscriptionId,
   }) {
     final $result = create();
     if (canEdit != null) {
@@ -2970,6 +2987,9 @@ class FormPermissions extends $pb.GeneratedMessage {
     if (canGoBack != null) {
       $result.canGoBack = canGoBack;
     }
+    if (assigneeSubscriptionId != null) {
+      $result.assigneeSubscriptionId = assigneeSubscriptionId;
+    }
     return $result;
   }
   FormPermissions._() : super();
@@ -2981,6 +3001,7 @@ class FormPermissions extends $pb.GeneratedMessage {
     ..aOB(2, _omitFieldNames ? '' : 'canSubmit')
     ..aOB(3, _omitFieldNames ? '' : 'canSaveDraft')
     ..aOB(4, _omitFieldNames ? '' : 'canGoBack')
+    ..aOS(5, _omitFieldNames ? '' : 'assigneeSubscriptionId')
     ..hasRequiredFields = false
   ;
 
@@ -3040,6 +3061,15 @@ class FormPermissions extends $pb.GeneratedMessage {
   $core.bool hasCanGoBack() => $_has(3);
   @$pb.TagNumber(4)
   void clearCanGoBack() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get assigneeSubscriptionId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set assigneeSubscriptionId($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasAssigneeSubscriptionId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAssigneeSubscriptionId() => clearField(5);
 }
 
 class FormReviewItem extends $pb.GeneratedMessage {

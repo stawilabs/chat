@@ -382,6 +382,49 @@ class MessageRepository {
     return results.map(_toRoomEvent).toList();
   }
 
+  Future<domain.RoomEvent?> getLatestChildEventByType(
+    String parentEventId,
+    domain.RoomEventType type,
+    {String? senderId}
+  ) async {
+    final query = _database.select(_database.roomEvents)
+      ..where(
+        (t) =>
+            t.parentId.equals(parentEventId) &
+            t.type.equals(type.storageCode),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
+      ..limit(1);
+    if (senderId != null && senderId.isNotEmpty) {
+      query.where((t) => t.senderId.equals(senderId));
+    }
+
+    final result = await query.getSingleOrNull();
+    return result == null ? null : _toRoomEvent(result);
+  }
+
+  Stream<domain.RoomEvent?> watchLatestChildEventByType(
+    String parentEventId,
+    domain.RoomEventType type,
+    {String? senderId}
+  ) {
+    final query = _database.select(_database.roomEvents)
+      ..where(
+        (t) =>
+            t.parentId.equals(parentEventId) &
+            t.type.equals(type.storageCode),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
+      ..limit(1);
+    if (senderId != null && senderId.isNotEmpty) {
+      query.where((t) => t.senderId.equals(senderId));
+    }
+
+    return query.watchSingleOrNull().map(
+      (row) => row == null ? null : _toRoomEvent(row),
+    );
+  }
+
   /// Delete a message for everyone (marks as redacted)
   ///
   /// Sets the redacted flag and timestamp. The message content

@@ -504,6 +504,9 @@ components:
         canGoBack:
           type: boolean
           title: can_go_back
+        assigneeSubscriptionId:
+          type: string
+          title: assignee_subscription_id
       title: FormPermissions
       additionalProperties: false
     chat.v1.FormRequestContent:
@@ -691,6 +694,9 @@ components:
         uiHints:
           title: ui_hints
           $ref: '#/components/schemas/google.protobuf.Struct'
+        visibilityCondition:
+          title: visibility_condition
+          $ref: '#/components/schemas/chat.v1.FormConditionGroup'
       title: FormStep
       additionalProperties: false
     chat.v1.FormSubmissionResultContent:

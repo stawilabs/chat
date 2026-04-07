@@ -339,6 +339,12 @@ class BackgroundSyncTask {
                   'isModeration': true,
                 };
                 eventType = domain.RoomEventType.roomChange;
+              } else if (payload.hasFormRequest()) {
+                content = _messageToMap(payload.formRequest);
+                eventType = domain.RoomEventType.formRequest;
+              } else if (payload.hasFormSubmissionResult()) {
+                content = _messageToMap(payload.formSubmissionResult);
+                eventType = domain.RoomEventType.formSubmissionResult;
               }
             }
 
@@ -401,6 +407,10 @@ class BackgroundSyncTask {
         return domain.RoomEventType.callOffer;
       case pb.RoomEventType.ROOM_EVENT_TYPE_MOTION:
         return domain.RoomEventType.motion;
+      case pb.RoomEventType.ROOM_EVENT_TYPE_FORM_REQUEST:
+        return domain.RoomEventType.formRequest;
+      case pb.RoomEventType.ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT:
+        return domain.RoomEventType.formSubmissionResult;
       default:
         return domain.RoomEventType.text;
     }
@@ -481,6 +491,10 @@ class BackgroundSyncTask {
     }
     return null;
   }
+
+  static Map<String, dynamic> _messageToMap(Object message) =>
+      jsonDecode(jsonEncode((message as dynamic).toProto3Json()))
+          as Map<String, dynamic>;
 
   /// Process a single job
   static Future<void> _processJob(

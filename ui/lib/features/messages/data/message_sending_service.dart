@@ -17,6 +17,7 @@ import '../../../core/media/thumbnail_service.dart';
 import '../../../core/sync/pending_job.dart';
 import '../../../core/sync/pending_job_repository.dart';
 import '../../../core/sync/sync_engine.dart';
+import '../../forms/domain/form_message_models.dart';
 import '../domain/room_event.dart' as domain;
 import 'message_providers.dart';
 import 'message_repository.dart';
@@ -143,6 +144,38 @@ class MessageSendingService {
       'Text message queued',
       data: {'localId': localId, 'roomId': roomId},
     );
+    return event;
+  }
+
+  Future<domain.RoomEvent> sendFormSubmissionResult({
+    required String roomId,
+    required String parentEventId,
+    required FormSubmissionResultMessageModel submission,
+  }) async {
+    final localId = Xid().toString();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final senderId = await _getSubscriptionIdOrProvisional(roomId);
+
+    final event = domain.RoomEvent(
+      id: localId,
+      roomId: roomId,
+      senderId: senderId,
+      type: domain.RoomEventType.formSubmissionResult,
+      content: submission.toContent(),
+      parentId: parentEventId,
+      createdAt: now,
+      localId: localId,
+    );
+
+    await _messageRepo.insertMessage(event);
+    await _jobRepo.addJob(JobType.sendMessage, {
+      'roomId': roomId,
+      'type': event.type.wireName,
+      'content': event.content,
+      'localId': localId,
+      'parentId': parentEventId,
+    });
+
     return event;
   }
 

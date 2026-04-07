@@ -147,6 +147,8 @@ func (dq *offlineDeliveryQueueHandler) extractMessageBody(evtMsg *eventsv1.Deliv
 }
 
 // bodyFromPayload extracts a human-readable body string from a typed payload.
+//
+//nolint:gocognit,nestif // Notification copy is intentionally dispatched by payload shape.
 func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payload) string {
 	switch eventPayload.GetType() {
 	case chatv1.PayloadType_PAYLOAD_TYPE_MODERATION:
@@ -183,6 +185,31 @@ func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payl
 		if roomChange := eventPayload.GetRoomChange(); roomChange != nil {
 			return roomChange.GetBody()
 		}
+	case chatv1.PayloadType_PAYLOAD_TYPE_FORM_REQUEST:
+		if form := eventPayload.GetFormRequest(); form != nil {
+			if form.GetTitle() != "" {
+				return form.GetTitle()
+			}
+			if schema := form.GetSchema(); schema != nil && schema.GetTitle() != "" {
+				return schema.GetTitle()
+			}
+		}
+		return "Requested a form"
+	case chatv1.PayloadType_PAYLOAD_TYPE_FORM_SUBMISSION_RESULT:
+		if result := eventPayload.GetFormSubmissionResult(); result != nil {
+			if snapshot := result.GetSubmissionSnapshot(); snapshot != nil {
+				if msg := snapshot.GetWorkflowMessage(); msg != "" {
+					return msg
+				}
+				if msg := snapshot.GetBackendMessage(); msg != "" {
+					return msg
+				}
+				if ref := snapshot.GetSubmissionReference(); ref != "" {
+					return "Submitted form " + ref
+				}
+			}
+		}
+		return "Submitted a form"
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		// No body for unspecified type
 	}

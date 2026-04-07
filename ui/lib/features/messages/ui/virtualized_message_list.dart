@@ -8,6 +8,7 @@ import '../../../core/logging/app_logger.dart';
 import '../../advanced/ui/group_config_bubble.dart';
 import '../../advanced/ui/motion_bubble.dart';
 import '../../advanced/ui/transaction_bubble.dart';
+import '../../forms/ui/form_message_card.dart';
 import '../data/message_forwarding_service.dart';
 import '../data/message_sending_service.dart';
 import '../domain/room_event.dart';
@@ -603,6 +604,10 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
         return MotionBubble(event: widget.message, isMe: isMe);
       case RoomEventType.transaction:
         return TransactionBubble(event: widget.message, isMe: isMe);
+      case RoomEventType.formRequest:
+        return FormMessageCard(message: widget.message, isMe: isMe);
+      case RoomEventType.formSubmissionResult:
+        return const SizedBox.shrink();
       case RoomEventType.vote:
         return VoteBubble(event: widget.message, isMe: isMe);
       case RoomEventType.groupConfig:

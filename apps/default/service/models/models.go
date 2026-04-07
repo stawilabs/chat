@@ -115,10 +115,11 @@ func (re *RoomEvent) ToAPI(_ context.Context, converter *PayloadConverter) *chat
 		protoEvent.ParentId = &parentID
 	}
 
-	var err error
-	protoEvent.Payload, err = converter.ToProto(re.Content)
-	if err != nil {
-		return nil
+	if converter != nil && re.Content != nil {
+		payload, err := converter.ToProto(re.Content)
+		if err == nil {
+			protoEvent.Payload = payload
+		}
 	}
 
 	return protoEvent

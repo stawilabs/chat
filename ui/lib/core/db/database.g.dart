@@ -6382,6 +6382,496 @@ class DraftsCompanion extends UpdateCompanion<Draft> {
   }
 }
 
+class $FormMessageDraftsTable extends FormMessageDrafts
+    with TableInfo<$FormMessageDraftsTable, FormMessageDraft> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FormMessageDraftsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<String> eventId = GeneratedColumn<String>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roomIdMeta = const VerificationMeta('roomId');
+  @override
+  late final GeneratedColumn<String> roomId = GeneratedColumn<String>(
+    'room_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _formInstanceIdMeta = const VerificationMeta(
+    'formInstanceId',
+  );
+  @override
+  late final GeneratedColumn<String> formInstanceId = GeneratedColumn<String>(
+    'form_instance_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _answersJsonMeta = const VerificationMeta(
+    'answersJson',
+  );
+  @override
+  late final GeneratedColumn<String> answersJson = GeneratedColumn<String>(
+    'answers_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currentStepMeta = const VerificationMeta(
+    'currentStep',
+  );
+  @override
+  late final GeneratedColumn<int> currentStep = GeneratedColumn<int>(
+    'current_step',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('editing'),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    eventId,
+    roomId,
+    formInstanceId,
+    answersJson,
+    currentStep,
+    mode,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'form_message_drafts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FormMessageDraft> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('room_id')) {
+      context.handle(
+        _roomIdMeta,
+        roomId.isAcceptableOrUnknown(data['room_id']!, _roomIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roomIdMeta);
+    }
+    if (data.containsKey('form_instance_id')) {
+      context.handle(
+        _formInstanceIdMeta,
+        formInstanceId.isAcceptableOrUnknown(
+          data['form_instance_id']!,
+          _formInstanceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_formInstanceIdMeta);
+    }
+    if (data.containsKey('answers_json')) {
+      context.handle(
+        _answersJsonMeta,
+        answersJson.isAcceptableOrUnknown(
+          data['answers_json']!,
+          _answersJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_answersJsonMeta);
+    }
+    if (data.containsKey('current_step')) {
+      context.handle(
+        _currentStepMeta,
+        currentStep.isAcceptableOrUnknown(
+          data['current_step']!,
+          _currentStepMeta,
+        ),
+      );
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {eventId};
+  @override
+  FormMessageDraft map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FormMessageDraft(
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_id'],
+      )!,
+      roomId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}room_id'],
+      )!,
+      formInstanceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}form_instance_id'],
+      )!,
+      answersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answers_json'],
+      )!,
+      currentStep: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_step'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FormMessageDraftsTable createAlias(String alias) {
+    return $FormMessageDraftsTable(attachedDatabase, alias);
+  }
+}
+
+class FormMessageDraft extends DataClass
+    implements Insertable<FormMessageDraft> {
+  /// The originating chat event that owns this form instance.
+  final String eventId;
+
+  /// Room that the form message belongs to.
+  final String roomId;
+
+  /// Backend-issued form instance identifier.
+  final String formInstanceId;
+
+  /// JSON-encoded draft answer map.
+  final String answersJson;
+
+  /// Current zero-based step index in the form flow.
+  final int currentStep;
+
+  /// Current view mode: editing or review.
+  final String mode;
+
+  /// Last update timestamp in milliseconds since epoch.
+  final int updatedAt;
+  const FormMessageDraft({
+    required this.eventId,
+    required this.roomId,
+    required this.formInstanceId,
+    required this.answersJson,
+    required this.currentStep,
+    required this.mode,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['event_id'] = Variable<String>(eventId);
+    map['room_id'] = Variable<String>(roomId);
+    map['form_instance_id'] = Variable<String>(formInstanceId);
+    map['answers_json'] = Variable<String>(answersJson);
+    map['current_step'] = Variable<int>(currentStep);
+    map['mode'] = Variable<String>(mode);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  FormMessageDraftsCompanion toCompanion(bool nullToAbsent) {
+    return FormMessageDraftsCompanion(
+      eventId: Value(eventId),
+      roomId: Value(roomId),
+      formInstanceId: Value(formInstanceId),
+      answersJson: Value(answersJson),
+      currentStep: Value(currentStep),
+      mode: Value(mode),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory FormMessageDraft.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FormMessageDraft(
+      eventId: serializer.fromJson<String>(json['eventId']),
+      roomId: serializer.fromJson<String>(json['roomId']),
+      formInstanceId: serializer.fromJson<String>(json['formInstanceId']),
+      answersJson: serializer.fromJson<String>(json['answersJson']),
+      currentStep: serializer.fromJson<int>(json['currentStep']),
+      mode: serializer.fromJson<String>(json['mode']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'eventId': serializer.toJson<String>(eventId),
+      'roomId': serializer.toJson<String>(roomId),
+      'formInstanceId': serializer.toJson<String>(formInstanceId),
+      'answersJson': serializer.toJson<String>(answersJson),
+      'currentStep': serializer.toJson<int>(currentStep),
+      'mode': serializer.toJson<String>(mode),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  FormMessageDraft copyWith({
+    String? eventId,
+    String? roomId,
+    String? formInstanceId,
+    String? answersJson,
+    int? currentStep,
+    String? mode,
+    int? updatedAt,
+  }) => FormMessageDraft(
+    eventId: eventId ?? this.eventId,
+    roomId: roomId ?? this.roomId,
+    formInstanceId: formInstanceId ?? this.formInstanceId,
+    answersJson: answersJson ?? this.answersJson,
+    currentStep: currentStep ?? this.currentStep,
+    mode: mode ?? this.mode,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  FormMessageDraft copyWithCompanion(FormMessageDraftsCompanion data) {
+    return FormMessageDraft(
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      roomId: data.roomId.present ? data.roomId.value : this.roomId,
+      formInstanceId: data.formInstanceId.present
+          ? data.formInstanceId.value
+          : this.formInstanceId,
+      answersJson: data.answersJson.present
+          ? data.answersJson.value
+          : this.answersJson,
+      currentStep: data.currentStep.present
+          ? data.currentStep.value
+          : this.currentStep,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FormMessageDraft(')
+          ..write('eventId: $eventId, ')
+          ..write('roomId: $roomId, ')
+          ..write('formInstanceId: $formInstanceId, ')
+          ..write('answersJson: $answersJson, ')
+          ..write('currentStep: $currentStep, ')
+          ..write('mode: $mode, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    eventId,
+    roomId,
+    formInstanceId,
+    answersJson,
+    currentStep,
+    mode,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FormMessageDraft &&
+          other.eventId == this.eventId &&
+          other.roomId == this.roomId &&
+          other.formInstanceId == this.formInstanceId &&
+          other.answersJson == this.answersJson &&
+          other.currentStep == this.currentStep &&
+          other.mode == this.mode &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FormMessageDraftsCompanion extends UpdateCompanion<FormMessageDraft> {
+  final Value<String> eventId;
+  final Value<String> roomId;
+  final Value<String> formInstanceId;
+  final Value<String> answersJson;
+  final Value<int> currentStep;
+  final Value<String> mode;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const FormMessageDraftsCompanion({
+    this.eventId = const Value.absent(),
+    this.roomId = const Value.absent(),
+    this.formInstanceId = const Value.absent(),
+    this.answersJson = const Value.absent(),
+    this.currentStep = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FormMessageDraftsCompanion.insert({
+    required String eventId,
+    required String roomId,
+    required String formInstanceId,
+    required String answersJson,
+    this.currentStep = const Value.absent(),
+    this.mode = const Value.absent(),
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : eventId = Value(eventId),
+       roomId = Value(roomId),
+       formInstanceId = Value(formInstanceId),
+       answersJson = Value(answersJson),
+       updatedAt = Value(updatedAt);
+  static Insertable<FormMessageDraft> custom({
+    Expression<String>? eventId,
+    Expression<String>? roomId,
+    Expression<String>? formInstanceId,
+    Expression<String>? answersJson,
+    Expression<int>? currentStep,
+    Expression<String>? mode,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (eventId != null) 'event_id': eventId,
+      if (roomId != null) 'room_id': roomId,
+      if (formInstanceId != null) 'form_instance_id': formInstanceId,
+      if (answersJson != null) 'answers_json': answersJson,
+      if (currentStep != null) 'current_step': currentStep,
+      if (mode != null) 'mode': mode,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FormMessageDraftsCompanion copyWith({
+    Value<String>? eventId,
+    Value<String>? roomId,
+    Value<String>? formInstanceId,
+    Value<String>? answersJson,
+    Value<int>? currentStep,
+    Value<String>? mode,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FormMessageDraftsCompanion(
+      eventId: eventId ?? this.eventId,
+      roomId: roomId ?? this.roomId,
+      formInstanceId: formInstanceId ?? this.formInstanceId,
+      answersJson: answersJson ?? this.answersJson,
+      currentStep: currentStep ?? this.currentStep,
+      mode: mode ?? this.mode,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (eventId.present) {
+      map['event_id'] = Variable<String>(eventId.value);
+    }
+    if (roomId.present) {
+      map['room_id'] = Variable<String>(roomId.value);
+    }
+    if (formInstanceId.present) {
+      map['form_instance_id'] = Variable<String>(formInstanceId.value);
+    }
+    if (answersJson.present) {
+      map['answers_json'] = Variable<String>(answersJson.value);
+    }
+    if (currentStep.present) {
+      map['current_step'] = Variable<int>(currentStep.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FormMessageDraftsCompanion(')
+          ..write('eventId: $eventId, ')
+          ..write('roomId: $roomId, ')
+          ..write('formInstanceId: $formInstanceId, ')
+          ..write('answersJson: $answersJson, ')
+          ..write('currentStep: $currentStep, ')
+          ..write('mode: $mode, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReadReceiptsTable extends ReadReceipts
     with TableInfo<$ReadReceiptsTable, ReadReceipt> {
   @override
@@ -11788,6 +12278,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
   late final $DraftsTable drafts = $DraftsTable(this);
+  late final $FormMessageDraftsTable formMessageDrafts =
+      $FormMessageDraftsTable(this);
   late final $ReadReceiptsTable readReceipts = $ReadReceiptsTable(this);
   late final $ReportsTable reports = $ReportsTable(this);
   late final $InviteLinksTable inviteLinks = $InviteLinksTable(this);
@@ -11818,6 +12310,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncMetadata,
     userSettings,
     drafts,
+    formMessageDrafts,
     readReceipts,
     reports,
     inviteLinks,
@@ -15689,6 +16182,263 @@ typedef $$DraftsTableProcessedTableManager =
       Draft,
       PrefetchHooks Function()
     >;
+typedef $$FormMessageDraftsTableCreateCompanionBuilder =
+    FormMessageDraftsCompanion Function({
+      required String eventId,
+      required String roomId,
+      required String formInstanceId,
+      required String answersJson,
+      Value<int> currentStep,
+      Value<String> mode,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FormMessageDraftsTableUpdateCompanionBuilder =
+    FormMessageDraftsCompanion Function({
+      Value<String> eventId,
+      Value<String> roomId,
+      Value<String> formInstanceId,
+      Value<String> answersJson,
+      Value<int> currentStep,
+      Value<String> mode,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$FormMessageDraftsTableFilterComposer
+    extends Composer<_$AppDatabase, $FormMessageDraftsTable> {
+  $$FormMessageDraftsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roomId => $composableBuilder(
+    column: $table.roomId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get formInstanceId => $composableBuilder(
+    column: $table.formInstanceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get answersJson => $composableBuilder(
+    column: $table.answersJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentStep => $composableBuilder(
+    column: $table.currentStep,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FormMessageDraftsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FormMessageDraftsTable> {
+  $$FormMessageDraftsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roomId => $composableBuilder(
+    column: $table.roomId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get formInstanceId => $composableBuilder(
+    column: $table.formInstanceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get answersJson => $composableBuilder(
+    column: $table.answersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get currentStep => $composableBuilder(
+    column: $table.currentStep,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FormMessageDraftsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FormMessageDraftsTable> {
+  $$FormMessageDraftsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get eventId =>
+      $composableBuilder(column: $table.eventId, builder: (column) => column);
+
+  GeneratedColumn<String> get roomId =>
+      $composableBuilder(column: $table.roomId, builder: (column) => column);
+
+  GeneratedColumn<String> get formInstanceId => $composableBuilder(
+    column: $table.formInstanceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get answersJson => $composableBuilder(
+    column: $table.answersJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get currentStep => $composableBuilder(
+    column: $table.currentStep,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$FormMessageDraftsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FormMessageDraftsTable,
+          FormMessageDraft,
+          $$FormMessageDraftsTableFilterComposer,
+          $$FormMessageDraftsTableOrderingComposer,
+          $$FormMessageDraftsTableAnnotationComposer,
+          $$FormMessageDraftsTableCreateCompanionBuilder,
+          $$FormMessageDraftsTableUpdateCompanionBuilder,
+          (
+            FormMessageDraft,
+            BaseReferences<
+              _$AppDatabase,
+              $FormMessageDraftsTable,
+              FormMessageDraft
+            >,
+          ),
+          FormMessageDraft,
+          PrefetchHooks Function()
+        > {
+  $$FormMessageDraftsTableTableManager(
+    _$AppDatabase db,
+    $FormMessageDraftsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FormMessageDraftsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FormMessageDraftsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FormMessageDraftsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> eventId = const Value.absent(),
+                Value<String> roomId = const Value.absent(),
+                Value<String> formInstanceId = const Value.absent(),
+                Value<String> answersJson = const Value.absent(),
+                Value<int> currentStep = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FormMessageDraftsCompanion(
+                eventId: eventId,
+                roomId: roomId,
+                formInstanceId: formInstanceId,
+                answersJson: answersJson,
+                currentStep: currentStep,
+                mode: mode,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String eventId,
+                required String roomId,
+                required String formInstanceId,
+                required String answersJson,
+                Value<int> currentStep = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FormMessageDraftsCompanion.insert(
+                eventId: eventId,
+                roomId: roomId,
+                formInstanceId: formInstanceId,
+                answersJson: answersJson,
+                currentStep: currentStep,
+                mode: mode,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FormMessageDraftsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FormMessageDraftsTable,
+      FormMessageDraft,
+      $$FormMessageDraftsTableFilterComposer,
+      $$FormMessageDraftsTableOrderingComposer,
+      $$FormMessageDraftsTableAnnotationComposer,
+      $$FormMessageDraftsTableCreateCompanionBuilder,
+      $$FormMessageDraftsTableUpdateCompanionBuilder,
+      (
+        FormMessageDraft,
+        BaseReferences<
+          _$AppDatabase,
+          $FormMessageDraftsTable,
+          FormMessageDraft
+        >,
+      ),
+      FormMessageDraft,
+      PrefetchHooks Function()
+    >;
 typedef $$ReadReceiptsTableCreateCompanionBuilder =
     ReadReceiptsCompanion Function({
       Value<int> id,
@@ -18639,6 +19389,8 @@ class $AppDatabaseManager {
       $$UserSettingsTableTableManager(_db, _db.userSettings);
   $$DraftsTableTableManager get drafts =>
       $$DraftsTableTableManager(_db, _db.drafts);
+  $$FormMessageDraftsTableTableManager get formMessageDrafts =>
+      $$FormMessageDraftsTableTableManager(_db, _db.formMessageDrafts);
   $$ReadReceiptsTableTableManager get readReceipts =>
       $$ReadReceiptsTableTableManager(_db, _db.readReceipts);
   $$ReportsTableTableManager get reports =>

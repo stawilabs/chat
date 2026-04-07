@@ -83,6 +83,12 @@ enum RoomEventType {
   @JsonValue('transaction')
   transaction,
 
+  @JsonValue('formRequest')
+  formRequest,
+
+  @JsonValue('formSubmissionResult')
+  formSubmissionResult,
+
   @JsonValue('groupConfig')
   groupConfig,
 
@@ -146,6 +152,10 @@ extension RoomEventTypeStorage on RoomEventType {
         return 'vote';
       case RoomEventType.transaction:
         return 'transaction';
+      case RoomEventType.formRequest:
+        return 'formRequest';
+      case RoomEventType.formSubmissionResult:
+        return 'formSubmissionResult';
       case RoomEventType.groupConfig:
         return 'groupConfig';
       case RoomEventType.roomKey:
@@ -203,6 +213,10 @@ extension RoomEventTypeStorage on RoomEventType {
         return 200;
       case RoomEventType.transaction:
         return 210;
+      case RoomEventType.formRequest:
+        return 215;
+      case RoomEventType.formSubmissionResult:
+        return 217;
       case RoomEventType.groupConfig:
         return 220;
       case RoomEventType.roomKey:
@@ -261,6 +275,10 @@ RoomEventType roomEventTypeFromStorageCode(int code) {
       return RoomEventType.vote;
     case 210:
       return RoomEventType.transaction;
+    case 215:
+      return RoomEventType.formRequest;
+    case 217:
+      return RoomEventType.formSubmissionResult;
     case 220:
       return RoomEventType.groupConfig;
     case 230:
@@ -346,6 +364,12 @@ RoomEventType? tryRoomEventTypeFromWireName(String? raw) {
     case 'transaction':
     case 'RoomEventType.transaction':
       return RoomEventType.transaction;
+    case 'formRequest':
+    case 'RoomEventType.formRequest':
+      return RoomEventType.formRequest;
+    case 'formSubmissionResult':
+    case 'RoomEventType.formSubmissionResult':
+      return RoomEventType.formSubmissionResult;
     case 'groupConfig':
     case 'RoomEventType.groupConfig':
       return RoomEventType.groupConfig;

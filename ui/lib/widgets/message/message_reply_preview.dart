@@ -148,6 +148,10 @@ class MessageReplyPreview extends ConsumerWidget {
         return '🎵 Voice message';
       case RoomEventType.file:
         return '📄 ${event.content['fileName'] ?? 'File'}';
+      case RoomEventType.formRequest:
+        return '📝 ${event.content['title'] ?? 'Form'}';
+      case RoomEventType.formSubmissionResult:
+        return '✅ Submitted form';
       default:
         return '';
     }

@@ -203,7 +203,9 @@ func TestRoomEvent_ToAPI_NilContent(t *testing.T) {
 	}
 
 	api := re.ToAPI(context.Background(), converter)
-	assert.Nil(t, api, "should return nil when converter fails due to nil content")
+	require.NotNil(t, api)
+	assert.Equal(t, "evt-4", api.GetId())
+	assert.Nil(t, api.GetPayload())
 }
 
 func TestRoomEvent_ToAPI_InvalidJSONContent(t *testing.T) {
@@ -219,7 +221,9 @@ func TestRoomEvent_ToAPI_InvalidJSONContent(t *testing.T) {
 	}
 
 	api := re.ToAPI(context.Background(), converter)
-	assert.Nil(t, api, "should return nil when converter fails on invalid JSON")
+	require.NotNil(t, api)
+	assert.Equal(t, "evt-5", api.GetId())
+	assert.Nil(t, api.GetPayload())
 }
 
 // ---------------------------------------------------------------------------

@@ -228,6 +228,14 @@ class _MessagePreview extends StatelessWidget {
         previewText = 'Transaction';
         previewIcon = Icons.payment;
         break;
+      case RoomEventType.formRequest:
+        previewText = message.content['title'] as String? ?? 'Form';
+        previewIcon = Icons.assignment_outlined;
+        break;
+      case RoomEventType.formSubmissionResult:
+        previewText = 'Submitted form';
+        previewIcon = Icons.verified_outlined;
+        break;
       default:
         previewText = 'Message';
     }
