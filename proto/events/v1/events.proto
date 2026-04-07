@@ -115,6 +115,11 @@ message Broadcast {
     PRIORITY_HIGH = 2;
   }
   Priority priority = 3;
+
+  // Pre-fetched event payload carried from RoomOutboxLoggingQueue to
+  // FanoutEventHandler, eliminating redundant DB reads per batch.
+  // Empty for ephemeral events (typing, delivered, read).
+  chat.v1.Payload payload = 4;
 }
 
 // Delivery represents the final payload delivered to an end-user device,
