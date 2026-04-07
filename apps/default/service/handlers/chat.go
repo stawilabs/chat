@@ -652,7 +652,10 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 
 	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("SearchRoomSubscriptions request")
 
-	subscriptions, err := ps.RoomBusiness.SearchRoomSubscriptions(ctx, req.Msg, authenticatedContact)
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	subscriptions, err := ps.RoomBusiness.SearchRoomSubscriptions(timeoutCtx, req.Msg, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}

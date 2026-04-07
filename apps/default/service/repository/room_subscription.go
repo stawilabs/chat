@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	defaultSubscriptionLimit = 1000
+
 	RoleOwner  = "owner"
 	RoleAdmin  = "admin"
 	RoleMember = "member"
@@ -80,15 +82,17 @@ func (rsr *roomSubscriptionRepository) GetByRoomID(
 		Order("id ASC").
 		Where("room_id = ? AND subscription_state IN ?", roomID, rsr.activeSubscriptionStates)
 
+	limit := defaultSubscriptionLimit
 	if cursor != nil {
 		if cursor.GetPage() != "" {
 			query = query.Where("id > ?", cursor.GetPage())
 		}
 
 		if cursor.GetLimit() > 0 {
-			query = query.Limit(int(cursor.GetLimit()))
+			limit = int(cursor.GetLimit())
 		}
 	}
+	query = query.Limit(limit)
 
 	err := query.Find(&subscriptions).Error
 	return subscriptions, err
@@ -103,15 +107,17 @@ func (rsr *roomSubscriptionRepository) GetAllByRoomID(
 
 	query := rsr.Pool().DB(ctx, true).Order("id ASC").Where("room_id = ?", roomID)
 
+	limit := defaultSubscriptionLimit
 	if cursor != nil {
 		if cursor.GetPage() != "" {
 			query = query.Where("id > ?", cursor.GetPage())
 		}
 
 		if cursor.GetLimit() > 0 {
-			query = query.Limit(int(cursor.GetLimit()))
+			limit = int(cursor.GetLimit())
 		}
 	}
+	query = query.Limit(limit)
 
 	err := query.Find(&subscriptions).Error
 	return subscriptions, err

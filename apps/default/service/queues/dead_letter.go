@@ -133,7 +133,7 @@ func retryDelay(retryCount int32) time.Duration {
 	}
 
 	backoff := retryBackoffBase
-	for i := int32(1); i < retryCount; i++ {
+	for range retryCount {
 		backoff *= 2
 		if backoff >= retryBackoffCap {
 			return retryBackoffCap

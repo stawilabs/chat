@@ -129,6 +129,7 @@ const (
 
 	// Thresholds.
 	staleThresholdMultiplier = 3   // Multiplier for heartbeat interval to determine staleness
+	metadataDebounceDiv      = 2   // Divisor for heartbeat interval to debounce metadata writes
 	utilizationThreshold     = 80  // Pool utilization threshold percentage
 	utilizationScaleFactor   = 100 // Scale factor for utilization percentage
 	// maxInt32 is the maximum value for int32 to prevent overflow.
@@ -802,18 +803,11 @@ func (cm *connectionManager) handleInboundStream(
 	conn Connection,
 	stream DeviceStream,
 	errChan chan error,
-	doneCh chan struct{},
+	_ chan struct{},
 ) error {
 	for {
-		select {
-		case <-doneCh:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		// Receive with timeout
+		// stream.Receive() blocks until a message arrives or the stream terminates.
+		// Context cancellation and connection close are handled by the stream layer.
 		req, err := stream.Receive()
 		if err != nil {
 			util.Log(ctx).WithError(err).WithFields(map[string]any{
@@ -888,7 +882,10 @@ func (cm *connectionManager) handleOutboundStream(
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
-		case finalMsg := <-conn.DispatchChan():
+		case finalMsg, ok := <-conn.DispatchChan():
+			if !ok {
+				return nil // channel closed, connection shutting down
+			}
 			if finalMsg == nil {
 				continue
 			}
@@ -1306,6 +1303,7 @@ func (cm *connectionManager) touchConnection(ctx context.Context, conn Connectio
 
 	conn.Lock()
 	metadata := conn.Metadata()
+	prevHeartbeat := metadata.LastHeartbeat
 	metadata.LastActive = now
 	if now > metadata.LastHeartbeat {
 		metadata.LastHeartbeat = now
@@ -1315,6 +1313,17 @@ func (cm *connectionManager) touchConnection(ctx context.Context, conn Connectio
 	conn.Unlock()
 
 	if !persist {
+		return
+	}
+
+	// Debounce: only persist to cache if enough time has elapsed since the
+	// last persisted heartbeat. This reduces Redis writes from once-per-message
+	// to roughly once per half-heartbeat interval.
+	debounceInterval := int64(cm.heartbeatIntervalSec / metadataDebounceDiv)
+	if debounceInterval < 1 {
+		debounceInterval = 1
+	}
+	if now-prevHeartbeat < debounceInterval {
 		return
 	}
 

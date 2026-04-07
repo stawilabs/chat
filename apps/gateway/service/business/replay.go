@@ -184,8 +184,14 @@ func (cm *connectionManager) sendStreamResponse(
 
 	if lastDurableCursor != nil {
 		nextCursor := *lastDurableCursor
+		cursorAdvanced := false
 		if response.GetMessage() != nil && response.GetId() != "" {
 			nextCursor = response.GetId()
+			cursorAdvanced = true
+		}
+		// Only persist when the durable cursor actually advances (skip ephemeral events).
+		if !cursorAdvanced {
+			return nil
 		}
 		if err := cm.persistResumeToken(
 			ctx,

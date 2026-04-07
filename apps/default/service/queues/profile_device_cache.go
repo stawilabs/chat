@@ -44,26 +44,25 @@ func (c *profileDeviceCache) Get(profileID string) ([]deliveryDevice, bool) {
 
 	now := time.Now()
 
-	c.mu.RLock()
+	// Use a single write lock to avoid TOCTOU race between read-check and
+	// write-back — a concurrent Set between those steps would be overwritten.
+	c.mu.Lock()
 	entry, ok := c.entries[profileID]
-	c.mu.RUnlock()
 	if !ok {
+		c.mu.Unlock()
 		return nil, false
 	}
 	if now.After(entry.expires) {
-		c.mu.Lock()
 		delete(c.entries, profileID)
 		c.mu.Unlock()
 		return nil, false
 	}
 
-	devices := append([]deliveryDevice(nil), entry.devices...)
-
-	c.mu.Lock()
 	entry.lastUsed = now
 	c.entries[profileID] = entry
 	c.mu.Unlock()
 
+	devices := append([]deliveryDevice(nil), entry.devices...)
 	return devices, true
 }
 

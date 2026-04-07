@@ -71,7 +71,7 @@ func (csq *RoomOutboxLoggingQueue) Validate(_ context.Context, payload any) erro
 	return nil
 }
 
-//nolint:nonamedreturns // named return required for deferred tracing
+//nolint:nonamedreturns,gocognit // named return for tracing; sequential batch/continue/emit phases.
 func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (err error) {
 	ctx, span := chattel.EventTracer.Start(ctx, "OutboxLogging")
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
@@ -132,8 +132,13 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 	if len(destinations) > 0 {
 		broadCastPriority := csq.getBroadCastPriority(evtLink.GetEventType())
 
-		// Pre-fetch event payload so FanoutEventHandler can skip the DB read.
-		eventPayload := csq.prefetchPayload(ctx, evtLink)
+		// Pre-fetch event payload on the first batch only (cursor page is empty).
+		// Continuation batches skip the DB read — the FanoutEventHandler will use
+		// the payload from the first batch's Broadcast or fall back to its own fetch.
+		var eventPayload *chatv1.Payload
+		if evtLink.GetCursor() == nil || evtLink.GetCursor().GetPage() == "" {
+			eventPayload = csq.prefetchPayload(ctx, evtLink)
+		}
 
 		eventBroadcast := eventsv1.Broadcast{
 			Event:        evtLink,
