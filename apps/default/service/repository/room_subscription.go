@@ -8,7 +8,6 @@ import (
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/workerpool"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -48,7 +47,7 @@ func NewRoomSubscriptionRepository(
 	}
 }
 
-// GetByContactLinkAndRooms retrieves a subscription by room ID and profile ID.
+// GetByContactLinkAndRooms retrieves active subscriptions by room ID and profile ID.
 func (rsr *roomSubscriptionRepository) GetByContactLinkAndRooms(
 	ctx context.Context, contactLink *commonv1.ContactLink,
 	roomIDList ...string,
@@ -56,7 +55,7 @@ func (rsr *roomSubscriptionRepository) GetByContactLinkAndRooms(
 	var subscriptions []*models.RoomSubscription
 	query := rsr.Pool().DB(ctx, true).
 		Select("*"). // Explicitly select all columns including read-only unread_count
-		Where("room_id IN ?", roomIDList)
+		Where("room_id IN ? AND subscription_state IN ?", roomIDList, rsr.activeSubscriptionStates)
 
 	// Use profile_id as primary identifier, contact_id as secondary
 	if contactLink.GetProfileId() != "" {
@@ -162,8 +161,7 @@ func (rsr *roomSubscriptionRepository) GetByContactLink(ctx context.Context, con
 	activeOnly bool,
 ) ([]*models.RoomSubscription, error) {
 	var subscriptions []*models.RoomSubscription
-	query := rsr.Pool().DB(ctx, true).
-		Preload(clause.Associations)
+	query := rsr.Pool().DB(ctx, true)
 
 	// Use profile_id as primary identifier, contact_id as secondary
 	if contactLink.GetProfileId() != "" {

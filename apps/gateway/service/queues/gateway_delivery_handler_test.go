@@ -326,6 +326,9 @@ func (m *mockConnection) Dispatch(response *chatv1.StreamResponse) bool {
 	return m.dispatchSuccess
 }
 
+func (m *mockConnection) DispatchChan() <-chan *chatv1.StreamResponse { return nil }
+func (m *mockConnection) RecordDispatched()                           {}
+
 func (m *mockConnection) ConsumeDispatch(_ context.Context) *chatv1.StreamResponse {
 	return nil
 }

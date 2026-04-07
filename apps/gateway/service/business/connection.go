@@ -101,6 +101,14 @@ type connection struct {
 	dispatchedMs atomic.Uint64 // Total messages successfully dispatched
 }
 
+func (c *connection) DispatchChan() <-chan *chatv1.StreamResponse {
+	return c.dispatchChan
+}
+
+func (c *connection) RecordDispatched() {
+	c.dispatchedMs.Add(1)
+}
+
 func (c *connection) ConsumeDispatch(ctx context.Context) *chatv1.StreamResponse {
 	select {
 	case <-ctx.Done():

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"sync"
 	"time"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
@@ -33,6 +34,11 @@ type hotPathDeliveryQueueHandler struct {
 	dlp         *DeadLetterPublisher
 	deviceCache *profileDeviceCache
 	replayRepo  repository.DeviceReplayRepository
+
+	// Cached publishers to avoid repeated GetPublisher lookups per message.
+	offlinePub     queue.Publisher
+	offlinePubOnce sync.Once
+	offlinePubErr  error
 }
 
 func NewHotPathDeliveryQueueHandler(
@@ -61,12 +67,10 @@ func NewHotPathDeliveryQueueHandler(
 }
 
 func (dq *hotPathDeliveryQueueHandler) getOfflineDeliveryTopic() (queue.Publisher, error) {
-	deviceTopic, err := dq.qMan.GetPublisher(dq.cfg.QueueOfflineEventDeliveryName)
-	if err != nil {
-		return nil, err
-	}
-
-	return deviceTopic, nil
+	dq.offlinePubOnce.Do(func() {
+		dq.offlinePub, dq.offlinePubErr = dq.qMan.GetPublisher(dq.cfg.QueueOfflineEventDeliveryName)
+	})
+	return dq.offlinePub, dq.offlinePubErr
 }
 
 func (dq *hotPathDeliveryQueueHandler) getOnlineDeliveryTopic(
@@ -166,7 +170,9 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 	}
 
 	for _, dev := range devices {
-		eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
+		cloned := proto.Clone(eventDelivery)
+
+		eventCopy, ok := cloned.(*eventsv1.Delivery)
 		if !ok {
 			deliveryErrs = append(deliveryErrs, errors.New("failed to clone event delivery"))
 			continue

@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const defaultUnboundedLimit = 500
+
 type roomEventRepository struct {
 	datastore.BaseRepository[*models.RoomEvent]
 }
@@ -38,6 +40,8 @@ func (rer *roomEventRepository) GetByRoomID(
 
 	if limit > 0 {
 		query = query.Limit(limit)
+	} else {
+		query = query.Limit(defaultUnboundedLimit) // Safety net: prevent unbounded full-table scans
 	}
 
 	err := query.Find(&events).Error

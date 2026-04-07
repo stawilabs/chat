@@ -119,6 +119,15 @@ var EventFanoutCounter = telemetry.DimensionlessMeasure(
 	"Total event fanout operations",
 )
 
+// DeadLetterConsumedCounter tracks messages consumed from the DLQ.
+//
+//nolint:gochecknoglobals // OpenTelemetry metrics must be global for instrumentation
+var DeadLetterConsumedCounter = telemetry.DimensionlessMeasure(
+	"",
+	"chat.dlq.consumed",
+	"Total dead-lettered messages consumed",
+)
+
 // Device replay metrics track the replay API used by the gateway for reconnection catch-up.
 //
 //nolint:gochecknoglobals // OpenTelemetry metrics must be global for instrumentation

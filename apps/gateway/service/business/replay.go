@@ -62,15 +62,8 @@ func (cm *connectionManager) resolveResumeCursor(
 	defer cancel()
 
 	if cm.resume != nil {
-		cursor, found, err := cm.resume.Get(lookupCtx, resumeTokenKey(profileID, deviceID, token))
-		if err != nil {
-			return "", fmt.Errorf("resume token lookup failed: %w", err)
-		}
-		if found {
-			if cursor == emptyResumeCursorSentinel {
-				return "", nil
-			}
-			return cursor, nil
+		if cursor, err := cm.lookupCachedCursor(lookupCtx, profileID, deviceID, token); cursor != "" || err != nil {
+			return cursor, err
 		}
 	}
 
@@ -228,7 +221,15 @@ func (cm *connectionManager) persistResumeToken(
 		cursor = emptyResumeCursorSentinel
 	}
 
-	return cm.resume.Set(ctx, resumeTokenKey(profileID, deviceID, token), cursor, cm.resumeTokenTTL())
+	// Write a single per-device latest-cursor key (overwritten on each message)
+	// instead of a per-message key, collapsing millions of keys to one per device.
+	ttl := cm.resumeTokenTTL()
+	if err := cm.resume.Set(ctx, latestCursorKey(profileID, deviceID), cursor, ttl); err != nil {
+		return err
+	}
+
+	// Also write the token-specific key so the client's presented token resolves.
+	return cm.resume.Set(ctx, resumeTokenKey(profileID, deviceID, token), cursor, ttl)
 }
 
 func (cm *connectionManager) resumeTokenTTL() time.Duration {
@@ -239,6 +240,43 @@ func (cm *connectionManager) resumeTokenTTL() time.Duration {
 	return ttl
 }
 
+// lookupCachedCursor checks the cache for a resume cursor — first by token-specific key,
+// then by the per-device latest-cursor key.
+func (cm *connectionManager) lookupCachedCursor(
+	ctx context.Context,
+	profileID, deviceID, token string,
+) (string, error) {
+	// Try the token-specific key first.
+	cursor, found, err := cm.resume.Get(ctx, resumeTokenKey(profileID, deviceID, token))
+	if err != nil {
+		return "", fmt.Errorf("resume token lookup failed: %w", err)
+	}
+	if found {
+		if cursor == emptyResumeCursorSentinel {
+			return "", nil
+		}
+		return cursor, nil
+	}
+
+	// Fall back to the per-device latest-cursor key.
+	cursor, found, err = cm.resume.Get(ctx, latestCursorKey(profileID, deviceID))
+	if err != nil {
+		return "", fmt.Errorf("latest cursor lookup failed: %w", err)
+	}
+	if found {
+		if cursor == emptyResumeCursorSentinel {
+			return "", nil
+		}
+		return cursor, nil
+	}
+
+	return "", nil
+}
+
 func resumeTokenKey(profileID string, deviceID string, token string) string {
 	return fmt.Sprintf("gateway:resume:%s:%s:%s", profileID, deviceID, token)
+}
+
+func latestCursorKey(profileID string, deviceID string) string {
+	return fmt.Sprintf("gateway:resume:%s:%s:__latest__", profileID, deviceID)
 }

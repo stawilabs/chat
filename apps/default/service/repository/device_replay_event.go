@@ -167,9 +167,11 @@ func (drr *deviceReplayRepository) TrimDevice(
 	db := drr.Pool().DB(ctx, false)
 
 	return db.Transaction(func(tx *gorm.DB) error {
+		// Use Unscoped for hard-delete — replay entries should be physically
+		// removed so autovacuum can reclaim space and the table stays lean.
 		if maxAge > 0 {
 			cutoff := time.Now().Add(-maxAge)
-			if err := tx.
+			if err := tx.Unscoped().
 				Where("profile_id = ? AND device_id = ? AND created_at < ?", profileID, deviceID, cutoff).
 				Delete(&models.DeviceReplayEvent{}).Error; err != nil {
 				return err
@@ -177,7 +179,7 @@ func (drr *deviceReplayRepository) TrimDevice(
 		}
 
 		if keep <= 0 {
-			return tx.Where("profile_id = ? AND device_id = ?", profileID, deviceID).
+			return tx.Unscoped().Where("profile_id = ? AND device_id = ?", profileID, deviceID).
 				Delete(&models.DeviceReplayEvent{}).Error
 		}
 
@@ -198,7 +200,7 @@ func (drr *deviceReplayRepository) TrimDevice(
 			return nil
 		}
 
-		return tx.Where(
+		return tx.Unscoped().Where(
 			"profile_id = ? AND device_id = ? AND id < ?",
 			profileID,
 			deviceID,

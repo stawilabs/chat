@@ -132,8 +132,8 @@ func (p *connectionPool) size() int32 {
 // Creates snapshots per shard to minimize lock contention.
 // Thread-safe: Releases each shard's read lock before calling fn.
 func (p *connectionPool) forEach(fn func(Connection)) {
-	// Collect all connections from all shards
-	var allConns []Connection
+	// Pre-allocate with known pool size to avoid repeated slice growth.
+	allConns := make([]Connection, 0, atomic.LoadInt32(&p.currentSize))
 
 	for i := range poolShardCount {
 		shard := p.shards[i]

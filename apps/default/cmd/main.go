@@ -104,6 +104,10 @@ func runService(ctx context.Context) error {
 	serviceOptions := []frame.Option{
 		frame.WithHTTPHandler(connectHandler),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
+		frame.WithRegisterSubscriber(
+			cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI,
+			queues.NewDeadLetterConsumer(&cfg),
+		),
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI,

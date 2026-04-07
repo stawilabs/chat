@@ -888,12 +888,11 @@ func (cm *connectionManager) handleOutboundStream(
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
-
-		default:
-			finalMsg := conn.ConsumeDispatch(ctx)
+		case finalMsg := <-conn.DispatchChan():
 			if finalMsg == nil {
 				continue
 			}
+			conn.RecordDispatched()
 
 			if sendErr := cm.sendStreamResponse(ctx, conn, stream, finalMsg, &lastDurableCursor); sendErr != nil {
 				util.Log(ctx).WithError(sendErr).WithFields(map[string]any{

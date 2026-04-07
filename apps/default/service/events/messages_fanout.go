@@ -26,7 +26,8 @@ type FanoutEventHandler struct {
 	eventRepo        repository.RoomEventRepository
 	queueMan         queue.Manager
 	deliveryTopic    queue.Publisher
-	deliveryTopicMu  sync.Mutex
+	deliveryTopicErr error
+	deliveryOnce     sync.Once
 	payloadConverter *models.PayloadConverter
 }
 
@@ -46,19 +47,10 @@ func NewFanoutEventHandler(
 }
 
 func (feh *FanoutEventHandler) getTopic() (queue.Publisher, error) {
-	feh.deliveryTopicMu.Lock()
-	defer feh.deliveryTopicMu.Unlock()
-
-	if feh.deliveryTopic != nil {
-		return feh.deliveryTopic, nil
-	}
-
-	var err error
-	feh.deliveryTopic, err = feh.queueMan.GetPublisher(feh.cfg.QueueDeviceEventDeliveryName)
-	if err != nil {
-		return nil, err
-	}
-	return feh.deliveryTopic, nil
+	feh.deliveryOnce.Do(func() {
+		feh.deliveryTopic, feh.deliveryTopicErr = feh.queueMan.GetPublisher(feh.cfg.QueueDeviceEventDeliveryName)
+	})
+	return feh.deliveryTopic, feh.deliveryTopicErr
 }
 
 func (feh *FanoutEventHandler) Name() string {

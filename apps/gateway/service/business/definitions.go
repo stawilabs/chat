@@ -26,6 +26,8 @@ type Connection interface {
 	Unlock()
 	Metadata() *Metadata
 	Dispatch(*chatv1.StreamResponse) bool // Returns false if channel is full
+	DispatchChan() <-chan *chatv1.StreamResponse
+	RecordDispatched()
 	ConsumeDispatch(ctx context.Context) *chatv1.StreamResponse
 	Stream() DeviceStream
 	AllowInbound() bool // Rate limiting check for inbound requests
