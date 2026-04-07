@@ -897,7 +897,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -909,8 +909,25 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from <= 1) {
-        // Migration from v1 to v2: Add rosterId column and convert existing IDs to stable local UUIDs
-        // For now, we'll handle this in beforeOpen instead
+        // Migration from v1 to v2: Add rosterId column and convert existing
+        // IDs to stable local UUIDs.
+        await customStatement(
+          'ALTER TABLE roster ADD COLUMN roster_id TEXT',
+        );
+        await customStatement(
+          'UPDATE roster SET roster_id = id WHERE roster_id IS NULL',
+        );
+        // Generate stable local UUIDs for the id column
+        await customStatement(
+          "UPDATE roster SET id = substr(lower(hex(randomblob(8))), 1, 8) || '-' || "
+          "substr(lower(hex(randomblob(4))), 1, 4) || '-4' || "
+          "substr(lower(hex(randomblob(4))), 1, 4) || '-' || "
+          "substr('89ab', (abs(random()) % 4) + 1, 1) || "
+          'substr(lower(hex(randomblob(4))), 1, 4) || '
+          "'-' || "
+          'substr(lower(hex(randomblob(12))), 1, 12) '
+          "WHERE id NOT LIKE '%-%-%-%-%'",
+        );
       }
       if (from <= 2) {
         // Migration from v2 to v3: Add message editing columns
@@ -1126,38 +1143,24 @@ class AppDatabase extends _$AppDatabase {
         // explicit stable codes.
         await _migrateRoomEventEnumStorage();
       }
+      if (from <= 19) {
+        // Migration from v19 to v20: add composite index for the hot path
+        // message query (room_id + server_ts). Without this every message
+        // load does a full table scan sorted in memory.
+        await customStatement('''
+          CREATE INDEX IF NOT EXISTS idx_room_events_room_ts
+          ON room_events(room_id, server_ts DESC)
+        ''');
+        await customStatement('''
+          CREATE INDEX IF NOT EXISTS idx_room_events_room_created
+          ON room_events(room_id, created_at DESC)
+        ''');
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
 
-      // Handle data migration after schema changes
-      if (details.hadUpgrade) {
-        final currentVersion = await customSelect(
-          'SELECT user_version FROM pragma_user_version()',
-        ).getSingle();
-        if (currentVersion.data['user_version'] == 2) {
-          // Add rosterId column if it doesn't exist
-          await customStatement('''
-              ALTER TABLE roster ADD COLUMN rosterId TEXT
-            ''');
-
-          // Copy existing IDs to rosterId column (they were server IDs)
-          await customStatement('''
-              UPDATE roster SET rosterId = id WHERE rosterId IS NULL
-            ''');
-
-          // Generate new stable UUIDs for local id column using xid
-          await customStatement('''
-              UPDATE roster SET id = substr(lower(hex(randomblob(8))), 1, 8) || '-' ||
-                                 substr(lower(hex(randomblob(4))), 1, 4) || '-4' ||
-                                 substr(lower(hex(randomblob(4))), 1, 4) || '-' ||
-                                 substr('89ab', (abs(random()) % 4) + 1, 1) ||
-                                 substr(lower(hex(randomblob(4))), 1, 4) || '-' ||
-                                 substr(lower(hex(randomblob(12))), 1, 12)
-              WHERE id NOT LIKE '%-%-%-%-%'
-            ''');
-        }
-      }
+      // v1→v2 rosterId migration is now handled in onUpgrade above.
     },
   );
 

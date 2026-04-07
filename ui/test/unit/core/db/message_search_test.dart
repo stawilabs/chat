@@ -259,9 +259,9 @@ void main() {
         expect(db, isNotNull);
       });
 
-      test('schema version is 19', () {
-        // Version 19: normalized room event enum storage to stable explicit codes.
-        expect(db.schemaVersion, equals(19));
+      test('schema version is 20', () {
+        // Version 20: added composite indexes on room_events(room_id, server_ts/created_at).
+        expect(db.schemaVersion, equals(20));
       });
     });
 

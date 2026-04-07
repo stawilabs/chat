@@ -160,63 +160,69 @@ class RoomRepository {
         .write(RoomsCompanion(name: Value(name)));
   }
 
-  /// Update room metadata from server-pushed change (merges with existing)
+  /// Update room metadata from server-pushed change (merges with existing).
+  /// Uses a transaction to prevent TOCTOU races with concurrent updates.
   Future<void> updateRoomMetadata(
     String roomId,
     Map<String, dynamic> newMetadata,
   ) async {
-    final existing = await getRoomById(roomId);
-    if (existing == null) return;
+    await _database.transaction(() async {
+      final existing = await getRoomById(roomId);
+      if (existing == null) return;
 
-    final merged = {...?existing.metadata, ...newMetadata};
+      final merged = {...?existing.metadata, ...newMetadata};
 
-    await (_database.update(_database.rooms)..where((t) => t.id.equals(roomId)))
-        .write(RoomsCompanion(metadata: Value(jsonEncode(merged))));
+      await (_database.update(_database.rooms)
+            ..where((t) => t.id.equals(roomId)))
+          .write(RoomsCompanion(metadata: Value(jsonEncode(merged))));
+    });
   }
 
+  /// Update sync cursor metadata atomically.
+  /// Uses a transaction to prevent concurrent history/stream sync from
+  /// overwriting each other's cursor values.
   Future<void> updateSyncMetadata(
     String roomId, {
     String? historyBackwardCursor,
     String? historyForwardCursor,
   }) async {
-    final existing = await getRoomById(roomId);
-    if (existing == null) return;
+    await _database.transaction(() async {
+      final existing = await getRoomById(roomId);
+      if (existing == null) return;
 
-    final merged = <String, dynamic>{...?existing.metadata};
+      final merged = <String, dynamic>{...?existing.metadata};
 
-    if (historyBackwardCursor != null) {
-      if (historyBackwardCursor.isEmpty) {
-        merged.remove('historyBackwardCursor');
-      } else {
-        merged['historyBackwardCursor'] = historyBackwardCursor;
+      if (historyBackwardCursor != null) {
+        if (historyBackwardCursor.isEmpty) {
+          merged.remove('historyBackwardCursor');
+        } else {
+          merged['historyBackwardCursor'] = historyBackwardCursor;
+        }
       }
-    }
 
-    if (historyForwardCursor != null) {
-      if (historyForwardCursor.isEmpty) {
-        merged.remove('historyForwardCursor');
-      } else {
-        merged['historyForwardCursor'] = historyForwardCursor;
+      if (historyForwardCursor != null) {
+        if (historyForwardCursor.isEmpty) {
+          merged.remove('historyForwardCursor');
+        } else {
+          merged['historyForwardCursor'] = historyForwardCursor;
+        }
       }
-    }
 
-    await (_database.update(_database.rooms)..where((t) => t.id.equals(roomId)))
-        .write(RoomsCompanion(metadata: Value(jsonEncode(merged))));
+      await (_database.update(_database.rooms)
+            ..where((t) => t.id.equals(roomId)))
+          .write(RoomsCompanion(metadata: Value(jsonEncode(merged))));
+    });
   }
 
   Future<void> updateLastEventId(String roomId, String eventId) async {
-    final existing = await getRoomById(roomId);
-    if (existing == null) return;
-
-    final currentLastEventId = existing.lastEventId;
-    if (currentLastEventId != null &&
-        currentLastEventId.isNotEmpty &&
-        currentLastEventId.compareTo(eventId) >= 0) {
-      return;
-    }
-
-    await (_database.update(_database.rooms)..where((t) => t.id.equals(roomId)))
-        .write(RoomsCompanion(lastEventId: Value(eventId)));
+    // Atomic compare-and-swap: only update if eventId is greater than the
+    // current value. Avoids TOCTOU race when stream and history sync both
+    // call this concurrently for the same room.
+    await _database.customStatement(
+      'UPDATE rooms SET last_event_id = ? '
+      'WHERE id = ? AND (last_event_id IS NULL OR last_event_id < ?)',
+      [eventId, roomId, eventId],
+    );
   }
 
   Future<void> incrementUnreadCount(String roomId) async {

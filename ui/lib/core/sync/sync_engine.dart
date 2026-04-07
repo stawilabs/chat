@@ -327,7 +327,7 @@ class SyncEngine with WidgetsBindingObserver {
     }
 
     _shouldStop = false;
-    _startDownloadLoop();
+    unawaited(_startDownloadLoop());
     _startUploadLoop();
   }
 
@@ -1279,14 +1279,17 @@ class SyncEngine with WidgetsBindingObserver {
         },
       );
 
-      // Determine action type from body text
+      // Determine action type from body text (mutually exclusive — check most
+      // specific patterns first to avoid double-matching on compound sentences).
       final isRoomCreated =
           body.contains('created') || body.contains('room created');
-      final isMemberAdded = body.contains('added') || body.contains('joined');
       final isMemberRemoved =
           body.contains('removed') ||
           body.contains('left') ||
           body.contains('kicked');
+      final isMemberAdded =
+          !isMemberRemoved &&
+          (body.contains('added') || body.contains('joined'));
 
       if (isRoomCreated || isMemberAdded) {
         // Store all subscription IDs from the event
