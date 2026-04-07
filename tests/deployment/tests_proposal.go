@@ -455,7 +455,7 @@ func (t *MotionWithDeadlineTest) Run(ctx context.Context, client *Client) error 
 	for _, e := range history.GetEvents() {
 		if motion := e.GetPayload().GetMotion(); motion != nil && motion.GetId() == motionID {
 			motionFound = true
-			if err := a.True(motion.HasClosesAt(), "Motion should have closes_at set"); err != nil {
+			if err := a.True(motion.ClosesAt != nil, "Motion should have closes_at set"); err != nil {
 				return err
 			}
 			break

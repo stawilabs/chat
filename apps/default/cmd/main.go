@@ -95,14 +95,13 @@ func runService(ctx context.Context) error {
 	auth := sm.GetAuthorizer(ctx)
 	authzMiddleware := authz.NewMiddleware(auth)
 
-	// Setup Connect server
+	// Setup Connect server and HTTP handlers
 	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
-
-	// Setup HTTP handlers and queue infrastructure
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 
 	serviceOptions := []frame.Option{
 		frame.WithHTTPHandler(connectHandler),
+		frame.WithPermissionRegistration(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI,
