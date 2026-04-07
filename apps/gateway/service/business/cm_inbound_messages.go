@@ -186,11 +186,7 @@ func (cm *connectionManager) processRoomEvent(
 	event *chatv1.RoomEvent,
 ) error {
 	if event == nil {
-		util.Log(ctx).With(
-			"event_id", event.GetId(),
-			"room_id", event.GetRoomId(),
-			"event_type", event.GetType(),
-		).Warn("Received nil room event")
+		util.Log(ctx).Warn("Received nil room event")
 		return nil
 	}
 

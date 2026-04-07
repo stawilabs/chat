@@ -3,10 +3,12 @@ package business
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	defaultrepo "github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/pitabwire/frame/data"
+	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 )
 
 type replayClient interface {
@@ -22,19 +24,19 @@ type replayClient interface {
 	) ([]*chatv1.StreamResponse, error)
 }
 
-type durableReplayClient struct {
-	repo defaultrepo.DeviceReplayRepository
+type rpcReplayClient struct {
+	chatClient chatv1connect.ChatServiceClient
 }
 
-func newChatReplayClient(repo defaultrepo.DeviceReplayRepository) replayClient {
-	if repo == nil {
+func newChatReplayClient(chatClient chatv1connect.ChatServiceClient) replayClient {
+	if chatClient == nil {
 		return nil
 	}
 
-	return &durableReplayClient{repo: repo}
+	return &rpcReplayClient{chatClient: chatClient}
 }
 
-func (rc *durableReplayClient) ResolveCursor(
+func (rc *rpcReplayClient) ResolveCursor(
 	ctx context.Context,
 	profileID string,
 	deviceID string,
@@ -44,32 +46,31 @@ func (rc *durableReplayClient) ResolveCursor(
 		return "", false, nil
 	}
 
-	entry, err := rc.repo.GetByCursor(ctx, profileID, deviceID, token)
-	if err == nil && entry != nil {
-		return entry.GetID(), true, nil
-	}
-	if err != nil && !data.ErrorIsNoRows(err) {
-		return "", false, err
-	}
-
-	// Support in-flight rolling upgrades where the client may still present the
-	// older event-id-based token from before the gateway switched to replay cursors.
-	entry, err = rc.repo.GetByEventID(ctx, profileID, deviceID, token)
-	if err == nil && entry != nil {
-		return entry.GetID(), true, nil
-	}
-	if err != nil && !data.ErrorIsNoRows(err) {
-		return "", false, err
+	resp, err := rc.chatClient.ResolveReplayCursor(ctx, connect.NewRequest(&chatv1.ResolveReplayCursorRequest{
+		ProfileId: profileID,
+		DeviceId:  deviceID,
+		Token:     token,
+	}))
+	if err != nil {
+		return "", false, fmt.Errorf("resolve replay cursor RPC failed: %w", err)
 	}
 
-	return "", false, nil
+	return resp.Msg.GetCursor(), resp.Msg.GetFound(), nil
 }
 
-func (rc *durableReplayClient) LatestCursor(ctx context.Context, profileID, deviceID string) (string, error) {
-	return rc.repo.GetLatestCursor(ctx, profileID, deviceID)
+func (rc *rpcReplayClient) LatestCursor(ctx context.Context, profileID, deviceID string) (string, error) {
+	resp, err := rc.chatClient.GetLatestReplayCursor(ctx, connect.NewRequest(&chatv1.GetLatestReplayCursorRequest{
+		ProfileId: profileID,
+		DeviceId:  deviceID,
+	}))
+	if err != nil {
+		return "", fmt.Errorf("get latest replay cursor RPC failed: %w", err)
+	}
+
+	return resp.Msg.GetCursor(), nil
 }
 
-func (rc *durableReplayClient) ListAfterCursor(
+func (rc *rpcReplayClient) ListAfterCursor(
 	ctx context.Context,
 	profileID string,
 	deviceID string,
@@ -77,19 +78,27 @@ func (rc *durableReplayClient) ListAfterCursor(
 	upperBoundCursor string,
 	limit int,
 ) ([]*chatv1.StreamResponse, error) {
-	entries, err := rc.repo.ListAfterCursor(ctx, profileID, deviceID, afterCursor, upperBoundCursor, limit)
+	resp, err := rc.chatClient.ListReplayEvents(ctx, connect.NewRequest(&chatv1.ListReplayEventsRequest{
+		ProfileId:        profileID,
+		DeviceId:         deviceID,
+		AfterCursor:      afterCursor,
+		UpperBoundCursor: upperBoundCursor,
+		Limit:            int32(min(limit, maxInt32)), //nolint:gosec // capped to int32 range
+	}))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list replay events RPC failed: %w", err)
 	}
 
+	entries := resp.Msg.GetEntries()
 	responses := make([]*chatv1.StreamResponse, 0, len(entries))
 	for _, entry := range entries {
-		response, convErr := entry.ToStreamResponse()
-		if convErr != nil {
-			return nil, errors.New("failed to decode stored replay response")
-		}
-		if response == nil {
+		if entry == nil || len(entry.GetResponseData()) == 0 {
 			continue
+		}
+
+		response := &chatv1.StreamResponse{}
+		if unmarshalErr := proto.Unmarshal(entry.GetResponseData(), response); unmarshalErr != nil {
+			return nil, errors.New("failed to decode stored replay response")
 		}
 		responses = append(responses, response)
 	}

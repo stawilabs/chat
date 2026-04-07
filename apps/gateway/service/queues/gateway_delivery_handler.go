@@ -78,9 +78,9 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 		util.Log(ctx).WithFields(map[string]any{
 			"profile_id": profileID,
 			"device_id":  deviceID,
-		}).Debug("dispatch channel full: slow consumer detected")
+		}).Debug("dispatch channel full: falling back to offline delivery")
 
-		return errors.New("slow consumer: dispatch buffer full")
+		return dq.publishToOfflineDevice(ctx, headers, evt)
 	}
 
 	return nil

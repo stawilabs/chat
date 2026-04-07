@@ -105,7 +105,6 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
-	defaultrepo "github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/telemetry"
@@ -134,6 +133,11 @@ const (
 	utilizationScaleFactor   = 100 // Scale factor for utilization percentage
 	// maxInt32 is the maximum value for int32 to prevent overflow.
 	maxInt32 = 2147483647
+
+	// presenceWorkerCount is the number of goroutines that process presence updates.
+	presenceWorkerCount = 4
+	// presenceQueueSize is the buffered channel capacity for presence jobs.
+	presenceQueueSize = 256
 )
 
 type ConnectionManagerOptions struct {
@@ -305,6 +309,15 @@ var (
 // - Stale cleanup: Removes connections with no heartbeat for 3x heartbeat interval
 // - Metrics reporting: Logs all metrics every 10 seconds
 // - Health monitoring: Checks pool utilization every 60 seconds.
+// presenceJob represents a fire-and-forget presence update request.
+type presenceJob struct {
+	ctx       context.Context
+	profileID string
+	deviceID  string
+	status    devicev1.PresenceStatus
+	statusMsg string
+}
+
 type connectionManager struct {
 	connPool *connectionPool // Local connection pool for this gateway
 	cache    cache.Cache[string, *Metadata]
@@ -313,6 +326,9 @@ type connectionManager struct {
 	deviceCli  devicev1connect.DeviceServiceClient
 	chatClient chatv1connect.ChatServiceClient
 	replayCli  replayClient
+
+	// Bounded worker pool for fire-and-forget tasks (presence updates, etc.)
+	presenceCh chan presenceJob
 
 	// Gateway instance ID
 	gatewayID string // Unique ID for this gateway instance (format: "gateway-<nano-timestamp>")
@@ -376,7 +392,6 @@ func NewConnectionManager(
 	ctx context.Context,
 	chatClient chatv1connect.ChatServiceClient,
 	deviceClient devicev1connect.DeviceServiceClient,
-	replayRepo defaultrepo.DeviceReplayRepository,
 	rawCache cache.RawCache,
 	options ConnectionManagerOptions,
 ) ConnectionManager {
@@ -404,11 +419,12 @@ func NewConnectionManager(
 
 	cm := &connectionManager{
 		chatClient: chatClient,
-		replayCli:  newChatReplayClient(replayRepo),
+		replayCli:  newChatReplayClient(chatClient),
 		deviceCli:  deviceClient,
 		connPool:   newConnectionPool(poolSizeInt32),
 		cache:      cache.NewGenericCache[string, *Metadata](rawCache, nil),
 		resume:     cache.NewGenericCache[string, string](rawCache, nil),
+		presenceCh: make(chan presenceJob, presenceQueueSize),
 
 		gatewayID: gatewayID,
 
@@ -454,6 +470,12 @@ func (cm *connectionManager) startBackgroundTasks(ctx context.Context) {
 	// Health monitoring (60s interval)
 	cm.wg.Add(1)
 	go cm.monitorHealth(ctx)
+
+	// Bounded presence update worker pool
+	for range presenceWorkerCount {
+		cm.wg.Add(1)
+		go cm.presenceWorker(ctx)
+	}
 }
 
 // HandleConnection manages a device connection lifecycle with optimal resource usage.
@@ -676,6 +698,19 @@ func (cm *connectionManager) HandleConnection(
 	workerWg.Add(1)
 	go func() {
 		defer workerWg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				util.Log(connCtx).WithFields(map[string]any{
+					"panic":      r,
+					"profile_id": profileID,
+					"device_id":  deviceID,
+				}).Error("inbound stream handler panicked")
+				select {
+				case errChan <- fmt.Errorf("inbound handler panic: %v", r):
+				default:
+				}
+			}
+		}()
 		_ = cm.handleInboundStream(connCtx, conn, stream, errChan, doneCh)
 	}()
 
@@ -683,6 +718,19 @@ func (cm *connectionManager) HandleConnection(
 	workerWg.Add(1)
 	go func() {
 		defer workerWg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				util.Log(connCtx).WithFields(map[string]any{
+					"panic":      r,
+					"profile_id": profileID,
+					"device_id":  deviceID,
+				}).Error("outbound stream handler panicked")
+				select {
+				case errChan <- fmt.Errorf("outbound handler panic: %v", r):
+				default:
+				}
+			}
+		}()
 		_ = cm.handleOutboundStream(connCtx, conn, stream, lastDurableCursor, errChan, doneCh)
 	}()
 
@@ -1176,26 +1224,56 @@ func (cm *connectionManager) updatePresence(
 		return
 	}
 
-	presenceReq := &devicev1.UpdatePresenceRequest{
-		DeviceId:      deviceID,
-		Status:        status,
-		StatusMessage: statusMsg,
+	job := presenceJob{
+		ctx:       context.WithoutCancel(ctx),
+		profileID: profileID,
+		deviceID:  deviceID,
+		status:    status,
+		statusMsg: statusMsg,
 	}
 
-	// Fire and forget - don't block on presence update
-	go func() {
-		presenceCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), presenceUpdateTimeout)
-		defer cancel()
+	// Non-blocking send — drop if the worker pool is saturated.
+	select {
+	case cm.presenceCh <- job:
+	default:
+		util.Log(ctx).WithFields(map[string]any{
+			"profile_id": profileID,
+			"device_id":  deviceID,
+			"status":     status.String(),
+		}).Warn("presence update dropped: worker pool saturated")
+	}
+}
 
-		_, err := cm.deviceCli.UpdatePresence(presenceCtx, connect.NewRequest(presenceReq))
-		if err != nil {
-			util.Log(presenceCtx).WithError(err).WithFields(map[string]any{
-				"profile_id": profileID,
-				"device_id":  deviceID,
-				"status":     status.String(),
-			}).Debug("failed to update presence status")
+// presenceWorker drains the presence channel and sends updates to the device service.
+func (cm *connectionManager) presenceWorker(_ context.Context) {
+	defer cm.wg.Done()
+
+	for {
+		select {
+		case <-cm.shutdownCh:
+			return
+		case job, ok := <-cm.presenceCh:
+			if !ok {
+				return
+			}
+
+			presenceCtx, cancel := context.WithTimeout(job.ctx, presenceUpdateTimeout)
+			_, err := cm.deviceCli.UpdatePresence(presenceCtx, connect.NewRequest(&devicev1.UpdatePresenceRequest{
+				DeviceId:      job.deviceID,
+				Status:        job.status,
+				StatusMessage: job.statusMsg,
+			}))
+			cancel()
+
+			if err != nil {
+				util.Log(presenceCtx).WithError(err).WithFields(map[string]any{
+					"profile_id": job.profileID,
+					"device_id":  job.deviceID,
+					"status":     job.status.String(),
+				}).Debug("failed to update presence status")
+			}
 		}
-	}()
+	}
 }
 
 func (cm *connectionManager) requireHello(

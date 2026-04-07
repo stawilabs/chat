@@ -74,15 +74,16 @@ func (p *connectionPool) getShard(key string) *poolShard {
 // If a connection with the same key exists, it is not replaced.
 // Thread-safe: Uses atomic load before acquiring shard write lock.
 func (p *connectionPool) add(conn Connection) error {
-	// Fast-path check without lock
-	if atomic.LoadInt32(&p.currentSize) >= p.maxSize {
-		return ErrConnectionPoolFull
-	}
-
 	key := conn.Metadata().Key()
 	shard := p.getShard(key)
 
 	shard.mu.Lock()
+	// Check capacity inside the lock to prevent races where multiple
+	// goroutines pass the fast-path and all increment past maxSize.
+	if atomic.LoadInt32(&p.currentSize) >= p.maxSize {
+		shard.mu.Unlock()
+		return ErrConnectionPoolFull
+	}
 	if _, exists := shard.connections[key]; exists {
 		shard.mu.Unlock()
 		return ErrConnectionExists

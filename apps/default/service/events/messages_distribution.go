@@ -19,6 +19,9 @@ import (
 const (
 	RoomOutboxLoggingEventName = "room.outbox.logging.event"
 	defaultBatchSize           = 1000
+	// maxContinuationDepth prevents infinite fan-out for very large rooms.
+	// At 1000 subscribers per batch this allows up to 100k subscribers.
+	maxContinuationDepth = 100
 )
 
 type RoomOutboxLoggingQueue struct {
@@ -81,8 +84,21 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 	})
 	logger.Debug("handling outbox logging batch")
 
+	// Build a pagination cursor that always uses defaultBatchSize as the SQL limit.
+	// The evtLink cursor's Limit field is repurposed as a continuation depth counter,
+	// so we construct a separate cursor for the repository query.
+	var queryCursor *commonv1.PageCursor
+	if c := evtLink.GetCursor(); c != nil && c.GetPage() != "" {
+		queryCursor = &commonv1.PageCursor{
+			Limit: defaultBatchSize,
+			Page:  c.GetPage(),
+		}
+	} else {
+		queryCursor = &commonv1.PageCursor{Limit: defaultBatchSize}
+	}
+
 	// Fetch one batch of subscribers
-	subscriptions, err := csq.subscriptionRepo.GetByRoomID(ctx, roomID, evtLink.GetCursor())
+	subscriptions, err := csq.subscriptionRepo.GetByRoomID(ctx, roomID, queryCursor)
 	if err != nil {
 		logger.WithError(err).Error("failed to get room subscribers")
 		return err
@@ -124,10 +140,22 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 	}
 
 	// If we fetched a full batch, there might be more subscribers. Emit a new job with the next cursor.
+	// Guard against infinite fan-out by tracking total subscribers processed.
 	if len(subscriptions) >= defaultBatchSize {
+		depth := int32(0)
+		if evtLink.GetCursor() != nil {
+			depth = evtLink.GetCursor().GetLimit()
+		}
+		depth++
+		if int(depth) > maxContinuationDepth {
+			logger.WithField("depth", depth).
+				Warn("max outbox continuation depth reached, stopping fan-out")
+			return nil
+		}
+
 		nextCursor := subscriptions[len(subscriptions)-1].GetID()
 		evtLink.SetCursor(&commonv1.PageCursor{
-			Limit: defaultBatchSize,
+			Limit: depth,
 			Page:  nextCursor,
 		})
 		if err = csq.evtsManager.Emit(ctx, RoomOutboxLoggingEventName, evtLink); err != nil {

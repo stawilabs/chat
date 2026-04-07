@@ -43,7 +43,6 @@ func TestNewConnectionManager_AppliesResourceOptions(t *testing.T) {
 		context.Background(),
 		nil,
 		nil,
-		nil,
 		cache.NewInMemoryCache(),
 		ConnectionManagerOptions{
 			MaxConnectionsPerDevice: 2,

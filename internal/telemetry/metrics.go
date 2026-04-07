@@ -118,3 +118,24 @@ var EventFanoutCounter = telemetry.DimensionlessMeasure(
 	"chat.events.fanout",
 	"Total event fanout operations",
 )
+
+// Device replay metrics track the replay API used by the gateway for reconnection catch-up.
+//
+//nolint:gochecknoglobals // OpenTelemetry metrics must be global for instrumentation
+var (
+	ReplayCursorResolvedCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.replay.cursor.resolved",
+		"Total replay cursor resolution requests",
+	)
+
+	ReplayEventsListedCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.replay.events.listed",
+		"Total replay event list requests",
+	)
+
+	ReplayLatencyHistogram = telemetry.LatencyMeasure(
+		"chat.replay",
+	)
+)

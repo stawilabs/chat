@@ -20,6 +20,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/antinvestor/service-chat/internal"
+	chattel "github.com/antinvestor/service-chat/internal/telemetry"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/data"
@@ -50,6 +51,7 @@ type ChatServer struct {
 	RoomBusiness       business.RoomBusiness
 	MessageBusiness    business.MessageBusiness
 	ProposalManagement business.ProposalManagement
+	DeviceReplayRepo   repository.DeviceReplayRepository
 
 	chatv1connect.UnimplementedChatServiceHandler
 }
@@ -71,6 +73,7 @@ func NewChatServer(
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
+	deviceReplayRepo := repository.NewDeviceReplayRepository(ctx, dbPool, workMan)
 
 	rawPresenceCache, ok := service.GetRawCache("presence")
 	if !ok {
@@ -133,6 +136,7 @@ func NewChatServer(
 		RoomBusiness:       roomBusiness,
 		MessageBusiness:    messageBusiness,
 		ProposalManagement: proposalManagement,
+		DeviceReplayRepo:   deviceReplayRepo,
 	}
 }
 
@@ -1231,4 +1235,137 @@ func isProposalError(err error) bool {
 		errors.Is(err, service.ErrProposalNotPending) ||
 		errors.Is(err, service.ErrProposalExpired) ||
 		errors.Is(err, service.ErrProposalApprovalDenied)
+}
+
+// -----------------------------------------------------
+// Device Replay Handlers
+// -----------------------------------------------------
+
+func (ps *ChatServer) ResolveReplayCursor(
+	ctx context.Context,
+	req *connect.Request[chatv1.ResolveReplayCursorRequest],
+) (*connect.Response[chatv1.ResolveReplayCursorResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	chattel.ReplayCursorResolvedCounter.Add(ctx, 1)
+	startTime := time.Now()
+	defer func() {
+		chattel.ReplayLatencyHistogram.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
+	profileID := authenticatedContact.GetProfileId()
+	deviceID := req.Msg.GetDeviceId()
+	token := req.Msg.GetToken()
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	// Try cursor-based lookup first.
+	entry, err := ps.DeviceReplayRepo.GetByCursor(timeoutCtx, profileID, deviceID, token)
+	if err == nil && entry != nil {
+		return connect.NewResponse(&chatv1.ResolveReplayCursorResponse{
+			Cursor: entry.GetID(),
+			Found:  true,
+		}), nil
+	}
+	if err != nil && !data.ErrorIsNoRows(err) {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	// Fall back to event-ID-based lookup (rolling upgrade support).
+	entry, err = ps.DeviceReplayRepo.GetByEventID(timeoutCtx, profileID, deviceID, token)
+	if err == nil && entry != nil {
+		return connect.NewResponse(&chatv1.ResolveReplayCursorResponse{
+			Cursor: entry.GetID(),
+			Found:  true,
+		}), nil
+	}
+	if err != nil && !data.ErrorIsNoRows(err) {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	return connect.NewResponse(&chatv1.ResolveReplayCursorResponse{
+		Cursor: "",
+		Found:  false,
+	}), nil
+}
+
+func (ps *ChatServer) GetLatestReplayCursor(
+	ctx context.Context,
+	req *connect.Request[chatv1.GetLatestReplayCursorRequest],
+) (*connect.Response[chatv1.GetLatestReplayCursorResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	cursor, err := ps.DeviceReplayRepo.GetLatestCursor(
+		timeoutCtx,
+		authenticatedContact.GetProfileId(),
+		req.Msg.GetDeviceId(),
+	)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	return connect.NewResponse(&chatv1.GetLatestReplayCursorResponse{
+		Cursor: cursor,
+	}), nil
+}
+
+func (ps *ChatServer) ListReplayEvents(
+	ctx context.Context,
+	req *connect.Request[chatv1.ListReplayEventsRequest],
+) (*connect.Response[chatv1.ListReplayEventsResponse], error) {
+	authenticatedContact, err := internal.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	chattel.ReplayEventsListedCounter.Add(ctx, 1)
+	startTime := time.Now()
+	defer func() {
+		chattel.ReplayLatencyHistogram.Record(ctx, float64(time.Since(startTime).Milliseconds()))
+	}()
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	limit := int(req.Msg.GetLimit())
+	if limit <= 0 || limit > MaxBatchSize {
+		limit = MaxBatchSize
+	}
+
+	entries, err := ps.DeviceReplayRepo.ListAfterCursor(
+		timeoutCtx,
+		authenticatedContact.GetProfileId(),
+		req.Msg.GetDeviceId(),
+		req.Msg.GetAfterCursor(),
+		req.Msg.GetUpperBoundCursor(),
+		limit,
+	)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+
+	replayEntries := make([]*chatv1.ReplayEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry == nil {
+			continue
+		}
+		replayEntries = append(replayEntries, &chatv1.ReplayEntry{
+			Cursor:       entry.GetID(),
+			ResponseData: entry.ResponseData,
+		})
+	}
+
+	return connect.NewResponse(&chatv1.ListReplayEventsResponse{
+		Entries: replayEntries,
+	}), nil
 }

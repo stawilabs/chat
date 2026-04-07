@@ -112,7 +112,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_MalformedPayload_ReturnsNil
 	s.Require().NoError(err) // Should consume message even on parse error
 }
 
-func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_ReturnsRetryableError() {
+func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_FallsBackToOffline() {
 	profileID := "user123"
 	deviceID := "device456"
 
@@ -130,7 +130,14 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_Returns
 		},
 	}
 
-	handler := queues.NewGatewayEventsQueueHandler(s.cfg, nil, mockCM)
+	mockPub := &mockPublisher{}
+	mockQueueManager := &mockQueueManager{
+		publishers: map[string]queue.Publisher{
+			s.cfg.QueueOfflineEventDeliveryName: mockPub,
+		},
+	}
+
+	handler := queues.NewGatewayEventsQueueHandler(s.cfg, mockQueueManager, mockCM)
 
 	delivery := s.createTextDelivery("Hello")
 	payload, err := proto.Marshal(delivery)
@@ -141,8 +148,12 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_Returns
 		internal.HeaderDeviceID:  deviceID,
 	}
 
+	// Should fall back to offline delivery when dispatch channel is full
 	err = handler.Handle(context.Background(), headers, payload)
-	s.Require().Error(err)
+	s.Require().NoError(err)
+
+	// Verify message was published to offline queue
+	s.Equal(1, mockPub.publishCount)
 }
 
 func (s *GatewayDeliveryHandlerTestSuite) TestHandle_AllPayloadTypes() {

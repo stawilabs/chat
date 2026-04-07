@@ -151,7 +151,17 @@ func (c *connection) Metadata() *Metadata {
 	return c.metadata
 }
 
-func (c *connection) Dispatch(evt *chatv1.StreamResponse) bool {
+//nolint:nonamedreturns // named return required for deferred recover to set result on panic
+func (c *connection) Dispatch(evt *chatv1.StreamResponse) (dispatched bool) {
+	// Protect against send-on-closed-channel panic.
+	// Between the closed check and the channel send, another goroutine can
+	// call Close(). The deferred recover is the only safe guard.
+	defer func() {
+		if r := recover(); r != nil {
+			dispatched = false
+		}
+	}()
+
 	if c.closed.Load() {
 		return false
 	}
