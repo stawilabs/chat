@@ -389,6 +389,51 @@ service ChatService {
       tags: "Proposals"
     };
   }
+
+  // Device Replay APIs (service-to-service, used by gateway for reconnection catch-up)
+  // -----------------------------------------------------
+
+  // Resolve a resume token or event ID to a replay cursor for a device.
+  rpc ResolveReplayCursor(ResolveReplayCursorRequest) returns (ResolveReplayCursorResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["event_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "resolveReplayCursor"
+      summary: "Resolve a resume token to a replay cursor"
+      description: "Resolves a client-provided resume token or event ID to a replay cursor ID for a specific device. Used by the gateway during reconnection to determine where to resume event replay."
+      tags: "Device Replay"
+    };
+  }
+
+  // Get the latest replay cursor for a device (used as upper bound during replay).
+  rpc GetLatestReplayCursor(GetLatestReplayCursorRequest) returns (GetLatestReplayCursorResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["event_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "getLatestReplayCursor"
+      summary: "Get the latest replay cursor for a device"
+      description: "Returns the most recent replay cursor ID for a device. Used as the upper boundary when replaying missed events during reconnection."
+      tags: "Device Replay"
+    };
+  }
+
+  // List replay events after a cursor for a device (paginated catch-up).
+  rpc ListReplayEvents(ListReplayEventsRequest) returns (ListReplayEventsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["event_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "listReplayEvents"
+      summary: "List replay events after a cursor"
+      description: "Returns a paginated list of replay events for a device starting after a given cursor up to an upper bound. Used by the gateway to stream missed events to reconnecting clients."
+      tags: "Device Replay"
+    };
+  }
 }
 
 // -----------------------------------------------------
@@ -830,4 +875,55 @@ message SubmitProposalRequest {
 message SubmitProposalResponse {
   Proposal proposal = 1;
   common.v1.ErrorDetail error = 2;
+}
+
+// -----------------------------------------------------
+// Device Replay Messages
+// -----------------------------------------------------
+
+message ResolveReplayCursorRequest {
+  string profile_id = 1 [(buf.validate.field).string.min_len = 1];
+  string device_id = 2 [(buf.validate.field).string.min_len = 1];
+  // The resume token or event ID presented by the reconnecting client.
+  string token = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message ResolveReplayCursorResponse {
+  // The resolved cursor ID, empty if the token could not be resolved.
+  string cursor = 1;
+  // True if the token was successfully resolved to a cursor.
+  bool found = 2;
+}
+
+message GetLatestReplayCursorRequest {
+  string profile_id = 1 [(buf.validate.field).string.min_len = 1];
+  string device_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetLatestReplayCursorResponse {
+  // The latest cursor ID for the device, empty if no replay entries exist.
+  string cursor = 1;
+}
+
+message ListReplayEventsRequest {
+  string profile_id = 1 [(buf.validate.field).string.min_len = 1];
+  string device_id = 2 [(buf.validate.field).string.min_len = 1];
+  // Fetch events with cursor > after_cursor.
+  string after_cursor = 3;
+  // Fetch events with cursor <= upper_bound_cursor.
+  string upper_bound_cursor = 4;
+  // Maximum number of events to return per page.
+  int32 limit = 5;
+}
+
+// A single replay entry containing a cursor ID and its serialized StreamResponse payload.
+message ReplayEntry {
+  // The replay cursor ID (DeviceReplayEvent.ID).
+  string cursor = 1;
+  // The serialized StreamResponse protobuf bytes.
+  bytes response_data = 2;
+}
+
+message ListReplayEventsResponse {
+  repeated ReplayEntry entries = 1;
 }

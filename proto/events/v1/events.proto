@@ -1,0 +1,141 @@
+// Copyright 2023-2026 Ant Investor Ltd
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package events.v1;
+
+import "buf/validate/validate.proto";
+import "chat/v1/definitions.proto";
+import "chat/v1/payload_type.proto";
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/antinvestor/apis/go/events/v1;eventsv1";
+option java_multiple_files = true;
+option java_package = "eventsv1";
+
+message Subscription {
+  // Identifies the subscription by id in transit.
+  string subscription_id = 3 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+
+  // contact details tied to the subscription receiving the event
+  common.v1.ContactLink contact_link = 5;
+}
+
+message RoomAction {
+  // Identifies the room being acted on
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  // action type
+  chat.v1.RoomChangeAction action = 2;
+  // Subscription details of the person performing an action
+  Subscription actor = 5;
+  // details of affected people based on action
+  repeated Subscription targets = 10;
+
+  // details of the action
+  string details = 15;
+
+  // roles of the actor
+  repeated string roles = 20;
+}
+
+// RoomActionList represents a list of room actions
+message RoomActionList {
+  repeated RoomAction actions = 1;
+}
+
+// Link represents an event in the chat system, the core unit of data flowing
+// through the system in real-time to end-user devices.
+message Link {
+  // Unique identifier for the event, constrained for quick parsing and validation.
+  string event_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+
+  // Identifies the chat room or context, ensuring data is routed to the correct group.
+  string room_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  // Identifies the originator subscription of the event, crucial for attribution and security.
+  Subscription source = 3;
+
+  // Unique identifier for a parent event related to this event, constrained for quick parsing and validation.
+  string parent_id = 5 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+
+  // Categorizes the event (e.g., TEXT, ATTACHMENT) for efficient handling.
+  chat.v1.RoomEventType event_type = 7;
+  // Timestamp for event creation, aiding in ordering and latency debugging.
+  google.protobuf.Timestamp created_at = 10;
+
+  // pagination cursor for distributing event to large groups
+  common.v1.PageCursor cursor = 15;
+}
+
+// Broadcast encapsulates an event and its delivery targets for bulk distribution
+// to multiple recipients, optimizing the initial broadcast phase.
+message Broadcast {
+  // The event to be distributed.
+  Link event = 1;
+
+  // List of delivery targets specifying recipients for batch processing efficiency.
+  repeated Subscription destinations = 2;
+
+  // Indicates priority of delivery to prioritize critical events (e.g., CALL_OFFER).
+  enum Priority {
+    PRIORITY_UNSPECIFIED = 0;
+    PRIORITY_NORMAL = 1;
+    PRIORITY_HIGH = 2;
+  }
+  Priority priority = 3;
+}
+
+// Delivery represents the final payload delivered to an end-user device,
+// containing the event, specific delivery target, and detailed typed data.
+message Delivery {
+  // The event data being delivered.
+  Link event = 1;
+  // Specific delivery target for this delivery.
+  Subscription destination = 2;
+  Subscription source = 3;
+
+  chat.v1.Payload payload = 5;
+
+  // Indicates if payload data is compressed to save bandwidth for large messages.
+  bool is_compressed = 10;
+  // Metadata for retry logic to ensure robust delivery to end-user devices.
+  int32 retry_count = 11;
+
+  string device_id = 12 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+}

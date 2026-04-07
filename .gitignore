@@ -33,3 +33,4 @@ ui/build/
 ui/.dart_tool/
 ui/.flutter-plugins
 ui/.flutter-plugins-dependencies
+WORK_STATE.md
