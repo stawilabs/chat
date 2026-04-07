@@ -8,8 +8,10 @@ import (
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/datastore/pool"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/workerpool"
@@ -27,6 +29,8 @@ const (
 type RoomOutboxLoggingQueue struct {
 	evtsManager      frevents.Manager
 	subscriptionRepo repository.RoomSubscriptionRepository
+	eventRepo        repository.RoomEventRepository
+	payloadConverter *models.PayloadConverter
 
 	lowPriorityEventTypes []chatv1.RoomEventType
 }
@@ -39,6 +43,8 @@ func NewRoomOutboxLoggingQueue(
 ) *RoomOutboxLoggingQueue {
 	return &RoomOutboxLoggingQueue{
 		subscriptionRepo: repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan),
+		eventRepo:        repository.NewRoomEventRepository(ctx, dbPool, workMan),
+		payloadConverter: models.NewPayloadConverter(),
 		evtsManager:      evtsManager,
 		lowPriorityEventTypes: []chatv1.RoomEventType{
 			chatv1.RoomEventType_ROOM_EVENT_TYPE_TYPING,
@@ -126,10 +132,14 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 	if len(destinations) > 0 {
 		broadCastPriority := csq.getBroadCastPriority(evtLink.GetEventType())
 
+		// Pre-fetch event payload so FanoutEventHandler can skip the DB read.
+		eventPayload := csq.prefetchPayload(ctx, evtLink)
+
 		eventBroadcast := eventsv1.Broadcast{
 			Event:        evtLink,
 			Destinations: destinations,
 			Priority:     broadCastPriority,
+			Payload:      eventPayload,
 		}
 		if err = csq.evtsManager.Emit(ctx, RoomFanoutEventName, &eventBroadcast); err != nil {
 			logger.WithError(err).Error("failed to publish event broadcast")
@@ -166,6 +176,36 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 	}
 
 	return nil
+}
+
+// prefetchPayload loads the event content from the DB so the fanout handler
+// does not need to re-fetch it for every batch.  Returns nil for ephemeral
+// events or on any error (the fanout handler will fall back to its own fetch).
+func (csq *RoomOutboxLoggingQueue) prefetchPayload(
+	ctx context.Context,
+	evtLink *eventsv1.Link,
+) *chatv1.Payload {
+	if isEphemeralRoomEvent(evtLink.GetEventType()) {
+		return nil
+	}
+
+	evt, err := csq.eventRepo.GetByID(ctx, evtLink.GetEventId())
+	if err != nil {
+		if !data.ErrorIsNoRows(err) {
+			util.Log(ctx).WithError(err).WithField("event_id", evtLink.GetEventId()).
+				Debug("prefetch payload failed, fanout will retry")
+		}
+		return nil
+	}
+
+	payload, err := csq.payloadConverter.ToProto(evt.Content)
+	if err != nil {
+		util.Log(ctx).WithError(err).WithField("event_id", evtLink.GetEventId()).
+			Debug("prefetch payload conversion failed")
+		return nil
+	}
+
+	return payload
 }
 
 func (csq *RoomOutboxLoggingQueue) getBroadCastPriority(eventType chatv1.RoomEventType) eventsv1.Broadcast_Priority {

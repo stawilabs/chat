@@ -69,7 +69,7 @@ func (feh *FanoutEventHandler) Validate(_ context.Context, payload any) error {
 	return nil
 }
 
-//nolint:nonamedreturns,nestif // fanout coordinates retryable persistence lookups and per-target publish errors.
+//nolint:nonamedreturns // named return required for deferred tracing
 func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err error) {
 	ctx, span := chattel.EventTracer.Start(ctx, "Fanout")
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
@@ -94,11 +94,10 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 	})
 	logger.Debug("Fanout processing")
 
-	var eventPayload *chatv1.Payload
-	if isEphemeralRoomEvent(eventLink.GetEventType()) {
-		logger.WithField("event_type", eventLink.GetEventType().String()).
-			Debug("fanout handling ephemeral room event")
-	} else {
+	// Use pre-fetched payload from Broadcast if available (set by RoomOutboxLoggingQueue),
+	// otherwise fall back to DB read.
+	eventPayload := broadcast.GetPayload()
+	if eventPayload == nil && !isEphemeralRoomEvent(eventLink.GetEventType()) {
 		eventLinkData, getErr := feh.eventRepo.GetByID(ctx, eventLink.GetEventId())
 		if getErr != nil {
 			if data.ErrorIsNoRows(getErr) {
