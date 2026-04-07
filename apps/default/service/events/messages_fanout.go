@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
@@ -72,62 +73,78 @@ func (feh *FanoutEventHandler) Validate(_ context.Context, payload any) error {
 	return nil
 }
 
-//nolint:nonamedreturns // named return required for deferred tracing
-func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err error) {
+func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) error {
 	ctx, span := chattel.EventTracer.Start(ctx, "Fanout")
+	var err error
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
 
 	broadcast, ok := payload.(*eventsv1.Broadcast)
 	if !ok {
-		return errors.New("invalid payload type, expected eventsv1.Broadcast{}")
+		err = errors.New("invalid payload type, expected eventsv1.Broadcast{}")
+		return err
 	}
 
-	eventLink := broadcast.GetEvent()
 	destinations := broadcast.GetDestinations()
-
-	// Early exit if no destinations
 	if len(destinations) == 0 {
 		return nil
 	}
 
-	logger := util.Log(ctx).WithFields(map[string]any{
-		"room_id":      eventLink.GetRoomId(),
-		"event_id":     eventLink.GetEventId(),
-		"target_count": len(destinations),
-	})
-	logger.Debug("Fanout processing")
-
-	// Use pre-fetched payload from Broadcast if available (set by RoomOutboxLoggingQueue),
-	// otherwise fall back to DB read.
-	eventPayload := broadcast.GetPayload()
-	if eventPayload == nil && !isEphemeralRoomEvent(eventLink.GetEventType()) {
-		eventLinkData, getErr := feh.eventRepo.GetByID(ctx, eventLink.GetEventId())
-		if getErr != nil {
-			if data.ErrorIsNoRows(getErr) {
-				logger.WithError(getErr).Warn("persisted room event missing, will retry fanout")
-				return getErr
-			}
-			logger.WithError(getErr).Error("failed to get chat event data")
-			return getErr
-		}
-
-		// Convert event content to typed payload
-		eventPayload, err = feh.payloadConverter.ToProto(eventLinkData.Content)
-		if err != nil {
-			logger.WithError(err).Error("failed to convert event content to payload")
-			return fmt.Errorf("failed to convert event content to payload: %w", err)
-		}
-	}
-
-	deliveryTopic, err := feh.getTopic()
-	if err != nil {
-		logger.WithError(err).Error("failed to get topic")
+	eventPayload, resolveErr := feh.resolvePayload(ctx, broadcast)
+	if resolveErr != nil && !errors.Is(resolveErr, errEphemeralEvent) {
+		err = resolveErr
 		return err
 	}
 
-	// Publish deliveries individually. On partial failure, re-emit a Broadcast
-	// containing only the failed destinations instead of retrying all destinations
-	// (which would cause duplicate delivery to already-succeeded recipients).
+	err = feh.publishDeliveries(ctx, broadcast, eventPayload)
+	return err
+}
+
+// errEphemeralEvent signals that no payload is needed for ephemeral events.
+var errEphemeralEvent = errors.New("ephemeral event: no payload")
+
+func (feh *FanoutEventHandler) resolvePayload(
+	ctx context.Context,
+	broadcast *eventsv1.Broadcast,
+) (*chatv1.Payload, error) {
+	if p := broadcast.GetPayload(); p != nil {
+		return p, nil
+	}
+
+	eventLink := broadcast.GetEvent()
+	if isEphemeralRoomEvent(eventLink.GetEventType()) {
+		return nil, errEphemeralEvent
+	}
+
+	eventLinkData, err := feh.eventRepo.GetByID(ctx, eventLink.GetEventId())
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			util.Log(ctx).WithError(err).Warn("persisted room event missing, will retry fanout")
+			return nil, err
+		}
+		return nil, err
+	}
+
+	payload, err := feh.payloadConverter.ToProto(eventLinkData.Content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert event content to payload: %w", err)
+	}
+
+	return payload, nil
+}
+
+func (feh *FanoutEventHandler) publishDeliveries(
+	ctx context.Context,
+	broadcast *eventsv1.Broadcast,
+	eventPayload *chatv1.Payload,
+) error {
+	eventLink := broadcast.GetEvent()
+	destinations := broadcast.GetDestinations()
+
+	deliveryTopic, err := feh.getTopic()
+	if err != nil {
+		return err
+	}
+
 	var failedDestinations []*eventsv1.Subscription
 	for _, destination := range destinations {
 		eventDelivery := &eventsv1.Delivery{
@@ -140,7 +157,7 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 
 		if pubErr := deliveryTopic.Publish(ctx, eventDelivery); pubErr != nil {
 			failedDestinations = append(failedDestinations, destination)
-			logger.WithError(pubErr).
+			util.Log(ctx).WithError(pubErr).
 				WithField("subscription_id", destination.GetSubscriptionId()).
 				Warn("failed to publish delivery")
 		}
@@ -149,14 +166,10 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) (err er
 	successCount := int64(len(destinations)) - int64(len(failedDestinations))
 	if successCount > 0 {
 		chattel.EventFanoutCounter.Add(ctx, successCount)
-		logger.WithField("success_count", successCount).Debug("Fanout delivery complete")
 	}
+
 	if len(failedDestinations) > 0 {
 		chattel.MessagesFailedCounter.Add(ctx, int64(len(failedDestinations)))
-		logger.WithField("fail_count", len(failedDestinations)).
-			Warn("some deliveries failed, re-emitting partial broadcast")
-
-		// Re-emit a partial Broadcast with only the failed destinations.
 		partialBroadcast := &eventsv1.Broadcast{
 			Event:        eventLink,
 			Destinations: failedDestinations,

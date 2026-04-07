@@ -72,28 +72,39 @@ func (csq *RoomOutboxLoggingQueue) Validate(_ context.Context, payload any) erro
 	return nil
 }
 
-//nolint:nonamedreturns,gocognit,funlen // named return for tracing; sequential batch/continue/emit phases.
-func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (err error) {
+func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) error {
 	ctx, span := chattel.EventTracer.Start(ctx, "OutboxLogging")
+	var err error
 	defer func() { chattel.EventTracer.End(ctx, span, err) }()
 
-	// Unwrap payload
 	evtLink, ok := payload.(*eventsv1.Link)
 	if !ok {
-		return errors.New("invalid payload type")
+		err = errors.New("invalid payload type")
+		return err
 	}
 
-	roomID := evtLink.GetRoomId()
-	logger := util.Log(ctx).WithFields(map[string]any{
-		"room_id": roomID,
-		"cursor":  evtLink.GetCursor(),
-		"type":    csq.Name(),
-	})
-	logger.Debug("handling outbox logging batch")
+	subscriptions, fetchErr := csq.fetchSubscriberBatch(ctx, evtLink)
+	if fetchErr != nil {
+		err = fetchErr
+		return err
+	}
+	if len(subscriptions) == 0 {
+		return nil
+	}
 
-	// Build a pagination cursor that always uses defaultBatchSize as the SQL limit.
-	// The evtLink cursor's Limit field is repurposed as a continuation depth counter,
-	// so we construct a separate cursor for the repository query.
+	if emitErr := csq.emitBroadcast(ctx, evtLink, subscriptions); emitErr != nil {
+		err = emitErr
+		return err
+	}
+
+	err = csq.emitContinuation(ctx, evtLink, subscriptions)
+	return err
+}
+
+func (csq *RoomOutboxLoggingQueue) fetchSubscriberBatch(
+	ctx context.Context,
+	evtLink *eventsv1.Link,
+) ([]*models.RoomSubscription, error) {
 	var queryCursor *commonv1.PageCursor
 	if c := evtLink.GetCursor(); c != nil && c.GetPage() != "" {
 		queryCursor = &commonv1.PageCursor{
@@ -104,23 +115,16 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 		queryCursor = &commonv1.PageCursor{Limit: defaultBatchSize}
 	}
 
-	// Fetch one batch of subscribers
-	subscriptions, err := csq.subscriptionRepo.GetByRoomID(ctx, roomID, queryCursor)
-	if err != nil {
-		logger.WithError(err).Error("failed to get room subscribers")
-		return err
-	}
+	return csq.subscriptionRepo.GetByRoomID(ctx, evtLink.GetRoomId(), queryCursor)
+}
 
-	if len(subscriptions) == 0 {
-		logger.Debug("no more subscribers to process")
-		return nil
-	}
-
-	logger.WithField("subscriber_count", len(subscriptions)).Debug("fetched room subscribers")
-
+func (csq *RoomOutboxLoggingQueue) emitBroadcast(
+	ctx context.Context,
+	evtLink *eventsv1.Link,
+	subscriptions []*models.RoomSubscription,
+) error {
 	var destinations []*eventsv1.Subscription
 	for _, sub := range subscriptions {
-		// Only broadcast messages to active subscriptions
 		if sub.IsActive() {
 			destinations = append(destinations, &eventsv1.Subscription{
 				SubscriptionId: sub.GetID(),
@@ -129,68 +133,61 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) (er
 		}
 	}
 
-	// Emit broadcast for this batch
-	if len(destinations) > 0 {
-		broadCastPriority := csq.getBroadCastPriority(evtLink.GetEventType())
-
-		// Pre-fetch event payload on the first batch only (cursor page is empty).
-		// Continuation batches skip the DB read — the FanoutEventHandler will use
-		// the payload from the first batch's Broadcast or fall back to its own fetch.
-		var eventPayload *chatv1.Payload
-		if evtLink.GetCursor() == nil || evtLink.GetCursor().GetPage() == "" {
-			eventPayload = csq.prefetchPayload(ctx, evtLink)
-		}
-
-		eventBroadcast := eventsv1.Broadcast{
-			Event:        evtLink,
-			Destinations: destinations,
-			Priority:     broadCastPriority,
-			Payload:      eventPayload,
-		}
-		if err = csq.evtsManager.Emit(ctx, RoomFanoutEventName, &eventBroadcast); err != nil {
-			logger.WithError(err).Error("failed to publish event broadcast")
-			return err
-		}
-		chattel.OutboxEntriesCreatedCounter.Add(ctx, int64(len(destinations)))
-		logger.WithField("batch_size", len(destinations)).Debug("emitted broadcast batch")
+	if len(destinations) == 0 {
+		return nil
 	}
 
-	// If we fetched a full batch, there might be more subscribers. Emit a new job with the next cursor.
-	// Guard against infinite fan-out by tracking total subscribers processed.
-	if len(subscriptions) >= defaultBatchSize {
-		depth := int32(0)
-		if evtLink.GetCursor() != nil {
-			depth = evtLink.GetCursor().GetLimit()
-		}
-		depth++
-		if int(depth) > maxContinuationDepth {
-			logger.WithField("depth", depth).
-				Warn("max outbox continuation depth reached, stopping fan-out")
-			return nil
-		}
-
-		nextCursor := subscriptions[len(subscriptions)-1].GetID()
-		// Clone before mutation to avoid corrupting the Broadcast's shared reference.
-		cloned := proto.Clone(evtLink)
-
-		nextLink, _ := cloned.(*eventsv1.Link)
-		nextLink.SetCursor(&commonv1.PageCursor{
-			Limit: depth,
-			Page:  nextCursor,
-		})
-		if err = csq.evtsManager.Emit(ctx, RoomOutboxLoggingEventName, nextLink); err != nil {
-			logger.WithError(err).Error("failed to emit next batch job")
-			return err
-		}
-		logger.WithField("next_cursor", nextCursor).Debug("emitted next batch job")
+	// Pre-fetch event payload on the first batch only (cursor page is empty).
+	var eventPayload *chatv1.Payload
+	if evtLink.GetCursor() == nil || evtLink.GetCursor().GetPage() == "" {
+		eventPayload = csq.prefetchPayload(ctx, evtLink)
 	}
 
+	eventBroadcast := &eventsv1.Broadcast{
+		Event:        evtLink,
+		Destinations: destinations,
+		Priority:     csq.getBroadCastPriority(evtLink.GetEventType()),
+		Payload:      eventPayload,
+	}
+	if err := csq.evtsManager.Emit(ctx, RoomFanoutEventName, eventBroadcast); err != nil {
+		return err
+	}
+
+	chattel.OutboxEntriesCreatedCounter.Add(ctx, int64(len(destinations)))
 	return nil
 }
 
-// prefetchPayload loads the event content from the DB so the fanout handler
-// does not need to re-fetch it for every batch.  Returns nil for ephemeral
-// events or on any error (the fanout handler will fall back to its own fetch).
+func (csq *RoomOutboxLoggingQueue) emitContinuation(
+	ctx context.Context,
+	evtLink *eventsv1.Link,
+	subscriptions []*models.RoomSubscription,
+) error {
+	if len(subscriptions) < defaultBatchSize {
+		return nil
+	}
+
+	depth := int32(0)
+	if evtLink.GetCursor() != nil {
+		depth = evtLink.GetCursor().GetLimit()
+	}
+	depth++
+
+	if int(depth) > maxContinuationDepth {
+		util.Log(ctx).WithField("depth", depth).
+			Warn("max outbox continuation depth reached, stopping fan-out")
+		return nil
+	}
+
+	nextCursor := subscriptions[len(subscriptions)-1].GetID()
+	nextLink, _ := proto.Clone(evtLink).(*eventsv1.Link)
+	nextLink.SetCursor(&commonv1.PageCursor{
+		Limit: depth,
+		Page:  nextCursor,
+	})
+
+	return csq.evtsManager.Emit(ctx, RoomOutboxLoggingEventName, nextLink)
+}
+
 func (csq *RoomOutboxLoggingQueue) prefetchPayload(
 	ctx context.Context,
 	evtLink *eventsv1.Link,

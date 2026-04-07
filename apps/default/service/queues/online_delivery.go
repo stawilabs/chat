@@ -98,14 +98,13 @@ func (dq *hotPathDeliveryQueueHandler) getOnlineDeliveryTopic(
 	return deviceTopic, shardID, nil
 }
 
-//
-//nolint:nonamedreturns // named return for tracing
 func (dq *hotPathDeliveryQueueHandler) Handle(
 	ctx context.Context,
 	headers map[string]string,
 	payload []byte,
-) (err error) {
+) error {
 	ctx, span := chattel.DeliveryTracer.Start(ctx, "HotPathDelivery")
+	var err error
 	defer func() { chattel.DeliveryTracer.End(ctx, span, err) }()
 
 	chattel.DeliveryQueueProcessedCounter.Add(ctx, 1)
@@ -115,66 +114,71 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 	if err != nil {
 		util.Log(ctx).WithError(err).WithField("queue", dq.cfg.QueueDeviceEventDeliveryName).
 			Error("failed to unmarshal delivery payload")
-		// Non-retryable: send raw payload to DLQ for diagnostics
 		if dq.dlp != nil {
 			_ = dq.dlp.Publish(ctx, payload, dq.cfg.QueueDeviceEventDeliveryName, err.Error(), headers)
 		}
 		return nil
 	}
 
-	// Check if delivery has exceeded max retries
 	if dq.dlp != nil && dq.dlp.ShouldDeadLetter(eventDelivery.GetRetryCount()) {
-		return dq.dlp.Publish(ctx, eventDelivery, dq.cfg.QueueDeviceEventDeliveryName,
+		err = dq.dlp.Publish(ctx, eventDelivery, dq.cfg.QueueDeviceEventDeliveryName,
 			"max retries exceeded", headers)
+		return err
 	}
 
-	destination := eventDelivery.GetDestination()
-	profileID := ""
-	if destination != nil {
-		contactLink := destination.GetContactLink()
-		if contactLink != nil {
-			profileID = contactLink.GetProfileId()
-		}
-	}
+	err = dq.processDelivery(ctx, headers, eventDelivery)
+	return err
+}
 
-	util.Log(ctx).WithFields(map[string]any{
-		"profile_id": profileID,
-		"event_id":   eventDelivery.GetEvent().GetEventId(),
-	}).Debug("HotPathDelivery searching devices")
+func (dq *hotPathDeliveryQueueHandler) processDelivery(
+	ctx context.Context,
+	headers map[string]string,
+	eventDelivery *eventsv1.Delivery,
+) error {
+	profileID := extractProfileID(eventDelivery)
 
 	devices, err := dq.resolveDevicesForProfile(ctx, profileID)
 	if err != nil {
-		return RetryOrDeadLetter(
-			ctx,
-			dq.qMan,
-			dq.dlp,
-			dq.cfg.QueueDeviceEventDeliveryName,
-			eventDelivery,
-			headers,
-			err,
-		)
+		return RetryOrDeadLetter(ctx, dq.qMan, dq.dlp,
+			dq.cfg.QueueDeviceEventDeliveryName, eventDelivery, headers, err)
 	}
 
-	var deliveryErrs []error
-	replayEntries, replayErr := dq.indexReplayEntries(ctx, eventDelivery, profileID, devices)
-	if replayErr != nil {
-		return RetryOrDeadLetter(
-			ctx,
-			dq.qMan,
-			dq.dlp,
-			dq.cfg.QueueDeviceEventDeliveryName,
-			eventDelivery,
-			headers,
-			replayErr,
-		)
+	replayEntries, err := dq.indexReplayEntries(ctx, eventDelivery, profileID, devices)
+	if err != nil {
+		return RetryOrDeadLetter(ctx, dq.qMan, dq.dlp,
+			dq.cfg.QueueDeviceEventDeliveryName, eventDelivery, headers, err)
 	}
 
+	deliveryErrs := dq.deliverToDevices(ctx, eventDelivery, devices, replayEntries)
+	if len(deliveryErrs) > 0 {
+		return RetryOrDeadLetter(ctx, dq.qMan, dq.dlp,
+			dq.cfg.QueueDeviceEventDeliveryName, eventDelivery, headers,
+			errors.Join(deliveryErrs...))
+	}
+
+	return nil
+}
+
+func extractProfileID(delivery *eventsv1.Delivery) string {
+	if dest := delivery.GetDestination(); dest != nil {
+		if cl := dest.GetContactLink(); cl != nil {
+			return cl.GetProfileId()
+		}
+	}
+	return ""
+}
+
+func (dq *hotPathDeliveryQueueHandler) deliverToDevices(
+	ctx context.Context,
+	eventDelivery *eventsv1.Delivery,
+	devices []deliveryDevice,
+	replayEntries map[string]*models.DeviceReplayEvent,
+) []error {
+	var errs []error
 	for _, dev := range devices {
-		cloned := proto.Clone(eventDelivery)
-
-		eventCopy, ok := cloned.(*eventsv1.Delivery)
+		eventCopy, ok := proto.Clone(eventDelivery).(*eventsv1.Delivery)
 		if !ok {
-			deliveryErrs = append(deliveryErrs, errors.New("failed to clone event delivery"))
+			errs = append(errs, errors.New("failed to clone event delivery"))
 			continue
 		}
 		eventCopy.DeviceId = dev.id
@@ -182,23 +186,10 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		if deliverErr := dq.deliver(ctx, eventCopy, dev, replayEntries[dev.id]); deliverErr != nil {
 			util.Log(ctx).WithError(deliverErr).WithField("device_id", dev.id).
 				Error("failed to deliver event")
-			deliveryErrs = append(deliveryErrs, fmt.Errorf("device %s: %w", dev.id, deliverErr))
+			errs = append(errs, fmt.Errorf("device %s: %w", dev.id, deliverErr))
 		}
 	}
-
-	if len(deliveryErrs) > 0 {
-		return RetryOrDeadLetter(
-			ctx,
-			dq.qMan,
-			dq.dlp,
-			dq.cfg.QueueDeviceEventDeliveryName,
-			eventDelivery,
-			headers,
-			errors.Join(deliveryErrs...),
-		)
-	}
-
-	return nil
+	return errs
 }
 func (dq *hotPathDeliveryQueueHandler) deliver(
 	ctx context.Context,
@@ -273,7 +264,6 @@ func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 	return deliveryTopic.Publish(ctx, msg, deviceHeader)
 }
 
-//nolint:gocognit // Replay indexing coordinates dedupe, serialization, and bounded retention per device.
 func (dq *hotPathDeliveryQueueHandler) indexReplayEntries(
 	ctx context.Context,
 	delivery *eventsv1.Delivery,
@@ -286,29 +276,66 @@ func (dq *hotPathDeliveryQueueHandler) indexReplayEntries(
 		return entries, nil
 	}
 
-	deviceIDs := make([]string, 0, len(devices))
-	for _, dev := range devices {
-		if dev.id == "" {
-			continue
-		}
-		deviceIDs = append(deviceIDs, dev.id)
-	}
+	deviceIDs := collectDeviceIDs(devices)
 
 	existing, err := dq.replayRepo.ListByEventAndDevices(ctx, profileID, delivery.GetEvent().GetEventId(), deviceIDs)
 	if err != nil {
 		return nil, err
 	}
-
 	for _, entry := range existing {
 		entries[entry.DeviceID] = entry
 	}
 
+	missing, err := dq.buildMissingReplayEntries(ctx, delivery, profileID, devices, entries)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = dq.replayRepo.CreateIgnoringDuplicates(ctx, missing); err != nil {
+		return nil, err
+	}
+
+	if len(missing) > 0 {
+		existing, err = dq.replayRepo.ListByEventAndDevices(ctx, profileID, delivery.GetEvent().GetEventId(), deviceIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range existing {
+			entries[entry.DeviceID] = entry
+		}
+	}
+
+	if err = dq.trimReplayDevices(ctx, profileID, devices); err != nil {
+		return nil, err
+	}
+
+	return entries, nil
+}
+
+func collectDeviceIDs(devices []deliveryDevice) []string {
+	ids := make([]string, 0, len(devices))
+	for _, dev := range devices {
+		if dev.id != "" {
+			ids = append(ids, dev.id)
+		}
+	}
+	return ids
+}
+
+func (dq *hotPathDeliveryQueueHandler) buildMissingReplayEntries(
+	ctx context.Context,
+	delivery *eventsv1.Delivery,
+	profileID string,
+	devices []deliveryDevice,
+	existing map[string]*models.DeviceReplayEvent,
+) ([]*models.DeviceReplayEvent, error) {
 	var missing []*models.DeviceReplayEvent
+
 	for _, dev := range devices {
 		if dev.id == "" {
 			continue
 		}
-		if _, ok := entries[dev.id]; ok {
+		if _, ok := existing[dev.id]; ok {
 			continue
 		}
 
@@ -334,40 +361,30 @@ func (dq *hotPathDeliveryQueueHandler) indexReplayEntries(
 		entry.ResponseData = responseBytes
 
 		missing = append(missing, entry)
-		entries[dev.id] = entry
+		existing[dev.id] = entry
 	}
 
-	if err = dq.replayRepo.CreateIgnoringDuplicates(ctx, missing); err != nil {
-		return nil, err
-	}
+	return missing, nil
+}
 
-	if len(missing) > 0 {
-		existing, err = dq.replayRepo.ListByEventAndDevices(ctx, profileID, delivery.GetEvent().GetEventId(), deviceIDs)
-		if err != nil {
-			return nil, err
-		}
-		for _, entry := range existing {
-			entries[entry.DeviceID] = entry
-		}
-	}
-
+func (dq *hotPathDeliveryQueueHandler) trimReplayDevices(
+	ctx context.Context,
+	profileID string,
+	devices []deliveryDevice,
+) error {
 	maxAge := time.Duration(dq.cfg.DeviceReplayRetentionHours) * time.Hour
 	for _, dev := range devices {
 		if dev.id == "" {
 			continue
 		}
-		if trimErr := dq.replayRepo.TrimDevice(
-			ctx,
-			profileID,
-			dev.id,
-			dq.cfg.DeviceReplayMaxEventsPerDevice,
-			maxAge,
-		); trimErr != nil {
-			return nil, trimErr
+		if err := dq.replayRepo.TrimDevice(
+			ctx, profileID, dev.id,
+			dq.cfg.DeviceReplayMaxEventsPerDevice, maxAge,
+		); err != nil {
+			return err
 		}
 	}
-
-	return entries, nil
+	return nil
 }
 
 func (dq *hotPathDeliveryQueueHandler) resolveDevicesForProfile(

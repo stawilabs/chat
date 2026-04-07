@@ -519,42 +519,35 @@ func (cm *connectionManager) startBackgroundTasks(ctx context.Context) {
 //	if err != nil {
 //	    log.Error("connection failed", "error", err)
 //	}
-//
-//nolint:funlen,gocognit // connection lifecycle management requires coordination of multiple goroutines and cleanup
 func (cm *connectionManager) HandleConnection(
 	ctx context.Context,
 	profileID string,
 	deviceID string,
 	stream DeviceStream,
 ) error {
-	// Fast-path validation - no allocations, just pointer checks
 	if profileID == "" || deviceID == "" {
 		atomic.AddUint64(&cm.failedConns, 1)
 		connectionsFailedCounter.Add(ctx, 1)
 		return ErrInvalidInput
 	}
 
-	// Check shutdown state - non-blocking select
 	select {
 	case <-cm.shutdownCh:
 		return ErrShuttingDown
 	default:
 	}
 
-	// Track connection attempt with atomic operations and telemetry
-	atomic.AddUint64(&cm.totalConns, 1)        // Total attempts (monotonic)
-	atomic.AddInt32(&cm.activeConns, 1)        // Active count (increment)
-	defer atomic.AddInt32(&cm.activeConns, -1) // Decrement on exit
+	atomic.AddUint64(&cm.totalConns, 1)
+	atomic.AddInt32(&cm.activeConns, 1)
+	defer atomic.AddInt32(&cm.activeConns, -1)
 
 	connectionsTotalCounter.Add(ctx, 1)
 	connectionsActiveGauge.Add(ctx, 1)
 	defer connectionsActiveGauge.Add(ctx, -1)
 
-	// Record connection start time for latency tracking
 	startTime := time.Now()
 	defer func() {
-		duration := time.Since(startTime)
-		connectionDurationHistogram.Add(ctx, int64(duration.Seconds()*millisecondsMultiplier)) // milliseconds
+		connectionDurationHistogram.Add(ctx, int64(time.Since(startTime).Seconds()*millisecondsMultiplier))
 	}()
 
 	hello, err := cm.requireHello(ctx, stream, profileID, deviceID)
@@ -564,10 +557,25 @@ func (cm *connectionManager) HandleConnection(
 		return err
 	}
 
-	connCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	conn, lastDurableCursor, err := cm.setupConnection(ctx, profileID, deviceID, stream, hello)
+	if err != nil {
+		return err
+	}
 
-	// Create connection metadata
+	cm.updatePresence(ctx, profileID, deviceID, devicev1.PresenceStatus_ONLINE, "")
+	defer cm.teardownConnection(ctx, conn, profileID, deviceID, startTime)
+
+	return cm.runStreamWorkers(ctx, conn, stream, lastDurableCursor, profileID, deviceID)
+}
+
+func (cm *connectionManager) setupConnection(
+	ctx context.Context,
+	profileID, deviceID string,
+	stream DeviceStream,
+	hello *chatv1.StreamHello,
+) (Connection, string, error) {
+	connCtx, cancel := context.WithCancel(ctx)
+
 	now := time.Now()
 	metadata := &Metadata{
 		ProfileID:     profileID,
@@ -578,153 +586,107 @@ func (cm *connectionManager) HandleConnection(
 		GatewayID:     cm.gatewayID,
 	}
 
-	// Create new connection
-	// Note: Outbound delivery handled by default service's queue system
 	conn := NewConnection(stream, metadata, cm.connectionOpts)
 
-	// Atomic swap: insert new connection and retrieve old one under the same shard
-	// lock. This prevents a TOCTOU window where messages could be lost between
-	// remove and add if a delivery handler checks between those two operations.
 	old, swapErr := cm.connPool.swap(conn)
 	if swapErr != nil {
+		cancel()
 		atomic.AddUint64(&cm.failedConns, 1)
-		return swapErr
+		return nil, "", swapErr
 	}
 	if old != nil {
 		old.Close()
 		atomic.AddUint64(&cm.replacedConns, 1)
-		util.Log(connCtx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
-			"gateway_id": cm.gatewayID,
-		}).Warn("replacing existing local connection for device")
 	}
 
-	persistErr := cm.persistMetadata(connCtx, metadata)
-	if persistErr != nil {
+	if persistErr := cm.persistMetadata(connCtx, metadata); persistErr != nil {
+		cancel()
 		_ = cm.deleteMetadata(connCtx, metadata)
 		cm.connPool.remove(metadata.Key())
 		conn.Close()
 		atomic.AddUint64(&cm.failedConns, 1)
-		return fmt.Errorf("%w: failed to persist connection metadata: %w", ErrConnectionSetupFailed, persistErr)
+		return nil, "", fmt.Errorf(
+			"%w: failed to persist connection metadata: %w",
+			ErrConnectionSetupFailed,
+			persistErr,
+		)
 	}
 
-	util.Log(connCtx).WithFields(map[string]any{
+	lastDurableCursor, _, replayErr := cm.resumeConnection(connCtx, conn, stream, hello)
+	if replayErr != nil {
+		cancel()
+		_ = cm.deleteMetadata(connCtx, metadata)
+		cm.connPool.remove(metadata.Key())
+		conn.Close()
+		atomic.AddUint64(&cm.failedConns, 1)
+		return nil, "", replayErr
+	}
+
+	cancel() // release the setup context; workers use the parent ctx
+
+	return conn, lastDurableCursor, nil
+}
+
+func (cm *connectionManager) teardownConnection(
+	ctx context.Context,
+	conn Connection,
+	profileID, deviceID string,
+	startTime time.Time,
+) {
+	cm.updatePresence(ctx, profileID, deviceID, devicev1.PresenceStatus_OFFLINE, "")
+
+	c := cm.connPool.remove(conn.Metadata().Key())
+	if delErr := cm.deleteMetadata(ctx, conn.Metadata()); delErr != nil {
+		util.Log(ctx).WithError(delErr).WithField("metadata_key", conn.Metadata().Key()).
+			Warn("failed to delete connection metadata from cache")
+	}
+
+	atomic.AddUint64(&cm.disconnectedConns, 1)
+	connectionsDisconnectedCounter.Add(ctx, 1)
+
+	util.Log(ctx).WithFields(map[string]any{
 		"profile_id": profileID,
 		"device_id":  deviceID,
-		"gateway_id": cm.gatewayID,
-		"pool_size":  cm.connPool.size(),
-	}).Debug("Device connected to gateway")
+		"duration":   time.Since(startTime).String(),
+	}).Debug("Device disconnected from gateway")
 
-	lastDurableCursor, replayedCount, replayErr := cm.resumeConnection(connCtx, conn, stream, hello)
-	if replayErr != nil {
-		_ = cm.deleteMetadata(connCtx, metadata)
-		cm.connPool.remove(metadata.Key())
-		conn.Close()
-		atomic.AddUint64(&cm.failedConns, 1)
-		return replayErr
+	if c != nil {
+		c.Close()
 	}
+}
 
-	if hello.GetResumeToken() != "" {
-		util.Log(connCtx).WithFields(map[string]any{
-			"profile_id":     profileID,
-			"device_id":      deviceID,
-			"resume_token":   hello.GetResumeToken(),
-			"replayed_count": replayedCount,
-		}).Info("resume replay completed")
-	}
-
-	// Update presence to ONLINE when device connects
-	cm.updatePresence(connCtx, profileID, deviceID, devicev1.PresenceStatus_ONLINE, "")
-
-	// Cleanup on disconnect
-	defer func() {
-		// Update presence to OFFLINE when device disconnects
-		cm.updatePresence(ctx, profileID, deviceID, devicev1.PresenceStatus_OFFLINE, "")
-
-		// Remove from pool
-		c := cm.connPool.remove(metadata.Key())
-		if delErr := cm.deleteMetadata(ctx, metadata); delErr != nil {
-			util.Log(ctx).WithError(delErr).WithFields(map[string]any{
-				"profile_id": profileID,
-				"device_id":  deviceID,
-				"gateway_id": cm.gatewayID,
-			}).Warn("failed to delete connection metadata from cache")
-		}
-
-		atomic.AddUint64(&cm.disconnectedConns, 1)
-		connectionsDisconnectedCounter.Add(ctx, 1)
-
-		util.Log(ctx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
-			"duration":   time.Since(now).String(),
-		}).Debug("Device disconnected from gateway")
-
-		if c != nil {
-			c.Close()
-		}
-	}()
-
-	// Use pooled error channel for efficiency
+func (cm *connectionManager) runStreamWorkers(
+	ctx context.Context,
+	conn Connection,
+	stream DeviceStream,
+	lastDurableCursor string,
+	profileID, deviceID string,
+) error {
 	errChanInterface := errorChanPool.Get()
 	errChan, ok := errChanInterface.(chan error)
 	if !ok {
 		errChan = make(chan error, errorChannelBufferSize)
 	}
 	defer func() {
-		// Drain and return to pool
 		for len(errChan) > 0 {
 			<-errChan
 		}
 		errorChanPool.Put(errChan)
 	}()
 
-	// Create done channel for coordination
 	doneCh := make(chan struct{})
 	var workerWg sync.WaitGroup
 
-	// Inbound message handler (client -> server)
 	workerWg.Add(1)
-	go func() {
-		defer workerWg.Done()
-		defer func() {
-			if r := recover(); r != nil {
-				util.Log(connCtx).WithFields(map[string]any{
-					"panic":      r,
-					"profile_id": profileID,
-					"device_id":  deviceID,
-				}).Error("inbound stream handler panicked")
-				select {
-				case errChan <- fmt.Errorf("inbound handler panic: %v", r):
-				default:
-				}
-			}
-		}()
-		_ = cm.handleInboundStream(connCtx, conn, stream, errChan, doneCh)
-	}()
+	go cm.runWithPanicRecovery(ctx, &workerWg, errChan, profileID, deviceID, "inbound", func() {
+		_ = cm.handleInboundStream(ctx, conn, stream, errChan, doneCh)
+	})
 
-	// Outbound message handler (server -> client)
 	workerWg.Add(1)
-	go func() {
-		defer workerWg.Done()
-		defer func() {
-			if r := recover(); r != nil {
-				util.Log(connCtx).WithFields(map[string]any{
-					"panic":      r,
-					"profile_id": profileID,
-					"device_id":  deviceID,
-				}).Error("outbound stream handler panicked")
-				select {
-				case errChan <- fmt.Errorf("outbound handler panic: %v", r):
-				default:
-				}
-			}
-		}()
-		_ = cm.handleOutboundStream(connCtx, conn, stream, lastDurableCursor, errChan, doneCh)
-	}()
+	go cm.runWithPanicRecovery(ctx, &workerWg, errChan, profileID, deviceID, "outbound", func() {
+		_ = cm.handleOutboundStream(ctx, conn, stream, lastDurableCursor, errChan, doneCh)
+	})
 
-	// Wait for error or context cancellation
 	select {
 	case workerErr := <-errChan:
 		close(doneCh)
@@ -739,6 +701,30 @@ func (cm *connectionManager) HandleConnection(
 		workerWg.Wait()
 		return ErrShuttingDown
 	}
+}
+
+func (cm *connectionManager) runWithPanicRecovery(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	errChan chan error,
+	profileID, deviceID, direction string,
+	fn func(),
+) {
+	defer wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			util.Log(ctx).WithFields(map[string]any{
+				"panic":      r,
+				"profile_id": profileID,
+				"device_id":  deviceID,
+			}).Error(direction + " stream handler panicked")
+			select {
+			case errChan <- fmt.Errorf("%s handler panic: %v", direction, r):
+			default:
+			}
+		}
+	}()
+	fn()
 }
 
 func (cm *connectionManager) GetConnection(
