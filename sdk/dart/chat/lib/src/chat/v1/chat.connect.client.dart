@@ -306,4 +306,58 @@ extension type ChatServiceClient (connect.Transport _transport) {
       onTrailer: onTrailer,
     );
   }
+
+  /// Resolve a resume token or event ID to a replay cursor for a device.
+  Future<chatv1chat.ResolveReplayCursorResponse> resolveReplayCursor(
+    chatv1chat.ResolveReplayCursorRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.ChatService.resolveReplayCursor,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Get the latest replay cursor for a device (used as upper bound during replay).
+  Future<chatv1chat.GetLatestReplayCursorResponse> getLatestReplayCursor(
+    chatv1chat.GetLatestReplayCursorRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.ChatService.getLatestReplayCursor,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// List replay events after a cursor for a device (paginated catch-up).
+  Future<chatv1chat.ListReplayEventsResponse> listReplayEvents(
+    chatv1chat.ListReplayEventsRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.ChatService.listReplayEvents,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
 }

@@ -38,6 +38,9 @@ abstract class ChatServiceBase extends $pb.GeneratedService {
   $async.Future<$10.LiveResponse> live($pb.ServerContext ctx, $10.LiveRequest request);
   $async.Future<$10.ListProposalsResponse> listProposals($pb.ServerContext ctx, $10.ListProposalsRequest request);
   $async.Future<$10.SubmitProposalResponse> submitProposal($pb.ServerContext ctx, $10.SubmitProposalRequest request);
+  $async.Future<$10.ResolveReplayCursorResponse> resolveReplayCursor($pb.ServerContext ctx, $10.ResolveReplayCursorRequest request);
+  $async.Future<$10.GetLatestReplayCursorResponse> getLatestReplayCursor($pb.ServerContext ctx, $10.GetLatestReplayCursorRequest request);
+  $async.Future<$10.ListReplayEventsResponse> listReplayEvents($pb.ServerContext ctx, $10.ListReplayEventsRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -58,6 +61,9 @@ abstract class ChatServiceBase extends $pb.GeneratedService {
       case 'Live': return $10.LiveRequest();
       case 'ListProposals': return $10.ListProposalsRequest();
       case 'SubmitProposal': return $10.SubmitProposalRequest();
+      case 'ResolveReplayCursor': return $10.ResolveReplayCursorRequest();
+      case 'GetLatestReplayCursor': return $10.GetLatestReplayCursorRequest();
+      case 'ListReplayEvents': return $10.ListReplayEventsRequest();
       default: throw $core.ArgumentError('Unknown method: $methodName');
     }
   }
@@ -81,6 +87,9 @@ abstract class ChatServiceBase extends $pb.GeneratedService {
       case 'Live': return this.live(ctx, request as $10.LiveRequest);
       case 'ListProposals': return this.listProposals(ctx, request as $10.ListProposalsRequest);
       case 'SubmitProposal': return this.submitProposal(ctx, request as $10.SubmitProposalRequest);
+      case 'ResolveReplayCursor': return this.resolveReplayCursor(ctx, request as $10.ResolveReplayCursorRequest);
+      case 'GetLatestReplayCursor': return this.getLatestReplayCursor(ctx, request as $10.GetLatestReplayCursorRequest);
+      case 'ListReplayEvents': return this.listReplayEvents(ctx, request as $10.ListReplayEventsRequest);
       default: throw $core.ArgumentError('Unknown method: $methodName');
     }
   }

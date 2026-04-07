@@ -145,4 +145,31 @@ abstract final class ChatService {
     chatv1chat.SubmitProposalRequest.new,
     chatv1chat.SubmitProposalResponse.new,
   );
+
+  /// Resolve a resume token or event ID to a replay cursor for a device.
+  static const resolveReplayCursor = connect.Spec(
+    '/$name/ResolveReplayCursor',
+    connect.StreamType.unary,
+    chatv1chat.ResolveReplayCursorRequest.new,
+    chatv1chat.ResolveReplayCursorResponse.new,
+    idempotency: connect.Idempotency.noSideEffects,
+  );
+
+  /// Get the latest replay cursor for a device (used as upper bound during replay).
+  static const getLatestReplayCursor = connect.Spec(
+    '/$name/GetLatestReplayCursor',
+    connect.StreamType.unary,
+    chatv1chat.GetLatestReplayCursorRequest.new,
+    chatv1chat.GetLatestReplayCursorResponse.new,
+    idempotency: connect.Idempotency.noSideEffects,
+  );
+
+  /// List replay events after a cursor for a device (paginated catch-up).
+  static const listReplayEvents = connect.Spec(
+    '/$name/ListReplayEvents',
+    connect.StreamType.unary,
+    chatv1chat.ListReplayEventsRequest.new,
+    chatv1chat.ListReplayEventsResponse.new,
+    idempotency: connect.Idempotency.noSideEffects,
+  );
 }

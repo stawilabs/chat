@@ -3078,6 +3078,486 @@ class SubmitProposalResponse extends $pb.GeneratedMessage {
   $8.ErrorDetail ensureError() => $_ensure(1);
 }
 
+class ResolveReplayCursorRequest extends $pb.GeneratedMessage {
+  factory ResolveReplayCursorRequest({
+    $core.String? profileId,
+    $core.String? deviceId,
+    $core.String? token,
+  }) {
+    final $result = create();
+    if (profileId != null) {
+      $result.profileId = profileId;
+    }
+    if (deviceId != null) {
+      $result.deviceId = deviceId;
+    }
+    if (token != null) {
+      $result.token = token;
+    }
+    return $result;
+  }
+  ResolveReplayCursorRequest._() : super();
+  factory ResolveReplayCursorRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ResolveReplayCursorRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ResolveReplayCursorRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'profileId')
+    ..aOS(2, _omitFieldNames ? '' : 'deviceId')
+    ..aOS(3, _omitFieldNames ? '' : 'token')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ResolveReplayCursorRequest clone() => ResolveReplayCursorRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ResolveReplayCursorRequest copyWith(void Function(ResolveReplayCursorRequest) updates) => super.copyWith((message) => updates(message as ResolveReplayCursorRequest)) as ResolveReplayCursorRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ResolveReplayCursorRequest create() => ResolveReplayCursorRequest._();
+  ResolveReplayCursorRequest createEmptyInstance() => create();
+  static $pb.PbList<ResolveReplayCursorRequest> createRepeated() => $pb.PbList<ResolveReplayCursorRequest>();
+  @$core.pragma('dart2js:noInline')
+  static ResolveReplayCursorRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ResolveReplayCursorRequest>(create);
+  static ResolveReplayCursorRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get profileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set profileId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasProfileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfileId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get deviceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set deviceId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasDeviceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDeviceId() => clearField(2);
+
+  /// The resume token or event ID presented by the reconnecting client.
+  @$pb.TagNumber(3)
+  $core.String get token => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set token($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasToken() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearToken() => clearField(3);
+}
+
+class ResolveReplayCursorResponse extends $pb.GeneratedMessage {
+  factory ResolveReplayCursorResponse({
+    $core.String? cursor,
+    $core.bool? found,
+  }) {
+    final $result = create();
+    if (cursor != null) {
+      $result.cursor = cursor;
+    }
+    if (found != null) {
+      $result.found = found;
+    }
+    return $result;
+  }
+  ResolveReplayCursorResponse._() : super();
+  factory ResolveReplayCursorResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ResolveReplayCursorResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ResolveReplayCursorResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'cursor')
+    ..aOB(2, _omitFieldNames ? '' : 'found')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ResolveReplayCursorResponse clone() => ResolveReplayCursorResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ResolveReplayCursorResponse copyWith(void Function(ResolveReplayCursorResponse) updates) => super.copyWith((message) => updates(message as ResolveReplayCursorResponse)) as ResolveReplayCursorResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ResolveReplayCursorResponse create() => ResolveReplayCursorResponse._();
+  ResolveReplayCursorResponse createEmptyInstance() => create();
+  static $pb.PbList<ResolveReplayCursorResponse> createRepeated() => $pb.PbList<ResolveReplayCursorResponse>();
+  @$core.pragma('dart2js:noInline')
+  static ResolveReplayCursorResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ResolveReplayCursorResponse>(create);
+  static ResolveReplayCursorResponse? _defaultInstance;
+
+  /// The resolved cursor ID, empty if the token could not be resolved.
+  @$pb.TagNumber(1)
+  $core.String get cursor => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cursor($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCursor() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCursor() => clearField(1);
+
+  /// True if the token was successfully resolved to a cursor.
+  @$pb.TagNumber(2)
+  $core.bool get found => $_getBF(1);
+  @$pb.TagNumber(2)
+  set found($core.bool v) { $_setBool(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasFound() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFound() => clearField(2);
+}
+
+class GetLatestReplayCursorRequest extends $pb.GeneratedMessage {
+  factory GetLatestReplayCursorRequest({
+    $core.String? profileId,
+    $core.String? deviceId,
+  }) {
+    final $result = create();
+    if (profileId != null) {
+      $result.profileId = profileId;
+    }
+    if (deviceId != null) {
+      $result.deviceId = deviceId;
+    }
+    return $result;
+  }
+  GetLatestReplayCursorRequest._() : super();
+  factory GetLatestReplayCursorRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetLatestReplayCursorRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetLatestReplayCursorRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'profileId')
+    ..aOS(2, _omitFieldNames ? '' : 'deviceId')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetLatestReplayCursorRequest clone() => GetLatestReplayCursorRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetLatestReplayCursorRequest copyWith(void Function(GetLatestReplayCursorRequest) updates) => super.copyWith((message) => updates(message as GetLatestReplayCursorRequest)) as GetLatestReplayCursorRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetLatestReplayCursorRequest create() => GetLatestReplayCursorRequest._();
+  GetLatestReplayCursorRequest createEmptyInstance() => create();
+  static $pb.PbList<GetLatestReplayCursorRequest> createRepeated() => $pb.PbList<GetLatestReplayCursorRequest>();
+  @$core.pragma('dart2js:noInline')
+  static GetLatestReplayCursorRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetLatestReplayCursorRequest>(create);
+  static GetLatestReplayCursorRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get profileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set profileId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasProfileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfileId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get deviceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set deviceId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasDeviceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDeviceId() => clearField(2);
+}
+
+class GetLatestReplayCursorResponse extends $pb.GeneratedMessage {
+  factory GetLatestReplayCursorResponse({
+    $core.String? cursor,
+  }) {
+    final $result = create();
+    if (cursor != null) {
+      $result.cursor = cursor;
+    }
+    return $result;
+  }
+  GetLatestReplayCursorResponse._() : super();
+  factory GetLatestReplayCursorResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetLatestReplayCursorResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetLatestReplayCursorResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'cursor')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetLatestReplayCursorResponse clone() => GetLatestReplayCursorResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetLatestReplayCursorResponse copyWith(void Function(GetLatestReplayCursorResponse) updates) => super.copyWith((message) => updates(message as GetLatestReplayCursorResponse)) as GetLatestReplayCursorResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetLatestReplayCursorResponse create() => GetLatestReplayCursorResponse._();
+  GetLatestReplayCursorResponse createEmptyInstance() => create();
+  static $pb.PbList<GetLatestReplayCursorResponse> createRepeated() => $pb.PbList<GetLatestReplayCursorResponse>();
+  @$core.pragma('dart2js:noInline')
+  static GetLatestReplayCursorResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetLatestReplayCursorResponse>(create);
+  static GetLatestReplayCursorResponse? _defaultInstance;
+
+  /// The latest cursor ID for the device, empty if no replay entries exist.
+  @$pb.TagNumber(1)
+  $core.String get cursor => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cursor($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCursor() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCursor() => clearField(1);
+}
+
+class ListReplayEventsRequest extends $pb.GeneratedMessage {
+  factory ListReplayEventsRequest({
+    $core.String? profileId,
+    $core.String? deviceId,
+    $core.String? afterCursor,
+    $core.String? upperBoundCursor,
+    $core.int? limit,
+  }) {
+    final $result = create();
+    if (profileId != null) {
+      $result.profileId = profileId;
+    }
+    if (deviceId != null) {
+      $result.deviceId = deviceId;
+    }
+    if (afterCursor != null) {
+      $result.afterCursor = afterCursor;
+    }
+    if (upperBoundCursor != null) {
+      $result.upperBoundCursor = upperBoundCursor;
+    }
+    if (limit != null) {
+      $result.limit = limit;
+    }
+    return $result;
+  }
+  ListReplayEventsRequest._() : super();
+  factory ListReplayEventsRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ListReplayEventsRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ListReplayEventsRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'profileId')
+    ..aOS(2, _omitFieldNames ? '' : 'deviceId')
+    ..aOS(3, _omitFieldNames ? '' : 'afterCursor')
+    ..aOS(4, _omitFieldNames ? '' : 'upperBoundCursor')
+    ..a<$core.int>(5, _omitFieldNames ? '' : 'limit', $pb.PbFieldType.O3)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ListReplayEventsRequest clone() => ListReplayEventsRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ListReplayEventsRequest copyWith(void Function(ListReplayEventsRequest) updates) => super.copyWith((message) => updates(message as ListReplayEventsRequest)) as ListReplayEventsRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListReplayEventsRequest create() => ListReplayEventsRequest._();
+  ListReplayEventsRequest createEmptyInstance() => create();
+  static $pb.PbList<ListReplayEventsRequest> createRepeated() => $pb.PbList<ListReplayEventsRequest>();
+  @$core.pragma('dart2js:noInline')
+  static ListReplayEventsRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ListReplayEventsRequest>(create);
+  static ListReplayEventsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get profileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set profileId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasProfileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfileId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get deviceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set deviceId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasDeviceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDeviceId() => clearField(2);
+
+  /// Fetch events with cursor > after_cursor.
+  @$pb.TagNumber(3)
+  $core.String get afterCursor => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set afterCursor($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasAfterCursor() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAfterCursor() => clearField(3);
+
+  /// Fetch events with cursor <= upper_bound_cursor.
+  @$pb.TagNumber(4)
+  $core.String get upperBoundCursor => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set upperBoundCursor($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasUpperBoundCursor() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUpperBoundCursor() => clearField(4);
+
+  /// Maximum number of events to return per page.
+  @$pb.TagNumber(5)
+  $core.int get limit => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set limit($core.int v) { $_setSignedInt32(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasLimit() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLimit() => clearField(5);
+}
+
+/// A single replay entry containing a cursor ID and its serialized StreamResponse payload.
+class ReplayEntry extends $pb.GeneratedMessage {
+  factory ReplayEntry({
+    $core.String? cursor,
+    $core.List<$core.int>? responseData,
+  }) {
+    final $result = create();
+    if (cursor != null) {
+      $result.cursor = cursor;
+    }
+    if (responseData != null) {
+      $result.responseData = responseData;
+    }
+    return $result;
+  }
+  ReplayEntry._() : super();
+  factory ReplayEntry.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ReplayEntry.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ReplayEntry', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'cursor')
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'responseData', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ReplayEntry clone() => ReplayEntry()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ReplayEntry copyWith(void Function(ReplayEntry) updates) => super.copyWith((message) => updates(message as ReplayEntry)) as ReplayEntry;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ReplayEntry create() => ReplayEntry._();
+  ReplayEntry createEmptyInstance() => create();
+  static $pb.PbList<ReplayEntry> createRepeated() => $pb.PbList<ReplayEntry>();
+  @$core.pragma('dart2js:noInline')
+  static ReplayEntry getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ReplayEntry>(create);
+  static ReplayEntry? _defaultInstance;
+
+  /// The replay cursor ID (DeviceReplayEvent.ID).
+  @$pb.TagNumber(1)
+  $core.String get cursor => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cursor($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCursor() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCursor() => clearField(1);
+
+  /// The serialized StreamResponse protobuf bytes.
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get responseData => $_getN(1);
+  @$pb.TagNumber(2)
+  set responseData($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasResponseData() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearResponseData() => clearField(2);
+}
+
+class ListReplayEventsResponse extends $pb.GeneratedMessage {
+  factory ListReplayEventsResponse({
+    $core.Iterable<ReplayEntry>? entries,
+  }) {
+    final $result = create();
+    if (entries != null) {
+      $result.entries.addAll(entries);
+    }
+    return $result;
+  }
+  ListReplayEventsResponse._() : super();
+  factory ListReplayEventsResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ListReplayEventsResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ListReplayEventsResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..pc<ReplayEntry>(1, _omitFieldNames ? '' : 'entries', $pb.PbFieldType.PM, subBuilder: ReplayEntry.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ListReplayEventsResponse clone() => ListReplayEventsResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ListReplayEventsResponse copyWith(void Function(ListReplayEventsResponse) updates) => super.copyWith((message) => updates(message as ListReplayEventsResponse)) as ListReplayEventsResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListReplayEventsResponse create() => ListReplayEventsResponse._();
+  ListReplayEventsResponse createEmptyInstance() => create();
+  static $pb.PbList<ListReplayEventsResponse> createRepeated() => $pb.PbList<ListReplayEventsResponse>();
+  @$core.pragma('dart2js:noInline')
+  static ListReplayEventsResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ListReplayEventsResponse>(create);
+  static ListReplayEventsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<ReplayEntry> get entries => $_getList(0);
+}
+
 class ChatServiceApi {
   $pb.RpcClient _client;
   ChatServiceApi(this._client);
@@ -3132,6 +3612,15 @@ class ChatServiceApi {
   ;
   $async.Future<SubmitProposalResponse> submitProposal($pb.ClientContext? ctx, SubmitProposalRequest request) =>
     _client.invoke<SubmitProposalResponse>(ctx, 'ChatService', 'SubmitProposal', request, SubmitProposalResponse())
+  ;
+  $async.Future<ResolveReplayCursorResponse> resolveReplayCursor($pb.ClientContext? ctx, ResolveReplayCursorRequest request) =>
+    _client.invoke<ResolveReplayCursorResponse>(ctx, 'ChatService', 'ResolveReplayCursor', request, ResolveReplayCursorResponse())
+  ;
+  $async.Future<GetLatestReplayCursorResponse> getLatestReplayCursor($pb.ClientContext? ctx, GetLatestReplayCursorRequest request) =>
+    _client.invoke<GetLatestReplayCursorResponse>(ctx, 'ChatService', 'GetLatestReplayCursor', request, GetLatestReplayCursorResponse())
+  ;
+  $async.Future<ListReplayEventsResponse> listReplayEvents($pb.ClientContext? ctx, ListReplayEventsRequest request) =>
+    _client.invoke<ListReplayEventsResponse>(ctx, 'ChatService', 'ListReplayEvents', request, ListReplayEventsResponse())
   ;
 }
 

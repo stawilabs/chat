@@ -48,6 +48,8 @@ enum RoomEventType {
   ROOM_EVENT_TYPE_MOTION = 8;
   ROOM_EVENT_TYPE_CALL = 10;
   ROOM_EVENT_TYPE_ADVERT = 20;
+  ROOM_EVENT_TYPE_FORM_REQUEST = 30;
+  ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT = 31;
 }
 
 // Unified message (user / bot / system / signalling)

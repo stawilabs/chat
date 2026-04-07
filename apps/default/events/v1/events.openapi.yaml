@@ -1,45 +1,9 @@
 openapi: 3.1.0
 info:
-  title: chat.v1
+  title: events.v1
 paths: {}
 components:
   schemas:
-    chat.v1.AckEvent:
-      type: object
-      properties:
-        roomId:
-          type: string
-          title: room_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-        eventId:
-          type: array
-          items:
-            type: string
-            maxLength: 40
-            minLength: 3
-            pattern: '[0-9a-z_-]{3,40}'
-          title: event_id
-          minItems: 1
-        subscriptionId:
-          type: string
-          title: subscription_id
-        ackAt:
-          title: ack_at
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
-        error:
-          oneOf:
-            - $ref: '#/components/schemas/common.v1.ErrorDetail'
-            - type: "null"
-          title: error
-          description: if set, indicates failure reason for this event
-      title: AckEvent
-      additionalProperties: false
-      description: |-
-        Acknowledgement for event(s) received; server uses it to free ephemeral delivery buffers.
-         ack_event_id: last event_id client processed (inclusive).
-         If error is set, indicates the event failed to send/process correctly.
     chat.v1.AttachmentContent:
       type: object
       properties:
@@ -166,65 +130,6 @@ components:
         - CALL_TYPE_AUDIO
         - CALL_TYPE_VIDEO
         - CALL_TYPE_SCREEN_SHARE
-    chat.v1.ClientCommand:
-      type: object
-      oneOf:
-        - type: object
-          properties:
-            ack:
-              title: ack
-              $ref: '#/components/schemas/chat.v1.AckEvent'
-          title: ack
-          required:
-            - ack
-        - type: object
-          properties:
-            event:
-              title: event
-              $ref: '#/components/schemas/chat.v1.RoomEvent'
-          title: event
-          required:
-            - event
-        - type: object
-          properties:
-            presence:
-              title: presence
-              description: send a presence message to a room
-              $ref: '#/components/schemas/chat.v1.PresenceEvent'
-          title: presence
-          required:
-            - presence
-        - type: object
-          properties:
-            readMarker:
-              title: read_marker
-              $ref: '#/components/schemas/chat.v1.ReadMarker'
-          title: read_marker
-          required:
-            - readMarker
-        - type: object
-          properties:
-            receipt:
-              title: receipt
-              description: receipt acknowledgement for message delivery
-              $ref: '#/components/schemas/chat.v1.ReceiptEvent'
-          title: receipt
-          required:
-            - receipt
-        - type: object
-          properties:
-            typing:
-              title: typing
-              $ref: '#/components/schemas/chat.v1.TypingEvent'
-          title: typing
-          required:
-            - typing
-      title: ClientCommand
-      additionalProperties: false
-      description: |-
-        ClientCommand represents durable state changes initiated by the client.
-         Commands are validated, persisted, and broadcast as needed.
-         ClientCommand results in at least one RoomEvent being emitted.
     chat.v1.EncryptedContent:
       type: object
       properties:
@@ -1155,31 +1060,6 @@ components:
         - PAYLOAD_TYPE_FORM_REQUEST
         - PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
-    chat.v1.PresenceEvent:
-      type: object
-      properties:
-        source:
-          title: source
-          $ref: '#/components/schemas/common.v1.ContactLink'
-        status:
-          title: status
-          $ref: '#/components/schemas/chat.v1.PresenceStatus'
-        statusMsg:
-          type: string
-          title: status_msg
-        lastActive:
-          title: last_active
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
-      title: PresenceEvent
-      additionalProperties: false
-      description: Presence event affecting a user (and visible to rooms the user is a member of)
-    chat.v1.PresenceStatus:
-      type: string
-      title: PresenceStatus
-      enum:
-        - PRESENCE_STATUS_UNSPECIFIED
-        - PRESENCE_STATUS_OFFLINE
-        - PRESENCE_STATUS_ONLINE
     chat.v1.ReactionContent:
       type: object
       properties:
@@ -1202,57 +1082,6 @@ components:
              add=false → ensure reaction does not exist
       title: ReactionContent
       additionalProperties: false
-    chat.v1.ReadMarker:
-      type: object
-      properties:
-        roomId:
-          type:
-            - string
-            - "null"
-          title: room_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-        upToEventId:
-          type: string
-          title: up_to_event_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-        subscriptionId:
-          type: string
-          title: subscription_id
-      title: ReadMarker
-      additionalProperties: false
-    chat.v1.ReceiptEvent:
-      type: object
-      properties:
-        roomId:
-          type: string
-          title: room_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-        eventId:
-          type: array
-          items:
-            type: string
-            maxLength: 40
-            minLength: 3
-            pattern: '[0-9a-z_-]{3,40}'
-          title: event_id
-          minItems: 1
-        subscriptionId:
-          type: string
-          title: subscription_id
-      title: ReceiptEvent
-      additionalProperties: false
-      description: |-
-        ReceiptEvent is OPTIONAL and ephemeral.
-         Servers MAY ignore it.
-         Clients SHOULD prefer ReadMarker for durable state.
-         Servers MUST NOT persist ReceiptEvent.
-         Servers MAY drop ReceiptEvent without acknowledgment.
     chat.v1.RoomChangeAction:
       type: string
       title: RoomChangeAction
@@ -1288,57 +1117,6 @@ components:
           $ref: '#/components/schemas/google.protobuf.Struct'
       title: RoomChangeContent
       additionalProperties: false
-    chat.v1.RoomEvent:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-          description: |-
-            NOTE:
-             Event IDs are XIDs and MUST be lexicographically sortable by creation time.
-             Clients MUST NOT assume any other ordering mechanism. client-supplied or server-generated UUID
-        roomId:
-          type: string
-          title: room_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-          description: room_id
-        subscriptionId:
-          type: string
-          title: subscription_id
-          description: profile_id or service/bot id
-        type:
-          title: type
-          $ref: '#/components/schemas/chat.v1.RoomEventType'
-        sentAt:
-          title: sent_at
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
-        edited:
-          type: boolean
-          title: edited
-        redacted:
-          type: boolean
-          title: redacted
-        parentId:
-          type:
-            - string
-            - "null"
-          title: parent_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-          description: if this message is a followup event on an original message
-        payload:
-          title: payload
-          $ref: '#/components/schemas/chat.v1.Payload'
-      title: RoomEvent
-      additionalProperties: false
-      description: Unified message (user / bot / system / signalling)
     chat.v1.RoomEventType:
       type: string
       title: RoomEventType
@@ -1419,27 +1197,6 @@ components:
           description: Optional language hint (BCP-47), e.g. "en", "fr-CA"
       title: TextContent
       additionalProperties: false
-    chat.v1.TypingEvent:
-      type: object
-      properties:
-        roomId:
-          type: string
-          title: room_id
-          maxLength: 40
-          minLength: 3
-          pattern: '[0-9a-z_-]{3,40}'
-        subscriptionId:
-          type: string
-          title: subscription_id
-        typing:
-          type: boolean
-          title: typing
-        since:
-          title: since
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
-      title: TypingEvent
-      additionalProperties: false
-      description: Typing indicator
     chat.v1.VoteCast:
       type: object
       properties:
@@ -1540,40 +1297,203 @@ components:
         ContactLink represents a link between a contact and a profile in the system.
          Used for associating external contacts with internal profiles across services.
          This enables unified identity management and contact resolution.
-    common.v1.ErrorDetail:
+    common.v1.PageCursor:
       type: object
       properties:
-        code:
+        limit:
           type: integer
-          title: code
+          title: limit
           format: int32
-          description: application code (see doc)
-        message:
+          description: Number of items per cursor (limit)
+        page:
           type: string
-          title: message
-          description: human readable
-        meta:
-          type: object
-          title: meta
-          additionalProperties:
-            type: string
-            title: value
-          description: additional machine-readable data
-      title: ErrorDetail
+          title: page
+          description: Page number/ cursor representing last id from result
+      title: PageCursor
       additionalProperties: false
       description: |-
-        Standard error codes used by API responses.
-         Use gRPC status codes; the application-level ErrorDetail below may carry more.
-    common.v1.ErrorDetail.MetaEntry:
+        PageCursor provides standard offset-based pagination/cursor stream parameters.
+         Used for list operations that return large result sets.
+    events.v1.Broadcast:
       type: object
       properties:
-        key:
+        event:
+          title: event
+          description: The event to be distributed.
+          $ref: '#/components/schemas/events.v1.Link'
+        destinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/events.v1.Subscription'
+          title: destinations
+          description: List of delivery targets specifying recipients for batch processing efficiency.
+        priority:
+          title: priority
+          $ref: '#/components/schemas/events.v1.Broadcast.Priority'
+        payload:
+          title: payload
+          description: |-
+            Pre-fetched event payload carried from RoomOutboxLoggingQueue to
+             FanoutEventHandler, eliminating redundant DB reads per batch.
+             Empty for ephemeral events (typing, delivered, read).
+          $ref: '#/components/schemas/chat.v1.Payload'
+      title: Broadcast
+      additionalProperties: false
+      description: |-
+        Broadcast encapsulates an event and its delivery targets for bulk distribution
+         to multiple recipients, optimizing the initial broadcast phase.
+    events.v1.Broadcast.Priority:
+      type: string
+      title: Priority
+      enum:
+        - PRIORITY_UNSPECIFIED
+        - PRIORITY_NORMAL
+        - PRIORITY_HIGH
+      description: Indicates priority of delivery to prioritize critical events (e.g., CALL_OFFER).
+    events.v1.Delivery:
+      type: object
+      properties:
+        event:
+          title: event
+          description: The event data being delivered.
+          $ref: '#/components/schemas/events.v1.Link'
+        destination:
+          title: destination
+          description: Specific delivery target for this delivery.
+          $ref: '#/components/schemas/events.v1.Subscription'
+        source:
+          title: source
+          $ref: '#/components/schemas/events.v1.Subscription'
+        payload:
+          title: payload
+          $ref: '#/components/schemas/chat.v1.Payload'
+        isCompressed:
+          type: boolean
+          title: is_compressed
+          description: Indicates if payload data is compressed to save bandwidth for large messages.
+        retryCount:
+          type: integer
+          title: retry_count
+          format: int32
+          description: Metadata for retry logic to ensure robust delivery to end-user devices.
+        deviceId:
           type: string
-          title: key
-        value:
+          title: device_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+      title: Delivery
+      additionalProperties: false
+      description: |-
+        Delivery represents the final payload delivered to an end-user device,
+         containing the event, specific delivery target, and detailed typed data.
+    events.v1.Link:
+      type: object
+      properties:
+        eventId:
           type: string
-          title: value
-      title: MetaEntry
+          title: event_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: Unique identifier for the event, constrained for quick parsing and validation.
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: Identifies the chat room or context, ensuring data is routed to the correct group.
+        source:
+          title: source
+          description: Identifies the originator subscription of the event, crucial for attribution and security.
+          $ref: '#/components/schemas/events.v1.Subscription'
+        parentId:
+          type: string
+          title: parent_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: Unique identifier for a parent event related to this event, constrained for quick parsing and validation.
+        eventType:
+          title: event_type
+          description: Categorizes the event (e.g., TEXT, ATTACHMENT) for efficient handling.
+          $ref: '#/components/schemas/chat.v1.RoomEventType'
+        createdAt:
+          title: created_at
+          description: Timestamp for event creation, aiding in ordering and latency debugging.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        cursor:
+          title: cursor
+          description: pagination cursor for distributing event to large groups
+          $ref: '#/components/schemas/common.v1.PageCursor'
+      title: Link
+      additionalProperties: false
+      description: |-
+        Link represents an event in the chat system, the core unit of data flowing
+         through the system in real-time to end-user devices.
+    events.v1.RoomAction:
+      type: object
+      properties:
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: Identifies the room being acted on
+        action:
+          title: action
+          description: action type
+          $ref: '#/components/schemas/chat.v1.RoomChangeAction'
+        actor:
+          title: actor
+          description: Subscription details of the person performing an action
+          $ref: '#/components/schemas/events.v1.Subscription'
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/events.v1.Subscription'
+          title: targets
+          description: details of affected people based on action
+        details:
+          type: string
+          title: details
+          description: details of the action
+        roles:
+          type: array
+          items:
+            type: string
+          title: roles
+          description: roles of the actor
+      title: RoomAction
+      additionalProperties: false
+    events.v1.RoomActionList:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/events.v1.RoomAction'
+          title: actions
+      title: RoomActionList
+      additionalProperties: false
+      description: RoomActionList represents a list of room actions
+    events.v1.Subscription:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+          title: subscription_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: Identifies the subscription by id in transit.
+        contactLink:
+          title: contact_link
+          description: contact details tied to the subscription receiving the event
+          $ref: '#/components/schemas/common.v1.ContactLink'
+      title: Subscription
       additionalProperties: false
     google.protobuf.ListValue:
       type: object

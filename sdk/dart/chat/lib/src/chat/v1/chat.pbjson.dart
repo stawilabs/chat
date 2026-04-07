@@ -764,6 +764,109 @@ final $typed_data.Uint8List submitProposalResponseDescriptor = $convert.base64De
     '9wb3NhbFIIcHJvcG9zYWwSLAoFZXJyb3IYAiABKAsyFi5jb21tb24udjEuRXJyb3JEZXRhaWxS'
     'BWVycm9y');
 
+@$core.Deprecated('Use resolveReplayCursorRequestDescriptor instead')
+const ResolveReplayCursorRequest$json = {
+  '1': 'ResolveReplayCursorRequest',
+  '2': [
+    {'1': 'profile_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'profileId'},
+    {'1': 'device_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'deviceId'},
+    {'1': 'token', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'token'},
+  ],
+};
+
+/// Descriptor for `ResolveReplayCursorRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List resolveReplayCursorRequestDescriptor = $convert.base64Decode(
+    'ChpSZXNvbHZlUmVwbGF5Q3Vyc29yUmVxdWVzdBImCgpwcm9maWxlX2lkGAEgASgJQge6SARyAh'
+    'ABUglwcm9maWxlSWQSJAoJZGV2aWNlX2lkGAIgASgJQge6SARyAhABUghkZXZpY2VJZBIdCgV0'
+    'b2tlbhgDIAEoCUIHukgEcgIQAVIFdG9rZW4=');
+
+@$core.Deprecated('Use resolveReplayCursorResponseDescriptor instead')
+const ResolveReplayCursorResponse$json = {
+  '1': 'ResolveReplayCursorResponse',
+  '2': [
+    {'1': 'cursor', '3': 1, '4': 1, '5': 9, '10': 'cursor'},
+    {'1': 'found', '3': 2, '4': 1, '5': 8, '10': 'found'},
+  ],
+};
+
+/// Descriptor for `ResolveReplayCursorResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List resolveReplayCursorResponseDescriptor = $convert.base64Decode(
+    'ChtSZXNvbHZlUmVwbGF5Q3Vyc29yUmVzcG9uc2USFgoGY3Vyc29yGAEgASgJUgZjdXJzb3ISFA'
+    'oFZm91bmQYAiABKAhSBWZvdW5k');
+
+@$core.Deprecated('Use getLatestReplayCursorRequestDescriptor instead')
+const GetLatestReplayCursorRequest$json = {
+  '1': 'GetLatestReplayCursorRequest',
+  '2': [
+    {'1': 'profile_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'profileId'},
+    {'1': 'device_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'deviceId'},
+  ],
+};
+
+/// Descriptor for `GetLatestReplayCursorRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getLatestReplayCursorRequestDescriptor = $convert.base64Decode(
+    'ChxHZXRMYXRlc3RSZXBsYXlDdXJzb3JSZXF1ZXN0EiYKCnByb2ZpbGVfaWQYASABKAlCB7pIBH'
+    'ICEAFSCXByb2ZpbGVJZBIkCglkZXZpY2VfaWQYAiABKAlCB7pIBHICEAFSCGRldmljZUlk');
+
+@$core.Deprecated('Use getLatestReplayCursorResponseDescriptor instead')
+const GetLatestReplayCursorResponse$json = {
+  '1': 'GetLatestReplayCursorResponse',
+  '2': [
+    {'1': 'cursor', '3': 1, '4': 1, '5': 9, '10': 'cursor'},
+  ],
+};
+
+/// Descriptor for `GetLatestReplayCursorResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getLatestReplayCursorResponseDescriptor = $convert.base64Decode(
+    'Ch1HZXRMYXRlc3RSZXBsYXlDdXJzb3JSZXNwb25zZRIWCgZjdXJzb3IYASABKAlSBmN1cnNvcg'
+    '==');
+
+@$core.Deprecated('Use listReplayEventsRequestDescriptor instead')
+const ListReplayEventsRequest$json = {
+  '1': 'ListReplayEventsRequest',
+  '2': [
+    {'1': 'profile_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'profileId'},
+    {'1': 'device_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'deviceId'},
+    {'1': 'after_cursor', '3': 3, '4': 1, '5': 9, '10': 'afterCursor'},
+    {'1': 'upper_bound_cursor', '3': 4, '4': 1, '5': 9, '10': 'upperBoundCursor'},
+    {'1': 'limit', '3': 5, '4': 1, '5': 5, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `ListReplayEventsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listReplayEventsRequestDescriptor = $convert.base64Decode(
+    'ChdMaXN0UmVwbGF5RXZlbnRzUmVxdWVzdBImCgpwcm9maWxlX2lkGAEgASgJQge6SARyAhABUg'
+    'lwcm9maWxlSWQSJAoJZGV2aWNlX2lkGAIgASgJQge6SARyAhABUghkZXZpY2VJZBIhCgxhZnRl'
+    'cl9jdXJzb3IYAyABKAlSC2FmdGVyQ3Vyc29yEiwKEnVwcGVyX2JvdW5kX2N1cnNvchgEIAEoCV'
+    'IQdXBwZXJCb3VuZEN1cnNvchIUCgVsaW1pdBgFIAEoBVIFbGltaXQ=');
+
+@$core.Deprecated('Use replayEntryDescriptor instead')
+const ReplayEntry$json = {
+  '1': 'ReplayEntry',
+  '2': [
+    {'1': 'cursor', '3': 1, '4': 1, '5': 9, '10': 'cursor'},
+    {'1': 'response_data', '3': 2, '4': 1, '5': 12, '10': 'responseData'},
+  ],
+};
+
+/// Descriptor for `ReplayEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List replayEntryDescriptor = $convert.base64Decode(
+    'CgtSZXBsYXlFbnRyeRIWCgZjdXJzb3IYASABKAlSBmN1cnNvchIjCg1yZXNwb25zZV9kYXRhGA'
+    'IgASgMUgxyZXNwb25zZURhdGE=');
+
+@$core.Deprecated('Use listReplayEventsResponseDescriptor instead')
+const ListReplayEventsResponse$json = {
+  '1': 'ListReplayEventsResponse',
+  '2': [
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.chat.v1.ReplayEntry', '10': 'entries'},
+  ],
+};
+
+/// Descriptor for `ListReplayEventsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listReplayEventsResponseDescriptor = $convert.base64Decode(
+    'ChhMaXN0UmVwbGF5RXZlbnRzUmVzcG9uc2USLgoHZW50cmllcxgBIAMoCzIULmNoYXQudjEuUm'
+    'VwbGF5RW50cnlSB2VudHJpZXM=');
+
 const $core.Map<$core.String, $core.dynamic> ChatServiceBase$json = {
   '1': 'ChatService',
   '2': [
@@ -820,6 +923,24 @@ const $core.Map<$core.String, $core.dynamic> ChatServiceBase$json = {
       '4': {'34': 1},
     },
     {'1': 'SubmitProposal', '2': '.chat.v1.SubmitProposalRequest', '3': '.chat.v1.SubmitProposalResponse', '4': {}},
+    {
+      '1': 'ResolveReplayCursor',
+      '2': '.chat.v1.ResolveReplayCursorRequest',
+      '3': '.chat.v1.ResolveReplayCursorResponse',
+      '4': {'34': 1},
+    },
+    {
+      '1': 'GetLatestReplayCursor',
+      '2': '.chat.v1.GetLatestReplayCursorRequest',
+      '3': '.chat.v1.GetLatestReplayCursorResponse',
+      '4': {'34': 1},
+    },
+    {
+      '1': 'ListReplayEvents',
+      '2': '.chat.v1.ListReplayEventsRequest',
+      '3': '.chat.v1.ListReplayEventsResponse',
+      '4': {'34': 1},
+    },
   ],
   '3': {},
 };
@@ -849,6 +970,22 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> ChatServic
   '.chat.v1.VoteCast': $7.VoteCast$json,
   '.chat.v1.MotionTally': $7.MotionTally$json,
   '.chat.v1.VoteTally': $7.VoteTally$json,
+  '.chat.v1.FormRequestContent': $7.FormRequestContent$json,
+  '.chat.v1.FormSchema': $7.FormSchema$json,
+  '.chat.v1.FormStep': $7.FormStep$json,
+  '.chat.v1.FormSection': $7.FormSection$json,
+  '.chat.v1.FormField': $7.FormField$json,
+  '.chat.v1.FormValidationRule': $7.FormValidationRule$json,
+  '.chat.v1.FormConditionGroup': $7.FormConditionGroup$json,
+  '.chat.v1.FormConditionClause': $7.FormConditionClause$json,
+  '.chat.v1.FormOption': $7.FormOption$json,
+  '.chat.v1.FormFormattingHint': $7.FormFormattingHint$json,
+  '.chat.v1.FormReviewHint': $7.FormReviewHint$json,
+  '.chat.v1.FormSubmissionSnapshot': $7.FormSubmissionSnapshot$json,
+  '.chat.v1.FormReviewSection': $7.FormReviewSection$json,
+  '.chat.v1.FormReviewItem': $7.FormReviewItem$json,
+  '.chat.v1.FormPermissions': $7.FormPermissions$json,
+  '.chat.v1.FormSubmissionResultContent': $7.FormSubmissionResultContent$json,
   '.chat.v1.SendEventResponse': SendEventResponse$json,
   '.chat.v1.AckEvent': $9.AckEvent$json,
   '.common.v1.ErrorDetail': $8.ErrorDetail$json,
@@ -896,6 +1033,13 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> ChatServic
   '.chat.v1.Proposal': Proposal$json,
   '.chat.v1.SubmitProposalRequest': SubmitProposalRequest$json,
   '.chat.v1.SubmitProposalResponse': SubmitProposalResponse$json,
+  '.chat.v1.ResolveReplayCursorRequest': ResolveReplayCursorRequest$json,
+  '.chat.v1.ResolveReplayCursorResponse': ResolveReplayCursorResponse$json,
+  '.chat.v1.GetLatestReplayCursorRequest': GetLatestReplayCursorRequest$json,
+  '.chat.v1.GetLatestReplayCursorResponse': GetLatestReplayCursorResponse$json,
+  '.chat.v1.ListReplayEventsRequest': ListReplayEventsRequest$json,
+  '.chat.v1.ListReplayEventsResponse': ListReplayEventsResponse$json,
+  '.chat.v1.ReplayEntry': ReplayEntry$json,
 };
 
 /// Descriptor for `ChatService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -992,20 +1136,40 @@ final $typed_data.Uint8List chatServiceDescriptor = $convert.base64Decode(
     'MSJ1N1Ym1pdCBhIGRlY2lzaW9uIG9uIGEgcGVuZGluZyBwcm9wb3NhbBqFAUFwcHJvdmVzIG9y'
     'IHJlamVjdHMgYSBwZW5kaW5nIHByb3Bvc2FsLiBJZiBhcHByb3ZlZCwgdGhlIHByb3Bvc2VkIG'
     'NoYW5nZSBpcyBleGVjdXRlZC4gT25seSByb29tIG93bmVycyBjYW4gc3VibWl0IHByb3Bvc2Fs'
-    'IGRlY2lzaW9ucy4qDnN1Ym1pdFByb3Bvc2FsgrUYEQoPcHJvcG9zYWxfbWFuYWdlGp0GgrUYmA'
-    'YKDHNlcnZpY2VfY2hhdBIKZXZlbnRfdmlldxIKZXZlbnRfc2VuZBIJcm9vbV92aWV3Egtyb29t'
-    'X2NyZWF0ZRILcm9vbV91cGRhdGUSC3Jvb21fZGVsZXRlEhFzdWJzY3JpcHRpb25fdmlldxITc3'
-    'Vic2NyaXB0aW9uX21hbmFnZRINcHJvcG9zYWxfdmlldxIPcHJvcG9zYWxfbWFuYWdlGpQBCAES'
-    'CmV2ZW50X3ZpZXcSCmV2ZW50X3NlbmQSCXJvb21fdmlldxILcm9vbV9jcmVhdGUSC3Jvb21fdX'
-    'BkYXRlEgtyb29tX2RlbGV0ZRIRc3Vic2NyaXB0aW9uX3ZpZXcSE3N1YnNjcmlwdGlvbl9tYW5h'
-    'Z2USDXByb3Bvc2FsX3ZpZXcSD3Byb3Bvc2FsX21hbmFnZRqHAQgCEgpldmVudF92aWV3Egpldm'
-    'VudF9zZW5kEglyb29tX3ZpZXcSC3Jvb21fY3JlYXRlEgtyb29tX3VwZGF0ZRIRc3Vic2NyaXB0'
-    'aW9uX3ZpZXcSE3N1YnNjcmlwdGlvbl9tYW5hZ2USDXByb3Bvc2FsX3ZpZXcSD3Byb3Bvc2FsX2'
-    '1hbmFnZRpHCAMSCmV2ZW50X3ZpZXcSCmV2ZW50X3NlbmQSCXJvb21fdmlldxIRc3Vic2NyaXB0'
-    'aW9uX3ZpZXcSDXByb3Bvc2FsX3ZpZXcaOwgEEgpldmVudF92aWV3Eglyb29tX3ZpZXcSEXN1Yn'
-    'NjcmlwdGlvbl92aWV3Eg1wcm9wb3NhbF92aWV3GjgIBRIKZXZlbnRfdmlldxIKZXZlbnRfc2Vu'
-    'ZBIJcm9vbV92aWV3EhFzdWJzY3JpcHRpb25fdmlldxqUAQgGEgpldmVudF92aWV3EgpldmVudF'
-    '9zZW5kEglyb29tX3ZpZXcSC3Jvb21fY3JlYXRlEgtyb29tX3VwZGF0ZRILcm9vbV9kZWxldGUS'
-    'EXN1YnNjcmlwdGlvbl92aWV3EhNzdWJzY3JpcHRpb25fbWFuYWdlEg1wcm9wb3NhbF92aWV3Eg'
-    '9wcm9wb3NhbF9tYW5hZ2U=');
+    'IGRlY2lzaW9ucy4qDnN1Ym1pdFByb3Bvc2FsgrUYEQoPcHJvcG9zYWxfbWFuYWdlEv8CChNSZX'
+    'NvbHZlUmVwbGF5Q3Vyc29yEiMuY2hhdC52MS5SZXNvbHZlUmVwbGF5Q3Vyc29yUmVxdWVzdBok'
+    'LmNoYXQudjEuUmVzb2x2ZVJlcGxheUN1cnNvclJlc3BvbnNlIpwCkAIBukeFAgoNRGV2aWNlIF'
+    'JlcGxheRIpUmVzb2x2ZSBhIHJlc3VtZSB0b2tlbiB0byBhIHJlcGxheSBjdXJzb3IaswFSZXNv'
+    'bHZlcyBhIGNsaWVudC1wcm92aWRlZCByZXN1bWUgdG9rZW4gb3IgZXZlbnQgSUQgdG8gYSByZX'
+    'BsYXkgY3Vyc29yIElEIGZvciBhIHNwZWNpZmljIGRldmljZS4gVXNlZCBieSB0aGUgZ2F0ZXdh'
+    'eSBkdXJpbmcgcmVjb25uZWN0aW9uIHRvIGRldGVybWluZSB3aGVyZSB0byByZXN1bWUgZXZlbn'
+    'QgcmVwbGF5LioTcmVzb2x2ZVJlcGxheUN1cnNvcoK1GAwKCmV2ZW50X3ZpZXcS1wIKFUdldExh'
+    'dGVzdFJlcGxheUN1cnNvchIlLmNoYXQudjEuR2V0TGF0ZXN0UmVwbGF5Q3Vyc29yUmVxdWVzdB'
+    'omLmNoYXQudjEuR2V0TGF0ZXN0UmVwbGF5Q3Vyc29yUmVzcG9uc2Ui7gGQAgG6R9cBCg1EZXZp'
+    'Y2UgUmVwbGF5EilHZXQgdGhlIGxhdGVzdCByZXBsYXkgY3Vyc29yIGZvciBhIGRldmljZRqDAV'
+    'JldHVybnMgdGhlIG1vc3QgcmVjZW50IHJlcGxheSBjdXJzb3IgSUQgZm9yIGEgZGV2aWNlLiBV'
+    'c2VkIGFzIHRoZSB1cHBlciBib3VuZGFyeSB3aGVuIHJlcGxheWluZyBtaXNzZWQgZXZlbnRzIG'
+    'R1cmluZyByZWNvbm5lY3Rpb24uKhVnZXRMYXRlc3RSZXBsYXlDdXJzb3KCtRgMCgpldmVudF92'
+    'aWV3EucCChBMaXN0UmVwbGF5RXZlbnRzEiAuY2hhdC52MS5MaXN0UmVwbGF5RXZlbnRzUmVxdW'
+    'VzdBohLmNoYXQudjEuTGlzdFJlcGxheUV2ZW50c1Jlc3BvbnNlIo0CkAIBukf2AQoNRGV2aWNl'
+    'IFJlcGxheRIhTGlzdCByZXBsYXkgZXZlbnRzIGFmdGVyIGEgY3Vyc29yGq8BUmV0dXJucyBhIH'
+    'BhZ2luYXRlZCBsaXN0IG9mIHJlcGxheSBldmVudHMgZm9yIGEgZGV2aWNlIHN0YXJ0aW5nIGFm'
+    'dGVyIGEgZ2l2ZW4gY3Vyc29yIHVwIHRvIGFuIHVwcGVyIGJvdW5kLiBVc2VkIGJ5IHRoZSBnYX'
+    'Rld2F5IHRvIHN0cmVhbSBtaXNzZWQgZXZlbnRzIHRvIHJlY29ubmVjdGluZyBjbGllbnRzLioQ'
+    'bGlzdFJlcGxheUV2ZW50c4K1GAwKCmV2ZW50X3ZpZXcanQaCtRiYBgoMc2VydmljZV9jaGF0Eg'
+    'pldmVudF92aWV3EgpldmVudF9zZW5kEglyb29tX3ZpZXcSC3Jvb21fY3JlYXRlEgtyb29tX3Vw'
+    'ZGF0ZRILcm9vbV9kZWxldGUSEXN1YnNjcmlwdGlvbl92aWV3EhNzdWJzY3JpcHRpb25fbWFuYW'
+    'dlEg1wcm9wb3NhbF92aWV3Eg9wcm9wb3NhbF9tYW5hZ2UalAEIARIKZXZlbnRfdmlldxIKZXZl'
+    'bnRfc2VuZBIJcm9vbV92aWV3Egtyb29tX2NyZWF0ZRILcm9vbV91cGRhdGUSC3Jvb21fZGVsZX'
+    'RlEhFzdWJzY3JpcHRpb25fdmlldxITc3Vic2NyaXB0aW9uX21hbmFnZRINcHJvcG9zYWxfdmll'
+    'dxIPcHJvcG9zYWxfbWFuYWdlGocBCAISCmV2ZW50X3ZpZXcSCmV2ZW50X3NlbmQSCXJvb21fdm'
+    'lldxILcm9vbV9jcmVhdGUSC3Jvb21fdXBkYXRlEhFzdWJzY3JpcHRpb25fdmlldxITc3Vic2Ny'
+    'aXB0aW9uX21hbmFnZRINcHJvcG9zYWxfdmlldxIPcHJvcG9zYWxfbWFuYWdlGkcIAxIKZXZlbn'
+    'RfdmlldxIKZXZlbnRfc2VuZBIJcm9vbV92aWV3EhFzdWJzY3JpcHRpb25fdmlldxINcHJvcG9z'
+    'YWxfdmlldxo7CAQSCmV2ZW50X3ZpZXcSCXJvb21fdmlldxIRc3Vic2NyaXB0aW9uX3ZpZXcSDX'
+    'Byb3Bvc2FsX3ZpZXcaOAgFEgpldmVudF92aWV3EgpldmVudF9zZW5kEglyb29tX3ZpZXcSEXN1'
+    'YnNjcmlwdGlvbl92aWV3GpQBCAYSCmV2ZW50X3ZpZXcSCmV2ZW50X3NlbmQSCXJvb21fdmlldx'
+    'ILcm9vbV9jcmVhdGUSC3Jvb21fdXBkYXRlEgtyb29tX2RlbGV0ZRIRc3Vic2NyaXB0aW9uX3Zp'
+    'ZXcSE3N1YnNjcmlwdGlvbl9tYW5hZ2USDXByb3Bvc2FsX3ZpZXcSD3Byb3Bvc2FsX21hbmFnZQ'
+    '==');
 

@@ -302,6 +302,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/chat.v1.GetHistoryResponse'
+  /chat.v1.ChatService/GetLatestReplayCursor:
+    get:
+      tags:
+        - Device Replay
+        - chat.v1.ChatService
+      summary: Get the latest replay cursor for a device
+      description: Returns the most recent replay cursor ID for a device. Used as the upper boundary when replaying missed events during reconnection.
+      operationId: getLatestReplayCursor
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+        - name: message
+          in: query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.GetLatestReplayCursorRequest'
+        - name: encoding
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/encoding'
+        - name: base64
+          in: query
+          schema:
+            $ref: '#/components/schemas/base64'
+        - name: compression
+          in: query
+          schema:
+            $ref: '#/components/schemas/compression'
+        - name: connect
+          in: query
+          schema:
+            $ref: '#/components/schemas/connect'
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.GetLatestReplayCursorResponse'
+    post:
+      tags:
+        - Device Replay
+        - chat.v1.ChatService
+      summary: Get the latest replay cursor for a device
+      description: Returns the most recent replay cursor ID for a device. Used as the upper boundary when replaying missed events during reconnection.
+      operationId: getLatestReplayCursor
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat.v1.GetLatestReplayCursorRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.GetLatestReplayCursorResponse'
   /chat.v1.ChatService/GetRoom:
     get:
       tags:
@@ -572,6 +662,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/chat.v1.ListProposalsResponse'
+  /chat.v1.ChatService/ListReplayEvents:
+    get:
+      tags:
+        - Device Replay
+        - chat.v1.ChatService
+      summary: List replay events after a cursor
+      description: Returns a paginated list of replay events for a device starting after a given cursor up to an upper bound. Used by the gateway to stream missed events to reconnecting clients.
+      operationId: listReplayEvents
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+        - name: message
+          in: query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.ListReplayEventsRequest'
+        - name: encoding
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/encoding'
+        - name: base64
+          in: query
+          schema:
+            $ref: '#/components/schemas/base64'
+        - name: compression
+          in: query
+          schema:
+            $ref: '#/components/schemas/compression'
+        - name: connect
+          in: query
+          schema:
+            $ref: '#/components/schemas/connect'
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.ListReplayEventsResponse'
+    post:
+      tags:
+        - Device Replay
+        - chat.v1.ChatService
+      summary: List replay events after a cursor
+      description: Returns a paginated list of replay events for a device starting after a given cursor up to an upper bound. Used by the gateway to stream missed events to reconnecting clients.
+      operationId: listReplayEvents
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat.v1.ListReplayEventsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.ListReplayEventsResponse'
   /chat.v1.ChatService/Live:
     post:
       tags:
@@ -646,6 +826,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/chat.v1.RemoveRoomSubscriptionsResponse'
+  /chat.v1.ChatService/ResolveReplayCursor:
+    get:
+      tags:
+        - Device Replay
+        - chat.v1.ChatService
+      summary: Resolve a resume token to a replay cursor
+      description: Resolves a client-provided resume token or event ID to a replay cursor ID for a specific device. Used by the gateway during reconnection to determine where to resume event replay.
+      operationId: resolveReplayCursor
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+        - name: message
+          in: query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.ResolveReplayCursorRequest'
+        - name: encoding
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/encoding'
+        - name: base64
+          in: query
+          schema:
+            $ref: '#/components/schemas/base64'
+        - name: compression
+          in: query
+          schema:
+            $ref: '#/components/schemas/compression'
+        - name: connect
+          in: query
+          schema:
+            $ref: '#/components/schemas/connect'
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.ResolveReplayCursorResponse'
+    post:
+      tags:
+        - Device Replay
+        - chat.v1.ChatService
+      summary: Resolve a resume token to a replay cursor
+      description: Resolves a client-provided resume token or event ID to a replay cursor ID for a specific device. Used by the gateway during reconnection to determine where to resume event replay.
+      operationId: resolveReplayCursor
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat.v1.ResolveReplayCursorRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.ResolveReplayCursorResponse'
   /chat.v1.ChatService/SearchRoomSubscriptions:
     get:
       tags:
@@ -1303,6 +1573,573 @@ components:
           description: Optional key agreement context identifier
       title: EncryptedContent
       additionalProperties: false
+    chat.v1.FormConditionClause:
+      type: object
+      properties:
+        fieldKey:
+          type: string
+          title: field_key
+        operator:
+          title: operator
+          $ref: '#/components/schemas/chat.v1.FormConditionOperator'
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+      title: FormConditionClause
+      additionalProperties: false
+    chat.v1.FormConditionGroup:
+      type: object
+      properties:
+        all:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormConditionClause'
+          title: all
+        any:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormConditionClause'
+          title: any
+      title: FormConditionGroup
+      additionalProperties: false
+    chat.v1.FormConditionOperator:
+      type: string
+      title: FormConditionOperator
+      enum:
+        - FORM_CONDITION_OPERATOR_UNSPECIFIED
+        - FORM_CONDITION_OPERATOR_EQUALS
+        - FORM_CONDITION_OPERATOR_NOT_EQUALS
+        - FORM_CONDITION_OPERATOR_GREATER_THAN
+        - FORM_CONDITION_OPERATOR_GREATER_THAN_OR_EQUAL
+        - FORM_CONDITION_OPERATOR_LESS_THAN
+        - FORM_CONDITION_OPERATOR_LESS_THAN_OR_EQUAL
+        - FORM_CONDITION_OPERATOR_IN
+        - FORM_CONDITION_OPERATOR_NOT_IN
+        - FORM_CONDITION_OPERATOR_CONTAINS
+        - FORM_CONDITION_OPERATOR_NOT_CONTAINS
+        - FORM_CONDITION_OPERATOR_IS_TRUE
+        - FORM_CONDITION_OPERATOR_IS_FALSE
+        - FORM_CONDITION_OPERATOR_EXISTS
+        - FORM_CONDITION_OPERATOR_NOT_EXISTS
+    chat.v1.FormField:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        type:
+          title: type
+          $ref: '#/components/schemas/chat.v1.FormFieldType'
+        label:
+          type: string
+          title: label
+        helpText:
+          type: string
+          title: help_text
+        placeholder:
+          type: string
+          title: placeholder
+        required:
+          type: boolean
+          title: required
+        defaultValue:
+          title: default_value
+          $ref: '#/components/schemas/google.protobuf.Value'
+        validationRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormValidationRule'
+          title: validation_rules
+        visibilityCondition:
+          title: visibility_condition
+          $ref: '#/components/schemas/chat.v1.FormConditionGroup'
+        editabilityCondition:
+          title: editability_condition
+          $ref: '#/components/schemas/chat.v1.FormConditionGroup'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormOption'
+          title: options
+        nestedFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormField'
+          title: nested_fields
+        nestedSections:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormSection'
+          title: nested_sections
+        formatting:
+          title: formatting
+          $ref: '#/components/schemas/chat.v1.FormFormattingHint'
+        uiHints:
+          title: ui_hints
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        review:
+          title: review
+          $ref: '#/components/schemas/chat.v1.FormReviewHint'
+        visibleToRoles:
+          type: array
+          items:
+            type: string
+          title: visible_to_roles
+        repeatable:
+          type: boolean
+          title: repeatable
+        hidden:
+          type: boolean
+          title: hidden
+      title: FormField
+      additionalProperties: false
+    chat.v1.FormFieldType:
+      type: string
+      title: FormFieldType
+      enum:
+        - FORM_FIELD_TYPE_UNSPECIFIED
+        - FORM_FIELD_TYPE_TEXT
+        - FORM_FIELD_TYPE_MULTILINE
+        - FORM_FIELD_TYPE_NUMBER
+        - FORM_FIELD_TYPE_DECIMAL
+        - FORM_FIELD_TYPE_CURRENCY
+        - FORM_FIELD_TYPE_PHONE
+        - FORM_FIELD_TYPE_EMAIL
+        - FORM_FIELD_TYPE_DATE
+        - FORM_FIELD_TYPE_DATETIME
+        - FORM_FIELD_TYPE_SELECT
+        - FORM_FIELD_TYPE_RADIO
+        - FORM_FIELD_TYPE_CHECKBOX_GROUP
+        - FORM_FIELD_TYPE_BOOLEAN
+        - FORM_FIELD_TYPE_FILE
+        - FORM_FIELD_TYPE_ADDRESS
+        - FORM_FIELD_TYPE_REPEATABLE_GROUP
+        - FORM_FIELD_TYPE_GROUP
+        - FORM_FIELD_TYPE_SECTION
+        - FORM_FIELD_TYPE_HIDDEN
+        - FORM_FIELD_TYPE_COMPUTED
+    chat.v1.FormFormattingHint:
+      type: object
+      properties:
+        inputMask:
+          type: string
+          title: input_mask
+        displayFormat:
+          type: string
+          title: display_format
+        currencyCode:
+          type: string
+          title: currency_code
+        decimalScale:
+          type: integer
+          title: decimal_scale
+          format: int32
+        keyboard:
+          type: string
+          title: keyboard
+        autocomplete:
+          type: string
+          title: autocomplete
+      title: FormFormattingHint
+      additionalProperties: false
+    chat.v1.FormMessageState:
+      type: string
+      title: FormMessageState
+      enum:
+        - FORM_MESSAGE_STATE_UNSPECIFIED
+        - FORM_MESSAGE_STATE_OPEN
+        - FORM_MESSAGE_STATE_IN_REVIEW
+        - FORM_MESSAGE_STATE_SUBMITTING
+        - FORM_MESSAGE_STATE_SUBMITTED
+        - FORM_MESSAGE_STATE_FAILED_SUBMISSION
+        - FORM_MESSAGE_STATE_EXPIRED
+        - FORM_MESSAGE_STATE_CANCELLED
+    chat.v1.FormOption:
+      type: object
+      properties:
+        value:
+          type: string
+          title: value
+        label:
+          type: string
+          title: label
+        helpText:
+          type: string
+          title: help_text
+        disabled:
+          type: boolean
+          title: disabled
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: FormOption
+      additionalProperties: false
+    chat.v1.FormPermissions:
+      type: object
+      properties:
+        canEdit:
+          type: boolean
+          title: can_edit
+        canSubmit:
+          type: boolean
+          title: can_submit
+        canSaveDraft:
+          type: boolean
+          title: can_save_draft
+        canGoBack:
+          type: boolean
+          title: can_go_back
+      title: FormPermissions
+      additionalProperties: false
+    chat.v1.FormRequestContent:
+      type: object
+      properties:
+        formInstanceId:
+          type: string
+          title: form_instance_id
+        schemaId:
+          type: string
+          title: schema_id
+        schemaVersion:
+          type: integer
+          title: schema_version
+          format: int32
+        title:
+          type: string
+          title: title
+        description:
+          type: string
+          title: description
+        state:
+          title: state
+          $ref: '#/components/schemas/chat.v1.FormMessageState'
+        reviewRequired:
+          type: boolean
+          title: review_required
+        schema:
+          title: schema
+          $ref: '#/components/schemas/chat.v1.FormSchema'
+        initialValues:
+          title: initial_values
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        serverDraftValues:
+          title: server_draft_values
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        finalSubmissionSnapshot:
+          title: final_submission_snapshot
+          $ref: '#/components/schemas/chat.v1.FormSubmissionSnapshot'
+        permissions:
+          title: permissions
+          $ref: '#/components/schemas/chat.v1.FormPermissions'
+        expiresAt:
+          title: expires_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        workflowContext:
+          title: workflow_context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        currentWorkflowState:
+          type: string
+          title: current_workflow_state
+      title: FormRequestContent
+      additionalProperties: false
+    chat.v1.FormReviewHint:
+      type: object
+      properties:
+        includeInReview:
+          type: boolean
+          title: include_in_review
+        label:
+          type: string
+          title: label
+        sectionLabel:
+          type: string
+          title: section_label
+        formatter:
+          type: string
+          title: formatter
+        order:
+          type: integer
+          title: order
+          format: int32
+      title: FormReviewHint
+      additionalProperties: false
+    chat.v1.FormReviewItem:
+      type: object
+      properties:
+        fieldKey:
+          type: string
+          title: field_key
+        label:
+          type: string
+          title: label
+        displayValue:
+          type: string
+          title: display_value
+        emphasized:
+          type: boolean
+          title: emphasized
+      title: FormReviewItem
+      additionalProperties: false
+    chat.v1.FormReviewSection:
+      type: object
+      properties:
+        stepId:
+          type: string
+          title: step_id
+        stepTitle:
+          type: string
+          title: step_title
+        sectionId:
+          type: string
+          title: section_id
+        sectionTitle:
+          type: string
+          title: section_title
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormReviewItem'
+          title: items
+      title: FormReviewSection
+      additionalProperties: false
+    chat.v1.FormSchema:
+      type: object
+      properties:
+        formId:
+          type: string
+          title: form_id
+        formVersion:
+          type: integer
+          title: form_version
+          format: int32
+        title:
+          type: string
+          title: title
+        subtitle:
+          type: string
+          title: subtitle
+        description:
+          type: string
+          title: description
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormStep'
+          title: steps
+        workflowMetadata:
+          title: workflow_metadata
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        uiHints:
+          title: ui_hints
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: FormSchema
+      additionalProperties: false
+    chat.v1.FormSection:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        title:
+          type: string
+          title: title
+        description:
+          type: string
+          title: description
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormField'
+          title: fields
+        uiHints:
+          title: ui_hints
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: FormSection
+      additionalProperties: false
+    chat.v1.FormStep:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        title:
+          type: string
+          title: title
+        description:
+          type: string
+          title: description
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormSection'
+          title: sections
+        uiHints:
+          title: ui_hints
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: FormStep
+      additionalProperties: false
+    chat.v1.FormSubmissionResultContent:
+      type: object
+      properties:
+        formInstanceId:
+          type: string
+          title: form_instance_id
+        schemaId:
+          type: string
+          title: schema_id
+        schemaVersion:
+          type: integer
+          title: schema_version
+          format: int32
+        sourceEventId:
+          type: string
+          title: source_event_id
+        state:
+          title: state
+          $ref: '#/components/schemas/chat.v1.FormMessageState'
+        reviewConfirmed:
+          type: boolean
+          title: review_confirmed
+        submissionSnapshot:
+          title: submission_snapshot
+          $ref: '#/components/schemas/chat.v1.FormSubmissionSnapshot'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: FormSubmissionResultContent
+      additionalProperties: false
+    chat.v1.FormSubmissionSnapshot:
+      type: object
+      properties:
+        formInstanceId:
+          type: string
+          title: form_instance_id
+        schemaId:
+          type: string
+          title: schema_id
+        schemaVersion:
+          type: integer
+          title: schema_version
+          format: int32
+        submittedAt:
+          title: submitted_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        submittedBySubscriptionId:
+          type: string
+          title: submitted_by_subscription_id
+        answers:
+          title: answers
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        formattedSections:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.FormReviewSection'
+          title: formatted_sections
+        submissionReference:
+          type: string
+          title: submission_reference
+        status:
+          title: status
+          $ref: '#/components/schemas/chat.v1.FormMessageState'
+        backendMessage:
+          type: string
+          title: backend_message
+        workflowMessage:
+          type: string
+          title: workflow_message
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: FormSubmissionSnapshot
+      additionalProperties: false
+    chat.v1.FormValidationRule:
+      type: object
+      allOf:
+        - properties:
+            code:
+              type: string
+              title: code
+            message:
+              type: string
+              title: message
+        - oneOf:
+            - type: object
+              properties:
+                maxItems:
+                  type: integer
+                  title: max_items
+                  format: int32
+              title: max_items
+              required:
+                - maxItems
+            - type: object
+              properties:
+                maxLength:
+                  type: integer
+                  title: max_length
+                  format: int32
+              title: max_length
+              required:
+                - maxLength
+            - type: object
+              properties:
+                maxValue:
+                  type: number
+                  title: max_value
+                  format: double
+              title: max_value
+              required:
+                - maxValue
+            - type: object
+              properties:
+                minItems:
+                  type: integer
+                  title: min_items
+                  format: int32
+              title: min_items
+              required:
+                - minItems
+            - type: object
+              properties:
+                minLength:
+                  type: integer
+                  title: min_length
+                  format: int32
+              title: min_length
+              required:
+                - minLength
+            - type: object
+              properties:
+                minValue:
+                  type: number
+                  title: min_value
+                  format: double
+              title: min_value
+              required:
+                - minValue
+            - type: object
+              properties:
+                pattern:
+                  type: string
+                  title: pattern
+              title: pattern
+              required:
+                - pattern
+            - type: object
+              properties:
+                required:
+                  type: boolean
+                  title: required
+              title: required
+              required:
+                - required
+      title: FormValidationRule
+      additionalProperties: false
     chat.v1.GetEventRequest:
       type: object
       properties:
@@ -1366,6 +2203,28 @@ components:
           type: string
           title: prev_cursor
       title: GetHistoryResponse
+      additionalProperties: false
+    chat.v1.GetLatestReplayCursorRequest:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+          minLength: 1
+        deviceId:
+          type: string
+          title: device_id
+          minLength: 1
+      title: GetLatestReplayCursorRequest
+      additionalProperties: false
+    chat.v1.GetLatestReplayCursorResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+          title: cursor
+          description: The latest cursor ID for the device, empty if no replay entries exist.
+      title: GetLatestReplayCursorResponse
       additionalProperties: false
     chat.v1.GetRoomRequest:
       type: object
@@ -1452,6 +2311,42 @@ components:
           type: string
           title: prev_cursor
       title: ListProposalsResponse
+      additionalProperties: false
+    chat.v1.ListReplayEventsRequest:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+          minLength: 1
+        deviceId:
+          type: string
+          title: device_id
+          minLength: 1
+        afterCursor:
+          type: string
+          title: after_cursor
+          description: Fetch events with cursor > after_cursor.
+        upperBoundCursor:
+          type: string
+          title: upper_bound_cursor
+          description: Fetch events with cursor <= upper_bound_cursor.
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: Maximum number of events to return per page.
+      title: ListReplayEventsRequest
+      additionalProperties: false
+    chat.v1.ListReplayEventsResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.ReplayEntry'
+          title: entries
+      title: ListReplayEventsResponse
       additionalProperties: false
     chat.v1.LiveRequest:
       type: object
@@ -1689,6 +2584,24 @@ components:
                 - encrypted
             - type: object
               properties:
+                formRequest:
+                  title: form_request
+                  description: type = PAYLOAD_TYPE_FORM_REQUEST
+                  $ref: '#/components/schemas/chat.v1.FormRequestContent'
+              title: form_request
+              required:
+                - formRequest
+            - type: object
+              properties:
+                formSubmissionResult:
+                  title: form_submission_result
+                  description: type = PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
+                  $ref: '#/components/schemas/chat.v1.FormSubmissionResultContent'
+              title: form_submission_result
+              required:
+                - formSubmissionResult
+            - type: object
+              properties:
                 moderation:
                   title: moderation
                   description: type = PAYLOAD_TYPE_MODERATION
@@ -1777,6 +2690,8 @@ components:
         - PAYLOAD_TYPE_VOTE
         - PAYLOAD_TYPE_MOTION_TALLY
         - PAYLOAD_TYPE_VOTE_TALLY
+        - PAYLOAD_TYPE_FORM_REQUEST
+        - PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
     chat.v1.PresenceEvent:
       type: object
@@ -1990,6 +2905,52 @@ components:
           $ref: '#/components/schemas/common.v1.ErrorDetail'
       title: RemoveRoomSubscriptionsResponse
       additionalProperties: false
+    chat.v1.ReplayEntry:
+      type: object
+      properties:
+        cursor:
+          type: string
+          title: cursor
+          description: The replay cursor ID (DeviceReplayEvent.ID).
+        responseData:
+          type: string
+          title: response_data
+          format: byte
+          description: The serialized StreamResponse protobuf bytes.
+      title: ReplayEntry
+      additionalProperties: false
+      description: A single replay entry containing a cursor ID and its serialized StreamResponse payload.
+    chat.v1.ResolveReplayCursorRequest:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+          minLength: 1
+        deviceId:
+          type: string
+          title: device_id
+          minLength: 1
+        token:
+          type: string
+          title: token
+          minLength: 1
+          description: The resume token or event ID presented by the reconnecting client.
+      title: ResolveReplayCursorRequest
+      additionalProperties: false
+    chat.v1.ResolveReplayCursorResponse:
+      type: object
+      properties:
+        cursor:
+          type: string
+          title: cursor
+          description: The resolved cursor ID, empty if the token could not be resolved.
+        found:
+          type: boolean
+          title: found
+          description: True if the token was successfully resolved to a cursor.
+      title: ResolveReplayCursorResponse
+      additionalProperties: false
     chat.v1.Room:
       type: object
       properties:
@@ -2132,6 +3093,8 @@ components:
         - ROOM_EVENT_TYPE_MOTION
         - ROOM_EVENT_TYPE_CALL
         - ROOM_EVENT_TYPE_ADVERT
+        - ROOM_EVENT_TYPE_FORM_REQUEST
+        - ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
     chat.v1.RoomSubscription:
       type: object

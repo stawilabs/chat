@@ -15,6 +15,7 @@ import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
 import '../../google/protobuf/struct.pb.dart' as $4;
+import '../../google/protobuf/timestamp.pb.dart' as $2;
 import 'payload_type.pbenum.dart';
 
 export 'payload_type.pbenum.dart';
@@ -1638,6 +1639,2217 @@ class MotionTally extends $pb.GeneratedMessage {
   void clearClosed() => clearField(9);
 }
 
+enum FormValidationRule_Rule {
+  required, 
+  minLength, 
+  maxLength, 
+  minValue, 
+  maxValue, 
+  pattern, 
+  minItems, 
+  maxItems, 
+  notSet
+}
+
+class FormValidationRule extends $pb.GeneratedMessage {
+  factory FormValidationRule({
+    $core.String? code,
+    $core.String? message,
+    $core.bool? required,
+    $core.int? minLength,
+    $core.int? maxLength,
+    $core.double? minValue,
+    $core.double? maxValue,
+    $core.String? pattern,
+    $core.int? minItems,
+    $core.int? maxItems,
+  }) {
+    final $result = create();
+    if (code != null) {
+      $result.code = code;
+    }
+    if (message != null) {
+      $result.message = message;
+    }
+    if (required != null) {
+      $result.required = required;
+    }
+    if (minLength != null) {
+      $result.minLength = minLength;
+    }
+    if (maxLength != null) {
+      $result.maxLength = maxLength;
+    }
+    if (minValue != null) {
+      $result.minValue = minValue;
+    }
+    if (maxValue != null) {
+      $result.maxValue = maxValue;
+    }
+    if (pattern != null) {
+      $result.pattern = pattern;
+    }
+    if (minItems != null) {
+      $result.minItems = minItems;
+    }
+    if (maxItems != null) {
+      $result.maxItems = maxItems;
+    }
+    return $result;
+  }
+  FormValidationRule._() : super();
+  factory FormValidationRule.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormValidationRule.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static const $core.Map<$core.int, FormValidationRule_Rule> _FormValidationRule_RuleByTag = {
+    3 : FormValidationRule_Rule.required,
+    4 : FormValidationRule_Rule.minLength,
+    5 : FormValidationRule_Rule.maxLength,
+    6 : FormValidationRule_Rule.minValue,
+    7 : FormValidationRule_Rule.maxValue,
+    8 : FormValidationRule_Rule.pattern,
+    9 : FormValidationRule_Rule.minItems,
+    10 : FormValidationRule_Rule.maxItems,
+    0 : FormValidationRule_Rule.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormValidationRule', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..oo(0, [3, 4, 5, 6, 7, 8, 9, 10])
+    ..aOS(1, _omitFieldNames ? '' : 'code')
+    ..aOS(2, _omitFieldNames ? '' : 'message')
+    ..aOB(3, _omitFieldNames ? '' : 'required')
+    ..a<$core.int>(4, _omitFieldNames ? '' : 'minLength', $pb.PbFieldType.O3)
+    ..a<$core.int>(5, _omitFieldNames ? '' : 'maxLength', $pb.PbFieldType.O3)
+    ..a<$core.double>(6, _omitFieldNames ? '' : 'minValue', $pb.PbFieldType.OD)
+    ..a<$core.double>(7, _omitFieldNames ? '' : 'maxValue', $pb.PbFieldType.OD)
+    ..aOS(8, _omitFieldNames ? '' : 'pattern')
+    ..a<$core.int>(9, _omitFieldNames ? '' : 'minItems', $pb.PbFieldType.O3)
+    ..a<$core.int>(10, _omitFieldNames ? '' : 'maxItems', $pb.PbFieldType.O3)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormValidationRule clone() => FormValidationRule()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormValidationRule copyWith(void Function(FormValidationRule) updates) => super.copyWith((message) => updates(message as FormValidationRule)) as FormValidationRule;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormValidationRule create() => FormValidationRule._();
+  FormValidationRule createEmptyInstance() => create();
+  static $pb.PbList<FormValidationRule> createRepeated() => $pb.PbList<FormValidationRule>();
+  @$core.pragma('dart2js:noInline')
+  static FormValidationRule getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormValidationRule>(create);
+  static FormValidationRule? _defaultInstance;
+
+  FormValidationRule_Rule whichRule() => _FormValidationRule_RuleByTag[$_whichOneof(0)]!;
+  void clearRule() => clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  $core.String get code => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set code($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCode() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get message => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set message($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasMessage() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMessage() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get required => $_getBF(2);
+  @$pb.TagNumber(3)
+  set required($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasRequired() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRequired() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get minLength => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set minLength($core.int v) { $_setSignedInt32(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasMinLength() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMinLength() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get maxLength => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set maxLength($core.int v) { $_setSignedInt32(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasMaxLength() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMaxLength() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get minValue => $_getN(5);
+  @$pb.TagNumber(6)
+  set minValue($core.double v) { $_setDouble(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasMinValue() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMinValue() => clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get maxValue => $_getN(6);
+  @$pb.TagNumber(7)
+  set maxValue($core.double v) { $_setDouble(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasMaxValue() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMaxValue() => clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get pattern => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set pattern($core.String v) { $_setString(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasPattern() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPattern() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.int get minItems => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set minItems($core.int v) { $_setSignedInt32(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasMinItems() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearMinItems() => clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.int get maxItems => $_getIZ(9);
+  @$pb.TagNumber(10)
+  set maxItems($core.int v) { $_setSignedInt32(9, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasMaxItems() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearMaxItems() => clearField(10);
+}
+
+class FormConditionClause extends $pb.GeneratedMessage {
+  factory FormConditionClause({
+    $core.String? fieldKey,
+    FormConditionOperator? operator,
+    $4.Value? value,
+    $core.Iterable<$4.Value>? values,
+  }) {
+    final $result = create();
+    if (fieldKey != null) {
+      $result.fieldKey = fieldKey;
+    }
+    if (operator != null) {
+      $result.operator = operator;
+    }
+    if (value != null) {
+      $result.value = value;
+    }
+    if (values != null) {
+      $result.values.addAll(values);
+    }
+    return $result;
+  }
+  FormConditionClause._() : super();
+  factory FormConditionClause.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormConditionClause.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormConditionClause', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'fieldKey')
+    ..e<FormConditionOperator>(2, _omitFieldNames ? '' : 'operator', $pb.PbFieldType.OE, defaultOrMaker: FormConditionOperator.FORM_CONDITION_OPERATOR_UNSPECIFIED, valueOf: FormConditionOperator.valueOf, enumValues: FormConditionOperator.values)
+    ..aOM<$4.Value>(3, _omitFieldNames ? '' : 'value', subBuilder: $4.Value.create)
+    ..pc<$4.Value>(4, _omitFieldNames ? '' : 'values', $pb.PbFieldType.PM, subBuilder: $4.Value.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormConditionClause clone() => FormConditionClause()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormConditionClause copyWith(void Function(FormConditionClause) updates) => super.copyWith((message) => updates(message as FormConditionClause)) as FormConditionClause;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormConditionClause create() => FormConditionClause._();
+  FormConditionClause createEmptyInstance() => create();
+  static $pb.PbList<FormConditionClause> createRepeated() => $pb.PbList<FormConditionClause>();
+  @$core.pragma('dart2js:noInline')
+  static FormConditionClause getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormConditionClause>(create);
+  static FormConditionClause? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get fieldKey => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set fieldKey($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasFieldKey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFieldKey() => clearField(1);
+
+  @$pb.TagNumber(2)
+  FormConditionOperator get operator => $_getN(1);
+  @$pb.TagNumber(2)
+  set operator(FormConditionOperator v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasOperator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOperator() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $4.Value get value => $_getN(2);
+  @$pb.TagNumber(3)
+  set value($4.Value v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasValue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearValue() => clearField(3);
+  @$pb.TagNumber(3)
+  $4.Value ensureValue() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.List<$4.Value> get values => $_getList(3);
+}
+
+class FormConditionGroup extends $pb.GeneratedMessage {
+  factory FormConditionGroup({
+    $core.Iterable<FormConditionClause>? all,
+    $core.Iterable<FormConditionClause>? any,
+  }) {
+    final $result = create();
+    if (all != null) {
+      $result.all.addAll(all);
+    }
+    if (any != null) {
+      $result.any.addAll(any);
+    }
+    return $result;
+  }
+  FormConditionGroup._() : super();
+  factory FormConditionGroup.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormConditionGroup.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormConditionGroup', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..pc<FormConditionClause>(1, _omitFieldNames ? '' : 'all', $pb.PbFieldType.PM, subBuilder: FormConditionClause.create)
+    ..pc<FormConditionClause>(2, _omitFieldNames ? '' : 'any', $pb.PbFieldType.PM, subBuilder: FormConditionClause.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormConditionGroup clone() => FormConditionGroup()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormConditionGroup copyWith(void Function(FormConditionGroup) updates) => super.copyWith((message) => updates(message as FormConditionGroup)) as FormConditionGroup;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormConditionGroup create() => FormConditionGroup._();
+  FormConditionGroup createEmptyInstance() => create();
+  static $pb.PbList<FormConditionGroup> createRepeated() => $pb.PbList<FormConditionGroup>();
+  @$core.pragma('dart2js:noInline')
+  static FormConditionGroup getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormConditionGroup>(create);
+  static FormConditionGroup? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<FormConditionClause> get all => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.List<FormConditionClause> get any => $_getList(1);
+}
+
+class FormOption extends $pb.GeneratedMessage {
+  factory FormOption({
+    $core.String? value,
+    $core.String? label,
+    $core.String? helpText,
+    $core.bool? disabled,
+    $4.Struct? metadata,
+  }) {
+    final $result = create();
+    if (value != null) {
+      $result.value = value;
+    }
+    if (label != null) {
+      $result.label = label;
+    }
+    if (helpText != null) {
+      $result.helpText = helpText;
+    }
+    if (disabled != null) {
+      $result.disabled = disabled;
+    }
+    if (metadata != null) {
+      $result.metadata = metadata;
+    }
+    return $result;
+  }
+  FormOption._() : super();
+  factory FormOption.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormOption.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormOption', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'value')
+    ..aOS(2, _omitFieldNames ? '' : 'label')
+    ..aOS(3, _omitFieldNames ? '' : 'helpText')
+    ..aOB(4, _omitFieldNames ? '' : 'disabled')
+    ..aOM<$4.Struct>(5, _omitFieldNames ? '' : 'metadata', subBuilder: $4.Struct.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormOption clone() => FormOption()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormOption copyWith(void Function(FormOption) updates) => super.copyWith((message) => updates(message as FormOption)) as FormOption;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormOption create() => FormOption._();
+  FormOption createEmptyInstance() => create();
+  static $pb.PbList<FormOption> createRepeated() => $pb.PbList<FormOption>();
+  @$core.pragma('dart2js:noInline')
+  static FormOption getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormOption>(create);
+  static FormOption? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get value => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set value($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasValue() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearValue() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get label => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set label($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLabel() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get helpText => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set helpText($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasHelpText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHelpText() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get disabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set disabled($core.bool v) { $_setBool(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasDisabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDisabled() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $4.Struct get metadata => $_getN(4);
+  @$pb.TagNumber(5)
+  set metadata($4.Struct v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasMetadata() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMetadata() => clearField(5);
+  @$pb.TagNumber(5)
+  $4.Struct ensureMetadata() => $_ensure(4);
+}
+
+class FormFormattingHint extends $pb.GeneratedMessage {
+  factory FormFormattingHint({
+    $core.String? inputMask,
+    $core.String? displayFormat,
+    $core.String? currencyCode,
+    $core.int? decimalScale,
+    $core.String? keyboard,
+    $core.String? autocomplete,
+  }) {
+    final $result = create();
+    if (inputMask != null) {
+      $result.inputMask = inputMask;
+    }
+    if (displayFormat != null) {
+      $result.displayFormat = displayFormat;
+    }
+    if (currencyCode != null) {
+      $result.currencyCode = currencyCode;
+    }
+    if (decimalScale != null) {
+      $result.decimalScale = decimalScale;
+    }
+    if (keyboard != null) {
+      $result.keyboard = keyboard;
+    }
+    if (autocomplete != null) {
+      $result.autocomplete = autocomplete;
+    }
+    return $result;
+  }
+  FormFormattingHint._() : super();
+  factory FormFormattingHint.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormFormattingHint.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormFormattingHint', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'inputMask')
+    ..aOS(2, _omitFieldNames ? '' : 'displayFormat')
+    ..aOS(3, _omitFieldNames ? '' : 'currencyCode')
+    ..a<$core.int>(4, _omitFieldNames ? '' : 'decimalScale', $pb.PbFieldType.O3)
+    ..aOS(5, _omitFieldNames ? '' : 'keyboard')
+    ..aOS(6, _omitFieldNames ? '' : 'autocomplete')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormFormattingHint clone() => FormFormattingHint()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormFormattingHint copyWith(void Function(FormFormattingHint) updates) => super.copyWith((message) => updates(message as FormFormattingHint)) as FormFormattingHint;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormFormattingHint create() => FormFormattingHint._();
+  FormFormattingHint createEmptyInstance() => create();
+  static $pb.PbList<FormFormattingHint> createRepeated() => $pb.PbList<FormFormattingHint>();
+  @$core.pragma('dart2js:noInline')
+  static FormFormattingHint getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormFormattingHint>(create);
+  static FormFormattingHint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get inputMask => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set inputMask($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasInputMask() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearInputMask() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get displayFormat => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set displayFormat($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasDisplayFormat() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDisplayFormat() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get currencyCode => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set currencyCode($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasCurrencyCode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCurrencyCode() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get decimalScale => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set decimalScale($core.int v) { $_setSignedInt32(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasDecimalScale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDecimalScale() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get keyboard => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set keyboard($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasKeyboard() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearKeyboard() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get autocomplete => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set autocomplete($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasAutocomplete() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAutocomplete() => clearField(6);
+}
+
+class FormReviewHint extends $pb.GeneratedMessage {
+  factory FormReviewHint({
+    $core.bool? includeInReview,
+    $core.String? label,
+    $core.String? sectionLabel,
+    $core.String? formatter,
+    $core.int? order,
+  }) {
+    final $result = create();
+    if (includeInReview != null) {
+      $result.includeInReview = includeInReview;
+    }
+    if (label != null) {
+      $result.label = label;
+    }
+    if (sectionLabel != null) {
+      $result.sectionLabel = sectionLabel;
+    }
+    if (formatter != null) {
+      $result.formatter = formatter;
+    }
+    if (order != null) {
+      $result.order = order;
+    }
+    return $result;
+  }
+  FormReviewHint._() : super();
+  factory FormReviewHint.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormReviewHint.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormReviewHint', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'includeInReview')
+    ..aOS(2, _omitFieldNames ? '' : 'label')
+    ..aOS(3, _omitFieldNames ? '' : 'sectionLabel')
+    ..aOS(4, _omitFieldNames ? '' : 'formatter')
+    ..a<$core.int>(5, _omitFieldNames ? '' : 'order', $pb.PbFieldType.O3)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormReviewHint clone() => FormReviewHint()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormReviewHint copyWith(void Function(FormReviewHint) updates) => super.copyWith((message) => updates(message as FormReviewHint)) as FormReviewHint;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormReviewHint create() => FormReviewHint._();
+  FormReviewHint createEmptyInstance() => create();
+  static $pb.PbList<FormReviewHint> createRepeated() => $pb.PbList<FormReviewHint>();
+  @$core.pragma('dart2js:noInline')
+  static FormReviewHint getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormReviewHint>(create);
+  static FormReviewHint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get includeInReview => $_getBF(0);
+  @$pb.TagNumber(1)
+  set includeInReview($core.bool v) { $_setBool(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasIncludeInReview() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearIncludeInReview() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get label => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set label($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLabel() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sectionLabel => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sectionLabel($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSectionLabel() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSectionLabel() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get formatter => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set formatter($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasFormatter() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFormatter() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get order => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set order($core.int v) { $_setSignedInt32(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasOrder() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOrder() => clearField(5);
+}
+
+class FormField extends $pb.GeneratedMessage {
+  factory FormField({
+    $core.String? key,
+    FormFieldType? type,
+    $core.String? label,
+    $core.String? helpText,
+    $core.String? placeholder,
+    $core.bool? required,
+    $4.Value? defaultValue,
+    $core.Iterable<FormValidationRule>? validationRules,
+    FormConditionGroup? visibilityCondition,
+    FormConditionGroup? editabilityCondition,
+    $core.Iterable<FormOption>? options,
+    $core.Iterable<FormField>? nestedFields,
+    $core.Iterable<FormSection>? nestedSections,
+    FormFormattingHint? formatting,
+    $4.Struct? uiHints,
+    FormReviewHint? review,
+    $core.Iterable<$core.String>? visibleToRoles,
+    $core.bool? repeatable,
+    $core.bool? hidden,
+  }) {
+    final $result = create();
+    if (key != null) {
+      $result.key = key;
+    }
+    if (type != null) {
+      $result.type = type;
+    }
+    if (label != null) {
+      $result.label = label;
+    }
+    if (helpText != null) {
+      $result.helpText = helpText;
+    }
+    if (placeholder != null) {
+      $result.placeholder = placeholder;
+    }
+    if (required != null) {
+      $result.required = required;
+    }
+    if (defaultValue != null) {
+      $result.defaultValue = defaultValue;
+    }
+    if (validationRules != null) {
+      $result.validationRules.addAll(validationRules);
+    }
+    if (visibilityCondition != null) {
+      $result.visibilityCondition = visibilityCondition;
+    }
+    if (editabilityCondition != null) {
+      $result.editabilityCondition = editabilityCondition;
+    }
+    if (options != null) {
+      $result.options.addAll(options);
+    }
+    if (nestedFields != null) {
+      $result.nestedFields.addAll(nestedFields);
+    }
+    if (nestedSections != null) {
+      $result.nestedSections.addAll(nestedSections);
+    }
+    if (formatting != null) {
+      $result.formatting = formatting;
+    }
+    if (uiHints != null) {
+      $result.uiHints = uiHints;
+    }
+    if (review != null) {
+      $result.review = review;
+    }
+    if (visibleToRoles != null) {
+      $result.visibleToRoles.addAll(visibleToRoles);
+    }
+    if (repeatable != null) {
+      $result.repeatable = repeatable;
+    }
+    if (hidden != null) {
+      $result.hidden = hidden;
+    }
+    return $result;
+  }
+  FormField._() : super();
+  factory FormField.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormField.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormField', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'key')
+    ..e<FormFieldType>(2, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE, defaultOrMaker: FormFieldType.FORM_FIELD_TYPE_UNSPECIFIED, valueOf: FormFieldType.valueOf, enumValues: FormFieldType.values)
+    ..aOS(3, _omitFieldNames ? '' : 'label')
+    ..aOS(4, _omitFieldNames ? '' : 'helpText')
+    ..aOS(5, _omitFieldNames ? '' : 'placeholder')
+    ..aOB(6, _omitFieldNames ? '' : 'required')
+    ..aOM<$4.Value>(7, _omitFieldNames ? '' : 'defaultValue', subBuilder: $4.Value.create)
+    ..pc<FormValidationRule>(8, _omitFieldNames ? '' : 'validationRules', $pb.PbFieldType.PM, subBuilder: FormValidationRule.create)
+    ..aOM<FormConditionGroup>(9, _omitFieldNames ? '' : 'visibilityCondition', subBuilder: FormConditionGroup.create)
+    ..aOM<FormConditionGroup>(10, _omitFieldNames ? '' : 'editabilityCondition', subBuilder: FormConditionGroup.create)
+    ..pc<FormOption>(11, _omitFieldNames ? '' : 'options', $pb.PbFieldType.PM, subBuilder: FormOption.create)
+    ..pc<FormField>(12, _omitFieldNames ? '' : 'nestedFields', $pb.PbFieldType.PM, subBuilder: FormField.create)
+    ..pc<FormSection>(13, _omitFieldNames ? '' : 'nestedSections', $pb.PbFieldType.PM, subBuilder: FormSection.create)
+    ..aOM<FormFormattingHint>(14, _omitFieldNames ? '' : 'formatting', subBuilder: FormFormattingHint.create)
+    ..aOM<$4.Struct>(15, _omitFieldNames ? '' : 'uiHints', subBuilder: $4.Struct.create)
+    ..aOM<FormReviewHint>(16, _omitFieldNames ? '' : 'review', subBuilder: FormReviewHint.create)
+    ..pPS(17, _omitFieldNames ? '' : 'visibleToRoles')
+    ..aOB(18, _omitFieldNames ? '' : 'repeatable')
+    ..aOB(19, _omitFieldNames ? '' : 'hidden')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormField clone() => FormField()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormField copyWith(void Function(FormField) updates) => super.copyWith((message) => updates(message as FormField)) as FormField;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormField create() => FormField._();
+  FormField createEmptyInstance() => create();
+  static $pb.PbList<FormField> createRepeated() => $pb.PbList<FormField>();
+  @$core.pragma('dart2js:noInline')
+  static FormField getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormField>(create);
+  static FormField? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get key => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set key($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasKey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKey() => clearField(1);
+
+  @$pb.TagNumber(2)
+  FormFieldType get type => $_getN(1);
+  @$pb.TagNumber(2)
+  set type(FormFieldType v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasType() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearType() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get label => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set label($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasLabel() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLabel() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get helpText => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set helpText($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasHelpText() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHelpText() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get placeholder => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set placeholder($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasPlaceholder() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPlaceholder() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get required => $_getBF(5);
+  @$pb.TagNumber(6)
+  set required($core.bool v) { $_setBool(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasRequired() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRequired() => clearField(6);
+
+  @$pb.TagNumber(7)
+  $4.Value get defaultValue => $_getN(6);
+  @$pb.TagNumber(7)
+  set defaultValue($4.Value v) { setField(7, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasDefaultValue() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDefaultValue() => clearField(7);
+  @$pb.TagNumber(7)
+  $4.Value ensureDefaultValue() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.List<FormValidationRule> get validationRules => $_getList(7);
+
+  @$pb.TagNumber(9)
+  FormConditionGroup get visibilityCondition => $_getN(8);
+  @$pb.TagNumber(9)
+  set visibilityCondition(FormConditionGroup v) { setField(9, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasVisibilityCondition() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearVisibilityCondition() => clearField(9);
+  @$pb.TagNumber(9)
+  FormConditionGroup ensureVisibilityCondition() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  FormConditionGroup get editabilityCondition => $_getN(9);
+  @$pb.TagNumber(10)
+  set editabilityCondition(FormConditionGroup v) { setField(10, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasEditabilityCondition() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearEditabilityCondition() => clearField(10);
+  @$pb.TagNumber(10)
+  FormConditionGroup ensureEditabilityCondition() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  $core.List<FormOption> get options => $_getList(10);
+
+  @$pb.TagNumber(12)
+  $core.List<FormField> get nestedFields => $_getList(11);
+
+  @$pb.TagNumber(13)
+  $core.List<FormSection> get nestedSections => $_getList(12);
+
+  @$pb.TagNumber(14)
+  FormFormattingHint get formatting => $_getN(13);
+  @$pb.TagNumber(14)
+  set formatting(FormFormattingHint v) { setField(14, v); }
+  @$pb.TagNumber(14)
+  $core.bool hasFormatting() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearFormatting() => clearField(14);
+  @$pb.TagNumber(14)
+  FormFormattingHint ensureFormatting() => $_ensure(13);
+
+  @$pb.TagNumber(15)
+  $4.Struct get uiHints => $_getN(14);
+  @$pb.TagNumber(15)
+  set uiHints($4.Struct v) { setField(15, v); }
+  @$pb.TagNumber(15)
+  $core.bool hasUiHints() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearUiHints() => clearField(15);
+  @$pb.TagNumber(15)
+  $4.Struct ensureUiHints() => $_ensure(14);
+
+  @$pb.TagNumber(16)
+  FormReviewHint get review => $_getN(15);
+  @$pb.TagNumber(16)
+  set review(FormReviewHint v) { setField(16, v); }
+  @$pb.TagNumber(16)
+  $core.bool hasReview() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearReview() => clearField(16);
+  @$pb.TagNumber(16)
+  FormReviewHint ensureReview() => $_ensure(15);
+
+  @$pb.TagNumber(17)
+  $core.List<$core.String> get visibleToRoles => $_getList(16);
+
+  @$pb.TagNumber(18)
+  $core.bool get repeatable => $_getBF(17);
+  @$pb.TagNumber(18)
+  set repeatable($core.bool v) { $_setBool(17, v); }
+  @$pb.TagNumber(18)
+  $core.bool hasRepeatable() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearRepeatable() => clearField(18);
+
+  @$pb.TagNumber(19)
+  $core.bool get hidden => $_getBF(18);
+  @$pb.TagNumber(19)
+  set hidden($core.bool v) { $_setBool(18, v); }
+  @$pb.TagNumber(19)
+  $core.bool hasHidden() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearHidden() => clearField(19);
+}
+
+class FormSection extends $pb.GeneratedMessage {
+  factory FormSection({
+    $core.String? id,
+    $core.String? title,
+    $core.String? description,
+    $core.Iterable<FormField>? fields,
+    $4.Struct? uiHints,
+  }) {
+    final $result = create();
+    if (id != null) {
+      $result.id = id;
+    }
+    if (title != null) {
+      $result.title = title;
+    }
+    if (description != null) {
+      $result.description = description;
+    }
+    if (fields != null) {
+      $result.fields.addAll(fields);
+    }
+    if (uiHints != null) {
+      $result.uiHints = uiHints;
+    }
+    return $result;
+  }
+  FormSection._() : super();
+  factory FormSection.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormSection.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormSection', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'description')
+    ..pc<FormField>(4, _omitFieldNames ? '' : 'fields', $pb.PbFieldType.PM, subBuilder: FormField.create)
+    ..aOM<$4.Struct>(5, _omitFieldNames ? '' : 'uiHints', subBuilder: $4.Struct.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormSection clone() => FormSection()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormSection copyWith(void Function(FormSection) updates) => super.copyWith((message) => updates(message as FormSection)) as FormSection;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormSection create() => FormSection._();
+  FormSection createEmptyInstance() => create();
+  static $pb.PbList<FormSection> createRepeated() => $pb.PbList<FormSection>();
+  @$core.pragma('dart2js:noInline')
+  static FormSection getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormSection>(create);
+  static FormSection? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get description => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set description($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasDescription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDescription() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.List<FormField> get fields => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $4.Struct get uiHints => $_getN(4);
+  @$pb.TagNumber(5)
+  set uiHints($4.Struct v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasUiHints() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUiHints() => clearField(5);
+  @$pb.TagNumber(5)
+  $4.Struct ensureUiHints() => $_ensure(4);
+}
+
+class FormStep extends $pb.GeneratedMessage {
+  factory FormStep({
+    $core.String? id,
+    $core.String? title,
+    $core.String? description,
+    $core.Iterable<FormSection>? sections,
+    $4.Struct? uiHints,
+  }) {
+    final $result = create();
+    if (id != null) {
+      $result.id = id;
+    }
+    if (title != null) {
+      $result.title = title;
+    }
+    if (description != null) {
+      $result.description = description;
+    }
+    if (sections != null) {
+      $result.sections.addAll(sections);
+    }
+    if (uiHints != null) {
+      $result.uiHints = uiHints;
+    }
+    return $result;
+  }
+  FormStep._() : super();
+  factory FormStep.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormStep.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormStep', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'description')
+    ..pc<FormSection>(4, _omitFieldNames ? '' : 'sections', $pb.PbFieldType.PM, subBuilder: FormSection.create)
+    ..aOM<$4.Struct>(5, _omitFieldNames ? '' : 'uiHints', subBuilder: $4.Struct.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormStep clone() => FormStep()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormStep copyWith(void Function(FormStep) updates) => super.copyWith((message) => updates(message as FormStep)) as FormStep;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormStep create() => FormStep._();
+  FormStep createEmptyInstance() => create();
+  static $pb.PbList<FormStep> createRepeated() => $pb.PbList<FormStep>();
+  @$core.pragma('dart2js:noInline')
+  static FormStep getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormStep>(create);
+  static FormStep? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get description => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set description($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasDescription() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDescription() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.List<FormSection> get sections => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $4.Struct get uiHints => $_getN(4);
+  @$pb.TagNumber(5)
+  set uiHints($4.Struct v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasUiHints() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUiHints() => clearField(5);
+  @$pb.TagNumber(5)
+  $4.Struct ensureUiHints() => $_ensure(4);
+}
+
+class FormSchema extends $pb.GeneratedMessage {
+  factory FormSchema({
+    $core.String? formId,
+    $core.int? formVersion,
+    $core.String? title,
+    $core.String? subtitle,
+    $core.String? description,
+    $core.Iterable<FormStep>? steps,
+    $4.Struct? workflowMetadata,
+    $4.Struct? uiHints,
+  }) {
+    final $result = create();
+    if (formId != null) {
+      $result.formId = formId;
+    }
+    if (formVersion != null) {
+      $result.formVersion = formVersion;
+    }
+    if (title != null) {
+      $result.title = title;
+    }
+    if (subtitle != null) {
+      $result.subtitle = subtitle;
+    }
+    if (description != null) {
+      $result.description = description;
+    }
+    if (steps != null) {
+      $result.steps.addAll(steps);
+    }
+    if (workflowMetadata != null) {
+      $result.workflowMetadata = workflowMetadata;
+    }
+    if (uiHints != null) {
+      $result.uiHints = uiHints;
+    }
+    return $result;
+  }
+  FormSchema._() : super();
+  factory FormSchema.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormSchema.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormSchema', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'formId')
+    ..a<$core.int>(2, _omitFieldNames ? '' : 'formVersion', $pb.PbFieldType.O3)
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'subtitle')
+    ..aOS(5, _omitFieldNames ? '' : 'description')
+    ..pc<FormStep>(6, _omitFieldNames ? '' : 'steps', $pb.PbFieldType.PM, subBuilder: FormStep.create)
+    ..aOM<$4.Struct>(7, _omitFieldNames ? '' : 'workflowMetadata', subBuilder: $4.Struct.create)
+    ..aOM<$4.Struct>(8, _omitFieldNames ? '' : 'uiHints', subBuilder: $4.Struct.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormSchema clone() => FormSchema()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormSchema copyWith(void Function(FormSchema) updates) => super.copyWith((message) => updates(message as FormSchema)) as FormSchema;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormSchema create() => FormSchema._();
+  FormSchema createEmptyInstance() => create();
+  static $pb.PbList<FormSchema> createRepeated() => $pb.PbList<FormSchema>();
+  @$core.pragma('dart2js:noInline')
+  static FormSchema getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormSchema>(create);
+  static FormSchema? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get formId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set formId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasFormId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFormId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get formVersion => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set formVersion($core.int v) { $_setSignedInt32(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasFormVersion() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFormVersion() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get subtitle => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set subtitle($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasSubtitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSubtitle() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get description => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set description($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasDescription() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDescription() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.List<FormStep> get steps => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $4.Struct get workflowMetadata => $_getN(6);
+  @$pb.TagNumber(7)
+  set workflowMetadata($4.Struct v) { setField(7, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasWorkflowMetadata() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearWorkflowMetadata() => clearField(7);
+  @$pb.TagNumber(7)
+  $4.Struct ensureWorkflowMetadata() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $4.Struct get uiHints => $_getN(7);
+  @$pb.TagNumber(8)
+  set uiHints($4.Struct v) { setField(8, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasUiHints() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearUiHints() => clearField(8);
+  @$pb.TagNumber(8)
+  $4.Struct ensureUiHints() => $_ensure(7);
+}
+
+class FormPermissions extends $pb.GeneratedMessage {
+  factory FormPermissions({
+    $core.bool? canEdit,
+    $core.bool? canSubmit,
+    $core.bool? canSaveDraft,
+    $core.bool? canGoBack,
+  }) {
+    final $result = create();
+    if (canEdit != null) {
+      $result.canEdit = canEdit;
+    }
+    if (canSubmit != null) {
+      $result.canSubmit = canSubmit;
+    }
+    if (canSaveDraft != null) {
+      $result.canSaveDraft = canSaveDraft;
+    }
+    if (canGoBack != null) {
+      $result.canGoBack = canGoBack;
+    }
+    return $result;
+  }
+  FormPermissions._() : super();
+  factory FormPermissions.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormPermissions.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormPermissions', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'canEdit')
+    ..aOB(2, _omitFieldNames ? '' : 'canSubmit')
+    ..aOB(3, _omitFieldNames ? '' : 'canSaveDraft')
+    ..aOB(4, _omitFieldNames ? '' : 'canGoBack')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormPermissions clone() => FormPermissions()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormPermissions copyWith(void Function(FormPermissions) updates) => super.copyWith((message) => updates(message as FormPermissions)) as FormPermissions;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormPermissions create() => FormPermissions._();
+  FormPermissions createEmptyInstance() => create();
+  static $pb.PbList<FormPermissions> createRepeated() => $pb.PbList<FormPermissions>();
+  @$core.pragma('dart2js:noInline')
+  static FormPermissions getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormPermissions>(create);
+  static FormPermissions? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get canEdit => $_getBF(0);
+  @$pb.TagNumber(1)
+  set canEdit($core.bool v) { $_setBool(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCanEdit() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCanEdit() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get canSubmit => $_getBF(1);
+  @$pb.TagNumber(2)
+  set canSubmit($core.bool v) { $_setBool(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasCanSubmit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCanSubmit() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get canSaveDraft => $_getBF(2);
+  @$pb.TagNumber(3)
+  set canSaveDraft($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasCanSaveDraft() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCanSaveDraft() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get canGoBack => $_getBF(3);
+  @$pb.TagNumber(4)
+  set canGoBack($core.bool v) { $_setBool(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasCanGoBack() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCanGoBack() => clearField(4);
+}
+
+class FormReviewItem extends $pb.GeneratedMessage {
+  factory FormReviewItem({
+    $core.String? fieldKey,
+    $core.String? label,
+    $core.String? displayValue,
+    $core.bool? emphasized,
+  }) {
+    final $result = create();
+    if (fieldKey != null) {
+      $result.fieldKey = fieldKey;
+    }
+    if (label != null) {
+      $result.label = label;
+    }
+    if (displayValue != null) {
+      $result.displayValue = displayValue;
+    }
+    if (emphasized != null) {
+      $result.emphasized = emphasized;
+    }
+    return $result;
+  }
+  FormReviewItem._() : super();
+  factory FormReviewItem.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormReviewItem.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormReviewItem', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'fieldKey')
+    ..aOS(2, _omitFieldNames ? '' : 'label')
+    ..aOS(3, _omitFieldNames ? '' : 'displayValue')
+    ..aOB(4, _omitFieldNames ? '' : 'emphasized')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormReviewItem clone() => FormReviewItem()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormReviewItem copyWith(void Function(FormReviewItem) updates) => super.copyWith((message) => updates(message as FormReviewItem)) as FormReviewItem;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormReviewItem create() => FormReviewItem._();
+  FormReviewItem createEmptyInstance() => create();
+  static $pb.PbList<FormReviewItem> createRepeated() => $pb.PbList<FormReviewItem>();
+  @$core.pragma('dart2js:noInline')
+  static FormReviewItem getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormReviewItem>(create);
+  static FormReviewItem? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get fieldKey => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set fieldKey($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasFieldKey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFieldKey() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get label => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set label($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLabel() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get displayValue => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set displayValue($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasDisplayValue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDisplayValue() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get emphasized => $_getBF(3);
+  @$pb.TagNumber(4)
+  set emphasized($core.bool v) { $_setBool(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasEmphasized() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEmphasized() => clearField(4);
+}
+
+class FormReviewSection extends $pb.GeneratedMessage {
+  factory FormReviewSection({
+    $core.String? stepId,
+    $core.String? stepTitle,
+    $core.String? sectionId,
+    $core.String? sectionTitle,
+    $core.Iterable<FormReviewItem>? items,
+  }) {
+    final $result = create();
+    if (stepId != null) {
+      $result.stepId = stepId;
+    }
+    if (stepTitle != null) {
+      $result.stepTitle = stepTitle;
+    }
+    if (sectionId != null) {
+      $result.sectionId = sectionId;
+    }
+    if (sectionTitle != null) {
+      $result.sectionTitle = sectionTitle;
+    }
+    if (items != null) {
+      $result.items.addAll(items);
+    }
+    return $result;
+  }
+  FormReviewSection._() : super();
+  factory FormReviewSection.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormReviewSection.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormReviewSection', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'stepId')
+    ..aOS(2, _omitFieldNames ? '' : 'stepTitle')
+    ..aOS(3, _omitFieldNames ? '' : 'sectionId')
+    ..aOS(4, _omitFieldNames ? '' : 'sectionTitle')
+    ..pc<FormReviewItem>(5, _omitFieldNames ? '' : 'items', $pb.PbFieldType.PM, subBuilder: FormReviewItem.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormReviewSection clone() => FormReviewSection()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormReviewSection copyWith(void Function(FormReviewSection) updates) => super.copyWith((message) => updates(message as FormReviewSection)) as FormReviewSection;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormReviewSection create() => FormReviewSection._();
+  FormReviewSection createEmptyInstance() => create();
+  static $pb.PbList<FormReviewSection> createRepeated() => $pb.PbList<FormReviewSection>();
+  @$core.pragma('dart2js:noInline')
+  static FormReviewSection getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormReviewSection>(create);
+  static FormReviewSection? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get stepId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set stepId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasStepId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStepId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get stepTitle => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set stepTitle($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasStepTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStepTitle() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sectionId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sectionId($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSectionId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSectionId() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sectionTitle => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sectionTitle($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasSectionTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSectionTitle() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.List<FormReviewItem> get items => $_getList(4);
+}
+
+class FormSubmissionSnapshot extends $pb.GeneratedMessage {
+  factory FormSubmissionSnapshot({
+    $core.String? formInstanceId,
+    $core.String? schemaId,
+    $core.int? schemaVersion,
+    $2.Timestamp? submittedAt,
+    $core.String? submittedBySubscriptionId,
+    $4.Struct? answers,
+    $core.Iterable<FormReviewSection>? formattedSections,
+    $core.String? submissionReference,
+    FormMessageState? status,
+    $core.String? backendMessage,
+    $core.String? workflowMessage,
+    $4.Struct? metadata,
+  }) {
+    final $result = create();
+    if (formInstanceId != null) {
+      $result.formInstanceId = formInstanceId;
+    }
+    if (schemaId != null) {
+      $result.schemaId = schemaId;
+    }
+    if (schemaVersion != null) {
+      $result.schemaVersion = schemaVersion;
+    }
+    if (submittedAt != null) {
+      $result.submittedAt = submittedAt;
+    }
+    if (submittedBySubscriptionId != null) {
+      $result.submittedBySubscriptionId = submittedBySubscriptionId;
+    }
+    if (answers != null) {
+      $result.answers = answers;
+    }
+    if (formattedSections != null) {
+      $result.formattedSections.addAll(formattedSections);
+    }
+    if (submissionReference != null) {
+      $result.submissionReference = submissionReference;
+    }
+    if (status != null) {
+      $result.status = status;
+    }
+    if (backendMessage != null) {
+      $result.backendMessage = backendMessage;
+    }
+    if (workflowMessage != null) {
+      $result.workflowMessage = workflowMessage;
+    }
+    if (metadata != null) {
+      $result.metadata = metadata;
+    }
+    return $result;
+  }
+  FormSubmissionSnapshot._() : super();
+  factory FormSubmissionSnapshot.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormSubmissionSnapshot.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormSubmissionSnapshot', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'formInstanceId')
+    ..aOS(2, _omitFieldNames ? '' : 'schemaId')
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'schemaVersion', $pb.PbFieldType.O3)
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'submittedAt', subBuilder: $2.Timestamp.create)
+    ..aOS(5, _omitFieldNames ? '' : 'submittedBySubscriptionId')
+    ..aOM<$4.Struct>(6, _omitFieldNames ? '' : 'answers', subBuilder: $4.Struct.create)
+    ..pc<FormReviewSection>(7, _omitFieldNames ? '' : 'formattedSections', $pb.PbFieldType.PM, subBuilder: FormReviewSection.create)
+    ..aOS(8, _omitFieldNames ? '' : 'submissionReference')
+    ..e<FormMessageState>(9, _omitFieldNames ? '' : 'status', $pb.PbFieldType.OE, defaultOrMaker: FormMessageState.FORM_MESSAGE_STATE_UNSPECIFIED, valueOf: FormMessageState.valueOf, enumValues: FormMessageState.values)
+    ..aOS(10, _omitFieldNames ? '' : 'backendMessage')
+    ..aOS(11, _omitFieldNames ? '' : 'workflowMessage')
+    ..aOM<$4.Struct>(12, _omitFieldNames ? '' : 'metadata', subBuilder: $4.Struct.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormSubmissionSnapshot clone() => FormSubmissionSnapshot()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormSubmissionSnapshot copyWith(void Function(FormSubmissionSnapshot) updates) => super.copyWith((message) => updates(message as FormSubmissionSnapshot)) as FormSubmissionSnapshot;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormSubmissionSnapshot create() => FormSubmissionSnapshot._();
+  FormSubmissionSnapshot createEmptyInstance() => create();
+  static $pb.PbList<FormSubmissionSnapshot> createRepeated() => $pb.PbList<FormSubmissionSnapshot>();
+  @$core.pragma('dart2js:noInline')
+  static FormSubmissionSnapshot getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormSubmissionSnapshot>(create);
+  static FormSubmissionSnapshot? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get formInstanceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set formInstanceId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasFormInstanceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFormInstanceId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get schemaId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set schemaId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasSchemaId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSchemaId() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get schemaVersion => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set schemaVersion($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSchemaVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSchemaVersion() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Timestamp get submittedAt => $_getN(3);
+  @$pb.TagNumber(4)
+  set submittedAt($2.Timestamp v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasSubmittedAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSubmittedAt() => clearField(4);
+  @$pb.TagNumber(4)
+  $2.Timestamp ensureSubmittedAt() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.String get submittedBySubscriptionId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set submittedBySubscriptionId($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasSubmittedBySubscriptionId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSubmittedBySubscriptionId() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $4.Struct get answers => $_getN(5);
+  @$pb.TagNumber(6)
+  set answers($4.Struct v) { setField(6, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasAnswers() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAnswers() => clearField(6);
+  @$pb.TagNumber(6)
+  $4.Struct ensureAnswers() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  $core.List<FormReviewSection> get formattedSections => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get submissionReference => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set submissionReference($core.String v) { $_setString(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasSubmissionReference() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSubmissionReference() => clearField(8);
+
+  @$pb.TagNumber(9)
+  FormMessageState get status => $_getN(8);
+  @$pb.TagNumber(9)
+  set status(FormMessageState v) { setField(9, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasStatus() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearStatus() => clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get backendMessage => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set backendMessage($core.String v) { $_setString(9, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasBackendMessage() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearBackendMessage() => clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get workflowMessage => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set workflowMessage($core.String v) { $_setString(10, v); }
+  @$pb.TagNumber(11)
+  $core.bool hasWorkflowMessage() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearWorkflowMessage() => clearField(11);
+
+  @$pb.TagNumber(12)
+  $4.Struct get metadata => $_getN(11);
+  @$pb.TagNumber(12)
+  set metadata($4.Struct v) { setField(12, v); }
+  @$pb.TagNumber(12)
+  $core.bool hasMetadata() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearMetadata() => clearField(12);
+  @$pb.TagNumber(12)
+  $4.Struct ensureMetadata() => $_ensure(11);
+}
+
+class FormRequestContent extends $pb.GeneratedMessage {
+  factory FormRequestContent({
+    $core.String? formInstanceId,
+    $core.String? schemaId,
+    $core.int? schemaVersion,
+    $core.String? title,
+    $core.String? description,
+    FormMessageState? state,
+    $core.bool? reviewRequired,
+    FormSchema? schema,
+    $4.Struct? initialValues,
+    $4.Struct? serverDraftValues,
+    FormSubmissionSnapshot? finalSubmissionSnapshot,
+    FormPermissions? permissions,
+    $2.Timestamp? expiresAt,
+    $4.Struct? workflowContext,
+    $core.String? currentWorkflowState,
+  }) {
+    final $result = create();
+    if (formInstanceId != null) {
+      $result.formInstanceId = formInstanceId;
+    }
+    if (schemaId != null) {
+      $result.schemaId = schemaId;
+    }
+    if (schemaVersion != null) {
+      $result.schemaVersion = schemaVersion;
+    }
+    if (title != null) {
+      $result.title = title;
+    }
+    if (description != null) {
+      $result.description = description;
+    }
+    if (state != null) {
+      $result.state = state;
+    }
+    if (reviewRequired != null) {
+      $result.reviewRequired = reviewRequired;
+    }
+    if (schema != null) {
+      $result.schema = schema;
+    }
+    if (initialValues != null) {
+      $result.initialValues = initialValues;
+    }
+    if (serverDraftValues != null) {
+      $result.serverDraftValues = serverDraftValues;
+    }
+    if (finalSubmissionSnapshot != null) {
+      $result.finalSubmissionSnapshot = finalSubmissionSnapshot;
+    }
+    if (permissions != null) {
+      $result.permissions = permissions;
+    }
+    if (expiresAt != null) {
+      $result.expiresAt = expiresAt;
+    }
+    if (workflowContext != null) {
+      $result.workflowContext = workflowContext;
+    }
+    if (currentWorkflowState != null) {
+      $result.currentWorkflowState = currentWorkflowState;
+    }
+    return $result;
+  }
+  FormRequestContent._() : super();
+  factory FormRequestContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormRequestContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormRequestContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'formInstanceId')
+    ..aOS(2, _omitFieldNames ? '' : 'schemaId')
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'schemaVersion', $pb.PbFieldType.O3)
+    ..aOS(4, _omitFieldNames ? '' : 'title')
+    ..aOS(5, _omitFieldNames ? '' : 'description')
+    ..e<FormMessageState>(6, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE, defaultOrMaker: FormMessageState.FORM_MESSAGE_STATE_UNSPECIFIED, valueOf: FormMessageState.valueOf, enumValues: FormMessageState.values)
+    ..aOB(7, _omitFieldNames ? '' : 'reviewRequired')
+    ..aOM<FormSchema>(8, _omitFieldNames ? '' : 'schema', subBuilder: FormSchema.create)
+    ..aOM<$4.Struct>(9, _omitFieldNames ? '' : 'initialValues', subBuilder: $4.Struct.create)
+    ..aOM<$4.Struct>(10, _omitFieldNames ? '' : 'serverDraftValues', subBuilder: $4.Struct.create)
+    ..aOM<FormSubmissionSnapshot>(11, _omitFieldNames ? '' : 'finalSubmissionSnapshot', subBuilder: FormSubmissionSnapshot.create)
+    ..aOM<FormPermissions>(12, _omitFieldNames ? '' : 'permissions', subBuilder: FormPermissions.create)
+    ..aOM<$2.Timestamp>(13, _omitFieldNames ? '' : 'expiresAt', subBuilder: $2.Timestamp.create)
+    ..aOM<$4.Struct>(14, _omitFieldNames ? '' : 'workflowContext', subBuilder: $4.Struct.create)
+    ..aOS(15, _omitFieldNames ? '' : 'currentWorkflowState')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormRequestContent clone() => FormRequestContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormRequestContent copyWith(void Function(FormRequestContent) updates) => super.copyWith((message) => updates(message as FormRequestContent)) as FormRequestContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormRequestContent create() => FormRequestContent._();
+  FormRequestContent createEmptyInstance() => create();
+  static $pb.PbList<FormRequestContent> createRepeated() => $pb.PbList<FormRequestContent>();
+  @$core.pragma('dart2js:noInline')
+  static FormRequestContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormRequestContent>(create);
+  static FormRequestContent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get formInstanceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set formInstanceId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasFormInstanceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFormInstanceId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get schemaId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set schemaId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasSchemaId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSchemaId() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get schemaVersion => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set schemaVersion($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSchemaVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSchemaVersion() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get title => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set title($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTitle() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get description => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set description($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasDescription() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDescription() => clearField(5);
+
+  @$pb.TagNumber(6)
+  FormMessageState get state => $_getN(5);
+  @$pb.TagNumber(6)
+  set state(FormMessageState v) { setField(6, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasState() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearState() => clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get reviewRequired => $_getBF(6);
+  @$pb.TagNumber(7)
+  set reviewRequired($core.bool v) { $_setBool(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasReviewRequired() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearReviewRequired() => clearField(7);
+
+  @$pb.TagNumber(8)
+  FormSchema get schema => $_getN(7);
+  @$pb.TagNumber(8)
+  set schema(FormSchema v) { setField(8, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasSchema() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSchema() => clearField(8);
+  @$pb.TagNumber(8)
+  FormSchema ensureSchema() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $4.Struct get initialValues => $_getN(8);
+  @$pb.TagNumber(9)
+  set initialValues($4.Struct v) { setField(9, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasInitialValues() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearInitialValues() => clearField(9);
+  @$pb.TagNumber(9)
+  $4.Struct ensureInitialValues() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  $4.Struct get serverDraftValues => $_getN(9);
+  @$pb.TagNumber(10)
+  set serverDraftValues($4.Struct v) { setField(10, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasServerDraftValues() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearServerDraftValues() => clearField(10);
+  @$pb.TagNumber(10)
+  $4.Struct ensureServerDraftValues() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  FormSubmissionSnapshot get finalSubmissionSnapshot => $_getN(10);
+  @$pb.TagNumber(11)
+  set finalSubmissionSnapshot(FormSubmissionSnapshot v) { setField(11, v); }
+  @$pb.TagNumber(11)
+  $core.bool hasFinalSubmissionSnapshot() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearFinalSubmissionSnapshot() => clearField(11);
+  @$pb.TagNumber(11)
+  FormSubmissionSnapshot ensureFinalSubmissionSnapshot() => $_ensure(10);
+
+  @$pb.TagNumber(12)
+  FormPermissions get permissions => $_getN(11);
+  @$pb.TagNumber(12)
+  set permissions(FormPermissions v) { setField(12, v); }
+  @$pb.TagNumber(12)
+  $core.bool hasPermissions() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearPermissions() => clearField(12);
+  @$pb.TagNumber(12)
+  FormPermissions ensurePermissions() => $_ensure(11);
+
+  @$pb.TagNumber(13)
+  $2.Timestamp get expiresAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set expiresAt($2.Timestamp v) { setField(13, v); }
+  @$pb.TagNumber(13)
+  $core.bool hasExpiresAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearExpiresAt() => clearField(13);
+  @$pb.TagNumber(13)
+  $2.Timestamp ensureExpiresAt() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $4.Struct get workflowContext => $_getN(13);
+  @$pb.TagNumber(14)
+  set workflowContext($4.Struct v) { setField(14, v); }
+  @$pb.TagNumber(14)
+  $core.bool hasWorkflowContext() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearWorkflowContext() => clearField(14);
+  @$pb.TagNumber(14)
+  $4.Struct ensureWorkflowContext() => $_ensure(13);
+
+  @$pb.TagNumber(15)
+  $core.String get currentWorkflowState => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set currentWorkflowState($core.String v) { $_setString(14, v); }
+  @$pb.TagNumber(15)
+  $core.bool hasCurrentWorkflowState() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearCurrentWorkflowState() => clearField(15);
+}
+
+class FormSubmissionResultContent extends $pb.GeneratedMessage {
+  factory FormSubmissionResultContent({
+    $core.String? formInstanceId,
+    $core.String? schemaId,
+    $core.int? schemaVersion,
+    $core.String? sourceEventId,
+    FormMessageState? state,
+    $core.bool? reviewConfirmed,
+    FormSubmissionSnapshot? submissionSnapshot,
+    $4.Struct? metadata,
+  }) {
+    final $result = create();
+    if (formInstanceId != null) {
+      $result.formInstanceId = formInstanceId;
+    }
+    if (schemaId != null) {
+      $result.schemaId = schemaId;
+    }
+    if (schemaVersion != null) {
+      $result.schemaVersion = schemaVersion;
+    }
+    if (sourceEventId != null) {
+      $result.sourceEventId = sourceEventId;
+    }
+    if (state != null) {
+      $result.state = state;
+    }
+    if (reviewConfirmed != null) {
+      $result.reviewConfirmed = reviewConfirmed;
+    }
+    if (submissionSnapshot != null) {
+      $result.submissionSnapshot = submissionSnapshot;
+    }
+    if (metadata != null) {
+      $result.metadata = metadata;
+    }
+    return $result;
+  }
+  FormSubmissionResultContent._() : super();
+  factory FormSubmissionResultContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FormSubmissionResultContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FormSubmissionResultContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'formInstanceId')
+    ..aOS(2, _omitFieldNames ? '' : 'schemaId')
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'schemaVersion', $pb.PbFieldType.O3)
+    ..aOS(4, _omitFieldNames ? '' : 'sourceEventId')
+    ..e<FormMessageState>(5, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE, defaultOrMaker: FormMessageState.FORM_MESSAGE_STATE_UNSPECIFIED, valueOf: FormMessageState.valueOf, enumValues: FormMessageState.values)
+    ..aOB(6, _omitFieldNames ? '' : 'reviewConfirmed')
+    ..aOM<FormSubmissionSnapshot>(7, _omitFieldNames ? '' : 'submissionSnapshot', subBuilder: FormSubmissionSnapshot.create)
+    ..aOM<$4.Struct>(8, _omitFieldNames ? '' : 'metadata', subBuilder: $4.Struct.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FormSubmissionResultContent clone() => FormSubmissionResultContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FormSubmissionResultContent copyWith(void Function(FormSubmissionResultContent) updates) => super.copyWith((message) => updates(message as FormSubmissionResultContent)) as FormSubmissionResultContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FormSubmissionResultContent create() => FormSubmissionResultContent._();
+  FormSubmissionResultContent createEmptyInstance() => create();
+  static $pb.PbList<FormSubmissionResultContent> createRepeated() => $pb.PbList<FormSubmissionResultContent>();
+  @$core.pragma('dart2js:noInline')
+  static FormSubmissionResultContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormSubmissionResultContent>(create);
+  static FormSubmissionResultContent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get formInstanceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set formInstanceId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasFormInstanceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFormInstanceId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get schemaId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set schemaId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasSchemaId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSchemaId() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get schemaVersion => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set schemaVersion($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSchemaVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSchemaVersion() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceEventId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceEventId($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasSourceEventId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceEventId() => clearField(4);
+
+  @$pb.TagNumber(5)
+  FormMessageState get state => $_getN(4);
+  @$pb.TagNumber(5)
+  set state(FormMessageState v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasState() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearState() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get reviewConfirmed => $_getBF(5);
+  @$pb.TagNumber(6)
+  set reviewConfirmed($core.bool v) { $_setBool(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasReviewConfirmed() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearReviewConfirmed() => clearField(6);
+
+  @$pb.TagNumber(7)
+  FormSubmissionSnapshot get submissionSnapshot => $_getN(6);
+  @$pb.TagNumber(7)
+  set submissionSnapshot(FormSubmissionSnapshot v) { setField(7, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasSubmissionSnapshot() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSubmissionSnapshot() => clearField(7);
+  @$pb.TagNumber(7)
+  FormSubmissionSnapshot ensureSubmissionSnapshot() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $4.Struct get metadata => $_getN(7);
+  @$pb.TagNumber(8)
+  set metadata($4.Struct v) { setField(8, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasMetadata() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearMetadata() => clearField(8);
+  @$pb.TagNumber(8)
+  $4.Struct ensureMetadata() => $_ensure(7);
+}
+
 enum Payload_Data {
   default_7, 
   roomChange, 
@@ -1651,6 +3863,8 @@ enum Payload_Data {
   vote, 
   motionTally, 
   voteTally, 
+  formRequest, 
+  formSubmissionResult, 
   notSet
 }
 
@@ -1669,6 +3883,8 @@ class Payload extends $pb.GeneratedMessage {
     VoteCast? vote,
     MotionTally? motionTally,
     VoteTally? voteTally,
+    FormRequestContent? formRequest,
+    FormSubmissionResultContent? formSubmissionResult,
   }) {
     final $result = create();
     if (type != null) {
@@ -1710,6 +3926,12 @@ class Payload extends $pb.GeneratedMessage {
     if (voteTally != null) {
       $result.voteTally = voteTally;
     }
+    if (formRequest != null) {
+      $result.formRequest = formRequest;
+    }
+    if (formSubmissionResult != null) {
+      $result.formSubmissionResult = formSubmissionResult;
+    }
     return $result;
   }
   Payload._() : super();
@@ -1729,10 +3951,12 @@ class Payload extends $pb.GeneratedMessage {
     26 : Payload_Data.vote,
     28 : Payload_Data.motionTally,
     29 : Payload_Data.voteTally,
+    30 : Payload_Data.formRequest,
+    31 : Payload_Data.formSubmissionResult,
     0 : Payload_Data.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Payload', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
-    ..oo(0, [7, 8, 10, 15, 16, 17, 18, 19, 25, 26, 28, 29])
+    ..oo(0, [7, 8, 10, 15, 16, 17, 18, 19, 25, 26, 28, 29, 30, 31])
     ..e<PayloadType>(1, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE, defaultOrMaker: PayloadType.PAYLOAD_TYPE_UNSPECIFIED, valueOf: PayloadType.valueOf, enumValues: PayloadType.values)
     ..aOM<$4.Struct>(7, _omitFieldNames ? '' : 'default', subBuilder: $4.Struct.create)
     ..aOM<RoomChangeContent>(8, _omitFieldNames ? '' : 'roomChange', subBuilder: RoomChangeContent.create)
@@ -1746,6 +3970,8 @@ class Payload extends $pb.GeneratedMessage {
     ..aOM<VoteCast>(26, _omitFieldNames ? '' : 'vote', subBuilder: VoteCast.create)
     ..aOM<MotionTally>(28, _omitFieldNames ? '' : 'motionTally', subBuilder: MotionTally.create)
     ..aOM<VoteTally>(29, _omitFieldNames ? '' : 'voteTally', subBuilder: VoteTally.create)
+    ..aOM<FormRequestContent>(30, _omitFieldNames ? '' : 'formRequest', subBuilder: FormRequestContent.create)
+    ..aOM<FormSubmissionResultContent>(31, _omitFieldNames ? '' : 'formSubmissionResult', subBuilder: FormSubmissionResultContent.create)
     ..hasRequiredFields = false
   ;
 
@@ -1927,6 +4153,30 @@ class Payload extends $pb.GeneratedMessage {
   void clearVoteTally() => clearField(29);
   @$pb.TagNumber(29)
   VoteTally ensureVoteTally() => $_ensure(12);
+
+  /// type = PAYLOAD_TYPE_FORM_REQUEST
+  @$pb.TagNumber(30)
+  FormRequestContent get formRequest => $_getN(13);
+  @$pb.TagNumber(30)
+  set formRequest(FormRequestContent v) { setField(30, v); }
+  @$pb.TagNumber(30)
+  $core.bool hasFormRequest() => $_has(13);
+  @$pb.TagNumber(30)
+  void clearFormRequest() => clearField(30);
+  @$pb.TagNumber(30)
+  FormRequestContent ensureFormRequest() => $_ensure(13);
+
+  /// type = PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
+  @$pb.TagNumber(31)
+  FormSubmissionResultContent get formSubmissionResult => $_getN(14);
+  @$pb.TagNumber(31)
+  set formSubmissionResult(FormSubmissionResultContent v) { setField(31, v); }
+  @$pb.TagNumber(31)
+  $core.bool hasFormSubmissionResult() => $_has(14);
+  @$pb.TagNumber(31)
+  void clearFormSubmissionResult() => clearField(31);
+  @$pb.TagNumber(31)
+  FormSubmissionResultContent ensureFormSubmissionResult() => $_ensure(14);
 }
 
 

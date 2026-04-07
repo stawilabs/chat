@@ -18,6 +18,7 @@ package chat.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/antinvestor/apis/go/chat/v1;chatv1";
 option java_multiple_files = true;
@@ -37,6 +38,8 @@ enum PayloadType {
   PAYLOAD_TYPE_VOTE = 23;
   PAYLOAD_TYPE_MOTION_TALLY = 24;
   PAYLOAD_TYPE_VOTE_TALLY = 25;
+  PAYLOAD_TYPE_FORM_REQUEST = 30;
+  PAYLOAD_TYPE_FORM_SUBMISSION_RESULT = 31;
 }
 
 enum RoomChangeAction {
@@ -329,6 +332,227 @@ message MotionTally {
   bool closed = 9;
 }
 
+enum FormMessageState {
+  FORM_MESSAGE_STATE_UNSPECIFIED = 0;
+  FORM_MESSAGE_STATE_OPEN = 1;
+  FORM_MESSAGE_STATE_IN_REVIEW = 2;
+  FORM_MESSAGE_STATE_SUBMITTING = 3;
+  FORM_MESSAGE_STATE_SUBMITTED = 4;
+  FORM_MESSAGE_STATE_FAILED_SUBMISSION = 5;
+  FORM_MESSAGE_STATE_EXPIRED = 6;
+  FORM_MESSAGE_STATE_CANCELLED = 7;
+}
+
+enum FormFieldType {
+  FORM_FIELD_TYPE_UNSPECIFIED = 0;
+  FORM_FIELD_TYPE_TEXT = 1;
+  FORM_FIELD_TYPE_MULTILINE = 2;
+  FORM_FIELD_TYPE_NUMBER = 3;
+  FORM_FIELD_TYPE_DECIMAL = 4;
+  FORM_FIELD_TYPE_CURRENCY = 5;
+  FORM_FIELD_TYPE_PHONE = 6;
+  FORM_FIELD_TYPE_EMAIL = 7;
+  FORM_FIELD_TYPE_DATE = 8;
+  FORM_FIELD_TYPE_DATETIME = 9;
+  FORM_FIELD_TYPE_SELECT = 10;
+  FORM_FIELD_TYPE_RADIO = 11;
+  FORM_FIELD_TYPE_CHECKBOX_GROUP = 12;
+  FORM_FIELD_TYPE_BOOLEAN = 13;
+  FORM_FIELD_TYPE_FILE = 14;
+  FORM_FIELD_TYPE_ADDRESS = 15;
+  FORM_FIELD_TYPE_REPEATABLE_GROUP = 16;
+  FORM_FIELD_TYPE_GROUP = 17;
+  FORM_FIELD_TYPE_SECTION = 18;
+  FORM_FIELD_TYPE_HIDDEN = 19;
+  FORM_FIELD_TYPE_COMPUTED = 20;
+}
+
+enum FormConditionOperator {
+  FORM_CONDITION_OPERATOR_UNSPECIFIED = 0;
+  FORM_CONDITION_OPERATOR_EQUALS = 1;
+  FORM_CONDITION_OPERATOR_NOT_EQUALS = 2;
+  FORM_CONDITION_OPERATOR_GREATER_THAN = 3;
+  FORM_CONDITION_OPERATOR_GREATER_THAN_OR_EQUAL = 4;
+  FORM_CONDITION_OPERATOR_LESS_THAN = 5;
+  FORM_CONDITION_OPERATOR_LESS_THAN_OR_EQUAL = 6;
+  FORM_CONDITION_OPERATOR_IN = 7;
+  FORM_CONDITION_OPERATOR_NOT_IN = 8;
+  FORM_CONDITION_OPERATOR_CONTAINS = 9;
+  FORM_CONDITION_OPERATOR_NOT_CONTAINS = 10;
+  FORM_CONDITION_OPERATOR_IS_TRUE = 11;
+  FORM_CONDITION_OPERATOR_IS_FALSE = 12;
+  FORM_CONDITION_OPERATOR_EXISTS = 13;
+  FORM_CONDITION_OPERATOR_NOT_EXISTS = 14;
+}
+
+message FormValidationRule {
+  string code = 1;
+  string message = 2;
+
+  oneof rule {
+    bool required = 3;
+    int32 min_length = 4;
+    int32 max_length = 5;
+    double min_value = 6;
+    double max_value = 7;
+    string pattern = 8;
+    int32 min_items = 9;
+    int32 max_items = 10;
+  }
+}
+
+message FormConditionClause {
+  string field_key = 1;
+  FormConditionOperator operator = 2;
+  google.protobuf.Value value = 3;
+  repeated google.protobuf.Value values = 4;
+}
+
+message FormConditionGroup {
+  repeated FormConditionClause all = 1;
+  repeated FormConditionClause any = 2;
+}
+
+message FormOption {
+  string value = 1;
+  string label = 2;
+  string help_text = 3;
+  bool disabled = 4;
+  google.protobuf.Struct metadata = 5;
+}
+
+message FormFormattingHint {
+  string input_mask = 1;
+  string display_format = 2;
+  string currency_code = 3;
+  int32 decimal_scale = 4;
+  string keyboard = 5;
+  string autocomplete = 6;
+}
+
+message FormReviewHint {
+  bool include_in_review = 1;
+  string label = 2;
+  string section_label = 3;
+  string formatter = 4;
+  int32 order = 5;
+}
+
+message FormField {
+  string key = 1;
+  FormFieldType type = 2;
+  string label = 3;
+  string help_text = 4;
+  string placeholder = 5;
+  bool required = 6;
+  google.protobuf.Value default_value = 7;
+  repeated FormValidationRule validation_rules = 8;
+  FormConditionGroup visibility_condition = 9;
+  FormConditionGroup editability_condition = 10;
+  repeated FormOption options = 11;
+  repeated FormField nested_fields = 12;
+  repeated FormSection nested_sections = 13;
+  FormFormattingHint formatting = 14;
+  google.protobuf.Struct ui_hints = 15;
+  FormReviewHint review = 16;
+  repeated string visible_to_roles = 17;
+  bool repeatable = 18;
+  bool hidden = 19;
+}
+
+message FormSection {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  repeated FormField fields = 4;
+  google.protobuf.Struct ui_hints = 5;
+}
+
+message FormStep {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  repeated FormSection sections = 4;
+  google.protobuf.Struct ui_hints = 5;
+}
+
+message FormSchema {
+  string form_id = 1;
+  int32 form_version = 2;
+  string title = 3;
+  string subtitle = 4;
+  string description = 5;
+  repeated FormStep steps = 6;
+  google.protobuf.Struct workflow_metadata = 7;
+  google.protobuf.Struct ui_hints = 8;
+}
+
+message FormPermissions {
+  bool can_edit = 1;
+  bool can_submit = 2;
+  bool can_save_draft = 3;
+  bool can_go_back = 4;
+}
+
+message FormReviewItem {
+  string field_key = 1;
+  string label = 2;
+  string display_value = 3;
+  bool emphasized = 4;
+}
+
+message FormReviewSection {
+  string step_id = 1;
+  string step_title = 2;
+  string section_id = 3;
+  string section_title = 4;
+  repeated FormReviewItem items = 5;
+}
+
+message FormSubmissionSnapshot {
+  string form_instance_id = 1;
+  string schema_id = 2;
+  int32 schema_version = 3;
+  google.protobuf.Timestamp submitted_at = 4;
+  string submitted_by_subscription_id = 5;
+  google.protobuf.Struct answers = 6;
+  repeated FormReviewSection formatted_sections = 7;
+  string submission_reference = 8;
+  FormMessageState status = 9;
+  string backend_message = 10;
+  string workflow_message = 11;
+  google.protobuf.Struct metadata = 12;
+}
+
+message FormRequestContent {
+  string form_instance_id = 1;
+  string schema_id = 2;
+  int32 schema_version = 3;
+  string title = 4;
+  string description = 5;
+  FormMessageState state = 6;
+  bool review_required = 7;
+  FormSchema schema = 8;
+  google.protobuf.Struct initial_values = 9;
+  google.protobuf.Struct server_draft_values = 10;
+  FormSubmissionSnapshot final_submission_snapshot = 11;
+  FormPermissions permissions = 12;
+  google.protobuf.Timestamp expires_at = 13;
+  google.protobuf.Struct workflow_context = 14;
+  string current_workflow_state = 15;
+}
+
+message FormSubmissionResultContent {
+  string form_instance_id = 1;
+  string schema_id = 2;
+  int32 schema_version = 3;
+  string source_event_id = 4;
+  FormMessageState state = 5;
+  bool review_confirmed = 6;
+  FormSubmissionSnapshot submission_snapshot = 7;
+  google.protobuf.Struct metadata = 8;
+}
+
 message Payload {
   // The `type` MUST correspond to the populated payload.
   // Servers MUST reject mismatches.
@@ -369,5 +593,11 @@ message Payload {
     VoteCast vote = 26;
     // type = PAYLOAD_TYPE_VOTE_TALLY
     VoteTally vote_tally = 29;
+
+    // type = PAYLOAD_TYPE_FORM_REQUEST
+    FormRequestContent form_request = 30;
+
+    // type = PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
+    FormSubmissionResultContent form_submission_result = 31;
   }
 }

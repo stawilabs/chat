@@ -26,6 +26,8 @@ class RoomEventType extends $pb.ProtobufEnum {
   static const RoomEventType ROOM_EVENT_TYPE_MOTION = RoomEventType._(8, _omitEnumNames ? '' : 'ROOM_EVENT_TYPE_MOTION');
   static const RoomEventType ROOM_EVENT_TYPE_CALL = RoomEventType._(10, _omitEnumNames ? '' : 'ROOM_EVENT_TYPE_CALL');
   static const RoomEventType ROOM_EVENT_TYPE_ADVERT = RoomEventType._(20, _omitEnumNames ? '' : 'ROOM_EVENT_TYPE_ADVERT');
+  static const RoomEventType ROOM_EVENT_TYPE_FORM_REQUEST = RoomEventType._(30, _omitEnumNames ? '' : 'ROOM_EVENT_TYPE_FORM_REQUEST');
+  static const RoomEventType ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT = RoomEventType._(31, _omitEnumNames ? '' : 'ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT');
 
   static const $core.List<RoomEventType> values = <RoomEventType> [
     ROOM_EVENT_TYPE_UNSPECIFIED,
@@ -39,6 +41,8 @@ class RoomEventType extends $pb.ProtobufEnum {
     ROOM_EVENT_TYPE_MOTION,
     ROOM_EVENT_TYPE_CALL,
     ROOM_EVENT_TYPE_ADVERT,
+    ROOM_EVENT_TYPE_FORM_REQUEST,
+    ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT,
   ];
 
   static final $core.Map<$core.int, RoomEventType> _byValue = $pb.ProtobufEnum.initByValue(values);

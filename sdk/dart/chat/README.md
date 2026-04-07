@@ -6,7 +6,7 @@ Dart client library for the Ant Investor Chat API.
 
 ```yaml
 dependencies:
-  antinvestor_api_chat: ^1.54.0
+  antinvestor_api_chat: ^1.55.0
 ```
 
 ## Usage
