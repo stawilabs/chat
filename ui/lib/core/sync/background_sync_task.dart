@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart';
-import 'package:antinvestor_api_common/antinvestor_api_common.dart' as common;
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:connectrpc/io.dart' as connect_io;
 import 'package:connectrpc/protobuf.dart' as connect_protobuf;
@@ -69,7 +67,7 @@ class BackgroundSyncTask {
         codec: const connect_protobuf.ProtoCodec(),
         httpClient: connect_io.createHttpClient(httpClient),
       );
-      final chatClient = ChatServiceClient(transport);
+      final chatClient = pb.ChatServiceClient(transport);
 
       // Download new messages from subscribed rooms
       await _downloadNewMessages(
@@ -169,7 +167,7 @@ class BackgroundSyncTask {
     AppDatabase database,
     PendingJobRepository jobRepo,
     MessageRepository messageRepo,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
     String? currentProfileId,
   ) async {
@@ -225,7 +223,7 @@ class BackgroundSyncTask {
   static Future<void> _downloadNewMessages(
     AppDatabase database,
     MessageRepository messageRepo,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     try {
@@ -250,7 +248,7 @@ class BackgroundSyncTask {
               room.lastEventId != null && room.lastEventId!.isNotEmpty;
           final request = pb.GetHistoryRequest(
             roomId: room.id,
-            cursor: common.PageCursor(
+            cursor: pb.PageCursor(
               limit: hasCursor ? 50 : 20,
               page: hasCursor ? room.lastEventId : '',
             ),
@@ -462,7 +460,7 @@ class BackgroundSyncTask {
     return 'video';
   }
 
-  static Map<String, dynamic> _structToMap(common.Struct struct) {
+  static Map<String, dynamic> _structToMap(pb.Struct struct) {
     final result = <String, dynamic>{};
     for (final entry in struct.fields.entries) {
       result[entry.key] = _valueToObject(entry.value);
@@ -470,7 +468,7 @@ class BackgroundSyncTask {
     return result;
   }
 
-  static dynamic _valueToObject(common.Value value) {
+  static dynamic _valueToObject(pb.Value value) {
     if (value.hasStringValue()) return value.stringValue;
     if (value.hasNumberValue()) return value.numberValue;
     if (value.hasBoolValue()) return value.boolValue;
@@ -488,7 +486,7 @@ class BackgroundSyncTask {
   static Future<void> _processJob(
     AppDatabase database,
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     MessageRepository messageRepo,
     PendingJobRepository jobRepo,
     connect.Headers authHeaders,
@@ -547,7 +545,7 @@ class BackgroundSyncTask {
   static Future<void> _processCreateRoom(
     AppDatabase database,
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -556,7 +554,7 @@ class BackgroundSyncTask {
     final contactIds =
         (payload['contactIds'] as List<dynamic>?)?.cast<String>() ?? [];
     final memberLinks = contactIds
-        .map((id) => common.ContactLink(contactId: id))
+        .map((id) => pb.ContactLink(contactId: id))
         .toList();
 
     final request = pb.CreateRoomRequest(
@@ -606,7 +604,7 @@ class BackgroundSyncTask {
   /// Sync room members from server to local database
   static Future<void> _syncRoomMembers(
     AppDatabase database,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
     String roomId,
   ) async {
@@ -664,7 +662,7 @@ class BackgroundSyncTask {
   /// Update a room
   static Future<void> _processUpdateRoom(
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -691,7 +689,7 @@ class BackgroundSyncTask {
   /// Delete a room
   static Future<void> _processDeleteRoom(
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -708,7 +706,7 @@ class BackgroundSyncTask {
   /// Add members to a room
   static Future<void> _processAddRoomMembers(
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -720,7 +718,7 @@ class BackgroundSyncTask {
         .map(
           (profileId) => pb.RoomSubscription(
             roomId: roomId,
-            member: common.ContactLink(profileId: profileId),
+            member: pb.ContactLink(profileId: profileId),
           ),
         )
         .toList();
@@ -741,7 +739,7 @@ class BackgroundSyncTask {
   static Future<void> _processRemoveRoomMembers(
     domain_job.PendingJob job,
     AppDatabase database,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -798,7 +796,7 @@ class BackgroundSyncTask {
   /// Delete a message (redact)
   static Future<void> _processDeleteMessage(
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -807,7 +805,7 @@ class BackgroundSyncTask {
 
     // Send a redacted event to mark the message as deleted
     final now = DateTime.now();
-    final timestamp = common.Timestamp(
+    final timestamp = pb.Timestamp(
       seconds: fixnum.Int64(now.millisecondsSinceEpoch ~/ 1000),
       nanos: (now.millisecondsSinceEpoch % 1000) * 1000000,
     );
@@ -833,7 +831,7 @@ class BackgroundSyncTask {
   static Future<void> _processSendMessage(
     domain_job.PendingJob job,
     AppDatabase database,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     MessageRepository messageRepo,
     connect.Headers authHeaders,
     String? currentProfileId,
@@ -848,7 +846,7 @@ class BackgroundSyncTask {
 
     // Create timestamp
     final now = DateTime.now();
-    final timestamp = common.Timestamp(
+    final timestamp = pb.Timestamp(
       seconds: fixnum.Int64(now.millisecondsSinceEpoch ~/ 1000),
       nanos: (now.millisecondsSinceEpoch % 1000) * 1000000,
     );
@@ -898,7 +896,7 @@ class BackgroundSyncTask {
 
   static Future<void> _processChangeMemberRole(
     domain_job.PendingJob job,
-    ChatServiceClient chatClient,
+    pb.ChatServiceClient chatClient,
     connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
@@ -952,19 +950,19 @@ class BackgroundSyncTask {
 
   // Helper methods for Struct conversion (copied from SyncEngine)
 
-  static common.Struct _mapToStruct(Map<String, dynamic> map) {
-    final struct = common.Struct();
+  static pb.Struct _mapToStruct(Map<String, dynamic> map) {
+    final struct = pb.Struct();
     for (final entry in map.entries) {
       struct.fields[entry.key] = _objectToValue(entry.value);
     }
     return struct;
   }
 
-  static common.Value _objectToValue(Object? obj) {
-    final value = common.Value();
+  static pb.Value _objectToValue(Object? obj) {
+    final value = pb.Value();
 
     if (obj == null) {
-      value.nullValue = common.NullValue.NULL_VALUE;
+      value.nullValue = pb.NullValue.NULL_VALUE;
     } else if (obj is bool) {
       value.boolValue = obj;
     } else if (obj is num) {
@@ -972,7 +970,7 @@ class BackgroundSyncTask {
     } else if (obj is String) {
       value.stringValue = obj;
     } else if (obj is List) {
-      value.listValue = common.ListValue(
+      value.listValue = pb.ListValue(
         values: obj.map(_objectToValue).toList(),
       );
     } else if (obj is Map<String, dynamic>) {

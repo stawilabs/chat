@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:antinvestor_api_common/antinvestor_api_common.dart' as common;
 import 'package:antinvestor_api_profile/antinvestor_api_profile.dart' as pb;
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,8 +90,8 @@ class ProfileRepository {
         return ProfileUpdateResult.failure('User not authenticated');
       }
 
-      final properties = common.Struct()
-        ..fields['name'] = (common.Value()..stringValue = name);
+      final properties = pb.Struct()
+        ..fields['name'] = (pb.Value()..stringValue = name);
 
       final request = pb.UpdateRequest(
         id: userInfo!.id,
@@ -126,8 +125,8 @@ class ProfileRepository {
         return ProfileUpdateResult.failure('User not authenticated');
       }
 
-      final properties = common.Struct()
-        ..fields['bio'] = (common.Value()..stringValue = bio);
+      final properties = pb.Struct()
+        ..fields['bio'] = (pb.Value()..stringValue = bio);
 
       final request = pb.UpdateRequest(
         id: userInfo!.id,
@@ -163,12 +162,12 @@ class ProfileRepository {
         return ProfileUpdateResult.failure('User not authenticated');
       }
 
-      final properties = common.Struct()
-        ..fields['status'] = (common.Value()
+      final properties = pb.Struct()
+        ..fields['status'] = (pb.Value()
           ..numberValue = status.value.toDouble());
 
       if (statusMessage != null) {
-        properties.fields['status_message'] = (common.Value()
+        properties.fields['status_message'] = (pb.Value()
           ..stringValue = statusMessage);
       }
 
@@ -300,8 +299,8 @@ class ProfileRepository {
         '_updateProfilePhotoWithData: Updating profile with avatar URL',
       );
 
-      final properties = common.Struct()
-        ..fields['avatar_url'] = (common.Value()..stringValue = avatarUrl);
+      final properties = pb.Struct()
+        ..fields['avatar_url'] = (pb.Value()..stringValue = avatarUrl);
 
       final request = pb.UpdateRequest(
         id: userInfo!.id,

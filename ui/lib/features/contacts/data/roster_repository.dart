@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:antinvestor_api_profile/antinvestor_api_profile.dart' as pb;
-import 'package:antinvestor_api_profile/antinvestor_api_profile.dart';
+import 'package:antinvestor_api_profile/antinvestor_api_profile.dart'
+    hide Value, Struct, ListValue, NullValue;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';

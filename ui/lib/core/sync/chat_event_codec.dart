@@ -233,18 +233,18 @@ class ChatEventCodec {
     }
   }
 
-  static common_types.Struct _mapToStruct(Map<String, dynamic> map) {
-    final struct = common_types.Struct();
+  static pb.Struct _mapToStruct(Map<String, dynamic> map) {
+    final struct = pb.Struct();
     for (final entry in map.entries) {
       struct.fields[entry.key] = _objectToValue(entry.value);
     }
     return struct;
   }
 
-  static common_types.Value _objectToValue(Object? obj) {
-    final value = common_types.Value();
+  static pb.Value _objectToValue(Object? obj) {
+    final value = pb.Value();
     if (obj == null) {
-      value.nullValue = common_types.NullValue.NULL_VALUE;
+      value.nullValue = pb.NullValue.NULL_VALUE;
     } else if (obj is String) {
       value.stringValue = obj;
     } else if (obj is num) {
@@ -252,7 +252,7 @@ class ChatEventCodec {
     } else if (obj is bool) {
       value.boolValue = obj;
     } else if (obj is List) {
-      final listValue = common_types.ListValue();
+      final listValue = pb.ListValue();
       listValue.values.addAll(obj.map(_objectToValue));
       value.listValue = listValue;
     } else if (obj is Map) {

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logging/app_logger.dart';
 import '../networking/client.dart';
 import 'files_config_service.dart';
+import 'files_url_utils.dart';
 
 /// Default chunk size for streaming uploads (256KB).
 const int _uploadChunkSize = 256 * 1024;

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logging/app_logger.dart';
 import '../networking/api_config.dart';
 import '../networking/client.dart';
+import 'files_url_utils.dart';
 
 /// Service to retrieve and cache the Files API configuration.
 ///

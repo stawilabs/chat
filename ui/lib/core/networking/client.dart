@@ -5,11 +5,14 @@
 /// and service-specific clients.
 library;
 
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart';
+import 'package:antinvestor_api_chat/antinvestor_api_chat.dart'
+    hide Struct, Value, ListValue, NullValue, Timestamp, ContactLink, PageCursor;
 import 'package:antinvestor_api_common/antinvestor_api_common.dart';
 import 'package:antinvestor_api_device/antinvestor_api_device.dart';
-import 'package:antinvestor_api_files/antinvestor_api_files.dart';
-import 'package:antinvestor_api_profile/antinvestor_api_profile.dart';
+import 'package:antinvestor_api_files/antinvestor_api_files.dart'
+    hide Struct, Value, ListValue, NullValue, Timestamp, ContactLink, PageCursor;
+import 'package:antinvestor_api_profile/antinvestor_api_profile.dart'
+    hide DeviceClient, newDeviceClient, Struct, Value, ListValue, NullValue, Timestamp;
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:connectrpc/io.dart' as connect_io;
 import 'package:connectrpc/protobuf.dart' as connect_protobuf;
@@ -23,6 +26,85 @@ import '../auth/token_refresh_coordinator.dart';
 import '../logging/app_logger.dart';
 import 'api_config.dart';
 import 'certificate_pinning.dart';
+
+// ============================================================================
+// Client type aliases and factory functions
+//
+// These were previously exported by antinvestor_api_chat and
+// antinvestor_api_files but were removed in v1.54.0.
+// ============================================================================
+
+/// Type alias for Chat client for convenience.
+typedef ChatClient = ConnectClientBase<ChatServiceClient>;
+
+/// Type alias for Gateway client for convenience.
+typedef GatewayClient = ConnectClientBase<GatewayServiceClient>;
+
+/// Type alias for Files client for convenience.
+typedef FilesClient = ConnectClientBase<FilesServiceClient>;
+
+/// Creates a new Chat service client.
+Future<ChatClient> newChatClient({
+  required TransportFactory createTransport,
+  String? endpoint,
+  TokenManager? tokenManager,
+  TokenRefreshCallback? onTokenRefresh,
+  List<connect.Interceptor>? additionalInterceptors,
+  bool noAuth = false,
+}) {
+  return newClient<ChatServiceClient>(
+    defaultEndpoint: endpoint ?? 'https://chat.antinvestor.com',
+    createServiceClient: ChatServiceClient.new,
+    createTransport: createTransport,
+    endpoint: endpoint,
+    tokenManager: tokenManager,
+    onTokenRefresh: onTokenRefresh,
+    additionalInterceptors: additionalInterceptors,
+    noAuth: noAuth,
+  );
+}
+
+/// Creates a new Gateway service client.
+Future<GatewayClient> newGatewayClient({
+  required TransportFactory createTransport,
+  String? endpoint,
+  TokenManager? tokenManager,
+  TokenRefreshCallback? onTokenRefresh,
+  List<connect.Interceptor>? additionalInterceptors,
+  bool noAuth = false,
+}) {
+  return newClient<GatewayServiceClient>(
+    defaultEndpoint: endpoint ?? 'https://gateway.antinvestor.com',
+    createServiceClient: GatewayServiceClient.new,
+    createTransport: createTransport,
+    endpoint: endpoint,
+    tokenManager: tokenManager,
+    onTokenRefresh: onTokenRefresh,
+    additionalInterceptors: additionalInterceptors,
+    noAuth: noAuth,
+  );
+}
+
+/// Creates a new Files service client.
+Future<FilesClient> newFilesClient({
+  required TransportFactory createTransport,
+  String? endpoint,
+  TokenManager? tokenManager,
+  TokenRefreshCallback? onTokenRefresh,
+  List<connect.Interceptor>? additionalInterceptors,
+  bool noAuth = false,
+}) {
+  return newClient<FilesServiceClient>(
+    defaultEndpoint: endpoint ?? 'https://files.antinvestor.com',
+    createServiceClient: FilesServiceClient.new,
+    createTransport: createTransport,
+    endpoint: endpoint,
+    tokenManager: tokenManager,
+    onTokenRefresh: onTokenRefresh,
+    additionalInterceptors: additionalInterceptors,
+    noAuth: noAuth,
+  );
+}
 
 /// Secure storage provider for token access
 final secureStorageProvider = Provider<FlutterSecureStorage>(
