@@ -298,6 +298,44 @@ jobs:
           path: linux-bundle.tar.gz
           retention-days: 14
 
+  # Windows Build
+  build-windows:
+    name: Windows (${{ inputs.build_type }})
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: ./.github/actions/flutter-setup
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Build Windows
+        run: |
+          $buildArgs = "${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
+          if ("${{ inputs.version }}" -ne "") { $buildArgs += " --build-name=${{ inputs.version }}" }
+          flutter build windows $buildArgs
+        shell: pwsh
+
+      - name: Package Windows app
+        run: |
+          $buildMode = "${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}"
+          Compress-Archive -Path "build\windows\x64\runner\$buildMode\*" -DestinationPath "$env:GITHUB_WORKSPACE\windows-app.zip"
+        shell: pwsh
+
+      - name: Upload Windows app
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-app-${{ inputs.environment }}
+          path: windows-app.zip
+          retention-days: 14
+
   # macOS Build
   build-macos:
     name: macOS (${{ inputs.build_type }})
