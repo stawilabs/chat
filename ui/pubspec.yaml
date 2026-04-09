@@ -40,7 +40,7 @@ dependencies:
   app_badge_plus: ^1.2.8
   app_links: ^7.0.0
   cached_network_image: ^3.4.1
-  connectivity_plus: ^7.1.0
+  connectivity_plus: ">=7.0.0 <7.1.0"
   connectrpc: ^1.0.0
   crypto: ^3.0.7
   cupertino_icons: ^1.0.9
