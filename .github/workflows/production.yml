@@ -145,7 +145,7 @@ jobs:
             cp artifacts/macos-app-production/macos-app.zip release-assets/chat-${VERSION}-macos.zip
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Chat App ${{ needs.prepare.outputs.tag }}
