@@ -19,8 +19,8 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/business"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/data"
@@ -181,7 +181,7 @@ func (ps *ChatServer) SendEvent(
 	req *connect.Request[chatv1.SendEventRequest],
 ) (*connect.Response[chatv1.SendEventResponse], error) {
 	// Validate authentication
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (ps *ChatServer) GetHistory(
 	req *connect.Request[chatv1.GetHistoryRequest],
 ) (*connect.Response[chatv1.GetHistoryResponse], error) {
 	// Validate authentication
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func (ps *ChatServer) GetEvent(
 	ctx context.Context,
 	req *connect.Request[chatv1.GetEventRequest],
 ) (*connect.Response[chatv1.GetEventResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func (ps *ChatServer) GetRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.GetRoomRequest],
 ) (*connect.Response[chatv1.GetRoomResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (ps *ChatServer) CreateRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.CreateRoomRequest],
 ) (*connect.Response[chatv1.CreateRoomResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +357,7 @@ func (ps *ChatServer) SearchRooms(
 	req *connect.Request[chatv1.SearchRoomsRequest],
 	stream *connect.ServerStream[chatv1.SearchRoomsResponse],
 ) error {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (ps *ChatServer) UpdateRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.UpdateRoomRequest],
 ) (*connect.Response[chatv1.UpdateRoomResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (ps *ChatServer) DeleteRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.DeleteRoomRequest],
 ) (*connect.Response[chatv1.DeleteRoomResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +478,7 @@ func (ps *ChatServer) AddRoomSubscriptions(
 	ctx context.Context,
 	req *connect.Request[chatv1.AddRoomSubscriptionsRequest],
 ) (*connect.Response[chatv1.AddRoomSubscriptionsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +533,7 @@ func (ps *ChatServer) RemoveRoomSubscriptions(
 	ctx context.Context,
 	req *connect.Request[chatv1.RemoveRoomSubscriptionsRequest],
 ) (*connect.Response[chatv1.RemoveRoomSubscriptionsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +587,7 @@ func (ps *ChatServer) UpdateSubscriptionRole(
 	ctx context.Context,
 	req *connect.Request[chatv1.UpdateSubscriptionRoleRequest],
 ) (*connect.Response[chatv1.UpdateSubscriptionRoleResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +630,7 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 	ctx context.Context,
 	req *connect.Request[chatv1.SearchRoomSubscriptionsRequest],
 ) (*connect.Response[chatv1.SearchRoomSubscriptionsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -677,7 +677,7 @@ func (ps *ChatServer) GetSubscriptionSettings(
 	ctx context.Context,
 	req *connect.Request[chatv1.GetSubscriptionSettingsRequest],
 ) (*connect.Response[chatv1.GetSubscriptionSettingsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +704,7 @@ func (ps *ChatServer) UpdateSubscriptionSettings(
 	ctx context.Context,
 	req *connect.Request[chatv1.UpdateSubscriptionSettingsRequest],
 ) (*connect.Response[chatv1.UpdateSubscriptionSettingsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -734,7 +734,7 @@ func (ps *ChatServer) ListProposals(
 	ctx context.Context,
 	req *connect.Request[chatv1.ListProposalsRequest],
 ) (*connect.Response[chatv1.ListProposalsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -776,7 +776,7 @@ func (ps *ChatServer) SubmitProposal(
 	ctx context.Context,
 	req *connect.Request[chatv1.SubmitProposalRequest],
 ) (*connect.Response[chatv1.SubmitProposalResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1073,20 +1073,20 @@ func (ps *ChatServer) liveRequestSource(
 	ctx context.Context,
 	req *chatv1.LiveRequest,
 ) (*commonv1.ContactLink, error) {
-	if internalContact, err := internal.AuthContactLink(ctx, "internal"); err == nil {
+	if internalContact, err := chatutil.AuthContactLink(ctx, "internal"); err == nil {
 		source := req.GetSource()
 		if source == nil {
 			return internalContact, nil
 		}
 
-		if err = internal.IsValidContactLink(source); err != nil {
+		if err = chatutil.IsValidContactLink(source); err != nil {
 			return nil, err
 		}
 
 		return source, nil
 	}
 
-	return internal.AuthContactLink(ctx)
+	return chatutil.AuthContactLink(ctx)
 }
 
 func nextCursorFromEvents(events []*chatv1.RoomEvent) string {
@@ -1248,7 +1248,7 @@ func (ps *ChatServer) ResolveReplayCursor(
 	ctx context.Context,
 	req *connect.Request[chatv1.ResolveReplayCursorRequest],
 ) (*connect.Response[chatv1.ResolveReplayCursorResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1300,7 +1300,7 @@ func (ps *ChatServer) GetLatestReplayCursor(
 	ctx context.Context,
 	req *connect.Request[chatv1.GetLatestReplayCursorRequest],
 ) (*connect.Response[chatv1.GetLatestReplayCursorResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1326,7 +1326,7 @@ func (ps *ChatServer) ListReplayEvents(
 	ctx context.Context,
 	req *connect.Request[chatv1.ListReplayEventsRequest],
 ) (*connect.Response[chatv1.ListReplayEventsResponse], error) {
-	authenticatedContact, err := internal.AuthContactLink(ctx)
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}

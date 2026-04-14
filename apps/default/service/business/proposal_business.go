@@ -11,7 +11,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/util"
 )
 
@@ -46,7 +46,7 @@ func (rpm *roomProposalManagement) Approve(
 	proposalID string,
 	approvedBy *commonv1.ContactLink,
 ) error {
-	if err := internal.IsValidContactLink(approvedBy); err != nil {
+	if err := chatutil.IsValidContactLink(approvedBy); err != nil {
 		return err
 	}
 
@@ -98,7 +98,7 @@ func (rpm *roomProposalManagement) Reject(
 	reason string,
 	rejectedBy *commonv1.ContactLink,
 ) error {
-	if err := internal.IsValidContactLink(rejectedBy); err != nil {
+	if err := chatutil.IsValidContactLink(rejectedBy); err != nil {
 		return err
 	}
 
@@ -132,7 +132,7 @@ func (rpm *roomProposalManagement) ListPending(
 	scopeID string,
 	searchedBy *commonv1.ContactLink,
 ) ([]*models.Proposal, error) {
-	if err := internal.IsValidContactLink(searchedBy); err != nil {
+	if err := chatutil.IsValidContactLink(searchedBy); err != nil {
 		return nil, err
 	}
 

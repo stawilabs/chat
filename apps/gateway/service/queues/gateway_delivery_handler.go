@@ -8,8 +8,8 @@ import (
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/gateway/config"
 	"github.com/antinvestor/service-chat/apps/gateway/service/business"
-	"github.com/antinvestor/service-chat/internal"
-	"github.com/antinvestor/service-chat/internal/streaming"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	"github.com/antinvestor/service-chat/pkg/streaming"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
@@ -35,8 +35,8 @@ func NewGatewayEventsQueueHandler(
 }
 
 func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[string]string, payload []byte) error {
-	profileID := headers[internal.HeaderProfileID]
-	deviceID := headers[internal.HeaderDeviceID]
+	profileID := headers[chatutil.HeaderProfileID]
+	deviceID := headers[chatutil.HeaderDeviceID]
 
 	// Parse payload first so we can fall back to offline delivery if needed
 	evt, err := dq.toPayloadToEventData(ctx, payload)
@@ -72,7 +72,7 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 		return dq.publishToOfflineDevice(ctx, headers, evt)
 	}
 
-	data := dq.toStreamData(evt, headers[internal.HeaderReplayCursor])
+	data := dq.toStreamData(evt, headers[chatutil.HeaderReplayCursor])
 
 	if !connection.Dispatch(data) {
 		util.Log(ctx).WithFields(map[string]any{

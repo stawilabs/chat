@@ -105,7 +105,7 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/telemetry"
 	"github.com/pitabwire/util"
@@ -732,7 +732,7 @@ func (cm *connectionManager) GetConnection(
 	profileID string,
 	deviceID string,
 ) (Connection, bool) {
-	metadataKey := internal.MetadataKey(profileID, deviceID)
+	metadataKey := chatutil.MetadataKey(profileID, deviceID)
 	return cm.connPool.get(metadataKey)
 }
 
@@ -741,7 +741,7 @@ func (cm *connectionManager) GetConnectionMetadata(
 	profileID string,
 	deviceID string,
 ) (*Metadata, bool, error) {
-	return cm.cache.Get(ctx, internal.MetadataKey(profileID, deviceID))
+	return cm.cache.Get(ctx, chatutil.MetadataKey(profileID, deviceID))
 }
 
 func (cm *connectionManager) GatewayID() string {

@@ -1,4 +1,4 @@
-package internal
+package chatutil
 
 // ShardForKey deterministically maps a string key to a shard in [0, shardCount).
 // It is allocation-free, stable across restarts, and safe for hot paths.

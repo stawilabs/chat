@@ -7,8 +7,8 @@ import (
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/internal"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
 )
@@ -55,8 +55,8 @@ func (dlp *DeadLetterPublisher) Publish(
 	// Add DLQ context to headers
 	dlqHeaders := make(map[string]string, len(headers)+dlqExtraHeaders)
 	maps.Copy(dlqHeaders, headers)
-	dlqHeaders[internal.HeaderDLQOriginalQueue] = originalQueue
-	dlqHeaders[internal.HeaderDLQErrorMessage] = errMsg
+	dlqHeaders[chatutil.HeaderDLQOriginalQueue] = originalQueue
+	dlqHeaders[chatutil.HeaderDLQErrorMessage] = errMsg
 
 	if pubErr := topic.Publish(ctx, msg, dlqHeaders); pubErr != nil {
 		util.Log(ctx).WithError(pubErr).WithFields(map[string]any{

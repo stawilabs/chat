@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
 )

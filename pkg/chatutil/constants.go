@@ -1,4 +1,4 @@
-package internal
+package chatutil
 
 const (
 	HeaderPriority     = "priority"

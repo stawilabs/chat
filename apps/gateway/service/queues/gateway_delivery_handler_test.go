@@ -10,7 +10,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/gateway/config"
 	"github.com/antinvestor/service-chat/apps/gateway/service/business"
 	"github.com/antinvestor/service-chat/apps/gateway/service/queues"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/queue"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
@@ -40,7 +40,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ValidDelivery_DispatchesToC
 	mockConn := newMockConnection(profileID, deviceID)
 	mockCM := &mockConnectionManager{
 		connections: map[string]business.Connection{
-			internal.MetadataKey(profileID, deviceID): mockConn,
+			chatutil.MetadataKey(profileID, deviceID): mockConn,
 		},
 	}
 
@@ -52,8 +52,8 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ValidDelivery_DispatchesToC
 	s.Require().NoError(err)
 
 	headers := map[string]string{
-		internal.HeaderProfileID: profileID,
-		internal.HeaderDeviceID:  deviceID,
+		chatutil.HeaderProfileID: profileID,
+		chatutil.HeaderDeviceID:  deviceID,
 	}
 
 	// Handle the message
@@ -83,8 +83,8 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_ConnectionNotFound_FallsBac
 	s.Require().NoError(err)
 
 	headers := map[string]string{
-		internal.HeaderProfileID: "user123",
-		internal.HeaderDeviceID:  "device456",
+		chatutil.HeaderProfileID: "user123",
+		chatutil.HeaderDeviceID:  "device456",
 	}
 
 	// Should fall back to offline delivery when connection not found
@@ -103,8 +103,8 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_MalformedPayload_ReturnsNil
 	handler := queues.NewGatewayEventsQueueHandler(s.cfg, nil, mockCM)
 
 	headers := map[string]string{
-		internal.HeaderProfileID: "user123",
-		internal.HeaderDeviceID:  "device456",
+		chatutil.HeaderProfileID: "user123",
+		chatutil.HeaderDeviceID:  "device456",
 	}
 
 	// Send invalid protobuf data
@@ -126,7 +126,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_FallsBa
 	}
 	mockCM := &mockConnectionManager{
 		connections: map[string]business.Connection{
-			internal.MetadataKey(profileID, deviceID): mockConn,
+			chatutil.MetadataKey(profileID, deviceID): mockConn,
 		},
 	}
 
@@ -144,8 +144,8 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_DispatchChannelFull_FallsBa
 	s.Require().NoError(err)
 
 	headers := map[string]string{
-		internal.HeaderProfileID: profileID,
-		internal.HeaderDeviceID:  deviceID,
+		chatutil.HeaderProfileID: profileID,
+		chatutil.HeaderDeviceID:  deviceID,
 	}
 
 	// Should fall back to offline delivery when dispatch channel is full
@@ -163,15 +163,15 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_AllPayloadTypes() {
 	mockConn := newMockConnection(profileID, deviceID)
 	mockCM := &mockConnectionManager{
 		connections: map[string]business.Connection{
-			internal.MetadataKey(profileID, deviceID): mockConn,
+			chatutil.MetadataKey(profileID, deviceID): mockConn,
 		},
 	}
 
 	handler := queues.NewGatewayEventsQueueHandler(s.cfg, nil, mockCM)
 
 	headers := map[string]string{
-		internal.HeaderProfileID: profileID,
-		internal.HeaderDeviceID:  deviceID,
+		chatutil.HeaderProfileID: profileID,
+		chatutil.HeaderDeviceID:  deviceID,
 	}
 
 	// Test different payload types
@@ -242,7 +242,7 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_UsesReplayCursorAsStreamID(
 	mockConn := newMockConnection(profileID, deviceID)
 	mockCM := &mockConnectionManager{
 		connections: map[string]business.Connection{
-			internal.MetadataKey(profileID, deviceID): mockConn,
+			chatutil.MetadataKey(profileID, deviceID): mockConn,
 		},
 	}
 
@@ -252,9 +252,9 @@ func (s *GatewayDeliveryHandlerTestSuite) TestHandle_UsesReplayCursorAsStreamID(
 	s.Require().NoError(err)
 
 	headers := map[string]string{
-		internal.HeaderProfileID:    profileID,
-		internal.HeaderDeviceID:     deviceID,
-		internal.HeaderReplayCursor: replayCursor,
+		chatutil.HeaderProfileID:    profileID,
+		chatutil.HeaderDeviceID:     deviceID,
+		chatutil.HeaderReplayCursor: replayCursor,
 	}
 
 	err = handler.Handle(context.Background(), headers, payload)
@@ -363,7 +363,7 @@ func (m *mockConnectionManager) GetConnection(
 	profileID string,
 	deviceID string,
 ) (business.Connection, bool) {
-	key := internal.MetadataKey(profileID, deviceID)
+	key := chatutil.MetadataKey(profileID, deviceID)
 	conn, ok := m.connections[key]
 	return conn, ok
 }
@@ -373,7 +373,7 @@ func (m *mockConnectionManager) GetConnectionMetadata(
 	profileID string,
 	deviceID string,
 ) (*business.Metadata, bool, error) {
-	key := internal.MetadataKey(profileID, deviceID)
+	key := chatutil.MetadataKey(profileID, deviceID)
 	if m.metadata == nil {
 		return nil, false, nil
 	}

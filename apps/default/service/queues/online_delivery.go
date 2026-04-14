@@ -17,9 +17,9 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
-	"github.com/antinvestor/service-chat/internal/streaming"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	"github.com/antinvestor/service-chat/pkg/streaming"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/frame/workerpool"
@@ -77,7 +77,7 @@ func (dq *hotPathDeliveryQueueHandler) getOnlineDeliveryTopic(
 	ctx context.Context,
 	profileID, deviceID string,
 ) (queue.Publisher, int, error) {
-	shardString := internal.MetadataKey(profileID, deviceID)
+	shardString := chatutil.MetadataKey(profileID, deviceID)
 
 	// Ensure ShardCount is valid
 	if dq.cfg.ShardCount <= 0 {
@@ -86,7 +86,7 @@ func (dq *hotPathDeliveryQueueHandler) getOnlineDeliveryTopic(
 		return nil, 0, fmt.Errorf("invalid shard count: %d", dq.cfg.ShardCount)
 	}
 
-	shardID := internal.ShardForKey(shardString, dq.cfg.ShardCount)
+	shardID := chatutil.ShardForKey(shardString, dq.cfg.ShardCount)
 
 	shardDeliveryQueueName := fmt.Sprintf(dq.cfg.QueueGatewayEventDeliveryName, shardID)
 
@@ -218,7 +218,7 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 	}
 
 	deviceHeader := map[string]string{
-		internal.HeaderDeviceID: dev.id,
+		chatutil.HeaderDeviceID: dev.id,
 	}
 
 	return offlineDeliveryTopic.Publish(ctx, msg, deviceHeader)
@@ -253,12 +253,12 @@ func (dq *hotPathDeliveryQueueHandler) publishToOnlineDevice(
 	}
 
 	deviceHeader := map[string]string{
-		internal.HeaderProfileID: profileID,
-		internal.HeaderDeviceID:  deviceID,
-		internal.HeaderShardID:   strconv.Itoa(shardID),
+		chatutil.HeaderProfileID: profileID,
+		chatutil.HeaderDeviceID:  deviceID,
+		chatutil.HeaderShardID:   strconv.Itoa(shardID),
 	}
 	if replayEntry != nil {
-		deviceHeader[internal.HeaderReplayCursor] = replayEntry.GetID()
+		deviceHeader[chatutil.HeaderReplayCursor] = replayEntry.GetID()
 	}
 
 	return deliveryTopic.Publish(ctx, msg, deviceHeader)

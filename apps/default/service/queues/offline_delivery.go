@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"

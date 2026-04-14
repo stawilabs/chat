@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/internal"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
 )
@@ -30,8 +30,8 @@ func (dlc *deadLetterConsumer) Handle(
 	chattel.DeadLetterConsumedCounter.Add(ctx, 1)
 
 	util.Log(ctx).WithFields(map[string]any{
-		"original_queue": headers[internal.HeaderDLQOriginalQueue],
-		"error":          headers[internal.HeaderDLQErrorMessage],
+		"original_queue": headers[chatutil.HeaderDLQOriginalQueue],
+		"error":          headers[chatutil.HeaderDLQErrorMessage],
 	}).Warn("consumed dead-lettered message")
 
 	// Always ACK — these messages have already exhausted retries.

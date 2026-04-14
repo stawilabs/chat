@@ -12,7 +12,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/cache"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
@@ -88,7 +88,7 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 		return nil
 	}
 
-	if err := internal.IsValidContactLink(typer); err != nil {
+	if err := chatutil.IsValidContactLink(typer); err != nil {
 		return err
 	}
 	if roomID == "" {
@@ -142,7 +142,7 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 	recipient *commonv1.ContactLink,
 	eventIDList ...string,
 ) error {
-	if err := internal.IsValidContactLink(recipient); err != nil {
+	if err := chatutil.IsValidContactLink(recipient); err != nil {
 		return err
 	}
 	if roomID == "" {
@@ -196,7 +196,7 @@ func (cb *connectBusiness) UpdateReadMarker(
 	reader *commonv1.ContactLink,
 	upToEventID string,
 ) error {
-	if err := internal.IsValidContactLink(reader); err != nil {
+	if err := chatutil.IsValidContactLink(reader); err != nil {
 		return err
 	}
 	if roomID == "" {

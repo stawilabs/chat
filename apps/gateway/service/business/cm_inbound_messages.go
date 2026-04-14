@@ -7,7 +7,7 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/util"
 )
 
@@ -205,7 +205,7 @@ func (cm *connectionManager) processLiveRequest(
 		return nil
 	}
 
-	source, err := internal.AuthContactLink(ctx)
+	source, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get contact link: %w", err)
 	}

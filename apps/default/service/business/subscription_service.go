@@ -9,7 +9,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/util"
 )
@@ -109,7 +109,7 @@ func (ss *subscriptionService) GetSubscription(
 	contact *commonv1.ContactLink,
 	roomID string,
 ) (*models.RoomSubscription, error) {
-	if err := internal.IsValidContactLink(contact); err != nil {
+	if err := chatutil.IsValidContactLink(contact); err != nil {
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func (ss *subscriptionService) GetSubscriptionsForRooms(
 	contact *commonv1.ContactLink,
 	roomIDs []string,
 ) (map[string]*models.RoomSubscription, error) {
-	if err := internal.IsValidContactLink(contact); err != nil {
+	if err := chatutil.IsValidContactLink(contact); err != nil {
 		return nil, err
 	}
 
@@ -178,7 +178,7 @@ func (ss *subscriptionService) HasRole(
 	ctx context.Context,
 	contact *commonv1.ContactLink,
 	roomID string, roleLevel roleLevel) (*models.RoomSubscription, error) {
-	if err := internal.IsValidContactLink(contact); err != nil {
+	if err := chatutil.IsValidContactLink(contact); err != nil {
 		return nil, err
 	}
 
@@ -243,7 +243,7 @@ func (ss *subscriptionService) GetSubscribedRoomIDs(
 	ctx context.Context,
 	contact *commonv1.ContactLink,
 ) ([]string, error) {
-	if err := internal.IsValidContactLink(contact); err != nil {
+	if err := chatutil.IsValidContactLink(contact); err != nil {
 		return nil, err
 	}
 

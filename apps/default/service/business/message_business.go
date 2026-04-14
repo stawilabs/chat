@@ -15,8 +15,8 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/data"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
@@ -98,7 +98,7 @@ func (mb *messageBusiness) SendEvents(
 		return nil, service.ErrMessageContentRequired
 	}
 
-	if validErr := internal.IsValidContactLink(sentBy); validErr != nil {
+	if validErr := chatutil.IsValidContactLink(sentBy); validErr != nil {
 		return nil, validErr
 	}
 
@@ -451,7 +451,7 @@ func (mb *messageBusiness) GetMessage(
 		return nil, service.ErrUnspecifiedID
 	}
 
-	if err := internal.IsValidContactLink(gottenBy); err != nil {
+	if err := chatutil.IsValidContactLink(gottenBy); err != nil {
 		return nil, err
 	}
 
@@ -492,7 +492,7 @@ func (mb *messageBusiness) GetHistory(
 		return nil, service.ErrMessageRoomIDRequired
 	}
 
-	if validErr := internal.IsValidContactLink(gottenBy); validErr != nil {
+	if validErr := chatutil.IsValidContactLink(gottenBy); validErr != nil {
 		return nil, validErr
 	}
 
@@ -563,7 +563,7 @@ func (mb *messageBusiness) DeleteMessage(
 		return service.ErrUnspecifiedID
 	}
 
-	if validErr := internal.IsValidContactLink(deletedBy); validErr != nil {
+	if validErr := chatutil.IsValidContactLink(deletedBy); validErr != nil {
 		return validErr
 	}
 
@@ -628,7 +628,7 @@ func (mb *messageBusiness) MarkMessagesAsRead(
 	eventID string,
 	markedBy *commonv1.ContactLink,
 ) error {
-	if err := internal.IsValidContactLink(markedBy); err != nil {
+	if err := chatutil.IsValidContactLink(markedBy); err != nil {
 		return err
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 )
 
 // Metadata represents the cached connection metadata.
@@ -18,7 +18,7 @@ type Metadata struct {
 }
 
 func (cm *Metadata) Key() string {
-	return internal.MetadataKey(cm.ProfileID, cm.DeviceID)
+	return chatutil.MetadataKey(cm.ProfileID, cm.DeviceID)
 }
 
 type Connection interface {

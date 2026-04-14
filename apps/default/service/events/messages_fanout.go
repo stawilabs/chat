@@ -11,7 +11,7 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/datastore/pool"
 	frevents "github.com/pitabwire/frame/events"

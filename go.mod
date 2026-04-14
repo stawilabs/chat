@@ -17,7 +17,7 @@ require (
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/otelconnect v0.9.0
 	github.com/antinvestor/common v1.4.3
-	github.com/pitabwire/frame v1.93.9
+	github.com/pitabwire/frame v1.94.0
 	github.com/pitabwire/util v0.8.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0

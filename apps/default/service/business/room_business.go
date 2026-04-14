@@ -18,8 +18,8 @@ import (
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/internal"
-	chattel "github.com/antinvestor/service-chat/internal/telemetry"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
+	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/data"
 	frevents "github.com/pitabwire/frame/events"
@@ -82,7 +82,7 @@ func (rb *roomBusiness) CreateRoom(
 	ctx, span := chattel.RoomTracer.Start(ctx, "CreateRoom")
 	defer func() { chattel.RoomTracer.End(ctx, span, err) }()
 
-	err = internal.IsValidContactLink(createdBy)
+	err = chatutil.IsValidContactLink(createdBy)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (rb *roomBusiness) GetRoom(
 	roomID string,
 	searchedBy *commonv1.ContactLink,
 ) (*chatv1.Room, error) {
-	if err := internal.IsValidContactLink(searchedBy); err != nil {
+	if err := chatutil.IsValidContactLink(searchedBy); err != nil {
 		return nil, err
 	}
 
@@ -220,7 +220,7 @@ func (rb *roomBusiness) UpdateRoom(
 		return nil, service.ErrRoomIDRequired
 	}
 
-	if err := internal.IsValidContactLink(updatedBy); err != nil {
+	if err := chatutil.IsValidContactLink(updatedBy); err != nil {
 		return nil, err
 	}
 
@@ -288,7 +288,7 @@ func (rb *roomBusiness) DeleteRoom(
 		return service.ErrRoomIDRequired
 	}
 
-	if validErr := internal.IsValidContactLink(deletedBy); validErr != nil {
+	if validErr := chatutil.IsValidContactLink(deletedBy); validErr != nil {
 		return validErr
 	}
 
@@ -343,7 +343,7 @@ func (rb *roomBusiness) SearchRooms(
 	req *chatv1.SearchRoomsRequest,
 	searchedBy *commonv1.ContactLink,
 ) ([]*chatv1.Room, error) {
-	if err := internal.IsValidContactLink(searchedBy); err != nil {
+	if err := chatutil.IsValidContactLink(searchedBy); err != nil {
 		return nil, err
 	}
 
@@ -427,7 +427,7 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 		return service.ErrProfileIDsRequired
 	}
 
-	if err := internal.IsValidContactLink(addedBy); err != nil {
+	if err := chatutil.IsValidContactLink(addedBy); err != nil {
 		return err
 	}
 
@@ -485,7 +485,7 @@ func (rb *roomBusiness) RemoveRoomSubscriptions(
 		return service.ErrProfileIDsRequired
 	}
 
-	if err := internal.IsValidContactLink(removedBy); err != nil {
+	if err := chatutil.IsValidContactLink(removedBy); err != nil {
 		return err
 	}
 
@@ -524,7 +524,7 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		return service.ErrUnspecifiedID
 	}
 
-	if err := internal.IsValidContactLink(actor); err != nil {
+	if err := chatutil.IsValidContactLink(actor); err != nil {
 		return err
 	}
 
@@ -628,7 +628,7 @@ func (rb *roomBusiness) SearchRoomSubscriptions(
 		return nil, service.ErrRoomIDRequired
 	}
 
-	if err := internal.IsValidContactLink(searchedBy); err != nil {
+	if err := chatutil.IsValidContactLink(searchedBy); err != nil {
 		return nil, err
 	}
 
@@ -672,7 +672,7 @@ func (rb *roomBusiness) GetSubscriptionForContact(
 	roomID string,
 	contact *commonv1.ContactLink,
 ) (*models.RoomSubscription, error) {
-	if err := internal.IsValidContactLink(contact); err != nil {
+	if err := chatutil.IsValidContactLink(contact); err != nil {
 		return nil, err
 	}
 
@@ -697,7 +697,7 @@ func (rb *roomBusiness) UpdateSubscriptionSettings(
 	req *chatv1.UpdateSubscriptionSettingsRequest,
 	updatedBy *commonv1.ContactLink,
 ) (*chatv1.SubscriptionSettings, error) {
-	if err := internal.IsValidContactLink(updatedBy); err != nil {
+	if err := chatutil.IsValidContactLink(updatedBy); err != nil {
 		return nil, err
 	}
 

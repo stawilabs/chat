@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/internal"
+	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -141,9 +141,9 @@ func TestPublish_Success(t *testing.T) {
 
 	// Verify headers contain original headers plus DLQ context
 	pubHeaders := pub.published[0].headers
-	assert.Equal(t, "user123", pubHeaders[internal.HeaderProfileID])
-	assert.Equal(t, "device.event.delivery", pubHeaders[internal.HeaderDLQOriginalQueue])
-	assert.Equal(t, "test error", pubHeaders[internal.HeaderDLQErrorMessage])
+	assert.Equal(t, "user123", pubHeaders[chatutil.HeaderProfileID])
+	assert.Equal(t, "device.event.delivery", pubHeaders[chatutil.HeaderDLQOriginalQueue])
+	assert.Equal(t, "test error", pubHeaders[chatutil.HeaderDLQErrorMessage])
 }
 
 func TestPublish_PreservesOriginalHeaders(t *testing.T) {
@@ -154,10 +154,10 @@ func TestPublish_PreservesOriginalHeaders(t *testing.T) {
 	ctx := context.Background()
 	msg := &emptypb.Empty{}
 	originalHeaders := map[string]string{
-		internal.HeaderProfileID: "user456",
-		internal.HeaderDeviceID:  "device789",
-		internal.HeaderShardID:   "2",
-		internal.HeaderPriority:  "high",
+		chatutil.HeaderProfileID: "user456",
+		chatutil.HeaderDeviceID:  "device789",
+		chatutil.HeaderShardID:   "2",
+		chatutil.HeaderPriority:  "high",
 	}
 
 	err := dlp.Publish(ctx, msg, "test.queue", "delivery failed", originalHeaders)
@@ -167,14 +167,14 @@ func TestPublish_PreservesOriginalHeaders(t *testing.T) {
 	pubHeaders := pub.published[0].headers
 
 	// All original headers should be preserved
-	assert.Equal(t, "user456", pubHeaders[internal.HeaderProfileID])
-	assert.Equal(t, "device789", pubHeaders[internal.HeaderDeviceID])
-	assert.Equal(t, "2", pubHeaders[internal.HeaderShardID])
-	assert.Equal(t, "high", pubHeaders[internal.HeaderPriority])
+	assert.Equal(t, "user456", pubHeaders[chatutil.HeaderProfileID])
+	assert.Equal(t, "device789", pubHeaders[chatutil.HeaderDeviceID])
+	assert.Equal(t, "2", pubHeaders[chatutil.HeaderShardID])
+	assert.Equal(t, "high", pubHeaders[chatutil.HeaderPriority])
 
 	// DLQ headers should be added
-	assert.Equal(t, "test.queue", pubHeaders[internal.HeaderDLQOriginalQueue])
-	assert.Equal(t, "delivery failed", pubHeaders[internal.HeaderDLQErrorMessage])
+	assert.Equal(t, "test.queue", pubHeaders[chatutil.HeaderDLQOriginalQueue])
+	assert.Equal(t, "delivery failed", pubHeaders[chatutil.HeaderDLQErrorMessage])
 }
 
 func TestPublish_NilHeaders(t *testing.T) {
@@ -190,8 +190,8 @@ func TestPublish_NilHeaders(t *testing.T) {
 
 	pub := qm.publishers[cfg.QueueDeadLetterName]
 	pubHeaders := pub.published[0].headers
-	assert.Equal(t, "test.queue", pubHeaders[internal.HeaderDLQOriginalQueue])
-	assert.Equal(t, "error msg", pubHeaders[internal.HeaderDLQErrorMessage])
+	assert.Equal(t, "test.queue", pubHeaders[chatutil.HeaderDLQOriginalQueue])
+	assert.Equal(t, "error msg", pubHeaders[chatutil.HeaderDLQErrorMessage])
 }
 
 func TestPublish_GetPublisherError(t *testing.T) {
@@ -241,7 +241,7 @@ func TestPublish_DoesNotMutateOriginalHeaders(t *testing.T) {
 	// Original headers should not be mutated
 	assert.Len(t, originalHeaders, 1)
 	assert.Equal(t, "value", originalHeaders["key"])
-	_, hasDLQKey := originalHeaders[internal.HeaderDLQOriginalQueue]
+	_, hasDLQKey := originalHeaders[chatutil.HeaderDLQOriginalQueue]
 	assert.False(t, hasDLQKey, "original headers should not contain DLQ keys")
 }
 
