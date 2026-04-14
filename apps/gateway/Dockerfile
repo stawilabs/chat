@@ -17,7 +17,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the actual source
-COPY ./internal ./internal
+COPY ./pkg ./pkg
 COPY ./apps/default/service/models ./apps/default/service/models
 COPY ./apps/default/service/repository ./apps/default/service/repository
 COPY ./apps/gateway ./apps/gateway
