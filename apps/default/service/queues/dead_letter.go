@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strconv"
+	"time"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	"github.com/antinvestor/service-chat/apps/default/config"
@@ -16,7 +18,21 @@ import (
 const (
 	// dlqExtraHeaders is the number of DLQ-specific headers added to the original headers.
 	dlqExtraHeaders = 2
+
+	// retryBaseDelayMs is the base delay in milliseconds for the first retry.
+	retryBaseDelayMs = 500
+	// retryMaxDelayMs is the maximum delay in milliseconds for any retry.
+	retryMaxDelayMs = 8000
 )
+
+// retryDelay returns the exponential backoff duration for the given retry count.
+func retryDelay(retryCount int32) time.Duration {
+	delay := retryBaseDelayMs * (1 << max(0, retryCount-1))
+	if delay > retryMaxDelayMs {
+		delay = retryMaxDelayMs
+	}
+	return time.Duration(delay) * time.Millisecond
+}
 
 // DeadLetterPublisher publishes failed deliveries to the dead-letter queue
 // when they exceed the maximum retry count.
@@ -90,8 +106,15 @@ func RetryOrDeadLetter(
 		return dlp.Publish(ctx, delivery, queueName, originalErr.Error(), headers)
 	}
 
-	// Republish immediately — do not sleep inside the queue handler goroutine
-	// as that blocks all message processing for the consumer.
+	// Compute exponential backoff and set retry-after header so the consumer
+	// can re-enqueue without blocking the handler goroutine.
+	if headers == nil {
+		headers = make(map[string]string)
+	}
+	delay := retryDelay(delivery.GetRetryCount())
+	retryAfter := time.Now().Add(delay).UnixMilli()
+	headers[chatutil.HeaderRetryAfter] = strconv.FormatInt(retryAfter, 10)
+
 	topic, err := qMan.GetPublisher(queueName)
 	if err != nil {
 		util.Log(ctx).WithError(err).WithField("queue_name", queueName).
@@ -109,7 +132,46 @@ func RetryOrDeadLetter(
 	util.Log(ctx).WithFields(map[string]any{
 		"retry_count": delivery.GetRetryCount(),
 		"queue_name":  queueName,
+		"retry_after": retryAfter,
+		"delay_ms":    delay.Milliseconds(),
 	}).
 		Debug("delivery republished for retry")
 	return nil
+}
+
+// ShouldDeferRetry checks whether a message has a retry-after header whose
+// timestamp is still in the future. If so, it re-enqueues the message
+// unchanged and returns (true, nil) so the caller can skip processing.
+// When the retry-after time has elapsed the function returns (false, nil)
+// and the caller should proceed normally.
+func ShouldDeferRetry(
+	ctx context.Context,
+	qMan queue.Manager,
+	queueName string,
+	payload any,
+	headers map[string]string,
+) (bool, error) {
+	retryAfterStr, ok := headers[chatutil.HeaderRetryAfter]
+	if !ok {
+		return false, nil
+	}
+	retryAfter, err := strconv.ParseInt(retryAfterStr, 10, 64)
+	if err != nil {
+		return false, nil //nolint:nilerr // Malformed header — process the message normally.
+	}
+	if time.Now().UnixMilli() >= retryAfter {
+		return false, nil
+	}
+
+	topic, pubErr := qMan.GetPublisher(queueName)
+	if pubErr != nil {
+		return true, pubErr
+	}
+	if pubErr = topic.Publish(ctx, payload, headers); pubErr != nil {
+		return true, pubErr
+	}
+
+	util.Log(ctx).WithField("retry_after", retryAfter).
+		Debug("message deferred, retry-after still in future")
+	return true, nil
 }

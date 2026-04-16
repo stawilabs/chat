@@ -88,6 +88,12 @@ var (
 		"Total delivery queue messages retried",
 	)
 
+	DeliverySkippedEmptyProfileCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.delivery.skipped.empty_profile",
+		"Total deliveries skipped due to empty profile ID",
+	)
+
 	DeliveryLatencyHistogram = telemetry.LatencyMeasure(
 		"chat.delivery",
 	)

@@ -7,11 +7,13 @@ import '../../../core/error/app_error.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/responsive/responsive_layout.dart';
 import '../../../core/responsive/three_panel_layout.dart';
+import '../../../core/sync/sync_engine.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../widgets/app_drawer.dart';
 import '../../../widgets/empty_state.dart';
 import '../../../widgets/error_banner.dart';
 import '../../../widgets/skeleton_loader.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../calls/ui/incoming_call_banner.dart';
 import '../../messages/ui/chat_screen.dart';
 import '../../notifications/mute_service.dart';
@@ -368,6 +370,9 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
         // Call banner
         const SliverToBoxAdapter(child: IncomingCallBanner()),
 
+        // Auth expired banner
+        SliverToBoxAdapter(child: _buildAuthExpiredBanner()),
+
         // Chat list or empty state
         _buildMobileChatList(roomsAsync, filteredRoomsAsync, searchState),
       ],
@@ -596,6 +601,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
       children: [
         // Always-visible search bar and filter chips
         const RoomSearchBar(),
+        // Auth expired banner
+        _buildAuthExpiredBanner(),
         // Room list
         Expanded(
           child: _buildRoomList(
@@ -641,6 +648,41 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
         message: 'Select a room to view details',
       );
     }
+  }
+
+  /// Banner shown when the auth token has permanently expired.
+  Widget _buildAuthExpiredBanner() {
+    final connectionState = ref.watch(connectionStateProvider);
+    final isExpired = connectionState.whenOrNull(
+          data: (state) => state == SyncConnectionState.authExpired,
+        ) ??
+        false;
+
+    if (!isExpired) return const SizedBox.shrink();
+
+    return MaterialBanner(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: const Icon(Icons.warning_amber_rounded, color: Colors.white),
+      backgroundColor: Colors.red.shade700,
+      content: const Text(
+        'Your session has expired. Please sign in again.',
+        style: TextStyle(color: Colors.white),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            ref.read(authStateProvider.notifier).logout();
+          },
+          child: const Text(
+            'Sign In',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildRoomList(

@@ -126,6 +126,11 @@ func (dq *hotPathDeliveryQueueHandler) Handle(
 		return err
 	}
 
+	if deferred, deferErr := ShouldDeferRetry(ctx, dq.qMan,
+		dq.cfg.QueueDeviceEventDeliveryName, eventDelivery, headers); deferred {
+		return deferErr
+	}
+
 	err = dq.processDelivery(ctx, headers, eventDelivery)
 	return err
 }
@@ -136,6 +141,21 @@ func (dq *hotPathDeliveryQueueHandler) processDelivery(
 	eventDelivery *eventsv1.Delivery,
 ) error {
 	profileID := extractProfileID(eventDelivery)
+
+	if profileID == "" {
+		util.Log(ctx).WithFields(map[string]any{
+			"event_id": eventDelivery.GetEvent().GetEventId(),
+			"room_id":  eventDelivery.GetEvent().GetRoomId(),
+		}).Warn("empty profile ID in delivery, routing to offline delivery")
+
+		chattel.DeliverySkippedEmptyProfileCounter.Add(ctx, 1)
+
+		offlinePub, err := dq.getOfflineDeliveryTopic()
+		if err != nil {
+			return err
+		}
+		return offlinePub.Publish(ctx, eventDelivery, headers)
+	}
 
 	devices, err := dq.resolveDevicesForProfile(ctx, profileID)
 	if err != nil {

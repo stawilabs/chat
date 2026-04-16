@@ -150,7 +150,14 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
 ///   print('Connected to server');
 /// }
 /// ```
-enum SyncConnectionState { disconnected, connecting, connected }
+enum SyncConnectionState {
+  disconnected,
+  connecting,
+  connected,
+
+  /// Token refresh permanently failed — user must re-authenticate.
+  authExpired,
+}
 
 /// Stream provider for monitoring sync connection state
 final connectionStateProvider = StreamProvider<SyncConnectionState>((
@@ -262,9 +269,11 @@ class SyncEngine with WidgetsBindingObserver {
       _connectionStateController.stream;
 
   /// Get current connection state synchronously
-  SyncConnectionState get currentConnectionState => _isConnected
-      ? SyncConnectionState.connected
-      : SyncConnectionState.disconnected;
+  SyncConnectionState get currentConnectionState {
+    if (_isConnected) return SyncConnectionState.connected;
+    if (_authErrorCount > _maxAuthErrors) return SyncConnectionState.authExpired;
+    return SyncConnectionState.disconnected;
+  }
 
   // Exponential backoff configuration
   static const _initialBackoffMs = 1000; // 1 second
@@ -626,7 +635,7 @@ class SyncEngine with WidgetsBindingObserver {
             AppLogger.error(
               'Max auth errors reached, stopping sync until re-login',
             );
-            _connectionStateController.add(SyncConnectionState.disconnected);
+            _connectionStateController.add(SyncConnectionState.authExpired);
             _connectionLock?.complete();
             _connectionLock = null;
             return; // Exit the loop - user needs to re-login
@@ -663,7 +672,7 @@ class SyncEngine with WidgetsBindingObserver {
                 'Permanent token refresh failure, stopping sync engine',
                 data: {'error': e.message},
               );
-              _connectionStateController.add(SyncConnectionState.disconnected);
+              _connectionStateController.add(SyncConnectionState.authExpired);
               _connectionLock?.complete();
               _connectionLock = null;
               return; // Exit the loop - user needs to re-login

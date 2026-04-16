@@ -259,9 +259,9 @@ void main() {
         expect(db, isNotNull);
       });
 
-      test('schema version is 1', () {
-        // Version 1: reset to a fresh baseline with no historical migrations.
-        expect(db.schemaVersion, equals(1));
+      test('schema version is 2', () {
+        // Version 2: added pending_jobs dedup index.
+        expect(db.schemaVersion, equals(2));
       });
     });
 

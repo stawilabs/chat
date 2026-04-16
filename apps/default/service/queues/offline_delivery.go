@@ -71,6 +71,11 @@ func (dq *offlineDeliveryQueueHandler) Handle(
 			"max retries exceeded", headers)
 	}
 
+	if deferred, deferErr := ShouldDeferRetry(ctx, dq.qMan,
+		dq.cfg.QueueOfflineEventDeliveryName, evtMsg, headers); deferred {
+		return deferErr
+	}
+
 	util.Log(ctx).WithFields(map[string]any{
 		"event_id":  evtMsg.GetEvent().GetEventId(),
 		"device_id": evtMsg.GetDeviceId(),

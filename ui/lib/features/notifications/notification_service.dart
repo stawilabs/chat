@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/router.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/networking/client.dart';
 import '../../core/storage/key_manager.dart';
@@ -368,15 +369,23 @@ class NotificationService {
 
   /// Navigate to chat screen for a specific room
   void _navigateToChat(String roomId, String? roomName) {
-    // Get the router from the provider
-    // Note: This requires a navigation context, which we'll handle via a global key
     AppLogger.info(
       'Navigating to chat from notification',
       data: {'roomId': roomId, 'roomName': roomName},
     );
 
-    // Deep link navigation will be handled by the app's navigation system
-    // The route path is: /chat/:roomId?name=:roomName
+    try {
+      final router = _ref.read(routerProvider);
+      final encodedName = Uri.encodeComponent(roomName ?? 'Chat');
+      router.go('/chat/$roomId?name=$encodedName');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Failed to navigate to chat from notification',
+        error: e,
+        stackTrace: stackTrace,
+        data: {'roomId': roomId},
+      );
+    }
   }
 
   /// Unregister FCM token from backend (call on logout)

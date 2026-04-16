@@ -928,14 +928,31 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await _initializeSchema(m);
     },
-    onUpgrade: (m, from, to) async {},
+    onUpgrade: (m, from, to) async {
+      // Each version bump MUST have a corresponding migration block.
+      // Use addColumn, createTable, createIndex — never drop+recreate.
+      for (var target = from + 1; target <= to; target++) {
+        switch (target) {
+          case 2:
+            // Add index on pending_jobs(status, type, created_at) for
+            // job deduplication query performance.
+            await m.createIndex(
+              Index(
+                'idx_pending_jobs_dedup',
+                'CREATE INDEX IF NOT EXISTS idx_pending_jobs_dedup '
+                    'ON pending_jobs (status, type, created_at)',
+              ),
+            );
+        }
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },

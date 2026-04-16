@@ -109,6 +109,7 @@ class PendingJobRepository {
   static const _maxHealthyPendingCount = 100;
   static const _maxHealthyFailedCount = 50;
   static const _maxHealthyAverageRetries = 2.0;
+  static const _deduplicationWindowMs = 30 * 1000; // 30 seconds
 
   /// Priority mapping for job types
   static JobPriority _getJobPriority(domain.JobType type) {
@@ -153,10 +154,47 @@ class PendingJobRepository {
     }
   }
 
-  /// Add a job with automatic priority assignment
+  /// Add a job with automatic priority assignment and deduplication.
+  ///
+  /// For message jobs (sendMessage, sendMediaMessage), deduplicates by
+  /// localId within a 30-second window to prevent double-sends from
+  /// rapid taps or widget rebuilds.
   Future<int> addJob(domain.JobType type, Map<String, dynamic> payload) async {
     final priority = _getJobPriority(type);
     final now = DateTime.now().millisecondsSinceEpoch;
+
+    // Deduplicate message jobs by localId within a time window.
+    // localId is the canonical unique identifier assigned by
+    // MessageSendingService before the job is created.
+    if (_isMessageJobType(type)) {
+      final localId = payload['localId'] as String?;
+      if (localId != null && localId.isNotEmpty) {
+        final deduplicationCutoff = now - _deduplicationWindowMs;
+        final existing = await (_database.select(_database.pendingJobs)
+              ..where(
+                (t) =>
+                    t.status.equals('pending') &
+                    t.type.isIn(_messageJobTypeNames) &
+                    t.createdAt.isBiggerOrEqualValue(deduplicationCutoff),
+              ))
+            .get();
+
+        for (final job in existing) {
+          final jobPayload = _decodePayload(job.payload);
+          if (jobPayload['localId'] == localId) {
+            AppLogger.debug(
+              'Duplicate job suppressed',
+              data: {
+                'existingJobId': job.id,
+                'type': type.name,
+                'localId': localId,
+              },
+            );
+            return job.id;
+          }
+        }
+      }
+    }
 
     final id = await _database
         .into(_database.pendingJobs)
@@ -176,6 +214,16 @@ class PendingJobRepository {
 
     return id;
   }
+
+  /// Whether the job type is a message send that should be deduplicated.
+  static bool _isMessageJobType(domain.JobType type) =>
+      type == domain.JobType.sendMessage ||
+      type == domain.JobType.sendMediaMessage;
+
+  static final _messageJobTypeNames = [
+    domain.JobType.sendMessage.name,
+    domain.JobType.sendMediaMessage.name,
+  ];
 
   /// Get pending jobs in priority order
   ///
