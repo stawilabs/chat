@@ -1,22 +1,18 @@
 import 'dart:convert';
-import 'dart:io' as io;
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
-import 'package:connectrpc/connect.dart' as connect;
-import 'package:connectrpc/io.dart' as connect_io;
-import 'package:connectrpc/protobuf.dart' as connect_protobuf;
-import 'package:connectrpc/protocol/connect.dart' as connect_protocol;
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart' as fixnum;
 
 import '../../features/messages/data/message_repository.dart';
 import '../../features/messages/domain/room_event.dart' as domain;
 import '../../features/notifications/badge_service.dart';
-import '../auth/shared_token_service.dart';
+import '../auth/background_auth_helper.dart';
 import '../db/database.dart';
 import '../files/files_config_service.dart';
 import '../logging/app_logger.dart';
 import '../networking/api_config.dart';
+import '../networking/runtime_transport.dart';
 import '../settings/settings_service.dart';
 import 'chat_event_codec.dart';
 import 'pending_job.dart' as domain_job;
@@ -34,58 +30,45 @@ class BackgroundSyncTask {
       final jobRepo = PendingJobRepository(database);
       final messageRepo = MessageRepository(database);
 
-      // Get auth token using SharedTokenService
-      // This validates expiry and will refresh if needed
-      final tokenService = SharedTokenService.instance;
-      final accessToken = await tokenService.getAccessToken();
+      // Construct a fresh runtime for this task; returns null when the
+      // user is not signed in (tokens never leave the runtime).
+      final result = await BackgroundAuthHelper.withRuntime<bool>((rt) async {
+        // Resolve the current profile ID from the ID-token claims.
+        final claims = await rt.getUserClaims();
+        final currentProfileId = claims.sub;
 
-      if (accessToken == null) {
-        // Log token info for debugging
-        final tokenInfo = await tokenService.getTokenInfo();
-        AppLogger.debug(
-          'No valid access token for background sync',
-          data: tokenInfo,
+        // Connect transport routed through runtime.fetch — the runtime
+        // injects Authorization (and DPoP, if bound) on every RPC, so
+        // call sites do not pass explicit Authorization headers.
+        final transport = RuntimeTransport(
+          runtime: rt,
+          baseUrl: Uri.parse(ApiConfig.chatBaseUrl),
         );
-        return true; // Not a failure - foreground will refresh and retry
+        final chatClient = pb.ChatServiceClient(transport);
+
+        // Download new messages from subscribed rooms
+        await _downloadNewMessages(database, messageRepo, chatClient);
+
+        // Process pending jobs (uploads)
+        final success = await _processPendingJobs(
+          database,
+          jobRepo,
+          messageRepo,
+          chatClient,
+          currentProfileId,
+        );
+
+        return success;
+      });
+
+      if (result == null) {
+        AppLogger.debug(
+          'No valid auth runtime for background sync; skipping',
+        );
+        return true; // Not a failure - foreground will resume and retry
       }
 
-      // Get profile ID from ID token using SharedTokenService
-      final currentProfileId = await tokenService.getProfileId();
-
-      // Create auth headers
-      final authHeaders = connect.Headers();
-      authHeaders['Authorization'] = 'Bearer $accessToken';
-
-      // Initialize API client with optimized HTTP client
-      final httpClient = io.HttpClient();
-      httpClient.connectionTimeout = ApiConfig.connectionTimeout;
-      httpClient.idleTimeout = ApiConfig.idleTimeout;
-      httpClient.maxConnectionsPerHost = 2; // Limit for background tasks
-
-      final transport = connect_protocol.Transport(
-        baseUrl: ApiConfig.chatBaseUrl,
-        codec: const connect_protobuf.ProtoCodec(),
-        httpClient: connect_io.createHttpClient(httpClient),
-      );
-      final chatClient = pb.ChatServiceClient(transport);
-
-      // Download new messages from subscribed rooms
-      await _downloadNewMessages(
-        database,
-        messageRepo,
-        chatClient,
-        authHeaders,
-      );
-
-      // Process pending jobs (uploads)
-      final success = await _processPendingJobs(
-        database,
-        jobRepo,
-        messageRepo,
-        chatClient,
-        authHeaders,
-        currentProfileId,
-      );
+      final success = result;
 
       // Clean up expired (disappearing) messages
       try {
@@ -168,7 +151,6 @@ class BackgroundSyncTask {
     PendingJobRepository jobRepo,
     MessageRepository messageRepo,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
     String? currentProfileId,
   ) async {
     try {
@@ -192,7 +174,6 @@ class BackgroundSyncTask {
             chatClient,
             messageRepo,
             jobRepo,
-            authHeaders,
             currentProfileId,
           );
         } catch (e, stackTrace) {
@@ -224,7 +205,6 @@ class BackgroundSyncTask {
     AppDatabase database,
     MessageRepository messageRepo,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     try {
       // Get list of rooms the user is subscribed to
@@ -255,10 +235,7 @@ class BackgroundSyncTask {
             forward: hasCursor,
           );
 
-          final response = await chatClient.getHistory(
-            request,
-            headers: authHeaders,
-          );
+          final response = await chatClient.getHistory(request);
 
           for (final event in response.events) {
             if (event.id.isEmpty || event.roomId.isEmpty) continue;
@@ -503,7 +480,6 @@ class BackgroundSyncTask {
     pb.ChatServiceClient chatClient,
     MessageRepository messageRepo,
     PendingJobRepository jobRepo,
-    connect.Headers authHeaders,
     String? currentProfileId,
   ) async {
     switch (job.type) {
@@ -514,30 +490,29 @@ class BackgroundSyncTask {
           database,
           chatClient,
           messageRepo,
-          authHeaders,
           currentProfileId,
         );
         break;
       case domain_job.JobType.createRoom:
-        await _processCreateRoom(database, job, chatClient, authHeaders);
+        await _processCreateRoom(database, job, chatClient);
         break;
       case domain_job.JobType.updateRoom:
-        await _processUpdateRoom(job, chatClient, authHeaders);
+        await _processUpdateRoom(job, chatClient);
         break;
       case domain_job.JobType.deleteRoom:
-        await _processDeleteRoom(job, chatClient, authHeaders);
+        await _processDeleteRoom(job, chatClient);
         break;
       case domain_job.JobType.addRoomMembers:
-        await _processAddRoomMembers(job, chatClient, authHeaders);
+        await _processAddRoomMembers(job, chatClient);
         break;
       case domain_job.JobType.removeRoomMembers:
-        await _processRemoveRoomMembers(job, database, chatClient, authHeaders);
+        await _processRemoveRoomMembers(job, database, chatClient);
         break;
       case domain_job.JobType.changeMemberRole:
-        await _processChangeMemberRole(job, chatClient, authHeaders);
+        await _processChangeMemberRole(job, chatClient);
         break;
       case domain_job.JobType.deleteMessage:
-        await _processDeleteMessage(job, chatClient, authHeaders);
+        await _processDeleteMessage(job, chatClient);
         break;
       default:
         AppLogger.debug(
@@ -560,7 +535,6 @@ class BackgroundSyncTask {
     AppDatabase database,
     domain_job.PendingJob job,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
 
@@ -585,7 +559,7 @@ class BackgroundSyncTask {
       );
     }
 
-    final response = await chatClient.createRoom(request, headers: authHeaders);
+    final response = await chatClient.createRoom(request);
 
     if (response.hasRoom()) {
       final roomId = response.room.id;
@@ -598,7 +572,7 @@ class BackgroundSyncTask {
       // This ensures the current user's subscription ID is available
       // for sending messages when the app comes back to foreground
       try {
-        await _syncRoomMembers(database, chatClient, authHeaders, roomId);
+        await _syncRoomMembers(database, chatClient, roomId);
         AppLogger.debug(
           'Room members synced after background creation',
           data: {'roomId': roomId},
@@ -619,15 +593,11 @@ class BackgroundSyncTask {
   static Future<void> _syncRoomMembers(
     AppDatabase database,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
     String roomId,
   ) async {
     // Fetch subscriptions from API
     final request = pb.SearchRoomSubscriptionsRequest(roomId: roomId);
-    final response = await chatClient.searchRoomSubscriptions(
-      request,
-      headers: authHeaders,
-    );
+    final response = await chatClient.searchRoomSubscriptions(request);
 
     var memberCount = 0;
 
@@ -677,7 +647,6 @@ class BackgroundSyncTask {
   static Future<void> _processUpdateRoom(
     domain_job.PendingJob job,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
 
@@ -693,7 +662,7 @@ class BackgroundSyncTask {
       );
     }
 
-    await chatClient.updateRoom(request, headers: authHeaders);
+    await chatClient.updateRoom(request);
     AppLogger.debug(
       'Room updated in background',
       data: {'roomId': payload['id']},
@@ -704,13 +673,12 @@ class BackgroundSyncTask {
   static Future<void> _processDeleteRoom(
     domain_job.PendingJob job,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
 
     final request = pb.DeleteRoomRequest(roomId: payload['id'] as String);
 
-    await chatClient.deleteRoom(request, headers: authHeaders);
+    await chatClient.deleteRoom(request);
     AppLogger.debug(
       'Room deleted in background',
       data: {'roomId': payload['id']},
@@ -721,7 +689,6 @@ class BackgroundSyncTask {
   static Future<void> _processAddRoomMembers(
     domain_job.PendingJob job,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
     final roomId = payload['roomId'] as String;
@@ -742,7 +709,7 @@ class BackgroundSyncTask {
       members: members,
     );
 
-    await chatClient.addRoomSubscriptions(request, headers: authHeaders);
+    await chatClient.addRoomSubscriptions(request);
     AppLogger.debug(
       'Members added in background',
       data: {'roomId': roomId, 'memberCount': profileIds.length},
@@ -754,7 +721,6 @@ class BackgroundSyncTask {
     domain_job.PendingJob job,
     AppDatabase database,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
     final roomId = payload['roomId'] as String;
@@ -797,7 +763,7 @@ class BackgroundSyncTask {
       subscriptionId: subscriptionIds,
     );
 
-    await chatClient.removeRoomSubscriptions(request, headers: authHeaders);
+    await chatClient.removeRoomSubscriptions(request);
     AppLogger.debug(
       'Members removed in background',
       data: {
@@ -811,7 +777,6 @@ class BackgroundSyncTask {
   static Future<void> _processDeleteMessage(
     domain_job.PendingJob job,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
     final messageId = payload['messageId'] as String;
@@ -833,7 +798,7 @@ class BackgroundSyncTask {
     );
 
     final request = pb.SendEventRequest(event: [event]);
-    await chatClient.sendEvent(request, headers: authHeaders);
+    await chatClient.sendEvent(request);
 
     AppLogger.debug(
       'Message deleted in background',
@@ -847,7 +812,6 @@ class BackgroundSyncTask {
     AppDatabase database,
     pb.ChatServiceClient chatClient,
     MessageRepository messageRepo,
-    connect.Headers authHeaders,
     String? currentProfileId,
   ) async {
     final payload = job.payload;
@@ -889,7 +853,7 @@ class BackgroundSyncTask {
     );
 
     final request = pb.SendEventRequest(event: [event]);
-    final response = await chatClient.sendEvent(request, headers: authHeaders);
+    final response = await chatClient.sendEvent(request);
 
     // Update local message status
     if (payload['localId'] != null && response.ack.isNotEmpty) {
@@ -911,7 +875,6 @@ class BackgroundSyncTask {
   static Future<void> _processChangeMemberRole(
     domain_job.PendingJob job,
     pb.ChatServiceClient chatClient,
-    connect.Headers authHeaders,
   ) async {
     final payload = job.payload;
     final roomId = payload['roomId'] as String?;
@@ -928,7 +891,7 @@ class BackgroundSyncTask {
       roles: [newRole],
     );
 
-    await chatClient.updateSubscriptionRole(request, headers: authHeaders);
+    await chatClient.updateSubscriptionRole(request);
   }
 
   static Future<String> _resolveSubscriptionId(

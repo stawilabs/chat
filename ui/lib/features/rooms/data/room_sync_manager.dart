@@ -1,9 +1,9 @@
 import 'dart:async';
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../../auth/data/auth_repository.dart';
 import 'room_subscription_repository.dart';
 import 'room_subscription_service.dart';
 import 'room_sync_state.dart';
@@ -118,9 +118,9 @@ class RoomSyncRecoveryResult {
 /// 2. SyncEngine when moderation events arrive with subscription IDs
 /// 3. API sync fallback when events don't arrive in time
 class RoomSyncManager {
-  RoomSyncManager(this._authRepository, this._roomSubscriptionRepository);
+  RoomSyncManager(this._authRuntime, this._roomSubscriptionRepository);
 
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
   final RoomSubscriptionRepository _roomSubscriptionRepository;
 
   /// In-memory state tracking per room
@@ -653,8 +653,9 @@ class RoomSyncManager {
     String roomId,
     List<String> subscriptionIds,
   ) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
-    final currentContactId = await _authRepository.getCurrentContactId();
+    final claims = await _authRuntime.getUserClaims();
+    final currentProfileId = claims.sub;
+    final currentContactId = claims.contactId;
 
     if (currentContactId == null) return null;
 
@@ -678,8 +679,9 @@ class RoomSyncManager {
 
   /// Check if a subscription ID belongs to the current user
   Future<bool> _isMySubscription(String roomId, String subscriptionId) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
-    final currentContactId = await _authRepository.getCurrentContactId();
+    final claims = await _authRuntime.getUserClaims();
+    final currentProfileId = claims.sub;
+    final currentContactId = claims.contactId;
 
     if (currentContactId == null) return false;
 
@@ -698,8 +700,9 @@ class RoomSyncManager {
   /// 2. Match by profileId only
   /// 3. Match by contactId only
   Future<String?> _findMySubscriptionInDb(String roomId) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
-    final currentContactId = await _authRepository.getCurrentContactId();
+    final claims = await _authRuntime.getUserClaims();
+    final currentProfileId = claims.sub;
+    final currentContactId = claims.contactId;
 
     // Try with both IDs first
     if (currentContactId != null) {
@@ -752,10 +755,10 @@ class RoomSyncManager {
 
 /// Provider for RoomSyncManager
 final roomSyncManagerProvider = Provider<RoomSyncManager>((ref) {
-  final authRepo = ref.watch(authRepositoryProvider);
+  final runtime = ref.watch(authRuntimeProvider);
   final memberRepo = ref.watch(roomSubscriptionRepositoryProvider);
 
-  final manager = RoomSyncManager(authRepo, memberRepo);
+  final manager = RoomSyncManager(runtime, memberRepo);
 
   // Start the recovery timer for automatic stuck room recovery
   manager.startRecoveryTimer();

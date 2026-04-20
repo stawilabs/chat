@@ -1,90 +1,74 @@
+import 'dart:async';
+
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart'
+    as runtime;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../../../core/networking/client.dart';
 import '../../onboarding/data/onboarding_repository.dart';
-import 'auth_repository.dart';
 
 part 'auth_state_provider.g.dart';
 
-/// Authentication state
+/// Authentication state exposed to the chat app tree.
+///
+/// Mirrors the legacy tri-state enum so existing consumers (router,
+/// login screen, drawer) continue to compile unchanged. The underlying
+/// source of truth is [runtime.AuthRuntime.authStateStream] — the
+/// runtime owns all OAuth + refresh logic.
 enum AuthState { authenticated, unauthenticated, loading }
 
-/// Authentication state notifier that watches auth status
+AuthState _map(runtime.AuthState s) {
+  switch (s) {
+    case runtime.AuthState.authenticated:
+      return AuthState.authenticated;
+    case runtime.AuthState.unauthenticated:
+      return AuthState.unauthenticated;
+    case runtime.AuthState.initializing:
+    case runtime.AuthState.refreshing:
+      return AuthState.loading;
+    case runtime.AuthState.error:
+      return AuthState.unauthenticated;
+  }
+}
+
+/// Chat-level auth state notifier. Delegates to the runtime but keeps
+/// the `login()` / `logout()` / `refresh()` surface expected by
+/// existing UI call sites.
 @riverpod
 class AuthStateNotifier extends _$AuthStateNotifier {
+  StreamSubscription<runtime.AuthState>? _sub;
+
   @override
   Future<AuthState> build() async {
-    final authRepo = ref.watch(authRepositoryProvider);
-    final isLoggedIn = await authRepo.isLoggedIn();
+    final rt = ref.watch(runtime.authRuntimeProvider);
 
-    if (isLoggedIn) {
-      // Ensure we have a valid access token (will refresh if expired)
-      // Use the status-returning version to distinguish between transient and permanent errors
-      final result = await authRepo.ensureValidAccessTokenWithStatus();
+    // Keep the notifier's state in sync with the runtime's stream for
+    // the lifetime of this provider.
+    _sub?.cancel();
+    _sub = rt.authStateStream.listen((rs) {
+      if (!ref.mounted) return;
+      state = AsyncValue.data(_map(rs));
+    });
+    ref.onDispose(() {
+      _sub?.cancel();
+      _sub = null;
+    });
 
-      if (result.token != null) {
-        AppLogger.info('Authentication state: authenticated');
-        return AuthState.authenticated;
-      }
-
-      // Token is null - check if this is a permanent failure requiring re-login
-      if (result.needsRelogin) {
-        AppLogger.info(
-          'Authentication state: unauthenticated (permanent token failure)',
-        );
-        return AuthState.unauthenticated;
-      }
-
-      // Transient error (network issues, etc.) - user is still authenticated
-      // They have valid credentials, just can't refresh right now
-      AppLogger.info(
-        'Authentication state: authenticated (transient refresh error, keeping session)',
-      );
-      return AuthState.authenticated;
-    }
-
-    AppLogger.info('Authentication state: unauthenticated');
-    return AuthState.unauthenticated;
+    return _map(rt.state);
   }
 
-  /// Trigger login
+  /// Trigger login via the runtime.
   Future<void> login() async {
     state = const AsyncValue.loading();
-
     try {
       AppLogger.info('Login initiated');
-      final authRepo = ref.read(authRepositoryProvider);
-
-      // Perform authentication
-      await authRepo.login();
-
-      // Check if provider is still mounted after async operation
+      final rt = ref.read(runtime.authRuntimeProvider);
+      await rt.ensureAuthenticated();
       if (!ref.mounted) return;
-
-      // Verify authentication was successful by checking if we have a token
-      final isLoggedIn = await authRepo.isLoggedIn();
-      if (!isLoggedIn) {
-        AppLogger.warning('Login completed but no token found');
-        state = const AsyncValue.data(AuthState.unauthenticated);
-        return;
-      }
-
-      // CRITICAL: Reload TokenManager from storage after login
-      // AuthService saves tokens to secure storage, but TokenManager has its own
-      // in-memory cache that needs to be refreshed to pick up the new tokens.
-      // Without this, API clients won't have access to the freshly stored tokens.
-      final tokenManager = ref.read(tokenManagerProvider);
-      await reloadTokenManager(tokenManager);
-
-      state = const AsyncValue.data(AuthState.authenticated);
-      AppLogger.info('Login successful, state changed to authenticated');
+      state = AsyncValue.data(_map(rt.state));
+      AppLogger.info('Login complete, state=${rt.state}');
     } catch (e, stack) {
       AppLogger.error('Login failed', error: e, stackTrace: stack);
-
-      // Always set error state and rethrow first
-      // Only skip state update if already unmounted (to avoid Riverpod error)
-      // but still rethrow so UI can handle it
       if (ref.mounted) {
         state = AsyncValue.error(e, stack);
       }
@@ -92,60 +76,32 @@ class AuthStateNotifier extends _$AuthStateNotifier {
     }
   }
 
-  /// Trigger logout
+  /// Trigger logout via the runtime.
   Future<void> logout() async {
     state = const AsyncValue.loading();
-
     try {
       AppLogger.info('Logout initiated');
-      final authRepo = ref.read(authRepositoryProvider);
+      final rt = ref.read(runtime.authRuntimeProvider);
       final onboardingRepo = ref.read(onboardingRepositoryProvider);
-      final tokenManager = ref.read(tokenManagerProvider);
-
-      // Clear tokens from both storage and TokenManager's in-memory cache
-      await authRepo.logout();
-      await tokenManager.clearTokens();
-      await onboardingRepo.reset(); // Clear onboarding state for next login
-
-      // Check if provider is still mounted after async operation
+      await rt.logout();
+      await onboardingRepo.reset();
       if (!ref.mounted) return;
-
       state = const AsyncValue.data(AuthState.unauthenticated);
-      AppLogger.info('Logout successful, state changed to unauthenticated');
+      AppLogger.info('Logout complete');
     } catch (e, stack) {
       AppLogger.error('Logout failed', error: e, stackTrace: stack);
-
-      // Only set error state if still mounted (to avoid Riverpod error)
       if (ref.mounted) {
         state = AsyncValue.error(e, stack);
       }
     }
   }
 
-  /// Refresh authentication state
-  /// This will attempt to refresh the token and update state accordingly
+  /// Re-evaluate the runtime's current state. The runtime handles its
+  /// own refresh loop internally, so this is just a state snapshot.
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final authRepo = ref.read(authRepositoryProvider);
-      final isLoggedIn = await authRepo.isLoggedIn();
-
-      if (isLoggedIn) {
-        // Try to refresh the token and check if re-login is needed
-        final result = await authRepo.ensureValidAccessTokenWithStatus(
-          maxRetries: 2, // Fewer retries for manual refresh
-          retryDelay: const Duration(seconds: 1),
-        );
-
-        if (result.needsRelogin) {
-          AppLogger.info('Refresh: permanent failure, user needs to re-login');
-          return AuthState.unauthenticated;
-        }
-
-        // Either we have a token, or it's a transient error - keep authenticated
-        return AuthState.authenticated;
-      }
-      return AuthState.unauthenticated;
-    });
+    state = AsyncValue.data(
+      _map(ref.read(runtime.authRuntimeProvider).state),
+    );
   }
 }

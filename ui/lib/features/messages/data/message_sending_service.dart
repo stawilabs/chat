@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xid/xid.dart';
 
-import '../../../core/auth/auth_context.dart';
+import '../../../core/auth/auth_context_service.dart';
 import '../../../core/crypto/e2e_encryption_service.dart';
 import '../../../core/crypto/key_exchange_service.dart';
 import '../../../core/db/database.dart';

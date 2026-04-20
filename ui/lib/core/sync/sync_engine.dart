@@ -3,14 +3,12 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
-import 'package:antinvestor_api_common/antinvestor_api_common.dart'
-    show TokenRefreshResult;
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/auth/data/auth_repository.dart';
 import '../../features/messages/data/message_providers.dart';
 import '../../features/messages/data/message_repository.dart';
 import '../../features/messages/data/read_receipt_repository.dart';
@@ -21,7 +19,6 @@ import '../../features/rooms/data/room_subscription_repository.dart';
 import '../../features/rooms/data/room_subscription_service.dart';
 import '../../features/rooms/data/room_sync_manager.dart';
 import '../../features/rooms/data/room_sync_state.dart';
-import '../auth/token_refresh_coordinator.dart';
 import '../crypto/e2e_encryption_service.dart';
 import '../db/database.dart';
 import '../files/files_config_service.dart';
@@ -53,15 +50,6 @@ final recentFailedJobsProvider = FutureProvider<List<domain_job.PendingJob>>((
   return jobRepo.getRecentFailedJobs();
 });
 
-/// Exception thrown when token refresh fails permanently and user must re-authenticate
-class TokenRefreshPermanentError implements Exception {
-  TokenRefreshPermanentError(this.message);
-  final String message;
-
-  @override
-  String toString() => 'TokenRefreshPermanentError: $message';
-}
-
 /// Exception used to defer a job when subscription ID is not available yet.
 class MissingSubscriptionIdException implements Exception {
   MissingSubscriptionIdException(this.roomId);
@@ -75,9 +63,8 @@ class MissingSubscriptionIdException implements Exception {
 final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
   final gatewayClient = await ref.watch(gatewayServiceClientProvider.future);
   final chatClient = await ref.watch(chatServiceClientProvider.future);
-  final authRepo = ref.watch(authRepositoryProvider);
+  final runtime = ref.watch(authRuntimeProvider);
   final encryptionService = ref.watch(e2eEncryptionServiceProvider);
-  final coordinator = ref.watch(tokenRefreshCoordinatorProvider);
   final roomSyncManager = ref.watch(roomSyncManagerProvider);
   final healthMonitor = ref.watch(syncHealthMonitorProvider);
   final settingsService = ref.watch(settingsServiceProvider);
@@ -94,7 +81,7 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
     chatClient,
     ref.watch(messageRepositoryProvider),
     ref.watch(pendingJobRepositoryProvider),
-    authRepo,
+    runtime,
     ref.watch(roomSubscriptionRepositoryProvider),
     ref.watch(roomSubscriptionServiceProvider),
     encryptionService,
@@ -103,33 +90,6 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
     RoomRepository(AppDatabase.instance),
     settingsService: settingsService,
     healthMonitor: healthMonitor,
-    onTokenRefresh: () async {
-      // Delegate ALL token refresh logic to the coordinator
-      // This ensures consistent behavior across TokenManager, SyncEngine,
-      // and TokenRefreshService
-      AppLogger.debug(
-        'SyncEngine: Token refresh requested, delegating to coordinator',
-      );
-
-      final result = await coordinator.refresh(source: 'SyncEngine');
-
-      if (!result.success) {
-        if (result.result == TokenRefreshResult.permanentError) {
-          throw TokenRefreshPermanentError(
-            result.error ?? 'User must re-authenticate',
-          );
-        }
-        // Transient error - return null to signal retry later
-        AppLogger.warning(
-          'SyncEngine: Token refresh failed (transient)',
-          data: {'error': result.error},
-        );
-        return null;
-      }
-
-      AppLogger.debug('SyncEngine: Token refresh successful via coordinator');
-      return result.accessToken;
-    },
   );
 
   // Register lifecycle observer
@@ -167,9 +127,6 @@ final connectionStateProvider = StreamProvider<SyncConnectionState>((
   yield* syncEngine.connectionState;
 });
 
-/// Callback type for token refresh operations
-typedef TokenRefreshCallback = Future<String?> Function();
-
 /// Real-time synchronization engine for bidirectional message streaming
 ///
 /// Manages the WebSocket-like connection to the gateway service for:
@@ -198,7 +155,7 @@ class SyncEngine with WidgetsBindingObserver {
     this._chatClient,
     this._messageRepo,
     this._jobRepo,
-    this._authRepository,
+    this._authRuntime,
     this._roomSubscriptionRepository,
     this._subscriptionService,
     this._encryptionService,
@@ -206,17 +163,15 @@ class SyncEngine with WidgetsBindingObserver {
     this._roomSyncManager,
     this._roomRepository, {
     required SettingsService settingsService,
-    TokenRefreshCallback? onTokenRefresh,
     SyncHealthMonitor? healthMonitor,
   }) : _settingsService = settingsService,
-       _onTokenRefresh = onTokenRefresh,
        _healthMonitor = healthMonitor;
 
   final pb.GatewayServiceClient _gatewayClient;
   final pb.ChatServiceClient _chatClient;
   final MessageRepository _messageRepo;
   final PendingJobRepository _jobRepo;
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
   final RoomSubscriptionRepository _roomSubscriptionRepository;
   final RoomSubscriptionService _subscriptionService;
   final E2EEncryptionService _encryptionService;
@@ -224,7 +179,6 @@ class SyncEngine with WidgetsBindingObserver {
   final RoomSyncManager _roomSyncManager;
   final RoomRepository _roomRepository;
   final SettingsService _settingsService;
-  final TokenRefreshCallback? _onTokenRefresh;
   final SyncHealthMonitor? _healthMonitor;
 
   StreamSubscription? _connectSubscription;
@@ -627,7 +581,9 @@ class SyncEngine with WidgetsBindingObserver {
           );
         }
 
-        // If it's an auth error, try to refresh token before reconnecting
+        // Auth errors: count toward the hard cap and bail out once we
+        // have seen too many. Refresh is owned entirely by AuthRuntime
+        // (via RuntimeTransport); we do not attempt in-engine refresh.
         if (isAuthError) {
           _authErrorCount++;
 
@@ -639,53 +595,6 @@ class SyncEngine with WidgetsBindingObserver {
             _connectionLock?.complete();
             _connectionLock = null;
             return; // Exit the loop - user needs to re-login
-          }
-
-          final refreshCallback = _onTokenRefresh;
-          if (refreshCallback != null) {
-            AppLogger.info(
-              'Authentication error detected, attempting token refresh',
-              data: {'attempt': _authErrorCount, 'maxAttempts': _maxAuthErrors},
-            );
-
-            try {
-              final newToken = await refreshCallback();
-              if (newToken != null) {
-                AppLogger.info(
-                  'Token refreshed after auth error, will retry connection',
-                );
-                _reconnectAttempts = 0;
-                _authErrorCount = 0; // Reset on successful refresh
-                // Small delay to prevent tight loop if refresh succeeds but connection still fails
-                await Future.delayed(const Duration(milliseconds: 500));
-              } else {
-                // Refresh returned null - transient error, wait before retrying
-                AppLogger.debug(
-                  'Token refresh returned null (transient), waiting before retry',
-                );
-                await Future.delayed(const Duration(seconds: 2));
-              }
-            } on TokenRefreshPermanentError catch (e) {
-              // Permanent token failure - user must re-authenticate
-              // Stop the sync engine entirely
-              AppLogger.error(
-                'Permanent token refresh failure, stopping sync engine',
-                data: {'error': e.message},
-              );
-              _connectionStateController.add(SyncConnectionState.authExpired);
-              _connectionLock?.complete();
-              _connectionLock = null;
-              return; // Exit the loop - user needs to re-login
-            } catch (refreshError) {
-              AppLogger.warning(
-                'Token refresh failed with transient error',
-                data: {'error': refreshError.toString()},
-              );
-              // Transient error - continue with backoff and retry
-            }
-
-            // Continue with reconnection attempt
-            continue;
           }
         } else {
           // Not an auth error, reset auth error count after successful backoff
@@ -809,7 +718,7 @@ class SyncEngine with WidgetsBindingObserver {
   }
 
   Future<String> _resumeTokenSettingKey() async {
-    final profileId = await _authRepository.getCurrentProfileId();
+    final profileId = (await _authRuntime.getUserClaims()).sub;
     final suffix = (profileId == null || profileId.isEmpty)
         ? 'anonymous'
         : profileId;
@@ -2197,7 +2106,7 @@ class SyncEngine with WidgetsBindingObserver {
 
   Future<void> _processVote(domain_job.PendingJob job) async {
     final payload = job.payload;
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
 
     // Create timestamp
     final now = DateTime.now();
@@ -2640,8 +2549,9 @@ class SyncEngine with WidgetsBindingObserver {
     bool syncIfMissing = false,
     int maxRetries = 2,
   }) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
-    final currentContactId = await _authRepository.getCurrentContactId();
+    final claims = await _authRuntime.getUserClaims();
+    final currentProfileId = claims.sub;
+    final currentContactId = claims.contactId;
     if (currentContactId == null) return null;
 
     // First attempt - check local database
@@ -2960,8 +2870,9 @@ class SyncEngine with WidgetsBindingObserver {
     String roomId,
     String subscriptionId,
   ) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
-    final currentContactId = await _authRepository.getCurrentContactId();
+    final claims = await _authRuntime.getUserClaims();
+    final currentProfileId = claims.sub;
+    final currentContactId = claims.contactId;
     if (currentContactId == null) return false;
 
     // Use repository to check if this subscription belongs to current profile's contact

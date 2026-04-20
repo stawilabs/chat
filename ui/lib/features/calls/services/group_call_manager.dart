@@ -1,12 +1,12 @@
 import 'dart:async';
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../../core/networking/api_config.dart';
-import '../../../features/auth/data/auth_repository.dart';
 import '../../messages/domain/room_event.dart';
 import '../domain/group_call.dart';
 import '../domain/group_call_participant.dart';
@@ -17,9 +17,9 @@ final groupCallManagerProvider = FutureProvider<GroupCallManager>((ref) async {
   final signalingService = await ref.watch(
     groupSignalingServiceProvider.future,
   );
-  final authRepo = ref.watch(authRepositoryProvider);
+  final runtime = ref.watch(authRuntimeProvider);
   final turnService = await ref.watch(turnCredentialsServiceProvider.future);
-  return GroupCallManager(signalingService, authRepo, turnService);
+  return GroupCallManager(signalingService, runtime, turnService);
 });
 
 enum GroupCallCameraToggleResult { enabled, disabled, deniedNoStageSlot }
@@ -43,14 +43,14 @@ class _PendingGroupCallState {
 class GroupCallManager {
   GroupCallManager(
     this._signalingService,
-    this._authRepository,
+    this._authRuntime,
     this._turnCredentialsService,
   ) {
     _signalingService.onGroupCallSignal.listen(_handleSignal);
   }
 
   final GroupSignalingService _signalingService;
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
   final TurnCredentialsService _turnCredentialsService;
 
   /// Peer connections mapped by participant profile ID
@@ -120,7 +120,7 @@ class GroupCallManager {
       return;
     }
 
-    _currentProfileId = await _authRepository.getCurrentProfileId();
+    _currentProfileId = (await _authRuntime.getUserClaims()).sub;
     if (_currentProfileId == null) {
       AppLogger.error('Cannot start call: no profile ID');
       return;
@@ -179,7 +179,7 @@ class GroupCallManager {
       return;
     }
 
-    _currentProfileId = await _authRepository.getCurrentProfileId();
+    _currentProfileId = (await _authRuntime.getUserClaims()).sub;
     if (_currentProfileId == null) {
       AppLogger.error('Cannot join call: no profile ID');
       return;
@@ -569,7 +569,7 @@ class GroupCallManager {
 
   /// Handle incoming signaling events
   Future<void> _handleSignal(RoomEvent event) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
     final senderProfileId = _eventSenderProfileId(event);
     if (currentProfileId != null && senderProfileId == currentProfileId) return;
 

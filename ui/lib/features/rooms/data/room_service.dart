@@ -1,4 +1,5 @@
 import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb_chat;
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xid/xid.dart';
@@ -9,7 +10,6 @@ import '../../../core/networking/client.dart';
 import '../../../core/sync/pending_job.dart';
 import '../../../core/sync/pending_job_repository.dart';
 import '../../../core/sync/sync_engine.dart';
-import '../../auth/data/auth_repository.dart';
 import '../domain/room.dart' as domain;
 import 'room_repository.dart';
 import 'room_subscription_repository.dart';
@@ -28,7 +28,7 @@ class RoomService {
     this._database,
     this._memberRepo,
     this._roomSyncManager,
-    this._authRepo, {
+    this._authRuntime, {
     Future<void> Function()? onJobCreated,
   }) : _onJobCreated = onJobCreated;
   final RoomRepository _roomRepo;
@@ -37,7 +37,7 @@ class RoomService {
   final AppDatabase _database;
   final RoomSubscriptionRepository _memberRepo;
   final RoomSyncManager _roomSyncManager;
-  final AuthRepository _authRepo;
+  final AuthRuntime _authRuntime;
 
   /// Optional callback to trigger immediate job processing (e.g. SyncEngine.triggerUpload)
   final Future<void> Function()? _onJobCreated;
@@ -83,8 +83,9 @@ class RoomService {
     // server-assigned subscription once the createRoom job is processed.
     String? provisionalSubscriptionId;
     try {
-      final profileId = await _authRepo.getCurrentProfileId();
-      final contactId = await _authRepo.getCurrentContactId();
+      final claims = await _authRuntime.getUserClaims();
+      final profileId = claims.sub;
+      final contactId = claims.contactId;
       if (profileId != null && contactId != null) {
         provisionalSubscriptionId = 'provisional_$roomId';
         await _memberRepo.createSubscription(
@@ -588,7 +589,7 @@ final roomServiceProvider = FutureProvider<RoomService>((ref) async {
   final database = AppDatabase.instance;
   final memberRepo = ref.watch(roomSubscriptionRepositoryProvider);
   final roomSyncManager = ref.watch(roomSyncManagerProvider);
-  final authRepo = ref.watch(authRepositoryProvider);
+  final runtime = ref.watch(authRuntimeProvider);
   final syncEngine = await ref.watch(syncEngineProvider.future);
   return RoomService(
     roomRepo,
@@ -597,7 +598,7 @@ final roomServiceProvider = FutureProvider<RoomService>((ref) async {
     database,
     memberRepo,
     roomSyncManager,
-    authRepo,
+    runtime,
     onJobCreated: syncEngine.triggerUpload,
   );
 });

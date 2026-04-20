@@ -1,22 +1,22 @@
 import 'dart:async';
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xid/xid.dart';
 
 import '../../../core/sync/sync_engine.dart';
-import '../../../features/auth/data/auth_repository.dart';
 import '../../messages/domain/room_event.dart' as domain;
 
 final signalingServiceProvider = FutureProvider<SignalingService>((ref) async {
   final syncEngine = await ref.watch(syncEngineProvider.future);
-  final authRepo = ref.watch(authRepositoryProvider);
-  return SignalingService(syncEngine, authRepo);
+  final runtime = ref.watch(authRuntimeProvider);
+  return SignalingService(syncEngine, runtime);
 });
 
 class SignalingService {
-  SignalingService(this._syncEngine, this._authRepository);
+  SignalingService(this._syncEngine, this._authRuntime);
   final SyncEngine _syncEngine;
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
 
   Stream<domain.RoomEvent> get onSignal => _syncEngine.signalingEvents;
 
@@ -47,7 +47,7 @@ class SignalingService {
     domain.RoomEventType type,
     Map<String, dynamic> content,
   ) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
     final signalContent = Map<String, dynamic>.from(content);
     if (currentProfileId != null && currentProfileId.isNotEmpty) {
       signalContent['senderProfileId'] = currentProfileId;

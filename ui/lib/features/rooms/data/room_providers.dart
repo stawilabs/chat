@@ -1,7 +1,7 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/auth/auth_context.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../messages/data/draft_repository.dart';
 import '../domain/room.dart' as domain;
@@ -212,8 +212,10 @@ class RoomListWithMessages extends _$RoomListWithMessages {
     final draftRepo = ref.watch(draftRepositoryProvider);
 
     // Get current profile ID for sender name resolution
-    final authContext = await ref.watch(currentAuthContextProvider.future);
-    final currentProfileId = authContext?.profileId;
+    final rt = ref.watch(authRuntimeProvider);
+    final currentProfileId = rt.isAuthenticated
+        ? (await rt.getUserClaims()).sub
+        : null;
 
     // Get rooms and drafts
     final rooms = await repo.getRoomsWithLastMessage(
@@ -235,8 +237,10 @@ class RoomListWithMessages extends _$RoomListWithMessages {
       final draftRepo = ref.read(draftRepositoryProvider);
 
       // Get current profile ID for sender name resolution
-      final authContext = await ref.read(currentAuthContextProvider.future);
-      final currentProfileId = authContext?.profileId;
+      final rt = ref.read(authRuntimeProvider);
+      final currentProfileId = rt.isAuthenticated
+          ? (await rt.getUserClaims()).sub
+          : null;
 
       final rooms = await repo.getRoomsWithLastMessage(
         currentProfileId: currentProfileId,

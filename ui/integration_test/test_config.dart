@@ -1,8 +1,14 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:stawi/features/auth/data/auth_service.dart';
+
+// The legacy `MockAuthServiceImpl` fixture was removed as part of the
+// auth-runtime migration; integration tests now inject a
+// [MockAuthRuntime] via `authRuntimeProvider`.
+import '../test/support/mock_auth_runtime.dart';
+
+export '../test/support/mock_auth_runtime.dart';
 
 /// Integration test configuration and utilities
 class IntegrationTestConfig {
@@ -19,44 +25,21 @@ class IntegrationTestConfig {
 
   /// Long timeout for network operations
   static const longTimeout = Duration(minutes: 2);
-}
 
-/// Mock implementations for integration testing
-class MockAuthServiceImpl extends AuthService {
-  MockAuthServiceImpl()
-    : super(
-        const FlutterSecureStorage(),
-        issuerUrl: 'https://mock-oauth.test',
-        clientId: 'test-client-id',
-      );
-
-  bool _isAuthenticated = false;
-  String? _accessToken;
-
-  void setAuthenticated({required bool authenticated, String? token}) {
-    _isAuthenticated = authenticated;
-    _accessToken = token ?? (authenticated ? 'test-access-token' : null);
-  }
-
-  @override
-  Future<bool> isAuthenticated() async => _isAuthenticated;
-
-  @override
-  Future<bool> hasValidAccessToken() async => _isAuthenticated;
-
-  @override
-  Future<void> logout() async {
-    _isAuthenticated = false;
-    _accessToken = null;
-  }
-
-  @override
-  Future<({String? token, bool needsRelogin})>
-  ensureValidAccessTokenWithStatus({
-    int maxRetries = 3,
-    Duration retryDelay = const Duration(seconds: 2),
-  }) async {
-    return (token: _accessToken, needsRelogin: !_isAuthenticated);
+  /// Build a [MockAuthRuntime] in the requested [state] with a minimal
+  /// set of default claims/roles so widgets that read claims don't
+  /// crash.
+  static MockAuthRuntime buildAuthRuntime({
+    AuthState state = AuthState.authenticated,
+  }) {
+    return MockAuthRuntime(
+      initialState: state,
+      claimsMap: const <String, dynamic>{
+        'sub': 'test-user',
+        'contact_id': 'test-contact',
+      },
+      roles: const <String>['user'],
+    );
   }
 }
 

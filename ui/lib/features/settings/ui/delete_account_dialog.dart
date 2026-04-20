@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../data/account_service.dart';
 
 /// Steps in the delete account dialog flow
@@ -300,9 +300,9 @@ class _DeleteAccountDialogState extends ConsumerState<DeleteAccountDialog> {
       if (!mounted) return;
 
       if (success) {
-        // Log out the user
-        final authRepo = ref.read(authRepositoryProvider);
-        await authRepo.logout();
+        // Log out the user via the chat-level notifier so onboarding
+        // state is reset alongside the runtime logout.
+        await ref.read(authStateProvider.notifier).logout();
 
         if (!mounted) return;
 

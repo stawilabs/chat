@@ -9,25 +9,25 @@ part of 'current_user_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 /// Provider for the current user's PROFILE ID (from JWT 'sub' claim)
-/// This represents the entity (person/organization) identity
-/// NOT to be confused with contact ID or subscription ID
-/// Returns null if the user is not authenticated or no profile info is available
+/// This represents the entity (person/organization) identity.
+/// NOT to be confused with contact ID or subscription ID.
+/// Returns null if the user is not authenticated or no profile info is available.
 
 @ProviderFor(currentProfileId)
 final currentProfileIdProvider = CurrentProfileIdProvider._();
 
 /// Provider for the current user's PROFILE ID (from JWT 'sub' claim)
-/// This represents the entity (person/organization) identity
-/// NOT to be confused with contact ID or subscription ID
-/// Returns null if the user is not authenticated or no profile info is available
+/// This represents the entity (person/organization) identity.
+/// NOT to be confused with contact ID or subscription ID.
+/// Returns null if the user is not authenticated or no profile info is available.
 
 final class CurrentProfileIdProvider
     extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
     with $FutureModifier<String?>, $FutureProvider<String?> {
   /// Provider for the current user's PROFILE ID (from JWT 'sub' claim)
-  /// This represents the entity (person/organization) identity
-  /// NOT to be confused with contact ID or subscription ID
-  /// Returns null if the user is not authenticated or no profile info is available
+  /// This represents the entity (person/organization) identity.
+  /// NOT to be confused with contact ID or subscription ID.
+  /// Returns null if the user is not authenticated or no profile info is available.
   CurrentProfileIdProvider._()
     : super(
         from: null,
@@ -55,20 +55,20 @@ final class CurrentProfileIdProvider
 
 String _$currentProfileIdHash() => r'd0baf85ca2059f938b8b3a4e8147f41ab9513f8c';
 
-/// Non-null version that throws if profile ID is not available
-/// Use this in contexts where authentication is required
+/// Non-null version that throws if profile ID is not available.
+/// Use this in contexts where authentication is required.
 
 @ProviderFor(currentProfileIdOrThrow)
 final currentProfileIdOrThrowProvider = CurrentProfileIdOrThrowProvider._();
 
-/// Non-null version that throws if profile ID is not available
-/// Use this in contexts where authentication is required
+/// Non-null version that throws if profile ID is not available.
+/// Use this in contexts where authentication is required.
 
 final class CurrentProfileIdOrThrowProvider
     extends $FunctionalProvider<AsyncValue<String>, String, FutureOr<String>>
     with $FutureModifier<String>, $FutureProvider<String> {
-  /// Non-null version that throws if profile ID is not available
-  /// Use this in contexts where authentication is required
+  /// Non-null version that throws if profile ID is not available.
+  /// Use this in contexts where authentication is required.
   CurrentProfileIdOrThrowProvider._()
     : super(
         from: null,
@@ -97,26 +97,26 @@ final class CurrentProfileIdOrThrowProvider
 String _$currentProfileIdOrThrowHash() =>
     r'0725a0d41e7cae441b04332a5f466173d9969f66';
 
-/// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim)
-/// This represents the contact method (phone/email) used for authentication
-/// A single profile can have multiple contact IDs
-/// Returns null if the user is not authenticated or no contact ID is available
+/// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim).
+/// This represents the contact method (phone/email) used for authentication.
+/// A single profile can have multiple contact IDs.
+/// Returns null if the user is not authenticated or no contact ID is available.
 
 @ProviderFor(currentContactId)
 final currentContactIdProvider = CurrentContactIdProvider._();
 
-/// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim)
-/// This represents the contact method (phone/email) used for authentication
-/// A single profile can have multiple contact IDs
-/// Returns null if the user is not authenticated or no contact ID is available
+/// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim).
+/// This represents the contact method (phone/email) used for authentication.
+/// A single profile can have multiple contact IDs.
+/// Returns null if the user is not authenticated or no contact ID is available.
 
 final class CurrentContactIdProvider
     extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
     with $FutureModifier<String?>, $FutureProvider<String?> {
-  /// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim)
-  /// This represents the contact method (phone/email) used for authentication
-  /// A single profile can have multiple contact IDs
-  /// Returns null if the user is not authenticated or no contact ID is available
+  /// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim).
+  /// This represents the contact method (phone/email) used for authentication.
+  /// A single profile can have multiple contact IDs.
+  /// Returns null if the user is not authenticated or no contact ID is available.
   CurrentContactIdProvider._()
     : super(
         from: null,
@@ -142,22 +142,22 @@ final class CurrentContactIdProvider
   }
 }
 
-String _$currentContactIdHash() => r'aa35526936044625011f016456584cac4cfbd044';
+String _$currentContactIdHash() => r'f6f9d10068b9fff515a234ee400438ec3d92c9f7';
 
-/// Non-null version that throws if contact ID is not available
-/// Use this in contexts where contact ID is required
+/// Non-null version that throws if contact ID is not available.
+/// Use this in contexts where contact ID is required.
 
 @ProviderFor(currentContactIdOrThrow)
 final currentContactIdOrThrowProvider = CurrentContactIdOrThrowProvider._();
 
-/// Non-null version that throws if contact ID is not available
-/// Use this in contexts where contact ID is required
+/// Non-null version that throws if contact ID is not available.
+/// Use this in contexts where contact ID is required.
 
 final class CurrentContactIdOrThrowProvider
     extends $FunctionalProvider<AsyncValue<String>, String, FutureOr<String>>
     with $FutureModifier<String>, $FutureProvider<String> {
-  /// Non-null version that throws if contact ID is not available
-  /// Use this in contexts where contact ID is required
+  /// Non-null version that throws if contact ID is not available.
+  /// Use this in contexts where contact ID is required.
   CurrentContactIdOrThrowProvider._()
     : super(
         from: null,

@@ -120,7 +120,7 @@ final class CurrentUserSubscriptionIdProvider
 }
 
 String _$currentUserSubscriptionIdHash() =>
-    r'2ab2ed937c60cce23e7f549ee6565e172940880d';
+    r'4934e9951f71b2e49696b24c7432a8ea96242da6';
 
 /// Provider for current user's subscription ID for a specific room
 /// Returns the subscription ID or null if not found

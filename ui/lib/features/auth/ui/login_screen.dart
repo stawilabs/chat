@@ -1,11 +1,12 @@
 import 'dart:io';
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart'
+    as runtime_auth;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../data/auth_state_provider.dart';
 
 /// Login screen that presents an OpenID Connect button to users
 class LoginScreen extends ConsumerStatefulWidget {
@@ -38,15 +39,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       AppLogger.debug('Starting login process...');
-      await ref.read(authStateProvider.notifier).login();
+      // Drive sign-in through the runtime directly; the chat-level
+      // [authStateProvider] still observes the runtime's stream and
+      // will update the router redirect listener.
+      final runtime = ref.read(runtime_auth.authRuntimeProvider);
+      await runtime.ensureAuthenticated();
 
-      // Check if login was successful
-      final authState = ref.read(authStateProvider);
-      final isAuthenticated = authState.when(
-        data: (state) => state == AuthState.authenticated,
-        loading: () => false,
-        error: (_, _) => false,
-      );
+      // Check if login was successful by reading the runtime's current
+      // state. The chat-level provider will catch up asynchronously.
+      final isAuthenticated =
+          runtime.state == runtime_auth.AuthState.authenticated;
 
       if (isAuthenticated) {
         AppLogger.info(

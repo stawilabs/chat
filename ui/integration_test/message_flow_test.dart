@@ -1,7 +1,8 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stawi/features/auth/data/auth_repository.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart' show Override;
 import 'package:stawi/features/messages/domain/room_event.dart' as domain;
 import 'package:stawi/features/messages/ui/chat_input_bar.dart';
 import 'package:stawi/features/messages/ui/message_bubble.dart';
@@ -12,16 +13,14 @@ void main() {
   IntegrationTestConfig.ensureInitialized();
 
   group('Message Flow Integration Tests', () {
-    late MockAuthServiceImpl mockAuthService;
-    late AuthRepository mockAuthRepo;
+    late MockAuthRuntime mockAuthRuntime;
+    late List<Override> overrides;
 
     setUp(() {
-      mockAuthService = MockAuthServiceImpl();
-      mockAuthService.setAuthenticated(
-        authenticated: true,
-        token: 'test-token',
-      );
-      mockAuthRepo = AuthRepository(mockAuthService);
+      mockAuthRuntime = IntegrationTestConfig.buildAuthRuntime();
+      overrides = <Override>[
+        authRuntimeProvider.overrideWithValue(mockAuthRuntime),
+      ];
     });
 
     testWidgets('chat input bar renders correctly', (
@@ -29,7 +28,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: const MaterialApp(
             home: Scaffold(
               body: ChatInputBar(roomId: 'test-room-id', roomName: 'Test Room'),
@@ -53,7 +52,7 @@ void main() {
     testWidgets('can enter text in chat input', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: const MaterialApp(
             home: Scaffold(
               body: ChatInputBar(roomId: 'test-room-id', roomName: 'Test Room'),
@@ -78,7 +77,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: const MaterialApp(
             home: Scaffold(
               body: ChatInputBar(roomId: 'test-room-id', roomName: 'Test Room'),
@@ -113,7 +112,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: MessageBubble(
@@ -147,7 +146,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: MessageBubble(message: testMessage, isMe: true),
@@ -176,7 +175,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: MessageBubble(message: pendingMessage, isMe: true),
@@ -207,7 +206,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: MessageBubble(
@@ -241,7 +240,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: MessageBubble(message: failedMessage, isMe: true),
@@ -273,7 +272,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: MessageBubble(

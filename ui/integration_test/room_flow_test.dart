@@ -1,7 +1,8 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stawi/features/auth/data/auth_repository.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart' show Override;
 import 'package:stawi/features/rooms/domain/room_with_last_message.dart';
 import 'package:stawi/features/rooms/ui/room_list_screen.dart';
 import 'package:stawi/features/rooms/ui/room_list_tile.dart';
@@ -12,16 +13,14 @@ void main() {
   IntegrationTestConfig.ensureInitialized();
 
   group('Room Flow Integration Tests', () {
-    late MockAuthServiceImpl mockAuthService;
-    late AuthRepository mockAuthRepo;
+    late MockAuthRuntime mockAuthRuntime;
+    late List<Override> overrides;
 
     setUp(() {
-      mockAuthService = MockAuthServiceImpl();
-      mockAuthService.setAuthenticated(
-        authenticated: true,
-        token: 'test-token',
-      );
-      mockAuthRepo = AuthRepository(mockAuthService);
+      mockAuthRuntime = IntegrationTestConfig.buildAuthRuntime();
+      overrides = <Override>[
+        authRuntimeProvider.overrideWithValue(mockAuthRuntime),
+      ];
     });
 
     testWidgets('room list screen renders correctly', (
@@ -29,7 +28,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: const MaterialApp(home: RoomListScreen()),
         ),
       );
@@ -53,7 +52,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: RoomListTile(room: testRoom, onTap: () {}),
@@ -83,7 +82,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: RoomListTile(room: unreadRoom, onTap: () {}),
@@ -109,7 +108,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: RoomListTile(
@@ -136,7 +135,7 @@ void main() {
     testWidgets('room list handles empty state', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: const MaterialApp(home: RoomListScreen()),
         ),
       );
@@ -161,7 +160,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: RoomListTile(room: directRoom, onTap: () {}),
@@ -190,7 +189,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: RoomListTile(room: roomWithMessage, onTap: () {}),
@@ -223,7 +222,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
+          overrides: overrides,
           child: MaterialApp(
             home: Scaffold(
               body: ListView.builder(

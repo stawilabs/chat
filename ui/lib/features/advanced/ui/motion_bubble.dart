@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/error_handler.dart';
-import '../../../features/auth/data/auth_repository.dart';
+import '../../auth/data/current_user_provider.dart';
 import '../../messages/domain/room_event.dart';
 import '../services/motion_service.dart';
 

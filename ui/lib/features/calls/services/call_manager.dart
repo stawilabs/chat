@@ -1,12 +1,12 @@
 import 'dart:async';
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:xid/xid.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../../../features/auth/data/auth_repository.dart';
 import '../../messages/domain/room_event.dart';
 import '../domain/call_stats.dart';
 import 'call_quality_service.dart';
@@ -15,9 +15,9 @@ import 'turn_credentials_service.dart';
 
 final callManagerProvider = FutureProvider<CallManager>((ref) async {
   final signalingService = await ref.watch(signalingServiceProvider.future);
-  final authRepo = ref.watch(authRepositoryProvider);
+  final runtime = ref.watch(authRuntimeProvider);
   final turnService = await ref.watch(turnCredentialsServiceProvider.future);
-  return CallManager(signalingService, authRepo, turnService);
+  return CallManager(signalingService, runtime, turnService);
 });
 
 enum CallState {
@@ -32,13 +32,13 @@ enum CallState {
 class CallManager {
   CallManager(
     this._signalingService,
-    this._authRepository,
+    this._authRuntime,
     this._turnCredentialsService,
   ) {
     _signalingService.onSignal.listen(_handleSignal);
   }
   final SignalingService _signalingService;
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
   final TurnCredentialsService _turnCredentialsService;
 
   RTCPeerConnection? _peerConnection;
@@ -476,7 +476,7 @@ class CallManager {
   }
 
   Future<void> _handleSignal(RoomEvent event) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
     final senderProfileId = event.content['senderProfileId'] as String?;
     if (currentProfileId != null &&
         senderProfileId != null &&

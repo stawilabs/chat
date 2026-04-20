@@ -1,8 +1,8 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/db/database.dart';
-import '../../../features/auth/data/auth_repository.dart';
 import 'room_subscription_repository.dart';
 
 part 'room_subscription_service.g.dart';
@@ -136,11 +136,13 @@ RoomSubscriptionService roomSubscriptionService(Ref ref) =>
 /// Returns the subscription ID or null if not found
 @riverpod
 Future<String?> currentUserSubscriptionId(Ref ref, String roomId) async {
-  final authRepo = ref.watch(authRepositoryProvider);
+  final rt = ref.watch(authRuntimeProvider);
   final subscriptionService = ref.watch(roomSubscriptionServiceProvider);
 
-  final profileId = await authRepo.getCurrentProfileId();
-  final contactId = await authRepo.getCurrentContactId();
+  if (!rt.isAuthenticated) return null;
+  final claims = await rt.getUserClaims();
+  final profileId = claims.sub;
+  final contactId = claims.contactId;
 
   if (profileId == null || contactId == null) {
     return null;

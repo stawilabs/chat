@@ -13,15 +13,15 @@ library;
 
 import 'package:integration_test/integration_test.dart';
 
-import 'auth_flow_test.dart' as auth_tests;
 import 'message_flow_test.dart' as message_tests;
 import 'room_flow_test.dart' as room_tests;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  // Authentication flow tests
-  auth_tests.main();
+  // Auth-flow integration tests live in the auth-runtime package
+  // (`ui/runtime`); the app-level counterpart was removed during the
+  // auth-runtime migration because it exercised deleted classes.
 
   // Message flow tests
   message_tests.main();

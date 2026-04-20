@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -8,14 +9,11 @@ import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:workmanager/workmanager.dart';
 
-import '../../features/auth/data/auth_repository.dart';
-import '../../features/auth/data/token_refresh_service.dart';
 import '../../features/contacts/services/contact_background_sync_task.dart';
 import '../../features/notifications/badge_service.dart';
 import '../../features/notifications/notification_service.dart';
 import '../error/error_tracking_service.dart';
 import '../logging/app_logger.dart';
-import '../networking/client.dart';
 import '../networking/connectivity_service.dart';
 import '../sync/background_sync_task.dart';
 import '../sync/post_login_sync_service.dart';
@@ -247,46 +245,38 @@ class StartupService extends _$StartupService {
   /// Phase 2: Essential initialization
   /// Needed for basic app functionality
   Future<void> _initializeEssential() async {
-    final authRepo = ref.read(authRepositoryProvider);
-    final isLoggedIn = await authRepo.isLoggedIn();
-
-    if (!isLoggedIn) {
-      AppLogger.debug('User not logged in, skipping service initialization');
-      return;
-    }
-
+    final runtime = ref.read(authRuntimeProvider);
+    // Let the runtime restore/refresh its session. If the user has a
+    // stored refresh token this short-circuits to authenticated without
+    // any browser round-trip.
     state = state.copyWith(currentTask: 'Verifying authentication...');
-    AppLogger.info('User is logged in, ensuring valid access token');
-
-    // Ensure we have a valid access token (will refresh if expired)
-    final token = await authRepo.ensureValidAccessToken();
-
-    if (token == null) {
-      AppLogger.warning(
-        'Token refresh failed on app start, user needs to re-login',
+    try {
+      await runtime.ensureAuthenticated();
+    } catch (e) {
+      // AuthError (Error subtype) and plain Exceptions both mean the
+      // runtime could not restore a session. Any branch falls through
+      // to the login screen.
+      AppLogger.info(
+        'Auth runtime could not restore session, user will see login',
+        data: {'error': e.toString()},
       );
       return;
     }
 
-    AppLogger.info('Valid access token obtained');
+    if (!runtime.isAuthenticated) {
+      AppLogger.debug('User not logged in, skipping service initialization');
+      return;
+    }
 
-    // IMPORTANT: Reload TokenManager from storage to sync its in-memory cache
-    // AuthService saves tokens to storage, but TokenManager has its own cache
-    // that needs to be refreshed for API clients to use the new token
-    final tokenManager = ref.read(tokenManagerProvider);
-    await reloadTokenManager(tokenManager);
+    AppLogger.info('Auth runtime reports authenticated session');
 
-    // Invalidate API client providers to force them to recreate with fresh token
-    // This is needed because FutureProviders cache their result
-    ref.invalidate(chatClientProvider);
-    ref.invalidate(chatServiceClientProvider);
-    AppLogger.debug('Invalidated chat client providers to pick up new token');
-
-    // Set user context for error tracking
+    // Set user context for error tracking. UserClaims surfaces the
+    // Antinvestor-specific `contact_id`, `tenant_id`, and `partition_id`
+    // as typed getters — no more dynamic Map access.
     if (ErrorTrackingService.isInitialized) {
-      final userInfoMap = await authRepo.getUserInfo();
-      if (userInfoMap != null) {
-        final userInfo = _UserInfo.fromOidcClaims(userInfoMap);
+      final claims = await runtime.getUserClaims();
+      if (claims.sub != null) {
+        final userInfo = _UserInfo.fromUserClaims(claims);
         await ErrorTrackingService.setUser(
           id: userInfo.id,
           email: userInfo.email,
@@ -295,6 +285,11 @@ class StartupService extends _$StartupService {
         await ErrorTrackingService.addBreadcrumb(
           message: 'User authenticated',
           category: 'auth',
+          data: {
+            if (claims.contactId != null) 'contact_id': claims.contactId,
+            if (claims.tenantId != null) 'tenant_id': claims.tenantId,
+            if (claims.partitionId != null) 'partition_id': claims.partitionId,
+          },
         );
       }
     }
@@ -303,11 +298,10 @@ class StartupService extends _$StartupService {
     state = state.copyWith(currentTask: 'Checking network...');
     await _waitForNetworkWithTimeout();
 
-    // Start background token refresh service
-    // This ensures tokens are proactively refreshed before they expire,
-    // minimizing the chance of auth errors during API calls
-    final tokenRefreshService = ref.read(tokenRefreshServiceProvider);
-    tokenRefreshService.start();
+    // Background token refresh is handled internally by AuthRuntime — no
+    // separate service to start. The runtime schedules proactive refresh
+    // based on token expiry and surfaces security events when a refresh
+    // fails permanently.
 
     // Create post-login sync service (not a provider to avoid lifecycle issues)
     final postLoginSync = await createPostLoginSyncService(ref);
@@ -356,8 +350,7 @@ class StartupService extends _$StartupService {
     connectivityService.start();
 
     // Initialize push notifications
-    final authRepo = ref.read(authRepositoryProvider);
-    final isLoggedIn = await authRepo.isLoggedIn();
+    final isLoggedIn = ref.read(authRuntimeProvider).isAuthenticated;
 
     if (isLoggedIn && NotificationService.isSupported) {
       final notificationService = ref.read(notificationServiceProvider);
@@ -460,15 +453,15 @@ class StartupService extends _$StartupService {
   }
 }
 
-/// Type-safe wrapper for user info from OIDC token
+/// Type-safe wrapper for user info from OIDC token claims.
 class _UserInfo {
   _UserInfo({required this.id, this.email, this.username});
 
-  factory _UserInfo.fromOidcClaims(Map<String, dynamic> claims) {
+  factory _UserInfo.fromUserClaims(UserClaims claims) {
     return _UserInfo(
-      id: claims['sub'] as String? ?? 'unknown',
-      email: claims['email'] as String?,
-      username: claims['preferred_username'] as String?,
+      id: claims.sub ?? 'unknown',
+      email: claims.email,
+      username: claims.raw['preferred_username'] as String?,
     );
   }
   final String id;

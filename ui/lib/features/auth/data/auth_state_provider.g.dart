@@ -8,15 +8,21 @@ part of 'auth_state_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Authentication state notifier that watches auth status
+/// Chat-level auth state notifier. Delegates to the runtime but keeps
+/// the `login()` / `logout()` / `refresh()` surface expected by
+/// existing UI call sites.
 
 @ProviderFor(AuthStateNotifier)
 final authStateProvider = AuthStateNotifierProvider._();
 
-/// Authentication state notifier that watches auth status
+/// Chat-level auth state notifier. Delegates to the runtime but keeps
+/// the `login()` / `logout()` / `refresh()` surface expected by
+/// existing UI call sites.
 final class AuthStateNotifierProvider
     extends $AsyncNotifierProvider<AuthStateNotifier, AuthState> {
-  /// Authentication state notifier that watches auth status
+  /// Chat-level auth state notifier. Delegates to the runtime but keeps
+  /// the `login()` / `logout()` / `refresh()` surface expected by
+  /// existing UI call sites.
   AuthStateNotifierProvider._()
     : super(
         from: null,
@@ -36,9 +42,11 @@ final class AuthStateNotifierProvider
   AuthStateNotifier create() => AuthStateNotifier();
 }
 
-String _$authStateNotifierHash() => r'4e257571ffa63d672ccb0e8fe4c6bbd55d6c344d';
+String _$authStateNotifierHash() => r'83f920a366388c41c25783be0d99398901e90eec';
 
-/// Authentication state notifier that watches auth status
+/// Chat-level auth state notifier. Delegates to the runtime but keeps
+/// the `login()` / `logout()` / `refresh()` surface expected by
+/// existing UI call sites.
 
 abstract class _$AuthStateNotifier extends $AsyncNotifier<AuthState> {
   FutureOr<AuthState> build();

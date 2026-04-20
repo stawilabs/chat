@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xid/xid.dart';
 
-import '../../../core/auth/auth_context.dart';
+import '../../../core/auth/auth_context_service.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/sync/pending_job.dart';
 import '../../../core/sync/pending_job_repository.dart';

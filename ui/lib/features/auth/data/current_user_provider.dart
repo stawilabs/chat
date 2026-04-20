@@ -1,22 +1,22 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'auth_repository.dart';
 import 'user_info_provider.dart';
 
 part 'current_user_provider.g.dart';
 
 /// Provider for the current user's PROFILE ID (from JWT 'sub' claim)
-/// This represents the entity (person/organization) identity
-/// NOT to be confused with contact ID or subscription ID
-/// Returns null if the user is not authenticated or no profile info is available
+/// This represents the entity (person/organization) identity.
+/// NOT to be confused with contact ID or subscription ID.
+/// Returns null if the user is not authenticated or no profile info is available.
 @riverpod
 Future<String?> currentProfileId(Ref ref) async {
   final userInfo = await ref.watch(userInfoProvider.future);
   return userInfo?.id;
 }
 
-/// Non-null version that throws if profile ID is not available
-/// Use this in contexts where authentication is required
+/// Non-null version that throws if profile ID is not available.
+/// Use this in contexts where authentication is required.
 @riverpod
 Future<String> currentProfileIdOrThrow(Ref ref) async {
   final profileId = await ref.watch(currentProfileIdProvider.future);
@@ -26,18 +26,20 @@ Future<String> currentProfileIdOrThrow(Ref ref) async {
   return profileId;
 }
 
-/// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim)
-/// This represents the contact method (phone/email) used for authentication
-/// A single profile can have multiple contact IDs
-/// Returns null if the user is not authenticated or no contact ID is available
+/// Provider for the current user's CONTACT ID (from JWT 'contact_id' claim).
+/// This represents the contact method (phone/email) used for authentication.
+/// A single profile can have multiple contact IDs.
+/// Returns null if the user is not authenticated or no contact ID is available.
 @riverpod
 Future<String?> currentContactId(Ref ref) async {
-  final authRepo = ref.watch(authRepositoryProvider);
-  return authRepo.getCurrentContactId();
+  final rt = ref.watch(authRuntimeProvider);
+  if (!rt.isAuthenticated) return null;
+  final claims = await rt.getUserClaims();
+  return claims.contactId;
 }
 
-/// Non-null version that throws if contact ID is not available
-/// Use this in contexts where contact ID is required
+/// Non-null version that throws if contact ID is not available.
+/// Use this in contexts where contact ID is required.
 @riverpod
 Future<String> currentContactIdOrThrow(Ref ref) async {
   final contactId = await ref.watch(currentContactIdProvider.future);

@@ -8,58 +8,59 @@ part of 'router.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider for the auth change notifier
+/// Provider for the router refresh listenable.
 
-@ProviderFor(authChangeNotifier)
-final authChangeProvider = AuthChangeNotifierProvider._();
+@ProviderFor(authRouterRefreshListenable)
+final authRouterRefreshListenableProvider =
+    AuthRouterRefreshListenableProvider._();
 
-/// Provider for the auth change notifier
+/// Provider for the router refresh listenable.
 
-final class AuthChangeNotifierProvider
+final class AuthRouterRefreshListenableProvider
     extends
         $FunctionalProvider<
-          AuthChangeNotifier,
-          AuthChangeNotifier,
-          AuthChangeNotifier
+          AuthRouterRefreshListenable,
+          AuthRouterRefreshListenable,
+          AuthRouterRefreshListenable
         >
-    with $Provider<AuthChangeNotifier> {
-  /// Provider for the auth change notifier
-  AuthChangeNotifierProvider._()
+    with $Provider<AuthRouterRefreshListenable> {
+  /// Provider for the router refresh listenable.
+  AuthRouterRefreshListenableProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'authChangeProvider',
+        name: r'authRouterRefreshListenableProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$authChangeNotifierHash();
+  String debugGetCreateSourceHash() => _$authRouterRefreshListenableHash();
 
   @$internal
   @override
-  $ProviderElement<AuthChangeNotifier> $createElement(
+  $ProviderElement<AuthRouterRefreshListenable> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  AuthChangeNotifier create(Ref ref) {
-    return authChangeNotifier(ref);
+  AuthRouterRefreshListenable create(Ref ref) {
+    return authRouterRefreshListenable(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AuthChangeNotifier value) {
+  Override overrideWithValue(AuthRouterRefreshListenable value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<AuthChangeNotifier>(value),
+      providerOverride: $SyncValueProvider<AuthRouterRefreshListenable>(value),
     );
   }
 }
 
-String _$authChangeNotifierHash() =>
-    r'f12de69a77a4a5895af2ea6c1785be9f2931fd0a';
+String _$authRouterRefreshListenableHash() =>
+    r'b75d532f0be2539747c17b413825643676322437';
 
 @ProviderFor(router)
 final routerProvider = RouterProvider._();
@@ -100,4 +101,4 @@ final class RouterProvider
   }
 }
 
-String _$routerHash() => r'449f20c8203c00e29ba13ae83515e98200be8b1b';
+String _$routerHash() => r'1e50af5ae2aeef7c246368a4b66870f2e734eabe';

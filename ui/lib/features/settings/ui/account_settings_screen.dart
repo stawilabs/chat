@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/navigation/navigation_helper.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/user_info_provider.dart';
 import '../data/account_service.dart';
 import 'delete_account_dialog.dart';
@@ -653,8 +653,10 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     setState(() => _isLoggingOut = true);
 
     try {
-      final authRepo = ref.read(authRepositoryProvider);
-      await authRepo.logout();
+      // Logout via the chat-level notifier so onboarding state is reset
+      // alongside the runtime's logout; the router's refresh listener
+      // will pick up the auth-state change and redirect.
+      await ref.read(authStateProvider.notifier).logout();
 
       if (!mounted) return;
 

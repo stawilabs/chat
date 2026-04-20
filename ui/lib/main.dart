@@ -1,11 +1,14 @@
 import 'dart:io' show Platform;
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router.dart';
+import 'core/auth/migration.dart';
+import 'core/auth/runtime_provider.dart';
 import 'core/error/error_tracking_service.dart';
 import 'core/logging/app_logger.dart';
 import 'core/security/lock_state_manager.dart';
@@ -53,7 +56,24 @@ Future<void> _runApp(StartupMetrics metrics) async {
     },
   );
 
-  runApp(const ProviderScope(child: ChatApp()));
+  // One-time migration: wipe legacy openid_client tokens from secure
+  // storage so the runtime prompts for a fresh sign-in the first time a
+  // pre-migration install launches the new build. Subsequent launches
+  // see the flag set in SharedPreferences and no-op.
+  await migrateLegacyAuthIfNeeded();
+
+  // Construct the auth runtime before runApp so the root ProviderScope can
+  // hand the same instance to every consumer. The WorkManager background
+  // path builds a short-lived runtime per task via BackgroundAuthHelper
+  // (core/auth/background_auth_helper.dart).
+  final authRuntime = buildChatRuntime();
+
+  runApp(
+    ProviderScope(
+      overrides: [authRuntimeProvider.overrideWithValue(authRuntime)],
+      child: const ChatApp(),
+    ),
+  );
 
   // Mark first frame after runApp
   markFirstFrameRendered();

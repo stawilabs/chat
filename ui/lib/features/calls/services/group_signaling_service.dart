@@ -1,18 +1,18 @@
 import 'dart:async';
 
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xid/xid.dart';
 
 import '../../../core/sync/sync_engine.dart';
-import '../../../features/auth/data/auth_repository.dart';
 import '../../messages/domain/room_event.dart' as domain;
 
 final groupSignalingServiceProvider = FutureProvider<GroupSignalingService>((
   ref,
 ) async {
   final syncEngine = await ref.watch(syncEngineProvider.future);
-  final authRepo = ref.watch(authRepositoryProvider);
-  return GroupSignalingService(syncEngine, authRepo);
+  final runtime = ref.watch(authRuntimeProvider);
+  return GroupSignalingService(syncEngine, runtime);
 });
 
 /// Service for handling group call signaling
@@ -24,10 +24,10 @@ final groupSignalingServiceProvider = FutureProvider<GroupSignalingService>((
 /// - Exchanging ICE candidates
 /// - Broadcasting mute state updates
 class GroupSignalingService {
-  GroupSignalingService(this._syncEngine, this._authRepository);
+  GroupSignalingService(this._syncEngine, this._authRuntime);
 
   final SyncEngine _syncEngine;
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
 
   /// Stream of group call signaling events from the sync engine
   Stream<domain.RoomEvent> get onGroupCallSignal => _syncEngine.signalingEvents
@@ -209,7 +209,7 @@ class GroupSignalingService {
     domain.RoomEventType type,
     Map<String, dynamic> content,
   ) async {
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
     final signalContent = Map<String, dynamic>.from(content);
     if (currentProfileId != null && currentProfileId.isNotEmpty) {
       signalContent['senderProfileId'] = currentProfileId;

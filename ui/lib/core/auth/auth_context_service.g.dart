@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'auth_context.dart';
+part of 'auth_context_service.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -8,12 +8,12 @@ part of 'auth_context.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider for AuthContextService
+/// Provider for [AuthContextService].
 
 @ProviderFor(authContextService)
 final authContextServiceProvider = AuthContextServiceProvider._();
 
-/// Provider for AuthContextService
+/// Provider for [AuthContextService].
 
 final class AuthContextServiceProvider
     extends
@@ -23,7 +23,7 @@ final class AuthContextServiceProvider
           AuthContextService
         >
     with $Provider<AuthContextService> {
-  /// Provider for AuthContextService
+  /// Provider for [AuthContextService].
   AuthContextServiceProvider._()
     : super(
         from: null,
@@ -59,52 +59,4 @@ final class AuthContextServiceProvider
 }
 
 String _$authContextServiceHash() =>
-    r'bb4e7ba87ec14babc93f56dd8b0d3934acec5f4d';
-
-/// Provider for current auth context
-/// Returns null if user is not authenticated
-
-@ProviderFor(currentAuthContext)
-final currentAuthContextProvider = CurrentAuthContextProvider._();
-
-/// Provider for current auth context
-/// Returns null if user is not authenticated
-
-final class CurrentAuthContextProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<AuthContext?>,
-          AuthContext?,
-          FutureOr<AuthContext?>
-        >
-    with $FutureModifier<AuthContext?>, $FutureProvider<AuthContext?> {
-  /// Provider for current auth context
-  /// Returns null if user is not authenticated
-  CurrentAuthContextProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'currentAuthContextProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$currentAuthContextHash();
-
-  @$internal
-  @override
-  $FutureProviderElement<AuthContext?> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<AuthContext?> create(Ref ref) {
-    return currentAuthContext(ref);
-  }
-}
-
-String _$currentAuthContextHash() =>
-    r'85f27c7df70a57127363e0fa981f882add4a9a56';
+    r'a837b180d7129f951471aefcf634d9655a1ac1f1';

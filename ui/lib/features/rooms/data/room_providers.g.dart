@@ -281,7 +281,7 @@ final class RoomListWithMessagesProvider
 }
 
 String _$roomListWithMessagesHash() =>
-    r'ae057dc892e3a0d435d085718fed848be9bdd3bc';
+    r'e9c9c21b6f3f4a1c1409a09eeafe488cd6285a8a';
 
 abstract class _$RoomListWithMessages
     extends $AsyncNotifier<List<RoomWithLastMessage>> {

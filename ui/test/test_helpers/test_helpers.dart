@@ -1,106 +1,17 @@
-import 'package:antinvestor_api_common/antinvestor_api_common.dart'
-    show TokenRefreshResult;
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:openid_client/openid_client.dart' show TokenResponse;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:stawi/core/db/database.dart' show Draft;
-import 'package:stawi/features/auth/data/auth_repository.dart';
-import 'package:stawi/features/auth/data/auth_service.dart';
 import 'package:stawi/features/messages/data/draft_repository.dart';
 
-/// Mock AuthService for testing
-class MockAuthService extends AuthService {
-  MockAuthService()
-    : super(
-        const FlutterSecureStorage(),
-        issuerUrl: 'https://mock-oauth.com',
-        clientId: 'mock-client-id',
-      );
-  bool _isAuthenticated = false;
-  bool _shouldThrowError = false;
+import '../support/mock_auth_runtime.dart';
 
-  void setAuthenticated(bool authenticated) {
-    _isAuthenticated = authenticated;
-  }
-
-  void setShouldThrowError(bool shouldThrow) {
-    _shouldThrowError = shouldThrow;
-  }
-
-  @override
-  Future<bool> isAuthenticated() async {
-    if (_shouldThrowError) {
-      throw Exception('Mock authentication error');
-    }
-    return _isAuthenticated;
-  }
-
-  @override
-  Future<void> logout() async {
-    _isAuthenticated = false;
-  }
-
-  @override
-  Future<bool> isTokenExpired({
-    Duration buffer = const Duration(minutes: 2),
-  }) async {
-    return false; // Mock token never expires
-  }
-
-  @override
-  Future<TokenResponse?> refreshToken() async {
-    // Mock refresh - no network calls, return null for simplicity
-    return _isAuthenticated ? null : null;
-  }
-
-  @override
-  Future<({TokenRefreshResult result, TokenResponse? token, String? error})>
-  refreshTokenWithResult() async => (
-    result: TokenRefreshResult.success,
-    token: _isAuthenticated ? null : null,
-    error: null,
-  );
-
-  @override
-  Future<Duration?> getTimeUntilRefreshNeeded() async {
-    return const Duration(hours: 1); // Mock 1 hour until refresh
-  }
-
-  @override
-  Future<bool> hasValidAccessToken() async => _isAuthenticated;
-
-  @override
-  Future<({String? token, bool needsRelogin})>
-  ensureValidAccessTokenWithStatus({
-    int maxRetries = 3,
-    Duration retryDelay = const Duration(seconds: 2),
-  }) async {
-    if (_shouldThrowError) {
-      return (token: null, needsRelogin: true);
-    }
-    return (token: _isAuthenticated ? 'mock-token' : null, needsRelogin: false);
-  }
-
-  Future<String?> getCurrentProfileId() async =>
-      _isAuthenticated ? 'mock-profile-id' : null;
-}
-
-/// Mock AuthRepository for testing
-class MockAuthRepository extends AuthRepository {
-  MockAuthRepository(this._mockAuthService) : super(_mockAuthService);
-  final MockAuthService _mockAuthService;
-
-  void setAuthenticated(bool authenticated) {
-    _mockAuthService.setAuthenticated(authenticated);
-  }
-
-  void setShouldThrowError(bool shouldThrow) {
-    _mockAuthService.setShouldThrowError(shouldThrow);
-  }
-}
+// The legacy MockAuthService / MockAuthRepository fixtures were removed as
+// part of the auth-runtime migration (CHAT-3 / CHAT-4). Tests now inject
+// [MockAuthRuntime] via [TestHelpers.overrides]; see
+// `test/support/mock_auth_runtime.dart` for the stand-in.
 
 /// Mock DraftRepository for testing that doesn't use database
 /// This is a fake implementation that doesn't extend DraftRepository
@@ -158,29 +69,48 @@ class MockDraftRepository implements DraftRepository {
   }
 }
 
-/// Provider overrides for testing
+/// Provider overrides for testing.
+///
+/// `mockAuthRuntime` is recreated on every [resetMocks] call so tests
+/// that mutate its state don't leak into subsequent tests. The override
+/// list is constructed lazily so [overrides] always points at the
+/// current instance.
 class TestHelpers {
-  static final mockAuthService = MockAuthService();
-  static final mockAuthRepository = MockAuthRepository(mockAuthService);
   static final mockDraftRepository = MockDraftRepository();
 
-  static List<Override> get overrides => [
-    authRepositoryProvider.overrideWithValue(mockAuthRepository),
-    draftRepositoryProvider.overrideWithValue(mockDraftRepository),
-  ];
+  static MockAuthRuntime mockAuthRuntime = _buildAuthRuntime();
 
+  static MockAuthRuntime _buildAuthRuntime() => MockAuthRuntime(
+        initialState: AuthState.authenticated,
+        claimsMap: const <String, dynamic>{
+          'sub': 'test-user',
+          'contact_id': 'test-contact',
+        },
+        roles: const <String>['user'],
+      );
+
+  static List<Override> get overrides => <Override>[
+        draftRepositoryProvider.overrideWithValue(mockDraftRepository),
+        authRuntimeProvider.overrideWithValue(mockAuthRuntime),
+      ];
+
+  /// Reset the mock runtime between tests so state mutations (logouts,
+  /// role changes, etc.) don't leak.
   static void resetMocks() {
-    mockAuthService.setAuthenticated(false);
-    mockAuthService.setShouldThrowError(false);
+    mockAuthRuntime = _buildAuthRuntime();
   }
 
   static void setAuthenticated(bool authenticated) {
-    mockAuthService.setAuthenticated(authenticated);
+    mockAuthRuntime.setAuthState(
+      authenticated ? AuthState.authenticated : AuthState.unauthenticated,
+    );
   }
 
-  static void setShouldThrowAuthError(bool shouldThrow) {
-    mockAuthService.setShouldThrowError(shouldThrow);
-  }
+  /// No-op retained for call-site compatibility. The old fixture surfaced
+  /// synthetic auth errors; the new runtime-backed harness exercises
+  /// error paths through concrete `SecurityEvent` / `AuthState.error`
+  /// transitions — use [MockAuthRuntime.emitSecurityEvent] directly.
+  static void setShouldThrowAuthError(bool shouldThrow) {}
 }
 
 /// Extension to make it easier to create ProviderScope with mocks in tests

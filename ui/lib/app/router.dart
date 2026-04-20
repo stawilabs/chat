@@ -32,38 +32,48 @@ import '../features/settings/ui/two_factor_setup_screen.dart';
 
 part 'router.g.dart';
 
-/// Notifier that triggers router refresh when auth state changes.
+/// Thin [ChangeNotifier] that re-triggers `GoRouter` redirects whenever
+/// the runtime-sourced [authStateProvider] fires a new value.
 ///
-/// Also caches the auth and onboarding state so the redirect callback can
-/// read them synchronously instead of hitting secure storage on every
-/// navigation.
-class AuthChangeNotifier extends ChangeNotifier {
-  AuthChangeNotifier(Ref ref) {
-    // Seed from current value
-    final current = ref.read(authStateProvider);
-    _isLoggedIn = current.maybeWhen(
-      data: (state) => state == AuthState.authenticated,
+/// Also caches onboarding completion so the synchronous `redirect`
+/// callback can decide whether to send the user to `/profile/setup`
+/// without touching secure storage on every navigation. A transient
+/// [AuthState.loading] (e.g. silent refresh) preserves the last known
+/// login status so the user isn't bounced to `/login` mid-refresh.
+class AuthRouterRefreshListenable extends ChangeNotifier {
+  AuthRouterRefreshListenable(Ref ref) {
+    // Seed login status synchronously so the first redirect pass sees a
+    // stable value instead of an indeterminate `loading`.
+    final seed = ref.read(authStateProvider);
+    _isLoggedIn = seed.maybeWhen(
+      data: (s) => s == AuthState.authenticated,
       orElse: () => false,
     );
 
-    // Load initial onboarding state
+    // Load initial onboarding state (async — redirect will re-evaluate
+    // once the value lands and we call [notifyListeners]).
     final onboardingRepo = ref.read(onboardingRepositoryProvider);
     onboardingRepo.isProfileSetupComplete().then((complete) {
-      _isProfileSetupComplete = complete;
+      if (_isProfileSetupComplete != complete) {
+        _isProfileSetupComplete = complete;
+        notifyListeners();
+      }
     });
 
-    // Listen to auth state changes and notify router to re-evaluate redirects
+    // Re-run redirects whenever the runtime's auth state changes; also
+    // re-check onboarding since its value depends on the logged-in user.
     ref.listen(authStateProvider, (previous, next) {
       _isLoggedIn = next.maybeWhen(
-        data: (state) => state == AuthState.authenticated,
+        data: (s) => s == AuthState.authenticated,
+        // Preserve previous value during transient loading states
+        // (e.g. runtime refresh) to avoid bouncing the user to /login.
         orElse: () => _isLoggedIn,
       );
-      // Re-check onboarding state when auth state changes
       onboardingRepo.isProfileSetupComplete().then((complete) {
         if (_isProfileSetupComplete != complete) {
           _isProfileSetupComplete = complete;
-          notifyListeners();
         }
+        notifyListeners();
       });
       notifyListeners();
     });
@@ -79,19 +89,29 @@ class AuthChangeNotifier extends ChangeNotifier {
   bool get isProfileSetupComplete => _isProfileSetupComplete;
 }
 
-/// Provider for the auth change notifier
+/// Provider for the router refresh listenable.
 @riverpod
-AuthChangeNotifier authChangeNotifier(Ref ref) => AuthChangeNotifier(ref);
+AuthRouterRefreshListenable authRouterRefreshListenable(Ref ref) =>
+    AuthRouterRefreshListenable(ref);
 
 @riverpod
 GoRouter router(Ref ref) {
-  final authChangeNotifier = ref.watch(authChangeProvider);
+  final refreshListenable = ref.watch(authRouterRefreshListenableProvider);
 
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: authChangeNotifier,
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
-      final isLoggedIn = authChangeNotifier.isLoggedIn;
+      // Source auth state directly from the chat-level provider, which
+      // re-exports the runtime's authoritative state. During transient
+      // `loading`/`refreshing` states we fall back to the refresh
+      // listener's cached login value so the user isn't bounced to
+      // `/login` during silent token refresh.
+      final authAsync = ref.read(authStateProvider);
+      final isLoggedIn = authAsync.maybeWhen(
+        data: (s) => s == AuthState.authenticated,
+        orElse: () => refreshListenable.isLoggedIn,
+      );
       final location = state.matchedLocation;
       final isLoginRoute = location == '/login';
       final isSetupRoute = location == '/profile/setup';
@@ -108,7 +128,7 @@ GoRouter router(Ref ref) {
 
       // If logged in, check if profile setup is complete
       if (isLoggedIn && !isSetupRoute && !isLoginRoute) {
-        if (!authChangeNotifier.isProfileSetupComplete) {
+        if (!refreshListenable.isProfileSetupComplete) {
           return '/profile/setup';
         }
       }

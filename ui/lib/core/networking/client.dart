@@ -13,6 +13,7 @@ import 'package:antinvestor_api_files/antinvestor_api_files.dart'
     hide Struct, Value, ListValue, NullValue, Timestamp, ContactLink, PageCursor;
 import 'package:antinvestor_api_profile/antinvestor_api_profile.dart'
     hide DeviceClient, newDeviceClient, Struct, Value, ListValue, NullValue, Timestamp;
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:connectrpc/io.dart' as connect_io;
 import 'package:connectrpc/protobuf.dart' as connect_protobuf;
@@ -20,12 +21,9 @@ import 'package:connectrpc/protocol/connect.dart' as connect_protocol;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../../features/auth/data/auth_repository.dart';
-import '../auth/shared_token_service.dart';
-import '../auth/token_refresh_coordinator.dart';
-import '../logging/app_logger.dart';
 import 'api_config.dart';
 import 'certificate_pinning.dart';
+import 'runtime_transport.dart';
 
 // ============================================================================
 // Client type aliases and factory functions
@@ -43,24 +41,18 @@ typedef GatewayClient = ConnectClientBase<GatewayServiceClient>;
 /// Type alias for Files client for convenience.
 typedef FilesClient = ConnectClientBase<FilesServiceClient>;
 
-/// Creates a new Chat service client.
+/// Creates a new Chat service client. Auth is handled by the transport
+/// (RuntimeTransport routes through AuthRuntime.fetch); SDK auth interceptors
+/// are not wired.
 Future<ChatClient> newChatClient({
   required TransportFactory createTransport,
   String? endpoint,
-  TokenManager? tokenManager,
-  TokenRefreshCallback? onTokenRefresh,
-  List<connect.Interceptor>? additionalInterceptors,
-  bool noAuth = false,
 }) {
   return newClient<ChatServiceClient>(
     defaultEndpoint: endpoint ?? 'https://chat.antinvestor.com',
     createServiceClient: ChatServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
-    additionalInterceptors: additionalInterceptors,
-    noAuth: noAuth,
   );
 }
 
@@ -68,20 +60,12 @@ Future<ChatClient> newChatClient({
 Future<GatewayClient> newGatewayClient({
   required TransportFactory createTransport,
   String? endpoint,
-  TokenManager? tokenManager,
-  TokenRefreshCallback? onTokenRefresh,
-  List<connect.Interceptor>? additionalInterceptors,
-  bool noAuth = false,
 }) {
   return newClient<GatewayServiceClient>(
     defaultEndpoint: endpoint ?? 'https://gateway.antinvestor.com',
     createServiceClient: GatewayServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
-    additionalInterceptors: additionalInterceptors,
-    noAuth: noAuth,
   );
 }
 
@@ -89,20 +73,12 @@ Future<GatewayClient> newGatewayClient({
 Future<FilesClient> newFilesClient({
   required TransportFactory createTransport,
   String? endpoint,
-  TokenManager? tokenManager,
-  TokenRefreshCallback? onTokenRefresh,
-  List<connect.Interceptor>? additionalInterceptors,
-  bool noAuth = false,
 }) {
   return newClient<FilesServiceClient>(
     defaultEndpoint: endpoint ?? 'https://files.antinvestor.com',
     createServiceClient: FilesServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
-    additionalInterceptors: additionalInterceptors,
-    noAuth: noAuth,
   );
 }
 
@@ -111,45 +87,20 @@ final secureStorageProvider = Provider<FlutterSecureStorage>(
   (ref) => const FlutterSecureStorage(),
 );
 
-/// Token manager provider using antinvestor_api_common TokenManager
+/// Bridge [TokenManager] that exposes `accessToken` to the few remaining
+/// direct-HTTP call sites (link previews, account service, content
+/// resolver) that have not yet moved to `runtime.fetch`. The Connect RPC
+/// clients go through [RuntimeTransport] and do not touch this manager.
 ///
-/// TokenManager handles:
-/// - Persistent storage of tokens (access token only - refresh token managed by AuthService)
-/// - Reactive refresh on 401 (via TokenRefreshCoordinator)
-/// - Concurrent refresh prevention (via TokenRefreshCoordinator)
-/// - Logout on permanent errors
-///
-/// All token refresh operations are delegated to [TokenRefreshCoordinator]
-/// to ensure consistent behavior across the entire application.
+/// The manager reads `access_token` from secure storage on `initialize`
+/// — the AuthRuntime writes that key as part of its own persistence
+/// cycle, giving the direct-HTTP callers a synchronous accessor without
+/// needing them to own the runtime. Refresh/logout hooks are intentionally
+/// absent: the runtime owns both.
 final tokenManagerProvider = Provider<TokenManager>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  final authRepo = ref.watch(authRepositoryProvider);
-  final coordinator = ref.watch(tokenRefreshCoordinatorProvider);
 
   final tokenManager = TokenManager(
-    persistTokens: (accessToken, refreshToken) async {
-      // IMPORTANT: We only manage access token here.
-      // Refresh token is managed exclusively by AuthService.
-      //
-      // Why? When OAuth server uses refresh token rotation, AuthService saves
-      // the NEW refresh token to storage during refresh. But TokenManager's
-      // setAccessToken() calls persistTokens with its OLD in-memory refresh
-      // token, which would overwrite the fresh one - causing the next refresh
-      // to fail and the user to be logged out unexpectedly.
-      //
-      // By only managing access token here, we avoid this race condition.
-      // The only exception is logout (both tokens null) where we clear both.
-      if (accessToken != null) {
-        await storage.write(key: 'access_token', value: accessToken);
-      } else {
-        await storage.delete(key: 'access_token');
-      }
-
-      // Only clear refresh token during logout (when both tokens are null)
-      if (accessToken == null && refreshToken == null) {
-        await storage.delete(key: 'refresh_token');
-      }
-    },
     loadTokens: () async {
       final accessToken = await storage.read(key: 'access_token');
       final refreshToken = await storage.read(key: 'refresh_token');
@@ -158,67 +109,11 @@ final tokenManagerProvider = Provider<TokenManager>((ref) {
       }
       return null;
     },
-    onRefreshToken: (String? refreshToken) async {
-      // Delegate ALL token refresh logic to the coordinator
-      // This ensures consistent behavior across TokenManager, SyncEngine,
-      // and TokenRefreshService
-      AppLogger.debug(
-        'TokenManager: onRefreshToken called, delegating to coordinator',
-      );
-
-      final result = await coordinator.refresh(source: 'TokenManager');
-
-      if (!result.success) {
-        throw Exception(result.error ?? 'Token refresh failed');
-      }
-
-      // The coordinator already updated our in-memory cache via setAccessToken()
-      // Just return the token for the external package's expectations
-      return result.accessToken!;
-    },
-    onLogout: () async {
-      // Clear auth state when permanent error occurs
-      await authRepo.logout();
-    },
   );
 
-  // CRITICAL: Set the TokenManager reference on the coordinator
-  // This allows the coordinator to update our in-memory cache after refresh
-  coordinator.setTokenManager(tokenManager);
-
-  // Set TokenManager on SharedTokenService for unified access
-  // This enables both foreground and background to use the same service
-  SharedTokenService.instance.setTokenManager(tokenManager);
-
-  ref.onDispose(() {
-    tokenManager.dispose();
-    SharedTokenService.instance.clearTokenManager();
-  });
+  ref.onDispose(tokenManager.dispose);
 
   return tokenManager;
-});
-
-/// Token refresh callback provider - uses the coordinator for consistent behavior
-///
-/// This callback can be passed to API clients that need a refresh callback.
-/// It delegates to the TokenRefreshCoordinator to ensure consistent handling.
-final tokenRefreshCallbackProvider = Provider<TokenRefreshCallback>((ref) {
-  final coordinator = ref.watch(tokenRefreshCoordinatorProvider);
-
-  return (String? refreshToken) async {
-    final result = await coordinator.refresh(source: 'ApiClient');
-
-    if (!result.success) {
-      if (result.result == TokenRefreshResult.permanentError) {
-        throw TokenRefreshPermanentException(
-          result.error ?? 'Token refresh failed permanently',
-        );
-      }
-      throw Exception(result.error ?? 'Token refresh failed');
-    }
-
-    return result.accessToken!;
-  };
 });
 
 /// Creates a transport factory that uses the provided CertificatePinning instance
@@ -286,103 +181,90 @@ connect.Transport createTransport(
   );
 }
 
-/// Auth headers provider for manual header injection
-final authHeadersProvider = FutureProvider<connect.Headers>((ref) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final headers = connect.Headers();
-  final token = tokenManager.accessToken;
-  if (token != null && token.isNotEmpty) {
-    headers['Authorization'] = 'Bearer $token';
-  }
-  return headers;
-});
+/// Builds a [TransportFactory] that routes every Connect RPC through
+/// `AuthRuntime.fetch` via `RuntimeTransport`.
+///
+/// Replaces [createTransportFactory] for the `*ClientProvider` family.
+/// Certificate pinning is no longer applied here because the runtime
+/// owns the underlying http client (pinning will be threaded into the
+/// runtime in a later dispatch).
+CreateTransportFn createRuntimeTransportFactory(AuthRuntime runtime) {
+  return (Uri baseUrl, List<connect.Interceptor> interceptors) {
+    return RuntimeTransport(
+      runtime: runtime,
+      baseUrl: baseUrl,
+      interceptors: interceptors,
+    );
+  };
+}
 
 // ============================================================================
 // Service Client Providers
 // ============================================================================
 
-/// Chat client provider - uses newChatClient with proper interceptors
-final chatClientProvider = FutureProvider<ChatClient>((ref) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final onTokenRefresh = ref.watch(tokenRefreshCallbackProvider);
-  final certificatePinning = ref.watch(certificatePinningProvider);
+/// Warms [tokenManagerProvider] from secure storage. The Connect RPC path
+/// never reads the manager (RuntimeTransport handles auth), but the
+/// direct-HTTP bridges (link previews, account service, content resolver)
+/// read `accessToken` synchronously and therefore need the in-memory cache
+/// populated before first use. Keyed off `chatClientProvider` so any
+/// consumer that watches the chat client also warms the manager.
+Future<void> _warmTokenManager(Ref ref) async {
+  await ref.watch(tokenManagerProvider).initialize();
+}
 
-  // Initialize token manager if not already initialized
-  await tokenManager.initialize();
+/// Chat client provider - Connect transport routes through `AuthRuntime.fetch`
+/// via `RuntimeTransport`.
+final chatClientProvider = FutureProvider<ChatClient>((ref) async {
+  final runtime = ref.watch(authRuntimeProvider);
+  await _warmTokenManager(ref);
 
   return newChatClient(
-    createTransport: createTransportFactory(certificatePinning),
+    createTransport: createRuntimeTransportFactory(runtime),
     endpoint: ApiConfig.chatBaseUrl,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
   );
 });
 
-/// Gateway client provider - uses newGatewayClient with proper interceptors
+/// Gateway client provider - Connect transport routes through runtime.fetch.
 final gatewayClientProvider = FutureProvider<GatewayClient>((ref) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final onTokenRefresh = ref.watch(tokenRefreshCallbackProvider);
-  final certificatePinning = ref.watch(certificatePinningProvider);
-
-  // Initialize token manager if not already initialized
-  await tokenManager.initialize();
+  final runtime = ref.watch(authRuntimeProvider);
+  await _warmTokenManager(ref);
 
   return newGatewayClient(
-    createTransport: createTransportFactory(certificatePinning),
+    createTransport: createRuntimeTransportFactory(runtime),
     endpoint: ApiConfig.gatewayBaseUrl,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
   );
 });
 
-/// Device client provider - uses newDeviceClient with proper interceptors
+/// Device client provider - Connect transport routes through runtime.fetch.
 final deviceClientProvider = FutureProvider<DeviceClient>((ref) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final onTokenRefresh = ref.watch(tokenRefreshCallbackProvider);
-  final certificatePinning = ref.watch(certificatePinningProvider);
-
-  // Initialize token manager if not already initialized
-  await tokenManager.initialize();
+  final runtime = ref.watch(authRuntimeProvider);
+  await _warmTokenManager(ref);
 
   return newDeviceClient(
-    createTransport: createTransportFactory(certificatePinning),
+    createTransport: createRuntimeTransportFactory(runtime),
     endpoint: ApiConfig.devicesBaseUrl,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
   );
 });
 
-/// Profile client provider - uses newProfileClient with proper interceptors
+/// Profile client provider - Connect transport routes through runtime.fetch.
 final profileClientProvider = FutureProvider<ProfileClient>((ref) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final onTokenRefresh = ref.watch(tokenRefreshCallbackProvider);
-  final certificatePinning = ref.watch(certificatePinningProvider);
-
-  // Initialize token manager if not already initialized
-  await tokenManager.initialize();
+  final runtime = ref.watch(authRuntimeProvider);
+  await _warmTokenManager(ref);
 
   return newProfileClient(
-    createTransport: createTransportFactory(certificatePinning),
+    createTransport: createRuntimeTransportFactory(runtime),
     endpoint: ApiConfig.profileBaseUrl,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
   );
 });
 
-/// Files client provider - uses newFilesClient with proper interceptors
+/// Files client provider - Connect transport routes through runtime.fetch.
 final filesClientProvider = FutureProvider<FilesClient>((ref) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final onTokenRefresh = ref.watch(tokenRefreshCallbackProvider);
-  final certificatePinning = ref.watch(certificatePinningProvider);
-
-  // Initialize token manager if not already initialized
-  await tokenManager.initialize();
+  final runtime = ref.watch(authRuntimeProvider);
+  await _warmTokenManager(ref);
 
   return newFilesClient(
-    createTransport: createTransportFactory(certificatePinning),
+    createTransport: createRuntimeTransportFactory(runtime),
     endpoint: ApiConfig.filesBaseUrl,
-    tokenManager: tokenManager,
-    onTokenRefresh: onTokenRefresh,
   );
 });
 
@@ -422,34 +304,3 @@ final filesServiceClientProvider = FutureProvider<FilesServiceClient>((
   return client.stub;
 });
 
-// ============================================================================
-// Helper Functions for Authenticated API Calls
-// ============================================================================
-
-/// Helper to get current auth headers for API calls
-/// Usage: final headers = await ref.read(getAuthHeadersProvider.future);
-final getAuthHeadersProvider = FutureProvider.autoDispose<connect.Headers>((
-  ref,
-) async {
-  final tokenManager = ref.watch(tokenManagerProvider);
-  final headers = connect.Headers();
-  final token = tokenManager.accessToken;
-  if (token != null && token.isNotEmpty) {
-    headers['Authorization'] = 'Bearer $token';
-  }
-  return headers;
-});
-
-/// Reloads TokenManager from secure storage
-///
-/// IMPORTANT: Call this after login to ensure API clients have the new tokens.
-/// After AuthService saves tokens to storage, TokenManager still has its old
-/// (empty) in-memory cache. This method reloads from storage.
-Future<void> reloadTokenManager(TokenManager tokenManager) async {
-  AppLogger.debug('Reloading TokenManager from storage');
-  await tokenManager.initialize();
-  AppLogger.debug(
-    'TokenManager reloaded',
-    data: {'hasToken': tokenManager.accessToken != null},
-  );
-}

@@ -1,3 +1,4 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xid/xid.dart';
@@ -5,7 +6,6 @@ import 'package:xid/xid.dart';
 import '../../../core/db/database.dart';
 import '../../../core/error/error_handler.dart';
 import '../../../core/sync/sync_engine.dart';
-import '../../../features/auth/data/auth_repository.dart';
 import '../../messages/data/message_providers.dart';
 import '../../messages/data/message_repository.dart';
 import '../../messages/domain/room_event.dart' as domain;
@@ -13,10 +13,10 @@ import '../../messages/domain/room_event.dart' as domain;
 /// Provider for motion service
 final motionServiceProvider = FutureProvider<MotionService>((ref) async {
   final syncEngine = await ref.watch(syncEngineProvider.future);
-  final authRepo = ref.watch(authRepositoryProvider);
+  final runtime = ref.watch(authRuntimeProvider);
   final messageRepo = ref.watch(messageRepositoryProvider);
   final db = AppDatabase.instance;
-  return MotionService(syncEngine, authRepo, messageRepo, db);
+  return MotionService(syncEngine, runtime, messageRepo, db);
 });
 
 /// Service for handling motion transactions and payments
@@ -24,12 +24,12 @@ class MotionService {
   /// Creates a motion service
   MotionService(
     this._syncEngine,
-    this._authRepository,
+    this._authRuntime,
     this._messageRepository,
     this._database,
   );
   final SyncEngine _syncEngine;
-  final AuthRepository _authRepository;
+  final AuthRuntime _authRuntime;
   final MessageRepository _messageRepository;
   final AppDatabase _database;
 
@@ -50,7 +50,7 @@ class MotionService {
     required DateTime deadline,
   }) async {
     // Get current profile ID and check authentication
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
     if (currentProfileId == null) {
       throw Exception('Not authenticated');
     }
@@ -134,7 +134,7 @@ class MotionService {
     }
 
     // 5. Check for existing vote (deduplication & change logic)
-    final currentProfileId = await _authRepository.getCurrentProfileId();
+    final currentProfileId = (await _authRuntime.getUserClaims()).sub;
     if (currentProfileId == null) {
       throw ValidationException('Profile not authenticated');
     }
