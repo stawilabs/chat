@@ -15,15 +15,18 @@ import (
 	"github.com/antinvestor/common"
 	"github.com/antinvestor/common/connection"
 	"github.com/antinvestor/common/permissions"
+	"github.com/antinvestor/common/timescale"
 	aconfig "github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/antinvestor/service-chat/apps/default/service/events"
 	"github.com/antinvestor/service-chat/apps/default/service/handlers"
+	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/antinvestor/service-chat/apps/default/service/queues"
 	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
+	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
@@ -33,7 +36,7 @@ import (
 var chatAPISpecFile []byte
 
 // runService initializes and starts the chat service with all dependencies.
-func runService(ctx context.Context) error {
+func runService(ctx context.Context) error { //nolint:funlen // service wiring is intentionally verbose
 	// Initialize configuration
 	cfg, err := config.LoadWithOIDC[aconfig.ChatConfig](ctx)
 	if err != nil {
@@ -90,6 +93,9 @@ func runService(ctx context.Context) error {
 	if handleDatabaseMigration(ctx, dbManager, cfg) {
 		return nil
 	}
+
+	// Register hypertables (no-op WARN if timescaledb extension is absent).
+	ensureHypertables(ctx, dbPool)
 
 	// Setup Keto authorization service
 	auth := sm.GetAuthorizer(ctx)
@@ -151,6 +157,15 @@ func main() {
 	ctx := context.Background()
 	if err := runService(ctx); err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not run service")
+	}
+}
+
+// ensureHypertables registers TimescaleDB hypertables idempotently.
+// Errors are logged as warnings so the service continues when TimescaleDB
+// is not yet available.
+func ensureHypertables(ctx context.Context, dbPool pool.Pool) {
+	if tsErr := timescale.Ensure(ctx, dbPool.DB(ctx, false), models.Hypertables()); tsErr != nil {
+		util.Log(ctx).WithError(tsErr).Warn("timescale hypertable setup skipped — will retry after cluster migration")
 	}
 }
 
