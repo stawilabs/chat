@@ -83,9 +83,10 @@ packages:
   antinvestor_auth_runtime:
     dependency: "direct main"
     description:
-      path: "../../service-authentication/ui/runtime"
-      relative: true
-    source: path
+      name: antinvestor_auth_runtime
+      sha256: "0872d4fa8029848a638637f7417b444544deb4616a4e3f9cc64c3874b7deee91"
+      url: "https://pub.dev"
+    source: hosted
     version: "0.3.1"
   app_badge_plus:
     dependency: "direct main"
