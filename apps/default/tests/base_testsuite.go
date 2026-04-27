@@ -543,6 +543,20 @@ func (*stubProfileClient) ListRelationship(
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
 
+func (*stubProfileClient) GetByIDAndPartition(
+	context.Context,
+	*connect.Request[profilev1.GetByIDAndPartitionRequest],
+) (*connect.Response[profilev1.GetByIDAndPartitionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+func (*stubProfileClient) PropertyHistory(
+	context.Context,
+	*connect.Request[profilev1.PropertyHistoryRequest],
+) (*connect.Response[profilev1.PropertyHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
 // stubDeviceClient implements devicev1connect.DeviceServiceClient.
 // Search returns an error; all other methods return nil.
 type stubDeviceClient struct{}

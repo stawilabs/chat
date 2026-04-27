@@ -153,6 +153,20 @@ func (m *mockProfileClient) Update(
 	return nil, errors.New("not implemented")
 }
 
+func (m *mockProfileClient) GetByIDAndPartition(
+	context.Context,
+	*connect.Request[profilev1.GetByIDAndPartitionRequest],
+) (*connect.Response[profilev1.GetByIDAndPartitionResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockProfileClient) PropertyHistory(
+	context.Context,
+	*connect.Request[profilev1.PropertyHistoryRequest],
+) (*connect.Response[profilev1.PropertyHistoryResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
 func (s *RoomBusinessTestSuite) setupBusinessLayerWithProfileClient(
 	ctx context.Context, svc *frame.Service, profileCli profilev1connect.ProfileServiceClient,
 ) business.RoomBusiness {
