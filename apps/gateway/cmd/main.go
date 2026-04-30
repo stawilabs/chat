@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
 	"github.com/antinvestor/common"

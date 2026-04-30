@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 

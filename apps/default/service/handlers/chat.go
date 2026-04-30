@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/cache"

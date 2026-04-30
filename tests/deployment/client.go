@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	chatv1connect "buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	profilev1connect "buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
+	chatv1connect "buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/types/known/structpb"

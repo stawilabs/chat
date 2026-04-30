@@ -486,7 +486,7 @@ go test -v ./...
 Protocol buffer definitions are maintained in separate `apis` repository:
 ```bash
 # Generate protobuf code (done automatically via buf.build)
-# See: buf.build/gen/go/antinvestor/chat
+# See: buf.build/gen/go/stawi/chat
 ```
 
 ## API Usage Examples

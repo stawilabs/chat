@@ -1,4 +1,4 @@
-module buf.build/gen/go/antinvestor/chat/protocolbuffers/go
+module buf.build/gen/go/stawi/chat/protocolbuffers/go
 
 go 1.23
 

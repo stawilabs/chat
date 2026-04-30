@@ -100,10 +100,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/telemetry"

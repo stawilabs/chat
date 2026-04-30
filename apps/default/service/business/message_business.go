@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/frame/data"
 	frevents "github.com/pitabwire/frame/events"

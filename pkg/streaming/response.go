@@ -1,8 +1,8 @@
 package streaming
 
 import (
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

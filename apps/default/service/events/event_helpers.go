@@ -1,6 +1,6 @@
 package events
 
-import chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
+import chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 
 // isEphemeralRoomEvent returns true for event types that are transient and
 // should not be persisted to the replay log or trigger durable delivery.

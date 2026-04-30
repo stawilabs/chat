@@ -3,8 +3,8 @@ package queues
 import (
 	"testing"
 
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"github.com/stretchr/testify/assert"
 )
 

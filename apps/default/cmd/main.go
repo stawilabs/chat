@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
-	chatpb "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/common"
 	"github.com/antinvestor/common/connection"

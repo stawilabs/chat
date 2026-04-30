@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	frevents "github.com/pitabwire/frame/events"
 	"google.golang.org/protobuf/types/known/timestamppb"
 

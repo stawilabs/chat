@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 )
 
 // GatewayTestSuite returns all gateway/real-time connection tests.

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"github.com/pitabwire/frame/datastore/pool"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/workerpool"

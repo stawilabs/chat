@@ -5,8 +5,6 @@ go 1.26
 toolchain go1.26.1
 
 require (
-	buf.build/gen/go/antinvestor/chat/connectrpc/go v1.19.2-20260416012825-dd17d148ee94.1
-	buf.build/gen/go/antinvestor/chat/protocolbuffers/go v1.36.11-20260416012825-dd17d148ee94.1
 	buf.build/gen/go/antinvestor/common/protocolbuffers/go v1.36.11-20260325040325-9771112f2289.1
 	buf.build/gen/go/antinvestor/device/connectrpc/go v1.19.2-20260415203305-cca911026890.1
 	buf.build/gen/go/antinvestor/device/protocolbuffers/go v1.36.11-20260415203305-cca911026890.1
@@ -29,6 +27,8 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
 	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.11-20230414000709-087bc8072ce4.1 // indirect
+	buf.build/gen/go/stawi/chat/connectrpc/go v1.19.2-20260430172303-85050c8677bb.1 // indirect
+	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.11-20260430172303-85050c8677bb.1 // indirect
 	buf.build/go/protovalidate v1.2.0 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect

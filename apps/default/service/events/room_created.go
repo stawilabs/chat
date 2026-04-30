@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
+	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
 
