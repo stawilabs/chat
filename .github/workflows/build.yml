@@ -79,7 +79,15 @@ jobs:
       - name: Setup Google Services
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+        if: env.GOOGLE_SERVICES_JSON != ''
+        run: |
+          # Accept either base64-encoded or raw JSON content
+          if printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d >/tmp/gs.json 2>/dev/null \
+             && head -c1 /tmp/gs.json | grep -q '{'; then
+            mv /tmp/gs.json android/app/google-services.json
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          fi
 
       - name: Setup Android signing
         if: inputs.build_type == 'release'
@@ -173,7 +181,13 @@ jobs:
           IOS_GOOGLE_SERVICES_PLIST: ${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}
         if: env.IOS_GOOGLE_SERVICES_PLIST != ''
         run: |
-          echo "$IOS_GOOGLE_SERVICES_PLIST" | base64 -d > ios/Runner/GoogleService-Info.plist
+          # Accept either base64-encoded or raw plist XML
+          if printf '%s' "$IOS_GOOGLE_SERVICES_PLIST" | base64 -d >/tmp/gs.plist 2>/dev/null \
+             && head -c5 /tmp/gs.plist | grep -q '<'; then
+            mv /tmp/gs.plist ios/Runner/GoogleService-Info.plist
+          else
+            printf '%s' "$IOS_GOOGLE_SERVICES_PLIST" > ios/Runner/GoogleService-Info.plist
+          fi
           gem install --no-document xcodeproj
           ruby <<'RUBY'
           require 'xcodeproj'
