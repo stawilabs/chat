@@ -35,6 +35,8 @@ on:
         required: false
       GOOGLE_SERVICES_JSON:
         required: false
+      IOS_GOOGLE_SERVICES_PLIST:
+        required: false
 
 env:
   FLUTTER_VERSION: '3.38.7'
@@ -161,6 +163,30 @@ jobs:
           cd ios
           # Update deployment target
           sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+
+      - name: Setup iOS Firebase config
+        env:
+          IOS_GOOGLE_SERVICES_PLIST: ${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}
+        if: env.IOS_GOOGLE_SERVICES_PLIST != ''
+        run: |
+          echo "$IOS_GOOGLE_SERVICES_PLIST" | base64 -d > ios/Runner/GoogleService-Info.plist
+          gem install --no-document xcodeproj
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project_path = 'ios/Runner.xcodeproj'
+          project = Xcodeproj::Project.open(project_path)
+          target = project.targets.find { |t| t.name == 'Runner' }
+          abort 'Runner target not found' unless target
+          plist_path = 'GoogleService-Info.plist'
+          group = project.main_group['Runner'] || project.main_group
+          existing = group.files.find { |f| f.path == plist_path }
+          file_ref = existing || group.new_reference(plist_path)
+          unless target.resources_build_phase.files_references.include?(file_ref)
+            target.resources_build_phase.add_file_reference(file_ref)
+          end
+          project.save
+          puts "GoogleService-Info.plist linked into Runner resources."
+          RUBY
 
       - name: Install CocoaPods
         run: cd ios && pod install --repo-update || pod install
