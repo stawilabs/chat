@@ -4,8 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/pitabwire/frame/security"
+
+	"github.com/stawilabs/chat/apps/default/service/authz"
 )
 
 // rolePermissions maps relation names to their allowed permissions.

@@ -334,7 +334,7 @@ Voice/Video calls use `RoomEvent`s for signaling (WebRTC).
 ```dart
 // Example Client Setup
 final client = ConnectClient(
-  baseUrl: 'https://api.antinvestor.com',
+  baseUrl: 'https://api.stawi.org',
   httpClient: createHttpClient(), // With interceptors
 );
 

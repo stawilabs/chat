@@ -8,10 +8,6 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/antinvestor/service-chat/apps/default/service"
-	"github.com/antinvestor/service-chat/apps/default/service/business"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/apps/default/tests"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/frame/datastore"
@@ -21,6 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/stawilabs/chat/apps/default/service"
+	"github.com/stawilabs/chat/apps/default/service/business"
+	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/tests"
 )
 
 type MessageBusinessTestSuite struct {

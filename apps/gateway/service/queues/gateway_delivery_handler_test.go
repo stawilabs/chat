@@ -7,14 +7,15 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
-	"github.com/antinvestor/service-chat/apps/gateway/config"
-	"github.com/antinvestor/service-chat/apps/gateway/service/business"
-	"github.com/antinvestor/service-chat/apps/gateway/service/queues"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/queue"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/stawilabs/chat/apps/gateway/config"
+	"github.com/stawilabs/chat/apps/gateway/service/business"
+	"github.com/stawilabs/chat/apps/gateway/service/queues"
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 type GatewayDeliveryHandlerTestSuite struct {

@@ -52,10 +52,10 @@ Set these environment variables before running tests:
 
 ```bash
 # Staging URLs
-export E2E_GATEWAY_URL="https://gateway.staging.antinvestor.com"
-export E2E_CHAT_URL="https://chat.staging.antinvestor.com"
-export E2E_PROFILE_URL="https://profile.staging.antinvestor.com"
-export E2E_AUTH_URL="https://auth.staging.antinvestor.com"
+export E2E_GATEWAY_URL="https://gateway.staging.stawi.org"
+export E2E_CHAT_URL="https://chat.staging.stawi.org"
+export E2E_PROFILE_URL="https://profile.staging.stawi.org"
+export E2E_AUTH_URL="https://auth.staging.stawi.org"
 export E2E_OAUTH_CLIENT_ID="e2e-test-client"
 
 # Test User 1 (Primary)

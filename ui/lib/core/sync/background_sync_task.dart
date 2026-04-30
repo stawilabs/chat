@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart' as fixnum;
 

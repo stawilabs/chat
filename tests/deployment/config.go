@@ -17,7 +17,7 @@ type Config struct {
 	// If empty, defaults to ServiceEndpoint
 	GatewayEndpoint string
 
-	// ProfileEndpoint is the base URL of the profile service (e.g., "https://profile.antinvestor.com")
+	// ProfileEndpoint is the base URL of the profile service (e.g., "https://profile.stawi.org")
 	ProfileEndpoint string
 
 	// AuthToken is the JWT bearer token for authentication
@@ -42,7 +42,7 @@ type Config struct {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		ProfileEndpoint:   "https://profile.antinvestor.com",
+		ProfileEndpoint:   "https://profile.stawi.org",
 		RequestTimeout:    30 * time.Second,
 		TestTimeout:       10 * time.Minute,
 		Verbose:           false,

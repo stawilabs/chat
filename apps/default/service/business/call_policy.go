@@ -11,11 +11,12 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/pitabwire/frame/data"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/apps/default/service/repository"
 )
 
 const (

@@ -101,7 +101,7 @@ class NotificationGroupingService {
       'Notifications for chat messages';
 
   /// Group key prefix for Android notification groups
-  static const String _groupKeyPrefix = 'com.antinvestor.chat.room.';
+  static const String _groupKeyPrefix = 'org.stawi.chat.room.';
 
   /// Summary notification ID offset (to avoid collision with message IDs)
   static const int _summaryNotificationIdOffset = 1000000;

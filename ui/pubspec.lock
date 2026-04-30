@@ -41,13 +41,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
-  antinvestor_api_chat:
-    dependency: "direct main"
-    description:
-      path: "../sdk/dart/chat"
-      relative: true
-    source: path
-    version: "1.55.0"
   antinvestor_api_common:
     dependency: "direct main"
     description:
@@ -1996,6 +1989,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  stawi_api_chat:
+    dependency: "direct main"
+    description:
+      path: "../sdk/dart/chat"
+      relative: true
+    source: path
+    version: "1.55.0"
   stream_channel:
     dependency: transitive
     description:

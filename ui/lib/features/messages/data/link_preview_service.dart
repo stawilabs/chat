@@ -196,7 +196,7 @@ class LinkPreviewService {
             Uri.parse(url),
             headers: {
               'User-Agent':
-                  'Mozilla/5.0 (compatible; LinkPreviewBot/1.0; +https://antinvestor.com)',
+                  'Mozilla/5.0 (compatible; LinkPreviewBot/1.0; +https://stawi.org)',
             },
           )
           .timeout(_fetchTimeout);

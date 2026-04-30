@@ -7,8 +7,6 @@ import (
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/default/service/handlers"
-	"github.com/antinvestor/service-chat/apps/default/tests"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/frame/security"
@@ -17,6 +15,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/stawilabs/chat/apps/default/service/handlers"
+	"github.com/stawilabs/chat/apps/default/tests"
 )
 
 const (

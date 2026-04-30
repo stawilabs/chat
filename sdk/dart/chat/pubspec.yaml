@@ -1,9 +1,9 @@
-name: antinvestor_api_chat
-description: Dart client library for Ant Investor Chat Service
+name: stawi_api_chat
+description: Dart client library for Stawi Chat Service
 version: 1.55.0
-repository: https://github.com/antinvestor/service-chat
-homepage: https://github.com/antinvestor/service-chat
-issue_tracker: https://github.com/antinvestor/service-chat/issues
+repository: https://github.com/stawilabs/chat
+homepage: https://github.com/stawilabs/chat
+issue_tracker: https://github.com/stawilabs/chat/issues
 
 environment:
   sdk: ^3.3.0

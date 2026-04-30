@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/pitabwire/frame/security"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
 // defaultMigrationBatchSize is the default number of subscriptions to process per batch.

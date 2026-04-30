@@ -7,12 +7,13 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/antinvestor/service-chat/apps/default/service"
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/apps/default/service"
+	"github.com/stawilabs/chat/apps/default/service/authz"
+	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 // roomProposalManagement is a room-scoped implementation of ProposalManagement.

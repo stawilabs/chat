@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb_chat;
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb_chat;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/rooms/data/room_repository.dart';

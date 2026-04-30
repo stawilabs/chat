@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart' as pb;
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:fixnum/fixnum.dart';

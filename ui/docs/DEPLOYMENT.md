@@ -102,7 +102,7 @@ Configure these in `Settings > Secrets and variables > Actions > Variables`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `ANDROID_PACKAGE_NAME` | Android app package name | `com.antinvestor.chat` |
+| `ANDROID_PACKAGE_NAME` | Android app package name | `org.stawi.chat` |
 | `CLOUDFLARE_PROJECT_NAME` | Cloudflare Pages project (production) | `chat-app` |
 | `CLOUDFLARE_PROJECT_NAME_STAGING` | Cloudflare Pages project (staging) | `chat-staging` |
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
+	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 func TestMetricsInitialization(_ *testing.T) {

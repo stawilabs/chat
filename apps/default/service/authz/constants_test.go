@@ -3,8 +3,9 @@ package authz_test
 import (
 	"testing"
 
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stawilabs/chat/apps/default/service/authz"
 )
 
 func TestRoleToRelation(t *testing.T) {

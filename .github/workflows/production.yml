@@ -165,7 +165,7 @@ jobs:
     timeout-minutes: 10
     environment:
       name: production
-      url: https://chat.antinvestor.com
+      url: https://chat.stawi.org
 
     steps:
       - name: Download web build
@@ -232,7 +232,7 @@ jobs:
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
-          packageName: ${{ vars.ANDROID_PACKAGE_NAME || 'com.antinvestor.chat' }}
+          packageName: ${{ vars.ANDROID_PACKAGE_NAME || 'org.stawi.chat' }}
           releaseFiles: artifacts/app-release.aab
           track: production
           status: completed

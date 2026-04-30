@@ -13,10 +13,6 @@ import (
 	"connectrpc.com/otelconnect"
 	"github.com/antinvestor/common"
 	"github.com/antinvestor/common/connection"
-	gtwconfig "github.com/antinvestor/service-chat/apps/gateway/config"
-	"github.com/antinvestor/service-chat/apps/gateway/service/business"
-	"github.com/antinvestor/service-chat/apps/gateway/service/handlers"
-	"github.com/antinvestor/service-chat/apps/gateway/service/queues"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/cache/jetstreamkv"
@@ -25,6 +21,11 @@ import (
 	"github.com/pitabwire/frame/data"
 	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
+
+	gtwconfig "github.com/stawilabs/chat/apps/gateway/config"
+	"github.com/stawilabs/chat/apps/gateway/service/business"
+	"github.com/stawilabs/chat/apps/gateway/service/handlers"
+	"github.com/stawilabs/chat/apps/gateway/service/queues"
 )
 
 //go:embed spec/chat.openapi.yaml

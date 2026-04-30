@@ -29,7 +29,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="com.antinvestor.chat"
+                <data android:scheme="org.stawi.chat"
                       android:host="sso"
                       android:pathPrefix="/redirect"/>
             </intent-filter>

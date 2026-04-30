@@ -115,8 +115,8 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:
 
 **Antinvestor**
-- Email: privacy@antinvestor.com
-- Website: https://antinvestor.com
+- Email: privacy@stawi.org
+- Website: https://stawi.org
 - Address: Nairobi, Kenya
 
 ## Consent

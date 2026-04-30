@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/antinvestor/service-chat/tests/deployment"
+	"github.com/stawilabs/chat/tests/deployment"
 )
 
 func main() {

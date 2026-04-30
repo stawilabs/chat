@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -3386,16 +3386,17 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"event_view\x12\n" +
 	"event_send\x12\troom_view\x12\x11subscription_view\x1a\x94\x01\b\x06\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manageB\xd7\x06\xbaG\xcf\x05\x12\xa3\x05\n" +
-	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"U\n" +
-	"\x10Ant Investor Ltd\x12+https://github.com/antinvestor/service-chat\x1a\x14info@antinvestor.com*I\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manageB\xf6\x05\xbaG\xb9\x05\x12\x8d\x05\n" +
+	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"?\n" +
+	"\n" +
+	"Stawi Labs\x12!https://github.com/stawilabs/chat\x1a\x0einfo@stawi.org*I\n" +
 	"\x0eApache License\x127https://github.com/antinvestor/apis/blob/master/LICENSE2\x06v1.0.0*':%\n" +
 	"#\n" +
 	"\n" +
 	"BearerAuth\x12\x15\n" +
 	"\x13\n" +
 	"\x04http*\x06bearer2\x03JWT\n" +
-	"\vcom.chat.v1B\tChatProtoP\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
+	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
 
 var (
 	file_chat_v1_chat_proto_rawDescOnce sync.Once

@@ -10,13 +10,14 @@ import (
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/default/service/business"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stawilabs/chat/apps/default/service/business"
+	"github.com/stawilabs/chat/apps/default/service/repository"
 )
 
 type mockProfileClient struct {

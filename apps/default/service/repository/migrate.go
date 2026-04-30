@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/pitabwire/frame/datastore"
+
+	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
 func Migrate(ctx context.Context, dbManager datastore.Manager, migrationPath string) error {

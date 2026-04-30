@@ -113,12 +113,12 @@ Build a production-ready, WhatsApp-class messaging application that enables secu
 
 | Service | Endpoint | Purpose |
 |---------|----------|---------|
-| Gateway | `gateway.antinvestor.com` | Real-time WebSocket streaming |
-| Chat | `chat.antinvestor.com` | Message operations, rooms |
-| Profile | `profile.antinvestor.com` | User management, roster |
-| Files | `files.antinvestor.com` | Media upload/download |
-| Device | `device.antinvestor.com` | Device registration, FCM |
-| Notification | `notification.antinvestor.com` | Push delivery |
+| Gateway | `gateway.stawi.org` | Real-time WebSocket streaming |
+| Chat | `chat.stawi.org` | Message operations, rooms |
+| Profile | `profile.stawi.org` | User management, roster |
+| Files | `files.stawi.org` | Media upload/download |
+| Device | `device.stawi.org` | Device registration, FCM |
+| Notification | `notification.stawi.org` | Push delivery |
 
 ### 2.3 Data Flow
 
@@ -1412,7 +1412,7 @@ Shareable links to join groups.
 final request = UpdateRoomRequest(
   roomId: roomId,
   metadata: Struct(fields: {
-    'invite_link': Value(stringValue: 'https://chat.antinvestor.com/join/abc123'),
+    'invite_link': Value(stringValue: 'https://chat.stawi.org/join/abc123'),
     'invite_expires': Value(numberValue: expiryTimestamp),
   }),
 );
@@ -1783,14 +1783,14 @@ Configure TURN servers for reliable call connectivity.
 // In call_manager.dart
 final config = {
   'iceServers': [
-    {'urls': 'stun:stun.antinvestor.com:3478'},
+    {'urls': 'stun:stun.stawi.org:3478'},
     {
-      'urls': 'turn:turn.antinvestor.com:3478',
+      'urls': 'turn:turn.stawi.org:3478',
       'username': turnUsername,
       'credential': turnCredential,
     },
     {
-      'urls': 'turns:turn.antinvestor.com:5349',
+      'urls': 'turns:turn.stawi.org:5349',
       'username': turnUsername,
       'credential': turnCredential,
     },

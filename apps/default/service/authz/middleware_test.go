@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
-	"github.com/antinvestor/service-chat/apps/default/service/authz/mock"
 	"github.com/pitabwire/frame/security"
 	"github.com/pitabwire/frame/security/authorizer"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stawilabs/chat/apps/default/service/authz"
+	"github.com/stawilabs/chat/apps/default/service/authz/mock"
 )
 
 type MiddlewareTestSuite struct {

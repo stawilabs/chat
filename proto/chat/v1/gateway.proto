@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,9 +38,9 @@ option (gnostic.openapi.v3.document) = {
     version: "v1.0.0"
     description: "The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections."
     contact: {
-      name: "Ant Investor Ltd"
-      url: "https://github.com/antinvestor/service-chat"
-      email: "info@antinvestor.com"
+      name: "Stawi Labs"
+      url: "https://github.com/stawilabs/chat"
+      email: "info@stawi.org"
     }
     license: {
       name: "Apache License"

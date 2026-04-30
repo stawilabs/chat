@@ -14,17 +14,18 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
-	"github.com/antinvestor/service-chat/pkg/streaming"
-	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
+	"github.com/stawilabs/chat/pkg/streaming"
+	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 type hotPathDeliveryQueueHandler struct {

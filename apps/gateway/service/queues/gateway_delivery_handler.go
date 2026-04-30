@@ -6,13 +6,14 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
-	"github.com/antinvestor/service-chat/apps/gateway/config"
-	"github.com/antinvestor/service-chat/apps/gateway/service/business"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
-	"github.com/antinvestor/service-chat/pkg/streaming"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/stawilabs/chat/apps/gateway/config"
+	"github.com/stawilabs/chat/apps/gateway/service/business"
+	"github.com/stawilabs/chat/pkg/chatutil"
+	"github.com/stawilabs/chat/pkg/streaming"
 )
 
 type GatewayEventsQueueHandler struct {

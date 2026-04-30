@@ -12,12 +12,13 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/apps/default/service/queues"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/apps/default/service/queues"
 )
 
 // testDeviceClient is a stub implementation of devicev1connect.DeviceServiceClient.

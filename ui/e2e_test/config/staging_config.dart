@@ -12,25 +12,25 @@ class StagingConfig {
   /// Base URL for the gateway service.
   static String get gatewayUrl => const String.fromEnvironment(
     'E2E_GATEWAY_URL',
-    defaultValue: 'https://gateway.staging.antinvestor.com',
+    defaultValue: 'https://gateway.staging.stawi.org',
   );
 
   /// Base URL for the chat service.
   static String get chatUrl => const String.fromEnvironment(
     'E2E_CHAT_URL',
-    defaultValue: 'https://chat.staging.antinvestor.com',
+    defaultValue: 'https://chat.staging.stawi.org',
   );
 
   /// Base URL for the profile service.
   static String get profileUrl => const String.fromEnvironment(
     'E2E_PROFILE_URL',
-    defaultValue: 'https://profile.staging.antinvestor.com',
+    defaultValue: 'https://profile.staging.stawi.org',
   );
 
   /// Base URL for the auth service (OAuth2/OIDC issuer).
   static String get authUrl => const String.fromEnvironment(
     'E2E_AUTH_URL',
-    defaultValue: 'https://auth.staging.antinvestor.com',
+    defaultValue: 'https://auth.staging.stawi.org',
   );
 
   /// OAuth2 client ID for E2E tests.

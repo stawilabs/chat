@@ -16,13 +16,6 @@ import (
 	"github.com/antinvestor/common/connection"
 	"github.com/antinvestor/common/permissions"
 	"github.com/antinvestor/common/timescale"
-	aconfig "github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
-	"github.com/antinvestor/service-chat/apps/default/service/events"
-	"github.com/antinvestor/service-chat/apps/default/service/handlers"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
-	"github.com/antinvestor/service-chat/apps/default/service/queues"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
@@ -30,6 +23,14 @@ import (
 	"github.com/pitabwire/frame/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
 	"github.com/pitabwire/util"
+
+	aconfig "github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/apps/default/service/authz"
+	"github.com/stawilabs/chat/apps/default/service/events"
+	"github.com/stawilabs/chat/apps/default/service/handlers"
+	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/apps/default/service/queues"
+	"github.com/stawilabs/chat/apps/default/service/repository"
 )
 
 //go:embed spec/chat.openapi.yaml

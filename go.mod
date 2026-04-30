@@ -1,4 +1,4 @@
-module github.com/antinvestor/service-chat
+module github.com/stawilabs/chat
 
 go 1.26
 

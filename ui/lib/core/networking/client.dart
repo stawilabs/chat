@@ -5,7 +5,7 @@
 /// and service-specific clients.
 library;
 
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart'
+import 'package:stawi_api_chat/stawi_api_chat.dart'
     hide Struct, Value, ListValue, NullValue, Timestamp, ContactLink, PageCursor;
 import 'package:antinvestor_api_common/antinvestor_api_common.dart';
 import 'package:antinvestor_api_device/antinvestor_api_device.dart';
@@ -28,7 +28,7 @@ import 'runtime_transport.dart';
 // ============================================================================
 // Client type aliases and factory functions
 //
-// These were previously exported by antinvestor_api_chat and
+// These were previously exported by stawi_api_chat and
 // antinvestor_api_files but were removed in v1.54.0.
 // ============================================================================
 
@@ -49,7 +49,7 @@ Future<ChatClient> newChatClient({
   String? endpoint,
 }) {
   return newClient<ChatServiceClient>(
-    defaultEndpoint: endpoint ?? 'https://chat.antinvestor.com',
+    defaultEndpoint: endpoint ?? 'https://chat.stawi.org',
     createServiceClient: ChatServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
@@ -62,7 +62,7 @@ Future<GatewayClient> newGatewayClient({
   String? endpoint,
 }) {
   return newClient<GatewayServiceClient>(
-    defaultEndpoint: endpoint ?? 'https://gateway.antinvestor.com',
+    defaultEndpoint: endpoint ?? 'https://gateway.stawi.org',
     createServiceClient: GatewayServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
@@ -75,7 +75,7 @@ Future<FilesClient> newFilesClient({
   String? endpoint,
 }) {
   return newClient<FilesServiceClient>(
-    defaultEndpoint: endpoint ?? 'https://files.antinvestor.com',
+    defaultEndpoint: endpoint ?? 'https://files.stawi.org',
     createServiceClient: FilesServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,

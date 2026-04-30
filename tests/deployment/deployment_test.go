@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/antinvestor/service-chat/tests/deployment"
+	"github.com/stawilabs/chat/tests/deployment"
 )
 
 // skipIfNoEnv skips the test if required environment variables are not set.

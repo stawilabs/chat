@@ -18,17 +18,17 @@ When you create the iOS project on macOS, add the following URL scheme configura
         <key>CFBundleTypeRole</key>
         <string>Editor</string>
         <key>CFBundleURLName</key>
-        <string>com.antinvestor.chat</string>
+        <string>org.stawi.chat</string>
         <key>CFBundleURLSchemes</key>
         <array>
-            <string>com.antinvestor.chat</string>
+            <string>org.stawi.chat</string>
         </array>
     </dict>
 </array>
 ```
 
 3. **Verify the redirect URI** matches what's registered on your OAuth server:
-   - iOS/Android: `com.antinvestor.chat://sso/redirect`
+   - iOS/Android: `org.stawi.chat://sso/redirect`
 
 ## Full Info.plist Example
 
@@ -47,10 +47,10 @@ The URL types section should look like this in context:
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>CFBundleURLName</key>
-            <string>com.antinvestor.chat</string>
+            <string>org.stawi.chat</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.antinvestor.chat</string>
+                <string>org.stawi.chat</string>
             </array>
         </dict>
     </array>

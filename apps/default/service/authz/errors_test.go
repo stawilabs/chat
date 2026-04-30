@@ -4,11 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
 	"github.com/pitabwire/frame/security"
 	"github.com/pitabwire/frame/security/authorizer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stawilabs/chat/apps/default/service/authz"
 )
 
 func TestPermissionDeniedError(t *testing.T) {

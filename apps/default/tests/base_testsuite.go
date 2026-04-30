@@ -18,12 +18,6 @@ import (
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	"connectrpc.com/connect"
-	iconfig "github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/apps/default/service/authz"
-	"github.com/antinvestor/service-chat/apps/default/service/events"
-	"github.com/antinvestor/service-chat/apps/default/service/queues"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	"github.com/antinvestor/service-chat/apps/default/tests/testketo"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
@@ -35,6 +29,13 @@ import (
 	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
+
+	iconfig "github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/apps/default/service/authz"
+	"github.com/stawilabs/chat/apps/default/service/events"
+	"github.com/stawilabs/chat/apps/default/service/queues"
+	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/tests/testketo"
 )
 
 const PostgresqlDBImage = "postgres:latest"

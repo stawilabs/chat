@@ -1,9 +1,9 @@
 name: stawi
 description: "Secure group credit and savings management application with end-to-end encryption, real-time messaging, and comprehensive financial tracking features. Built with Flutter for cross-platform mobile experiences."
-homepage: "https://github.com/antinvestor/chat"
-repository: "https://github.com/antinvestor/chat"
-issue_tracker: "https://github.com/antinvestor/chat/issues"
-documentation: "https://github.com/antinvestor/chat/blob/main/README.md"
+homepage: "https://github.com/stawilabs/chat"
+repository: "https://github.com/stawilabs/chat"
+issue_tracker: "https://github.com/stawilabs/chat/issues"
+documentation: "https://github.com/stawilabs/chat/blob/main/README.md"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -32,7 +32,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  antinvestor_api_chat: ^1.55.0
+  stawi_api_chat: ^1.55.0
   antinvestor_api_common: ^1.52.0
   antinvestor_api_device: ^1.53.13
   antinvestor_api_files: ^1.54.0
@@ -174,7 +174,7 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 dependency_overrides:
-  antinvestor_api_chat:
+  stawi_api_chat:
     path: ../sdk/dart/chat
   # Fix record_linux compatibility with record_platform_interface 1.5.0
   # See: https://pub.dev/packages/record_linux/changelog

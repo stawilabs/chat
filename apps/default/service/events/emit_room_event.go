@@ -6,11 +6,12 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
-	"github.com/antinvestor/service-chat/apps/default/service/repository"
-	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	frevents "github.com/pitabwire/frame/events"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/apps/default/service/repository"
+	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 type roomChangeEventEmitter struct {

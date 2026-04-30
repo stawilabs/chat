@@ -5,15 +5,16 @@ import (
 	"testing"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/apps/default/service/events"
-	"github.com/antinvestor/service-chat/apps/default/tests"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/apps/default/service/events"
+	"github.com/stawilabs/chat/apps/default/tests"
 )
 
 type FanoutEventHandlerTestSuite struct {

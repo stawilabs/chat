@@ -7,8 +7,9 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 const (

@@ -4,7 +4,8 @@ import (
 	"context"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
+
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 // Metadata represents the cached connection metadata.

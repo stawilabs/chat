@@ -8,11 +8,12 @@ import (
 	"time"
 
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
-	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/pkg/chatutil"
+	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 const (

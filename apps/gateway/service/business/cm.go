@@ -105,10 +105,11 @@ import (
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/cache"
 	"github.com/pitabwire/frame/telemetry"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 const (

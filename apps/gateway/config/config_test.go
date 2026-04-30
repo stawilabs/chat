@@ -3,9 +3,10 @@ package config_test
 import (
 	"testing"
 
-	"github.com/antinvestor/service-chat/apps/gateway/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stawilabs/chat/apps/gateway/config"
 )
 
 func TestGatewayConfig_Validate(t *testing.T) {
@@ -169,7 +170,7 @@ func TestGatewayConfig_Validate(t *testing.T) {
 func validGatewayConfig() config.GatewayConfig {
 	return config.GatewayConfig{
 		ChatServiceURI:                "127.0.0.1:7010",
-		DeviceServiceURI:              "device.api.antinvestor.com:443",
+		DeviceServiceURI:              "device.api.stawi.org:443",
 		MaxConnectionsPerDevice:       1,
 		ConnectionTimeoutSec:          300,
 		HeartbeatIntervalSec:          30,

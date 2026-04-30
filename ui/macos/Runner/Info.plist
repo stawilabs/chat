@@ -30,7 +30,7 @@
 	<string>NSApplication</string>
 	<!-- OAuth redirect handler using custom URL scheme (RFC 8252 compliant).
 	     Must match `kChatRedirectUri` in lib/core/auth/runtime_provider.dart
-	     (`com.antinvestor.chat://sso/redirect`) and the Hydra client's
+	     (`org.stawi.chat://sso/redirect`) and the Hydra client's
 	     registered redirect URI. -->
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -38,10 +38,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.antinvestor.chat</string>
+			<string>org.stawi.chat</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.antinvestor.chat</string>
+				<string>org.stawi.chat</string>
 			</array>
 		</dict>
 	</array>

@@ -9,13 +9,14 @@ import (
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/default/service"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+
+	"github.com/stawilabs/chat/apps/default/service"
+	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
 // --- proposalToAPI tests ---

@@ -1,4 +1,4 @@
-/// Dart client library for Ant Investor Chat Service.
+/// Dart client library for Stawi Chat Service.
 ///
 /// Provides Chat service functionality using Connect RPC protocol.
 library;

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/workerpool"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
 const replayCreateBatchSize = 100

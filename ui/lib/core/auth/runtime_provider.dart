@@ -5,7 +5,7 @@ import '../networking/api_config.dart';
 /// Auth runtime configuration for the chat client.
 ///
 /// Values mirror the [ApiConfig] OAuth2 settings and the existing
-/// `com.antinvestor.chat://sso/redirect` deep-link used by Hydra client
+/// `org.stawi.chat://sso/redirect` deep-link used by Hydra client
 /// registration and the platform URL-scheme manifests (see below).
 ///
 /// `apiBaseUrl` is the unified API origin for the new auth runtime.
@@ -16,24 +16,24 @@ import '../networking/api_config.dart';
 ///
 /// Platform manifest state (verified by CHAT-9):
 ///   * Android — `ui/android/app/src/main/AndroidManifest.xml` declares an
-///     `android:scheme="com.antinvestor.chat"` intent-filter with host
+///     `android:scheme="org.stawi.chat"` intent-filter with host
 ///     `sso` and path-prefix `/redirect` on `MainActivity`, which matches
 ///     [kChatRedirectUri] end-to-end.
-///   * iOS — `ui/ios/Runner/Info.plist` registers `com.antinvestor.chat`
+///   * iOS — `ui/ios/Runner/Info.plist` registers `org.stawi.chat`
 ///     under `CFBundleURLTypes`. (iOS Runner assets are provisioned at
 ///     build time; see `ios_oauth_setup.md` for the reference payload.)
 ///   * macOS — `ui/macos/Runner/Info.plist` registers
-///     `com.antinvestor.chat` under `CFBundleURLTypes`.
+///     `org.stawi.chat` under `CFBundleURLTypes`.
 ///
 /// Keep this comment in sync with the manifest files if the redirect URI
 /// ever changes.
-const String kChatRedirectUri = 'com.antinvestor.chat://sso/redirect';
+const String kChatRedirectUri = 'org.stawi.chat://sso/redirect';
 
 const AuthConfig kChatAuthConfig = AuthConfig(
   clientId: ApiConfig.oauth2ClientId,
   idpBaseUrl: ApiConfig.oauth2IssuerUrl,
-  apiBaseUrl: 'https://api.antinvestor.com',
-  redirectScheme: 'com.antinvestor.chat',
+  apiBaseUrl: 'https://api.stawi.org',
+  redirectScheme: 'org.stawi.chat',
   redirectUri: kChatRedirectUri,
   scopes: ['openid', 'profile', 'contact', 'offline_access'],
 );

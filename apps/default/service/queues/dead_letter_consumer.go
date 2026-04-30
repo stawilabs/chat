@@ -3,11 +3,12 @@ package queues
 import (
 	"context"
 
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
-	chattel "github.com/antinvestor/service-chat/pkg/telemetry"
 	"github.com/pitabwire/frame/queue"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/pkg/chatutil"
+	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 // deadLetterConsumer drains the dead-letter queue, logging each message and

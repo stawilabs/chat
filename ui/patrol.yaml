@@ -1,9 +1,9 @@
 patrol:
   app_name: Stawi
   android:
-    package_name: com.antinvestor.chat
+    package_name: org.stawi.chat
   ios:
-    bundle_id: com.antinvestor.chat
+    bundle_id: org.stawi.chat
 
 # Test configuration
 test_timeout: 300 # 5 minutes per test

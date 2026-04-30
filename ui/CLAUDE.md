@@ -657,7 +657,7 @@ flutter run --dart-define=ENV=production
 
 ```bash
 # Clone repository
-git clone https://github.com/antinvestor/chat.git
+git clone https://github.com/stawilabs/chat.git
 cd chat
 
 # Install dependencies
@@ -842,9 +842,9 @@ When working on multiple tasks (features, bug fixes, PRs), agents should:
 
 #### Worktree Structure
 ```
-/home/j/code/antinvestor/chat                    # Main worktree (main branch)
-/home/j/code/antinvestor/sprint1-worktrees/      # Sprint 1 feature worktrees
-/home/j/code/antinvestor/sprint2-worktrees/      # Sprint 2 feature worktrees
+/home/j/code/stawi.chat                    # Main worktree (main branch)
+/home/j/code/stawi.chat/.worktrees/sprint1/      # Sprint 1 feature worktrees
+/home/j/code/stawi.chat/.worktrees/sprint2/      # Sprint 2 feature worktrees
 ```
 
 #### Worktree Commands

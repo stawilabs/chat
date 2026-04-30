@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/antinvestor/service-chat/apps/default/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stawilabs/chat/apps/default/service"
 )
 
 func TestPartialBatchError_Error(t *testing.T) {

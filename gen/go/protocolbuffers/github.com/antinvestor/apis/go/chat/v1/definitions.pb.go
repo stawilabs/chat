@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -846,8 +846,8 @@ const file_chat_v1_definitions_proto_rawDesc = "" +
 	"\x0ePresenceStatus\x12\x1f\n" +
 	"\x1bPRESENCE_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17PRESENCE_STATUS_OFFLINE\x10\x01\x12\x1a\n" +
-	"\x16PRESENCE_STATUS_ONLINE\x10\x02B\x8b\x01\n" +
-	"\vcom.chat.v1B\x10DefinitionsProtoP\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
+	"\x16PRESENCE_STATUS_ONLINE\x10\x02B9\n" +
+	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
 
 var (
 	file_chat_v1_definitions_proto_rawDescOnce sync.Once

@@ -6,15 +6,16 @@ import (
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/events/v1"
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/apps/default/service/queues"
-	"github.com/antinvestor/service-chat/apps/default/tests"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/apps/default/service/queues"
+	"github.com/stawilabs/chat/apps/default/tests"
 )
 
 type HotPathDeliveryQueueHandlerTestSuite struct {

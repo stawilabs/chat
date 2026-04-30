@@ -438,7 +438,7 @@ Key considerations:
 
 ```bash
 # Clone repository
-git clone https://github.com/antinvestor/service-chat.git
+git clone https://github.com/stawilabs/chat.git
 cd service-chat
 
 # Install dependencies

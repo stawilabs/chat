@@ -27,7 +27,7 @@ All API clients follow this pattern:
 // lib/core/networking/client.dart
 
 import 'package:antinvestor_api_common/antinvestor_api_common.dart';
-import 'package:antinvestor_api_chat/antinvestor_api_chat.dart';
+import 'package:stawi_api_chat/stawi_api_chat.dart';
 
 // TokenManager handles JWT lifecycle
 final tokenManagerProvider = Provider<TokenManager>((ref) {

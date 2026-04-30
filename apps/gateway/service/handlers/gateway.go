@@ -6,11 +6,12 @@ import (
 	"buf.build/gen/go/antinvestor/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/service-chat/apps/gateway/service/business"
 	"github.com/pitabwire/frame"
 	"github.com/pitabwire/frame/security"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/stawilabs/chat/apps/gateway/service/business"
 )
 
 // GatewayServer handles the gateway-specific chat service operations.

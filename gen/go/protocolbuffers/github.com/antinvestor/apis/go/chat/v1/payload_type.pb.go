@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -4122,8 +4122,8 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x1fFORM_CONDITION_OPERATOR_IS_TRUE\x10\v\x12$\n" +
 	" FORM_CONDITION_OPERATOR_IS_FALSE\x10\f\x12\"\n" +
 	"\x1eFORM_CONDITION_OPERATOR_EXISTS\x10\r\x12&\n" +
-	"\"FORM_CONDITION_OPERATOR_NOT_EXISTS\x10\x0eB\x8b\x01\n" +
-	"\vcom.chat.v1B\x10PayloadTypeProtoP\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
+	"\"FORM_CONDITION_OPERATOR_NOT_EXISTS\x10\x0eB9\n" +
+	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
 
 var (
 	file_chat_v1_payload_type_proto_rawDescOnce sync.Once

@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	chatv1 "buf.build/gen/go/antinvestor/chat/protocolbuffers/go/chat/v1"
-	"github.com/antinvestor/service-chat/apps/default/service/models"
 	"github.com/pitabwire/frame/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
 // Payload field constants (re-exported from models package for testing).

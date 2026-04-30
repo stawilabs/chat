@@ -3,9 +3,10 @@ package config_test
 import (
 	"testing"
 
-	"github.com/antinvestor/service-chat/apps/default/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stawilabs/chat/apps/default/config"
 )
 
 func TestChatConfig_Validate(t *testing.T) {

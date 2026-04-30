@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/antinvestor/service-chat/apps/default/config"
-	"github.com/antinvestor/service-chat/pkg/chatutil"
 	"github.com/pitabwire/frame/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"github.com/stawilabs/chat/apps/default/config"
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 // mockPublisher implements queue.Publisher for testing.
