@@ -41,6 +41,9 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+        // Required by flutter_appauth (transitive dep of antinvestor_auth_runtime).
+        // The OAuth redirect URI must use this scheme; matches applicationId.
+        manifestPlaceholders["appAuthRedirectScheme"] = "org.stawi.chat"
     }
 
     if (keystorePropertiesFile.exists()) {
