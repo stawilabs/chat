@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:encrypt/encrypt.dart' as aes;
+import 'package:cryptography/cryptography.dart' as crypto;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vodozemac/vodozemac.dart' as vod;
@@ -433,19 +433,25 @@ class E2EEncryptionService {
       List<int>.generate(12, (_) => _random.nextInt(256)), // 96-bit IV for GCM
     );
 
-    final key = aes.Key(keyBytes);
-    final iv = aes.IV(ivBytes);
-    final encrypter = aes.Encrypter(aes.AES(key, mode: aes.AESMode.gcm));
-
-    final encrypted = encrypter.encryptBytes(data, iv: iv);
+    final algorithm = crypto.AesGcm.with256bits();
+    final secretBox = await algorithm.encrypt(
+      data,
+      secretKey: crypto.SecretKey(keyBytes),
+      nonce: ivBytes,
+    );
+    // Append the 16-byte GCM auth tag to the ciphertext for a single blob,
+    // matching the wire format used by the prior pointycastle implementation.
+    final blob = Uint8List(secretBox.cipherText.length + secretBox.mac.bytes.length)
+      ..setRange(0, secretBox.cipherText.length, secretBox.cipherText)
+      ..setRange(secretBox.cipherText.length, secretBox.cipherText.length + secretBox.mac.bytes.length, secretBox.mac.bytes);
 
     AppLogger.debug(
       'Encrypted data with AES-256-GCM',
-      data: {'dataSize': data.length, 'encryptedSize': encrypted.bytes.length},
+      data: {'dataSize': data.length, 'encryptedSize': blob.length},
     );
 
     return EncryptedData(
-      data: Uint8List.fromList(encrypted.bytes),
+      data: blob,
       key: base64Encode(keyBytes),
       iv: base64Encode(ivBytes),
     );
@@ -461,13 +467,21 @@ class E2EEncryptionService {
     final keyBytes = base64Decode(encryptedData.key);
     final ivBytes = base64Decode(encryptedData.iv);
 
-    final key = aes.Key(Uint8List.fromList(keyBytes));
-    final iv = aes.IV(Uint8List.fromList(ivBytes));
-    final encrypter = aes.Encrypter(aes.AES(key, mode: aes.AESMode.gcm));
+    final algorithm = crypto.AesGcm.with256bits();
 
     try {
-      final encrypted = aes.Encrypted(encryptedData.data);
-      final decrypted = encrypter.decryptBytes(encrypted, iv: iv);
+      // Split the appended 16-byte GCM auth tag back out of the blob.
+      const macLen = 16;
+      if (encryptedData.data.length < macLen) {
+        throw ArgumentError('Ciphertext shorter than GCM tag');
+      }
+      final cipherText = encryptedData.data.sublist(0, encryptedData.data.length - macLen);
+      final mac = crypto.Mac(encryptedData.data.sublist(encryptedData.data.length - macLen));
+      final secretBox = crypto.SecretBox(cipherText, nonce: ivBytes, mac: mac);
+      final decrypted = await algorithm.decrypt(
+        secretBox,
+        secretKey: crypto.SecretKey(keyBytes),
+      );
 
       AppLogger.debug(
         'Decrypted data with AES-256-GCM',
