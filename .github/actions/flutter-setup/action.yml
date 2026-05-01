@@ -3,10 +3,6 @@ name: 'Flutter Setup'
 description: 'Setup Flutter with dependency caching and code generation'
 
 inputs:
-  flutter-version:
-    description: 'Flutter version to use'
-    required: false
-    default: '3.41.9'
   java-version:
     description: 'Java version (for Android builds)'
     required: false
@@ -33,7 +29,6 @@ runs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ inputs.flutter-version }}
         channel: 'stable'
         cache: true
 

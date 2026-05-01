@@ -39,7 +39,6 @@ on:
         required: false
 
 env:
-  FLUTTER_VERSION: '3.41.9'
   JAVA_VERSION: '17'
 
 jobs:
@@ -74,7 +73,6 @@ jobs:
       - name: Setup Flutter
         uses: ./.github/actions/flutter-setup
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
           java-version: ${{ env.JAVA_VERSION }}
 
       # Cache Gradle
@@ -166,8 +164,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/flutter-setup
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       # Cache CocoaPods
       - name: Cache CocoaPods
@@ -291,8 +287,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/flutter-setup
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Clean stale build artifacts
         run: rm -rf .dart_tool/flutter_build/
@@ -328,8 +322,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/flutter-setup
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Build Linux
         run: |
@@ -364,8 +356,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/flutter-setup
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Build Windows
         run: |
@@ -402,8 +392,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/flutter-setup
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       # Cache CocoaPods
       - name: Cache CocoaPods
