@@ -9,6 +9,7 @@ import (
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
 
+	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
@@ -62,8 +63,8 @@ func (csq *roomCreatedQueue) Execute(ctx context.Context, payload any) error {
 
 	for _, action := range actionList.GetActions() {
 		util.Log(ctx).WithFields(map[string]any{
-			"room_id":      action.GetRoomId(),
-			"target_count": len(action.GetTargets()),
+			chatutil.KeyRoomID: action.GetRoomId(),
+			"target_count":     len(action.GetTargets()),
 		}).Debug("RoomCreated emitting SubscriptionAdd")
 
 		err = csq.eventsManager.Emit(ctx, SubscriptionAddEventName, action)

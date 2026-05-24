@@ -145,8 +145,8 @@ func (dq *hotPathDeliveryQueueHandler) processDelivery(
 
 	if profileID == "" {
 		util.Log(ctx).WithFields(map[string]any{
-			"event_id": eventDelivery.GetEvent().GetEventId(),
-			"room_id":  eventDelivery.GetEvent().GetRoomId(),
+			"event_id":         eventDelivery.GetEvent().GetEventId(),
+			chatutil.KeyRoomID: eventDelivery.GetEvent().GetRoomId(),
 		}).Warn("empty profile ID in delivery, routing to offline delivery")
 
 		chattel.DeliverySkippedEmptyProfileCounter.Add(ctx, 1)
@@ -429,7 +429,7 @@ func (dq *hotPathDeliveryQueueHandler) resolveDevicesForProfile(
 	for response.Receive() {
 		deviceErr := response.Err()
 		if deviceErr != nil && !errors.Is(deviceErr, io.EOF) {
-			util.Log(ctx).WithError(deviceErr).WithField("profile_id", profileID).
+			util.Log(ctx).WithError(deviceErr).WithField(chatutil.KeyProfileID, profileID).
 				Error("failed to receive device search stream")
 		}
 

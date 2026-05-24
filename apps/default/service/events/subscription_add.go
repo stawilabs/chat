@@ -16,6 +16,7 @@ import (
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
@@ -76,9 +77,9 @@ func (csq *roomSubscriptionAddQueue) Execute(ctx context.Context, payload any) e
 	for _, subscription := range action.GetTargets() {
 		roomID := action.GetRoomId()
 		logger := util.Log(ctx).WithFields(map[string]any{
-			"room_id":    roomID,
-			"profile_id": subscription.GetContactLink().GetProfileId(),
-			"type":       csq.Name(),
+			chatutil.KeyRoomID:    roomID,
+			chatutil.KeyProfileID: subscription.GetContactLink().GetProfileId(),
+			"type":                csq.Name(),
 		})
 		logger.Debug("handling subscription add event")
 
@@ -124,14 +125,14 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 			return fmt.Errorf("failed to create subscription: %w", err)
 		}
 		util.Log(ctx).WithFields(map[string]any{
-			"room_id":         roomID,
-			"subscription_id": subscriptionModel.GetID(),
+			chatutil.KeyRoomID:         roomID,
+			chatutil.KeySubscriptionID: subscriptionModel.GetID(),
 		}).Debug("addSubscription duplicate (idempotent)")
 	} else {
 		util.Log(ctx).WithFields(map[string]any{
-			"room_id":         roomID,
-			"subscription_id": subscriptionModel.GetID(),
-			"profile_id":      contactLink.GetProfileId(),
+			chatutil.KeyRoomID:         roomID,
+			chatutil.KeySubscriptionID: subscriptionModel.GetID(),
+			chatutil.KeyProfileID:      contactLink.GetProfileId(),
 		}).Debug("addSubscription created")
 	}
 
@@ -144,9 +145,9 @@ func (csq *roomSubscriptionAddQueue) addSubscription(
 		Actor:   addedBy,
 	}
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":         roomID,
-		"subscription_id": subscription.GetSubscriptionId(),
-		"roles":           roles,
+		chatutil.KeyRoomID:         roomID,
+		chatutil.KeySubscriptionID: subscription.GetSubscriptionId(),
+		"roles":                    roles,
 	}).Debug("addSubscription emitting authorize event")
 
 	err = csq.eventsManager.Emit(ctx, SubscriptionAuthorizeEventName, authorizeAction)

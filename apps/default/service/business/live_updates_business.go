@@ -65,12 +65,12 @@ func (cb *connectBusiness) UpdatePresence(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"profile_id": source.GetProfileId(),
-		"status":     presenceEvt.GetStatus(),
+		chatutil.KeyProfileID: source.GetProfileId(),
+		"status":              presenceEvt.GetStatus(),
 	}).Debug("UpdatePresence")
 
 	if cb.presenceCache == nil {
-		util.Log(ctx).WithField("profile_id", source.GetProfileId()).
+		util.Log(ctx).WithField(chatutil.KeyProfileID, source.GetProfileId()).
 			Warn("presence cache not configured, skipping presence update")
 		return nil
 	}
@@ -107,9 +107,9 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    roomID,
-		"profile_id": typer.GetProfileId(),
-		"is_typing":  isTyping,
+		chatutil.KeyRoomID:    roomID,
+		chatutil.KeyProfileID: typer.GetProfileId(),
+		"is_typing":           isTyping,
 	}).Debug("UpdateTypingIndicator")
 
 	// Broadcast user is typing to other room members
@@ -128,7 +128,7 @@ func (cb *connectBusiness) UpdateTypingIndicator(
 
 	emitErr := cb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &typingEvent)
 	if emitErr != nil {
-		util.Log(ctx).WithError(emitErr).WithField("room_id", roomID).
+		util.Log(ctx).WithError(emitErr).WithField(chatutil.KeyRoomID, roomID).
 			Error("failed to emit typing event")
 		return emitErr
 	}
@@ -161,8 +161,8 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":     roomID,
-		"event_count": len(eventIDList),
+		chatutil.KeyRoomID: roomID,
+		"event_count":      len(eventIDList),
 	}).Debug("UpdateDeliveryReceipt")
 
 	// Broadcast delivery receipt to other room members
@@ -182,7 +182,7 @@ func (cb *connectBusiness) UpdateDeliveryReceipt(
 
 		emitErr := cb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &receiptEvents)
 		if emitErr != nil {
-			util.Log(ctx).WithError(emitErr).WithField("room_id", roomID).
+			util.Log(ctx).WithError(emitErr).WithField(chatutil.KeyRoomID, roomID).
 				Error("failed to emit delivery receipt event")
 			return emitErr
 		}
@@ -215,8 +215,8 @@ func (cb *connectBusiness) UpdateReadMarker(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":        roomID,
-		"up_to_event_id": upToEventID,
+		chatutil.KeyRoomID: roomID,
+		"up_to_event_id":   upToEventID,
 	}).Debug("UpdateReadMarker")
 
 	// Update the subscription's last read event ID
@@ -252,7 +252,7 @@ func (cb *connectBusiness) UpdateReadMarker(
 
 	emitErr := cb.evtsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &readEvents)
 	if emitErr != nil {
-		util.Log(ctx).WithError(emitErr).WithField("room_id", roomID).
+		util.Log(ctx).WithError(emitErr).WithField(chatutil.KeyRoomID, roomID).
 			Error("failed to emit read marker event")
 		return emitErr
 	}

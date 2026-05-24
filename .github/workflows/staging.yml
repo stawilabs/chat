@@ -27,7 +27,7 @@ jobs:
       GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
       IOS_GOOGLE_SERVICES_PLIST: ${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}
 
-  # Deploy Web to Cloudflare Pages (Staging)
+  # Deploy Web to Firebase Hosting (Staging)
   deploy-web:
     name: Deploy Web
     needs: build
@@ -36,9 +36,11 @@ jobs:
     timeout-minutes: 10
     environment:
       name: staging
-      url: ${{ steps.deploy.outputs.url }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Download web build
         id: download
         uses: actions/download-artifact@v8
@@ -53,20 +55,13 @@ jobs:
           echo "::error::Web build artifact not found. Web build may have failed."
           exit 1
 
-      - name: List downloaded files
-        run: |
-          echo "Contents of build/web:"
-          ls -la build/web/ || echo "Directory not found"
-          echo "Total files:"
-          find build/web -type f | wc -l || echo "0"
-
-      - name: Deploy to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME_STAGING || 'stawi-staging' }} --branch=staging
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: staging
 
   # Deploy Android to Firebase App Distribution
   deploy-android:
@@ -162,8 +157,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Web | ${{ needs.deploy-web.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Android | ${{ needs.deploy-android.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| iOS | ${{ needs.deploy-ios.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web (Firebase Hosting) | ${{ needs.deploy-web.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android (Firebase App Distribution) | ${{ needs.deploy-android.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS (Firebase App Distribution) | ${{ needs.deploy-ios.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

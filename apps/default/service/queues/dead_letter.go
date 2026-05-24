@@ -77,14 +77,14 @@ func (dlp *DeadLetterPublisher) Publish(
 
 	if pubErr := topic.Publish(ctx, msg, dlqHeaders); pubErr != nil {
 		util.Log(ctx).WithError(pubErr).WithFields(map[string]any{
-			"original_queue": originalQueue,
+			chatutil.KeyOriginalQueue: originalQueue,
 		}).Error("failed to publish to dead-letter queue")
 		return pubErr
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"original_queue": originalQueue,
-		"error":          errMsg,
+		chatutil.KeyOriginalQueue: originalQueue,
+		"error":                   errMsg,
 	}).Warn("delivery moved to dead-letter queue after max retries exceeded")
 
 	return nil

@@ -334,8 +334,8 @@ func (ps *ChatServer) CreateRoom(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_name":  req.Msg.GetName(),
-		"profile_id": authenticatedContact.GetProfileId(),
+		"room_name":           req.Msg.GetName(),
+		chatutil.KeyProfileID: authenticatedContact.GetProfileId(),
 	}).Debug("CreateRoom request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
@@ -346,7 +346,7 @@ func (ps *ChatServer) CreateRoom(
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField("room_id", room.GetId()).Debug("CreateRoom success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, room.GetId()).Debug("CreateRoom success")
 
 	return connect.NewResponse(&chatv1.CreateRoomResponse{
 		Room: room,
@@ -413,8 +413,8 @@ func (ps *ChatServer) UpdateRoom(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    req.Msg.GetRoomId(),
-		"profile_id": authenticatedContact.GetProfileId(),
+		chatutil.KeyRoomID:    req.Msg.GetRoomId(),
+		chatutil.KeyProfileID: authenticatedContact.GetProfileId(),
 	}).Debug("UpdateRoom request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
@@ -425,7 +425,7 @@ func (ps *ChatServer) UpdateRoom(
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("UpdateRoom success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("UpdateRoom success")
 
 	return connect.NewResponse(&chatv1.UpdateRoomResponse{
 		Room: room,
@@ -457,8 +457,8 @@ func (ps *ChatServer) DeleteRoom(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    req.Msg.GetRoomId(),
-		"profile_id": authenticatedContact.GetProfileId(),
+		chatutil.KeyRoomID:    req.Msg.GetRoomId(),
+		chatutil.KeyProfileID: authenticatedContact.GetProfileId(),
 	}).Debug("DeleteRoom request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
@@ -469,7 +469,7 @@ func (ps *ChatServer) DeleteRoom(
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("DeleteRoom success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("DeleteRoom success")
 
 	return connect.NewResponse(&chatv1.DeleteRoomResponse{}), nil
 }
@@ -500,8 +500,8 @@ func (ps *ChatServer) AddRoomSubscriptions(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":      req.Msg.GetRoomId(),
-		"member_count": len(req.Msg.GetMembers()),
+		chatutil.KeyRoomID: req.Msg.GetRoomId(),
+		"member_count":     len(req.Msg.GetMembers()),
 	}).Debug("AddRoomSubscriptions request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
@@ -522,7 +522,7 @@ func (ps *ChatServer) AddRoomSubscriptions(
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("AddRoomSubscriptions success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("AddRoomSubscriptions success")
 
 	return connect.NewResponse(&chatv1.AddRoomSubscriptionsResponse{
 		RoomId: req.Msg.GetRoomId(),
@@ -555,7 +555,7 @@ func (ps *ChatServer) RemoveRoomSubscriptions(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":            req.Msg.GetRoomId(),
+		chatutil.KeyRoomID:   req.Msg.GetRoomId(),
 		"subscription_count": len(req.Msg.GetSubscriptionId()),
 	}).Debug("RemoveRoomSubscriptions request")
 
@@ -577,7 +577,7 @@ func (ps *ChatServer) RemoveRoomSubscriptions(
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("RemoveRoomSubscriptions success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("RemoveRoomSubscriptions success")
 
 	return connect.NewResponse(&chatv1.RemoveRoomSubscriptionsResponse{
 		RoomId: req.Msg.GetRoomId(),
@@ -609,9 +609,9 @@ func (ps *ChatServer) UpdateSubscriptionRole(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":         req.Msg.GetRoomId(),
-		"subscription_id": req.Msg.GetSubscriptionId(),
-		"new_roles":       req.Msg.GetRoles(),
+		chatutil.KeyRoomID:         req.Msg.GetRoomId(),
+		chatutil.KeySubscriptionID: req.Msg.GetSubscriptionId(),
+		"new_roles":                req.Msg.GetRoles(),
 	}).Debug("UpdateSubscriptionRole request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
@@ -622,7 +622,7 @@ func (ps *ChatServer) UpdateSubscriptionRole(
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("UpdateSubscriptionRole success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("UpdateSubscriptionRole success")
 
 	return connect.NewResponse(&chatv1.UpdateSubscriptionRoleResponse{}), nil
 }
@@ -651,7 +651,7 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 		)
 	}
 
-	util.Log(ctx).WithField("room_id", req.Msg.GetRoomId()).Debug("SearchRoomSubscriptions request")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("SearchRoomSubscriptions request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
@@ -662,8 +662,8 @@ func (ps *ChatServer) SearchRoomSubscriptions(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":      req.Msg.GetRoomId(),
-		"result_count": len(subscriptions),
+		chatutil.KeyRoomID: req.Msg.GetRoomId(),
+		"result_count":     len(subscriptions),
 	}).Debug("SearchRoomSubscriptions success")
 
 	return connect.NewResponse(&chatv1.SearchRoomSubscriptionsResponse{

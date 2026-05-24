@@ -43,8 +43,8 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 	evt, err := dq.toPayloadToEventData(ctx, payload)
 	if err != nil {
 		util.Log(ctx).WithError(err).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
+			chatutil.HeaderProfileID: profileID,
+			chatutil.HeaderDeviceID:  deviceID,
 		}).Error("failed to parse user delivery message, dropping corrupt message")
 		return nil
 	}
@@ -57,18 +57,18 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 		}
 		if found && metadata != nil && metadata.GatewayID != dq.connectionManager.GatewayID() {
 			util.Log(ctx).WithFields(map[string]any{
-				"profile_id":       profileID,
-				"device_id":        deviceID,
-				"owner_gateway_id": metadata.GatewayID,
-				"gateway_id":       dq.connectionManager.GatewayID(),
+				chatutil.HeaderProfileID: profileID,
+				chatutil.HeaderDeviceID:  deviceID,
+				"owner_gateway_id":       metadata.GatewayID,
+				"gateway_id":             dq.connectionManager.GatewayID(),
 			}).Warn("delivery consumed by non-owning gateway, retrying")
 			return errors.New("delivery routed to non-owning gateway instance")
 		}
 
 		// Device is no longer connected to any gateway - fall back to offline delivery.
 		util.Log(ctx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
+			chatutil.HeaderProfileID: profileID,
+			chatutil.HeaderDeviceID:  deviceID,
 		}).Debug("connection not found: falling back to offline delivery")
 		return dq.publishToOfflineDevice(ctx, headers, evt)
 	}
@@ -77,8 +77,8 @@ func (dq *GatewayEventsQueueHandler) Handle(ctx context.Context, headers map[str
 
 	if !connection.Dispatch(data) {
 		util.Log(ctx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
+			chatutil.HeaderProfileID: profileID,
+			chatutil.HeaderDeviceID:  deviceID,
 		}).Debug("dispatch channel full: falling back to offline delivery")
 
 		return dq.publishToOfflineDevice(ctx, headers, evt)

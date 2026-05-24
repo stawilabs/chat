@@ -113,6 +113,11 @@ import (
 )
 
 const (
+	// Structured logging/telemetry map keys.
+	keyProfileID = "profile_id"
+	keyDeviceID  = "device_id"
+	keyPoolSize  = "pool_size"
+
 	// connection management constants.
 	errorChannelBufferSize = 4    // Buffer for inbound + outbound workers + panic recovery
 	millisecondsMultiplier = 1000 // For converting seconds to milliseconds
@@ -646,8 +651,8 @@ func (cm *connectionManager) teardownConnection(
 	connectionsDisconnectedCounter.Add(ctx, 1)
 
 	util.Log(ctx).WithFields(map[string]any{
-		"profile_id": profileID,
-		"device_id":  deviceID,
+		keyProfileID: profileID,
+		keyDeviceID:  deviceID,
 		"duration":   time.Since(startTime).String(),
 	}).Debug("Device disconnected from gateway")
 
@@ -716,8 +721,8 @@ func (cm *connectionManager) runWithPanicRecovery(
 		if r := recover(); r != nil {
 			util.Log(ctx).WithFields(map[string]any{
 				"panic":      r,
-				"profile_id": profileID,
-				"device_id":  deviceID,
+				keyProfileID: profileID,
+				keyDeviceID:  deviceID,
 			}).Error(direction + " stream handler panicked")
 			select {
 			case errChan <- fmt.Errorf("%s handler panic: %v", direction, r):
@@ -788,8 +793,8 @@ func (cm *connectionManager) handleInboundStream(
 		if err != nil {
 			util.Log(ctx).WithError(err).WithFields(map[string]any{
 				"error_type": "stream.receive.error",
-				"profile_id": conn.Metadata().ProfileID,
-				"device_id":  conn.Metadata().DeviceID,
+				keyProfileID: conn.Metadata().ProfileID,
+				keyDeviceID:  conn.Metadata().DeviceID,
 			}).Debug("stream receive ended")
 			select {
 			case errChan <- fmt.Errorf("%w: %w", ErrStreamReceiveFailed, err):
@@ -870,8 +875,8 @@ func (cm *connectionManager) handleOutboundStream(
 			if sendErr := cm.sendStreamResponse(ctx, conn, stream, finalMsg, &lastDurableCursor); sendErr != nil {
 				util.Log(ctx).WithError(sendErr).WithFields(map[string]any{
 					"error_type": "outbound.send.error",
-					"profile_id": conn.Metadata().ProfileID,
-					"device_id":  conn.Metadata().DeviceID,
+					keyProfileID: conn.Metadata().ProfileID,
+					keyDeviceID:  conn.Metadata().DeviceID,
 				}).Warn("outbound send failed")
 				// Don't ack on send failure - will retry
 				select {
@@ -940,8 +945,8 @@ func (cm *connectionManager) performCleanup(ctx context.Context) {
 		// Check if last heartbeat exceeds threshold
 		if now-conn.Metadata().LastHeartbeat > staleThreshold {
 			util.Log(ctx).WithFields(map[string]any{
-				"profile_id":     conn.Metadata().ProfileID,
-				"device_id":      conn.Metadata().DeviceID,
+				keyProfileID:     conn.Metadata().ProfileID,
+				keyDeviceID:      conn.Metadata().DeviceID,
 				"last_heartbeat": conn.Metadata().LastHeartbeat,
 				"age_seconds":    now - conn.Metadata().LastHeartbeat,
 			}).Warn("Removing stale connection")
@@ -1022,7 +1027,7 @@ func (cm *connectionManager) publishMetrics(ctx context.Context) {
 		"connections_failed":       atomic.LoadUint64(&cm.failedConns),
 		"connections_replaced":     atomic.LoadUint64(&cm.replacedConns),
 		"connections_disconnected": atomic.LoadUint64(&cm.disconnectedConns),
-		"pool_size":                poolSize,
+		keyPoolSize:                poolSize,
 		"pool_utilization":         utilization,
 	}).Debug("connection metrics")
 }
@@ -1072,7 +1077,7 @@ func (cm *connectionManager) performHealthCheck(ctx context.Context) {
 	// Warn if utilization exceeds 80% threshold
 	if utilization > utilizationThreshold {
 		util.Log(ctx).WithFields(map[string]any{
-			"pool_size":    poolSize,
+			keyPoolSize:    poolSize,
 			"max_size":     cm.connPool.maxSize,
 			"utilization":  utilization,
 			"active_conns": activeConns,
@@ -1083,7 +1088,7 @@ func (cm *connectionManager) performHealthCheck(ctx context.Context) {
 	if poolSize > 0 {
 		util.Log(ctx).WithFields(map[string]any{
 			"active_conns":     activeConns,
-			"pool_size":        poolSize,
+			keyPoolSize:        poolSize,
 			"pool_utilization": fmt.Sprintf("%.2f%%", utilization),
 		}).Debug("connection manager health check")
 	}
@@ -1209,8 +1214,8 @@ func (cm *connectionManager) updatePresence(
 	case cm.presenceCh <- job:
 	default:
 		util.Log(ctx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
+			keyProfileID: profileID,
+			keyDeviceID:  deviceID,
 			"status":     status.String(),
 		}).Warn("presence update dropped: worker pool saturated")
 	}
@@ -1239,8 +1244,8 @@ func (cm *connectionManager) presenceWorker() {
 
 			if err != nil {
 				util.Log(presenceCtx).WithError(err).WithFields(map[string]any{
-					"profile_id": job.profileID,
-					"device_id":  job.deviceID,
+					keyProfileID: job.profileID,
+					keyDeviceID:  job.deviceID,
 					"status":     job.status.String(),
 				}).Debug("failed to update presence status")
 			}
@@ -1265,8 +1270,8 @@ func (cm *connectionManager) requireHello(
 	hello := req.GetHello()
 	if hello == nil {
 		util.Log(ctx).WithFields(map[string]any{
-			"profile_id": profileID,
-			"device_id":  deviceID,
+			keyProfileID: profileID,
+			keyDeviceID:  deviceID,
 		}).Warn("stream opened without initial hello frame")
 		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired)
 	}

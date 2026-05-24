@@ -450,6 +450,7 @@ linters:
           - funlen
           - gochecknoglobals
           - gocognit
+          - goconst
           - goprintffuncname
           - gosec
           - govet

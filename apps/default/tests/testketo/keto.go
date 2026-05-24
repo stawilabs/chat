@@ -16,6 +16,8 @@ const (
 	// ImageName is the Ory Keto image used for test containers.
 	ImageName = "oryd/keto:latest"
 
+	ketoConfigPath = "/home/ory/keto.yml"
+
 	ketoConfiguration = `
 limit:
   max_read_depth: 10
@@ -165,7 +167,7 @@ func (d *dependancy) migrateContainer(
 		Files: []testcontainers.ContainerFile{
 			{
 				Reader:            strings.NewReader(ketoConfiguration),
-				ContainerFilePath: "/home/ory/keto.yml",
+				ContainerFilePath: ketoConfigPath,
 				FileMode:          definition.ContainerFileMode,
 			},
 			{
@@ -211,7 +213,7 @@ func (d *dependancy) Setup(ctx context.Context, ntwk *testcontainers.DockerNetwo
 
 	containerRequest := testcontainers.ContainerRequest{
 		Image: d.Name(),
-		Cmd:   []string{"serve", "--config", "/home/ory/keto.yml"},
+		Cmd:   []string{"serve", "--config", ketoConfigPath},
 		Env: d.Opts().Env(map[string]string{
 			"LOG_LEVEL":                 "debug",
 			"LOG_LEAK_SENSITIVE_VALUES": "true",
@@ -220,7 +222,7 @@ func (d *dependancy) Setup(ctx context.Context, ntwk *testcontainers.DockerNetwo
 		Files: []testcontainers.ContainerFile{
 			{
 				Reader:            strings.NewReader(ketoConfiguration),
-				ContainerFilePath: "/home/ory/keto.yml",
+				ContainerFilePath: ketoConfigPath,
 				FileMode:          definition.ContainerFileMode,
 			},
 			{

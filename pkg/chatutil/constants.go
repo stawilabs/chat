@@ -14,4 +14,9 @@ const (
 	HeaderDLQOriginalQueue = "dlq_original_queue"
 	// HeaderDLQErrorMessage is the header key for the error message in dead-letter messages.
 	HeaderDLQErrorMessage = "dlq_error_message"
+
+	KeyRoomID         = "room_id"
+	KeyProfileID      = "profile_id"
+	KeySubscriptionID = "subscription_id"
+	KeyOriginalQueue  = "original_queue"
 )

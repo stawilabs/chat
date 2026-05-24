@@ -18,6 +18,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/config"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
@@ -159,7 +160,7 @@ func (feh *FanoutEventHandler) publishDeliveries(
 		if pubErr := deliveryTopic.Publish(ctx, eventDelivery); pubErr != nil {
 			failedDestinations = append(failedDestinations, destination)
 			util.Log(ctx).WithError(pubErr).
-				WithField("subscription_id", destination.GetSubscriptionId()).
+				WithField(chatutil.KeySubscriptionID, destination.GetSubscriptionId()).
 				Warn("failed to publish delivery")
 		}
 	}

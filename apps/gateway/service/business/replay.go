@@ -80,8 +80,8 @@ func (cm *connectionManager) resolveResumeCursor(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"profile_id":   profileID,
-		"device_id":    deviceID,
+		keyProfileID:   profileID,
+		keyDeviceID:    deviceID,
 		"resume_token": token,
 	}).Warn("resume token could not be resolved; client must resync")
 	return "", connect.NewError(
@@ -201,8 +201,8 @@ func (cm *connectionManager) sendStreamResponse(
 			nextCursor,
 		); err != nil {
 			util.Log(ctx).WithError(err).WithFields(map[string]any{
-				"profile_id":  conn.Metadata().ProfileID,
-				"device_id":   conn.Metadata().DeviceID,
+				keyProfileID:  conn.Metadata().ProfileID,
+				keyDeviceID:   conn.Metadata().DeviceID,
 				"response_id": response.GetId(),
 			}).Warn("failed to persist resume token state")
 		}

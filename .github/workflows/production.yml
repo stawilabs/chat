@@ -118,9 +118,10 @@ jobs:
           find artifacts -type f 2>/dev/null || echo "No files found"
 
       - name: Prepare release assets
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           mkdir -p release-assets
-          VERSION=${{ needs.prepare.outputs.version }}
 
           [ -f "artifacts/android-apk-production/app-release.apk" ] && \
             cp artifacts/android-apk-production/app-release.apk release-assets/chat-${VERSION}-android.apk
@@ -152,7 +153,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Deploy Web
+  # Deploy Web to Firebase Hosting
   deploy-web:
     name: Deploy Web
     needs: [prepare, build]
@@ -161,9 +162,11 @@ jobs:
     timeout-minutes: 10
     environment:
       name: production
-      url: https://chat.stawi.org
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Download web build
         id: download
         uses: actions/download-artifact@v8
@@ -178,18 +181,13 @@ jobs:
           echo "::error::Web build artifact not found. Web build may have failed."
           exit 1
 
-      - name: List downloaded files
-        run: |
-          echo "Contents of build/web:"
-          ls -la build/web/ || echo "Directory not found"
-          find build/web -type f | wc -l
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME || 'stawi' }} --branch=main
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live
 
   # Deploy Android
   deploy-android:
@@ -220,9 +218,11 @@ jobs:
           exit 1
 
       - name: Create changelog
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           mkdir -p fastlane/metadata/android/en-US/changelogs
-          echo "Version ${{ needs.prepare.outputs.version }}" > fastlane/metadata/android/en-US/changelogs/default.txt
+          echo "Version $VERSION" > fastlane/metadata/android/en-US/changelogs/default.txt
 
       - name: Upload to Play Store
         uses: r0adkll/upload-google-play@v1
@@ -283,15 +283,6 @@ jobs:
           echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| GitHub Release | ${{ needs.create-release.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Web | ${{ needs.deploy-web.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Android | ${{ needs.deploy-android.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| iOS | ${{ needs.deploy-ios.result }} |" >> $GITHUB_STEP_SUMMARY
-
-      - name: Notify Slack
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: "Chat App ${{ needs.prepare.outputs.tag }} released!"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        continue-on-error: true
+          echo "| Web (Firebase Hosting) | ${{ needs.deploy-web.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android (Play Store) | ${{ needs.deploy-android.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS (App Store) | ${{ needs.deploy-ios.result }} |" >> $GITHUB_STEP_SUMMARY

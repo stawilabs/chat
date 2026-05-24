@@ -15,6 +15,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
@@ -79,9 +80,9 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":      action.GetRoomId(),
-		"target_count": len(action.GetTargets()),
-		"role_count":   len(action.GetRoles()),
+		chatutil.KeyRoomID: action.GetRoomId(),
+		"target_count":     len(action.GetTargets()),
+		"role_count":       len(action.GetRoles()),
 	}).Debug("SubscriptionAuthorize processing")
 
 	var authzErrors []error
@@ -96,9 +97,9 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 			)
 			if authzErr != nil {
 				util.Log(ctx).WithError(authzErr).WithFields(map[string]any{
-					"room_id":         action.GetRoomId(),
-					"subscription_id": subscription.GetSubscriptionId(),
-					"role":            role,
+					chatutil.KeyRoomID:         action.GetRoomId(),
+					chatutil.KeySubscriptionID: subscription.GetSubscriptionId(),
+					"role":                     role,
 				}).Warn("failed to sync authorization tuple for new room member")
 				authzErrors = append(authzErrors, authzErr)
 				targetFailed = true
@@ -110,9 +111,9 @@ func (csq *roomSubscriptionAuthorizeQueue) Execute(ctx context.Context, payload 
 		}
 
 		util.Log(ctx).WithFields(map[string]any{
-			"room_id":         action.GetRoomId(),
-			"subscription_id": subscription.GetSubscriptionId(),
-			"roles":           action.GetRoles(),
+			chatutil.KeyRoomID:         action.GetRoomId(),
+			chatutil.KeySubscriptionID: subscription.GetSubscriptionId(),
+			"roles":                    action.GetRoles(),
 		}).Debug("SubscriptionAuthorize tuple created")
 
 		if action.GetAction() == chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED {

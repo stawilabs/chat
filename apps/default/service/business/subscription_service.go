@@ -127,16 +127,16 @@ func (ss *subscriptionService) GetSubscription(
 	for _, sub := range subscriptionList {
 		if sub.IsActive() {
 			util.Log(ctx).WithFields(map[string]any{
-				"room_id":         roomID,
-				"subscription_id": sub.GetID(),
+				chatutil.KeyRoomID:         roomID,
+				chatutil.KeySubscriptionID: sub.GetID(),
 			}).Debug("GetSubscription found")
 			return sub, nil
 		}
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    roomID,
-		"profile_id": contact.GetProfileId(),
+		chatutil.KeyRoomID:    roomID,
+		chatutil.KeyProfileID: contact.GetProfileId(),
 	}).Debug("GetSubscription not found")
 
 	return nil, service.ErrRoomAccessDenied
@@ -200,18 +200,18 @@ func (ss *subscriptionService) HasRole(
 		// Check if the user has the required role or higher
 		if ss.hasMinimumRole(roleLevel, strings.Split(sub.Role, ",")...) {
 			util.Log(ctx).WithFields(map[string]any{
-				"room_id":        roomID,
-				"required_level": roleLevel,
-				"has_role":       true,
+				chatutil.KeyRoomID: roomID,
+				"required_level":   roleLevel,
+				"has_role":         true,
 			}).Debug("HasRole check")
 			return sub, nil
 		}
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":        roomID,
-		"required_level": roleLevel,
-		"has_role":       false,
+		chatutil.KeyRoomID: roomID,
+		"required_level":   roleLevel,
+		"has_role":         false,
 	}).Debug("HasRole check")
 
 	return nil, nil //nolint:nilnil // nil,nil means no matching subscription at the required role level

@@ -15,11 +15,6 @@ on:
           - all
           - scenarios
           - performance
-      notify_slack:
-        description: 'Send Slack notification'
-        required: false
-        default: true
-        type: boolean
 
 env:
   JAVA_VERSION: '17'
@@ -56,6 +51,7 @@ jobs:
 
       - name: Build staging APK
         id: build
+        working-directory: ui
         run: |
           flutter build apk \
             --debug \
@@ -77,7 +73,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: staging-apk
-          path: ui/ui/build/app/outputs/flutter-apk/app-debug.apk
+          path: ui/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
 
   build-test-apk:
@@ -111,6 +107,7 @@ jobs:
 
       - name: Build Patrol test APK
         id: build
+        working-directory: ui
         run: |
           patrol build android \
             --target e2e_test \
@@ -128,7 +125,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-apk
-          path: ui/ui/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          path: ui/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           retention-days: 7
 
   run-e2e-firebase:
@@ -203,70 +200,6 @@ jobs:
           path: test-results/
           retention-days: 30
 
-  notify-slack:
-    name: Notify Slack
-    needs: [run-e2e-firebase]
-    runs-on: ubuntu-latest
-    if: always() && (github.event.inputs.notify_slack == 'true' || github.event_name == 'schedule')
-    steps:
-      - name: Determine status
-        id: status
-        run: |
-          if [ "${{ needs.run-e2e-firebase.result }}" == "success" ]; then
-            echo "status=success" >> $GITHUB_OUTPUT
-            echo "color=#36a64f" >> $GITHUB_OUTPUT
-            echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
-          else
-            echo "status=failure" >> $GITHUB_OUTPUT
-            echo "color=#dc3545" >> $GITHUB_OUTPUT
-            echo "emoji=:x:" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Send Slack notification
-        uses: slackapi/slack-github-action@v3.0.2
-        with:
-          payload: |
-            {
-              "attachments": [
-                {
-                  "color": "${{ steps.status.outputs.color }}",
-                  "blocks": [
-                    {
-                      "type": "header",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "${{ steps.status.outputs.emoji }} E2E Nightly Tests - ${{ steps.status.outputs.status }}"
-                      }
-                    },
-                    {
-                      "type": "section",
-                      "fields": [
-                        {
-                          "type": "mrkdwn",
-                          "text": "*Repository:*\n${{ github.repository }}"
-                        },
-                        {
-                          "type": "mrkdwn",
-                          "text": "*Branch:*\n${{ github.ref_name }}"
-                        },
-                        {
-                          "type": "mrkdwn",
-                          "text": "*Trigger:*\n${{ github.event_name }}"
-                        },
-                        {
-                          "type": "mrkdwn",
-                          "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
   cleanup-old-results:
     name: Cleanup Old Results
     needs: [run-e2e-firebase]
@@ -283,7 +216,6 @@ jobs:
 
       - name: Delete results older than 30 days
         run: |
-          # List and delete test results older than 30 days
           CUTOFF_DATE=$(date -d '30 days ago' +%Y%m%d)
           gsutil ls gs://${{ secrets.FIREBASE_RESULTS_BUCKET }}/ | while read DIR; do
             DIR_DATE=$(echo $DIR | grep -oP '\d{8}' | head -1)

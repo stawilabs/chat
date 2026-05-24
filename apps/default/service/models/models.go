@@ -50,16 +50,22 @@ func (r *Room) ToAPI() *chatv1.Room {
 	return protoRoom
 }
 
-// roomTypeToAPI converts a room type string to the proto enum.
+const (
+	RoomTypeDirect  = "direct"
+	RoomTypeGroup   = "group"
+	RoomTypeChannel = "channel"
+	RoomTypeBot     = "bot"
+)
+
 func roomTypeToAPI(roomType string) chatv1.RoomType {
 	switch roomType {
-	case "direct":
+	case RoomTypeDirect:
 		return chatv1.RoomType_ROOM_TYPE_DIRECT
-	case "group":
+	case RoomTypeGroup:
 		return chatv1.RoomType_ROOM_TYPE_GROUP
-	case "channel":
+	case RoomTypeChannel:
 		return chatv1.RoomType_ROOM_TYPE_CHANNEL
-	case "bot":
+	case RoomTypeBot:
 		return chatv1.RoomType_ROOM_TYPE_BOT
 	default:
 		return chatv1.RoomType_ROOM_TYPE_UNSPECIFIED

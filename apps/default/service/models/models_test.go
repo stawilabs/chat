@@ -28,7 +28,7 @@ func TestRoom_ToAPI_WithProperties(t *testing.T) {
 			ID:        "room-1",
 			CreatedAt: now,
 		},
-		RoomType:         "group",
+		RoomType:         RoomTypeGroup,
 		Name:             "Test Room",
 		Description:      "A test room",
 		Properties:       data.JSONMap{"key": "value"},
@@ -52,7 +52,7 @@ func TestRoom_ToAPI_WithProperties(t *testing.T) {
 func TestRoom_ToAPI_WithoutProperties(t *testing.T) {
 	r := &Room{
 		BaseModel: data.BaseModel{ID: "room-2"},
-		RoomType:  "direct",
+		RoomType:  RoomTypeDirect,
 		Name:      "DM",
 		IsPublic:  false,
 	}
@@ -69,10 +69,10 @@ func TestRoom_ToAPI_AllRoomTypes(t *testing.T) {
 		roomType string
 		expected chatv1.RoomType
 	}{
-		{"direct", chatv1.RoomType_ROOM_TYPE_DIRECT},
-		{"group", chatv1.RoomType_ROOM_TYPE_GROUP},
-		{"channel", chatv1.RoomType_ROOM_TYPE_CHANNEL},
-		{"bot", chatv1.RoomType_ROOM_TYPE_BOT},
+		{RoomTypeDirect, chatv1.RoomType_ROOM_TYPE_DIRECT},
+		{RoomTypeGroup, chatv1.RoomType_ROOM_TYPE_GROUP},
+		{RoomTypeChannel, chatv1.RoomType_ROOM_TYPE_CHANNEL},
+		{RoomTypeBot, chatv1.RoomType_ROOM_TYPE_BOT},
 		{"unknown", chatv1.RoomType_ROOM_TYPE_UNSPECIFIED},
 		{"", chatv1.RoomType_ROOM_TYPE_UNSPECIFIED},
 	}
@@ -97,10 +97,10 @@ func TestRoomTypeToAPI(t *testing.T) {
 		input    string
 		expected chatv1.RoomType
 	}{
-		{"direct", chatv1.RoomType_ROOM_TYPE_DIRECT},
-		{"group", chatv1.RoomType_ROOM_TYPE_GROUP},
-		{"channel", chatv1.RoomType_ROOM_TYPE_CHANNEL},
-		{"bot", chatv1.RoomType_ROOM_TYPE_BOT},
+		{RoomTypeDirect, chatv1.RoomType_ROOM_TYPE_DIRECT},
+		{RoomTypeGroup, chatv1.RoomType_ROOM_TYPE_GROUP},
+		{RoomTypeChannel, chatv1.RoomType_ROOM_TYPE_CHANNEL},
+		{RoomTypeBot, chatv1.RoomType_ROOM_TYPE_BOT},
 		{"", chatv1.RoomType_ROOM_TYPE_UNSPECIFIED},
 		{"foobar", chatv1.RoomType_ROOM_TYPE_UNSPECIFIED},
 		{"Direct", chatv1.RoomType_ROOM_TYPE_UNSPECIFIED}, // case-sensitive

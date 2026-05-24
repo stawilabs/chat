@@ -29,7 +29,7 @@ import (
 
 // proposalExpiryHours is the number of hours before a proposal expires.
 const proposalExpiryHours = 72
-const defaultGroupType = "group"
+const defaultGroupType = models.RoomTypeGroup
 const defaultSearchLimit = 50
 const maxSearchLimit = 100
 
@@ -160,13 +160,13 @@ func (rb *roomBusiness) CreateRoom(
 		// Partial failure: some members succeeded (including at least the owner).
 		// Return the room with a warning about the failed members.
 		util.Log(ctx).WithFields(map[string]any{
-			"room_id":   createdRoom.GetID(),
-			"failed":    partErr.Failed,
-			"succeeded": partErr.Succeeded,
+			chatutil.KeyRoomID: createdRoom.GetID(),
+			"failed":           partErr.Failed,
+			"succeeded":        partErr.Succeeded,
 		}).Warn("partial failure adding members during room creation")
 	}
 
-	util.Log(ctx).WithField("room_id", createdRoom.GetID()).
+	util.Log(ctx).WithField(chatutil.KeyRoomID, createdRoom.GetID()).
 		Debug("room created")
 
 	chattel.RoomsCreatedCounter.Add(ctx, 1)
@@ -185,8 +185,8 @@ func (rb *roomBusiness) GetRoom(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    roomID,
-		"profile_id": searchedBy.GetProfileId(),
+		chatutil.KeyRoomID:    roomID,
+		chatutil.KeyProfileID: searchedBy.GetProfileId(),
 	}).Debug("GetRoom request")
 
 	// Look up subscription, then check authz with subscriptionID
@@ -195,7 +195,7 @@ func (rb *roomBusiness) GetRoom(
 		return nil, service.ErrRoomAccessDenied
 	}
 
-	util.Log(ctx).WithField("subscription_id", sub.GetID()).Debug("GetRoom subscription found")
+	util.Log(ctx).WithField(chatutil.KeySubscriptionID, sub.GetID()).Debug("GetRoom subscription found")
 
 	if err := rb.authzMiddleware.CanRoomView(ctx, sub.GetID(), roomID); err != nil {
 		return nil, service.ErrRoomAccessDenied
@@ -237,7 +237,7 @@ func (rb *roomBusiness) UpdateRoom(
 
 	// Check if room requires approval for changes
 	if needsApproval, approvalErr := rb.requiresApproval(ctx, req.GetRoomId()); approvalErr == nil && needsApproval {
-		util.Log(ctx).WithField("room_id", req.GetRoomId()).Debug("UpdateRoom requires approval")
+		util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("UpdateRoom requires approval")
 		if crErr := rb.createProposal(ctx, req.GetRoomId(), models.ProposalTypeUpdateRoom,
 			updatedBy.GetProfileId(), req); crErr != nil {
 			return nil, fmt.Errorf("failed to create proposal: %w", crErr)
@@ -269,7 +269,7 @@ func (rb *roomBusiness) UpdateRoom(
 	if err = rb.sendRoomChangeEvent(ctx, req.GetRoomId(), updatedBy,
 		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_UPDATED,
 		admin.GetID(), "Room details updated"); err != nil {
-		util.Log(ctx).WithError(err).WithField("room_id", req.GetRoomId()).
+		util.Log(ctx).WithError(err).WithField(chatutil.KeyRoomID, req.GetRoomId()).
 			Warn("failed to emit room update event")
 	}
 
@@ -314,7 +314,7 @@ func (rb *roomBusiness) DeleteRoom(
 		return service.ErrProposalRequired
 	}
 
-	util.Log(ctx).WithField("room_id", roomID).Debug("DeleteRoom deactivating subscriptions")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, roomID).Debug("DeleteRoom deactivating subscriptions")
 
 	// Deactivate all subscriptions and clean up authz
 	if cleanupErr := rb.deactivateAllRoomSubscriptions(ctx, roomID); cleanupErr != nil {
@@ -332,7 +332,7 @@ func (rb *roomBusiness) DeleteRoom(
 	if err = rb.sendRoomChangeEvent(ctx, req.GetRoomId(), deletedBy,
 		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_DELETED,
 		admin.GetID(), "Room deleted"); err != nil {
-		util.Log(ctx).WithError(err).WithField("room_id", req.GetRoomId()).
+		util.Log(ctx).WithError(err).WithField(chatutil.KeyRoomID, req.GetRoomId()).
 			Warn("failed to emit room deleted event")
 	}
 
@@ -572,7 +572,7 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED,
 		admin.GetID(), "Member(s) role updated",
 		req.GetSubscriptionId()); err != nil {
-		util.Log(ctx).WithError(err).WithField("room_id", req.GetRoomId()).
+		util.Log(ctx).WithError(err).WithField(chatutil.KeyRoomID, req.GetRoomId()).
 			Warn("failed to emit role update event")
 	}
 
@@ -607,8 +607,8 @@ func (rb *roomBusiness) syncRoleUpdate(
 			sub.Role = oldRole
 			if _, rollbackErr := rb.subscriptionRepo.Update(ctx, sub, "role"); rollbackErr != nil {
 				util.Log(ctx).WithError(rollbackErr).WithFields(map[string]any{
-					"room_id":         req.GetRoomId(),
-					"subscription_id": sub.GetID(),
+					chatutil.KeyRoomID:         req.GetRoomId(),
+					chatutil.KeySubscriptionID: sub.GetID(),
 				}).Error("failed to roll back role change after authz update failure")
 				return fmt.Errorf("failed to update authorization tuple for role change: %w", authzErr)
 			}
@@ -767,9 +767,9 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":       roomID,
-		"total_members": len(subscriptionList),
-		"dedup_members": len(dedupList),
+		chatutil.KeyRoomID: roomID,
+		"total_members":    len(subscriptionList),
+		"dedup_members":    len(dedupList),
 	}).Debug("addRoomMembersWithRoles deduplication")
 
 	// Create subscriptions synchronously so the room is usable immediately on success.
@@ -888,7 +888,7 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 			chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED,
 			actorSubscriptionID, "Member(s) added to room",
 			addedSubscriptionIDs...); err != nil {
-			util.Log(ctx).WithError(err).WithField("room_id", roomID).
+			util.Log(ctx).WithError(err).WithField(chatutil.KeyRoomID, roomID).
 				Warn("failed to emit room member add event")
 		}
 	}
@@ -941,7 +941,7 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 	actor *commonv1.ContactLink,
 ) error {
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":            roomID,
+		chatutil.KeyRoomID:   roomID,
 		"subscription_count": len(subscriptionIDs),
 	}).Debug("removeRoomMembersBySubscriptionID")
 
@@ -957,8 +957,8 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 		for _, subID := range subscriptionIDs {
 			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, subID); authzErr != nil {
 				util.Log(ctx).WithError(authzErr).WithFields(map[string]any{
-					"room_id":         roomID,
-					"subscription_id": subID,
+					chatutil.KeyRoomID:         roomID,
+					chatutil.KeySubscriptionID: subID,
 				}).Warn("failed to remove authorization tuple for removed room member")
 				authzErrors = append(authzErrors, authzErr)
 			}
@@ -990,7 +990,7 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":            roomID,
+		chatutil.KeyRoomID:   roomID,
 		"subscription_count": len(allSubs),
 	}).Debug("deactivateAllRoomSubscriptions")
 
@@ -1007,8 +1007,8 @@ func (rb *roomBusiness) deactivateAllRoomSubscriptions(ctx context.Context, room
 		for _, sub := range allSubs {
 			if authzErr := rb.authzMiddleware.RemoveRoomMember(ctx, roomID, sub.GetID()); authzErr != nil {
 				util.Log(ctx).WithError(authzErr).WithFields(map[string]any{
-					"room_id":         roomID,
-					"subscription_id": sub.GetID(),
+					chatutil.KeyRoomID:         roomID,
+					chatutil.KeySubscriptionID: sub.GetID(),
 				}).Warn("failed to remove authorization tuple during room deletion")
 				authzErrors = append(authzErrors, authzErr)
 			}

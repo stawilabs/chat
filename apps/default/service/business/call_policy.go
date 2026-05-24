@@ -17,6 +17,7 @@ import (
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 const (
@@ -37,6 +38,9 @@ const (
 	callTopologyP2P  = "p2p"
 	callTopologyMesh = "mesh"
 	callTopologySFU  = "sfu"
+
+	callModeDirect    = "direct"
+	callModeGroupMesh = "group_mesh"
 
 	callMetadataKeySignalKind              = "signalKind"
 	callMetadataKeyTopology                = "topology"
@@ -119,13 +123,13 @@ func (cp *callPolicy) RecordPersistedEvent(
 	}
 
 	logger := util.Log(ctx).WithFields(map[string]any{
-		"room_id":         roomID,
-		"call_id":         call.GetCallId(),
-		"action":          call.GetAction().String(),
-		"signal_kind":     cp.signalKind(call),
-		"sender_sub_id":   senderSubscriptionID,
-		"call_topology":   cp.topology(call),
-		"call_sfu_nodeid": cp.sfuNodeID(call),
+		chatutil.KeyRoomID: roomID,
+		"call_id":          call.GetCallId(),
+		"action":           call.GetAction().String(),
+		"signal_kind":      cp.signalKind(call),
+		"sender_sub_id":    senderSubscriptionID,
+		"call_topology":    cp.topology(call),
+		"call_sfu_nodeid":  cp.sfuNodeID(call),
 	})
 
 	signalKind := cp.signalKind(call)
@@ -755,10 +759,10 @@ func (cp *callPolicy) validateParticipantCapacity(
 	}
 
 	memberLimit := cp.cfg.DirectCallMemberLimit
-	callMode := "direct"
+	callMode := callModeDirect
 	if cp.isGroupSignal(signalKind) || topology == callTopologyMesh {
 		memberLimit = cp.cfg.MeshCallMemberLimit
-		callMode = "group_mesh"
+		callMode = callModeGroupMesh
 	}
 
 	if activeMembers <= int64(memberLimit) {

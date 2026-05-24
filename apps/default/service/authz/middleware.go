@@ -8,6 +8,8 @@ import (
 	"github.com/pitabwire/frame/security"
 	"github.com/pitabwire/frame/security/authorizer"
 	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 // middleware implements the Middleware interface.
@@ -135,10 +137,10 @@ func (m *middleware) CanMessageSendToRooms(
 func (m *middleware) AddRoomMember(ctx context.Context, roomID, subscriptionID, role string) error {
 	relation := RoleToRelation(role)
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":         roomID,
-		"subscription_id": subscriptionID,
-		"role":            role,
-		"relation":        relation,
+		chatutil.KeyRoomID:         roomID,
+		chatutil.KeySubscriptionID: subscriptionID,
+		"role":                     role,
+		"relation":                 relation,
 	}).Debug("AddRoomMember writing tuple")
 	return m.service.WriteTuple(ctx, security.RelationTuple{
 		Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
@@ -150,8 +152,8 @@ func (m *middleware) AddRoomMember(ctx context.Context, roomID, subscriptionID, 
 // RemoveRoomMember removes all relations for a member from a room.
 func (m *middleware) RemoveRoomMember(ctx context.Context, roomID, subscriptionID string) error {
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":         roomID,
-		"subscription_id": subscriptionID,
+		chatutil.KeyRoomID:         roomID,
+		chatutil.KeySubscriptionID: subscriptionID,
 	}).Debug("RemoveRoomMember deleting tuples")
 	// Remove all relations for this member
 	tuples := make([]security.RelationTuple, len(ValidRelations()))
@@ -168,10 +170,10 @@ func (m *middleware) RemoveRoomMember(ctx context.Context, roomID, subscriptionI
 // UpdateRoomMemberRole updates a member's role in a room.
 func (m *middleware) UpdateRoomMemberRole(ctx context.Context, roomID, subscriptionID, oldRole, newRole string) error {
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":         roomID,
-		"subscription_id": subscriptionID,
-		"old_role":        oldRole,
-		"new_role":        newRole,
+		chatutil.KeyRoomID:         roomID,
+		chatutil.KeySubscriptionID: subscriptionID,
+		"old_role":                 oldRole,
+		"new_role":                 newRole,
 	}).Debug("UpdateRoomMemberRole")
 	// Remove old relation if specified
 	if oldRole != "" {
@@ -219,9 +221,9 @@ func (m *middleware) checkRoomPermission(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":         roomID,
-		"subscription_id": subscriptionID,
-		"permission":      permission,
+		chatutil.KeyRoomID:         roomID,
+		chatutil.KeySubscriptionID: subscriptionID,
+		"permission":               permission,
 	}).Debug("checkRoomPermission")
 
 	req := security.CheckRequest{
@@ -236,9 +238,9 @@ func (m *middleware) checkRoomPermission(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    roomID,
-		"permission": permission,
-		"allowed":    result.Allowed,
+		chatutil.KeyRoomID: roomID,
+		"permission":       permission,
+		"allowed":          result.Allowed,
 	}).Debug("checkRoomPermission result")
 
 	if !result.Allowed {

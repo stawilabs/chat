@@ -31,8 +31,8 @@ func (dlc *deadLetterConsumer) Handle(
 	chattel.DeadLetterConsumedCounter.Add(ctx, 1)
 
 	util.Log(ctx).WithFields(map[string]any{
-		"original_queue": headers[chatutil.HeaderDLQOriginalQueue],
-		"error":          headers[chatutil.HeaderDLQErrorMessage],
+		chatutil.KeyOriginalQueue: headers[chatutil.HeaderDLQOriginalQueue],
+		"error":                   headers[chatutil.HeaderDLQErrorMessage],
 	}).Warn("consumed dead-lettered message")
 
 	// Always ACK — these messages have already exhausted retries.

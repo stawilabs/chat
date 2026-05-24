@@ -106,8 +106,8 @@ func (mb *messageBusiness) SendEvents(
 	requestEvents := req.GetEvent()
 
 	util.Log(ctx).WithFields(map[string]any{
-		"event_count": len(requestEvents),
-		"profile_id":  sentBy.GetProfileId(),
+		"event_count":         len(requestEvents),
+		chatutil.KeyProfileID: sentBy.GetProfileId(),
 	}).Debug("SendEvents processing")
 
 	// Pre-allocate response slice to maintain request order
@@ -365,7 +365,7 @@ func (mb *messageBusiness) emitOrAckEvent(
 	subscription, ok := subscriptionMap[event.SenderID]
 	if !ok {
 		util.Log(ctx).
-			WithField("subscription_id", event.SenderID).
+			WithField(chatutil.KeySubscriptionID, event.SenderID).
 			Error("very unlikely, no such subscription exists")
 		return ackEventError(event.GetID(), connect.NewError(
 			connect.CodeInternal,
@@ -498,8 +498,8 @@ func (mb *messageBusiness) GetHistory(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":    req.GetRoomId(),
-		"profile_id": gottenBy.GetProfileId(),
+		chatutil.KeyRoomID:    req.GetRoomId(),
+		chatutil.KeyProfileID: gottenBy.GetProfileId(),
 	}).Debug("GetHistory request")
 
 	// Look up subscription first, then check authz with subscriptionID
@@ -540,8 +540,8 @@ func (mb *messageBusiness) GetHistory(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":      req.GetRoomId(),
-		"result_count": len(evts),
+		chatutil.KeyRoomID: req.GetRoomId(),
+		"result_count":     len(evts),
 	}).Debug("GetHistory result")
 
 	// Convert to proto
@@ -638,8 +638,8 @@ func (mb *messageBusiness) MarkMessagesAsRead(
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_id":  roomID,
-		"event_id": eventID,
+		chatutil.KeyRoomID: roomID,
+		"event_id":         eventID,
 	}).Debug("MarkMessagesAsRead")
 
 	// Look up subscription first - reuse for both authz check and subscription update
