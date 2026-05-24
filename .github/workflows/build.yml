@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ''
+      build_desktop:
+        description: 'Build desktop platforms (Linux, Windows, macOS)'
+        required: false
+        type: boolean
+        default: true
     secrets:
       ANDROID_SIGNING_KEY:
         required: false
@@ -136,7 +141,7 @@ jobs:
         with:
           name: android-apk-${{ inputs.environment }}
           path: ${{ steps.build.outputs.apk_path }}
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
 
       - name: Upload AAB
         if: inputs.build_type == 'release'
@@ -144,7 +149,7 @@ jobs:
         with:
           name: android-aab-${{ inputs.environment }}
           path: ${{ steps.build.outputs.aab_path }}
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
 
   # iOS Build
   build-ios:
@@ -270,7 +275,7 @@ jobs:
         with:
           name: ios-ipa-${{ inputs.environment }}
           path: ui/build/ios/ipa/
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
 
   # Web Build
   build-web:
@@ -299,11 +304,12 @@ jobs:
         with:
           name: web-build-${{ inputs.environment }}
           path: ui/build/web/
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
 
   # Linux Build
   build-linux:
     name: Linux (${{ inputs.build_type }})
+    if: inputs.build_desktop
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
@@ -339,11 +345,12 @@ jobs:
         with:
           name: linux-bundle-${{ inputs.environment }}
           path: linux-bundle.tar.gz
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
 
   # Windows Build
   build-windows:
     name: Windows (${{ inputs.build_type }})
+    if: inputs.build_desktop
     runs-on: windows-latest
     timeout-minutes: 25
     defaults:
@@ -375,11 +382,12 @@ jobs:
         with:
           name: windows-app-${{ inputs.environment }}
           path: windows-app.zip
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
 
   # macOS Build
   build-macos:
     name: macOS (${{ inputs.build_type }})
+    if: inputs.build_desktop
     runs-on: macos-latest
     timeout-minutes: 45
     defaults:
@@ -421,4 +429,4 @@ jobs:
         with:
           name: macos-app-${{ inputs.environment }}
           path: macos-app.zip
-          retention-days: 14
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}

@@ -20,6 +20,7 @@ jobs:
     with:
       environment: staging
       build_type: debug
+      build_desktop: false
     secrets:
       ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
       ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
