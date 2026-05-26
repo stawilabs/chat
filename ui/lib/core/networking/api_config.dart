@@ -38,7 +38,7 @@ class ApiConfig {
   );
   static const String oauth2ClientId = String.fromEnvironment(
     'OAUTH2_CLIENT_ID',
-    defaultValue: '9bsv0s0hijjg02qk7l1g',
+    defaultValue: 'd6qbqdkpf2t52mcunf40',
   );
 
   // Connection settings optimized for low-resource devices
