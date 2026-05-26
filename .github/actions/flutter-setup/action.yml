@@ -21,7 +21,7 @@ runs:
   steps:
     - name: Setup Java
       if: inputs.java-version != ''
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: ${{ inputs.java-version }}
@@ -33,7 +33,7 @@ runs:
         cache: true
 
     - name: Cache pub dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.pub-cache
         key: pub-${{ runner.os }}-${{ hashFiles(format('{0}/pubspec.lock', inputs.working-directory)) }}
@@ -47,7 +47,7 @@ runs:
     - name: Cache generated code
       if: inputs.run-codegen == 'true'
       id: cache-codegen
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           ${{ inputs.working-directory }}/lib/**/*.g.dart

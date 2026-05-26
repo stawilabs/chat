@@ -34,3 +34,10 @@ ui/.dart_tool/
 ui/.flutter-plugins
 ui/.flutter-plugins-dependencies
 WORK_STATE.md
+
+# Firebase
+.firebase/
+build/
+
+# SDK build artifacts
+sdk/dart/chat/.dart_tool/

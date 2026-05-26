@@ -45,6 +45,19 @@ jobs:
         working-directory: ui
         run: flutter pub get
 
+      - name: Setup Google Services
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        if: env.GOOGLE_SERVICES_JSON != ''
+        working-directory: ui
+        run: |
+          if printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d >/tmp/gs.json 2>/dev/null \
+             && head -c1 /tmp/gs.json | grep -q '{'; then
+            mv /tmp/gs.json android/app/google-services.json
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          fi
+
       - name: Run code generation
         working-directory: ui
         run: flutter pub run build_runner build --delete-conflicting-outputs
@@ -100,6 +113,19 @@ jobs:
       - name: Install dependencies
         working-directory: ui
         run: flutter pub get
+
+      - name: Setup Google Services
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        if: env.GOOGLE_SERVICES_JSON != ''
+        working-directory: ui
+        run: |
+          if printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d >/tmp/gs.json 2>/dev/null \
+             && head -c1 /tmp/gs.json | grep -q '{'; then
+            mv /tmp/gs.json android/app/google-services.json
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          fi
 
       - name: Install Patrol CLI
         working-directory: ui
