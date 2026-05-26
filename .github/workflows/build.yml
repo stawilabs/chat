@@ -47,9 +47,46 @@ env:
   JAVA_VERSION: '17'
 
 jobs:
+  # Derive version from git tags when not explicitly provided
+  prepare:
+    name: Derive Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Derive version from git
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.1")
+            DISTANCE=$(git rev-list "$(git describe --tags --abbrev=0 2>/dev/null)"..HEAD --count 2>/dev/null || echo "0")
+            if [ "$DISTANCE" -gt "0" ]; then
+              VERSION="${VERSION}-dev.${DISTANCE}"
+            fi
+          fi
+
+          BUILD_NUMBER=$(git rev-list HEAD --count)
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "## Version Info" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Number**: $BUILD_NUMBER" >> $GITHUB_STEP_SUMMARY
+
   # Android Build
   build-android:
     name: Android (${{ inputs.build_type }})
+    needs: [prepare]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -122,9 +159,12 @@ jobs:
 
       - name: Build Android
         id: build
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release --shrink' || '--debug' }}"
-          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+          BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
 
           flutter build apk $BUILD_ARGS
 
@@ -154,6 +194,7 @@ jobs:
   # iOS Build
   build-ios:
     name: iOS (${{ inputs.build_type }})
+    needs: [prepare]
     runs-on: macos-latest
     timeout-minutes: 45
     defaults:
@@ -249,13 +290,16 @@ jobs:
 
       - name: Build iOS
         id: build
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
         run: |
           if [ "${{ inputs.build_type }}" == "release" ] && [ "${{ inputs.environment }}" == "production" ]; then
             BUILD_ARGS="--release"
           else
             BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }} --no-codesign"
           fi
-          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+          BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
 
           flutter build ios $BUILD_ARGS
 
@@ -280,6 +324,7 @@ jobs:
   # Web Build
   build-web:
     name: Web (${{ inputs.build_type }})
+    needs: [prepare]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -297,7 +342,10 @@ jobs:
         run: rm -rf .dart_tool/flutter_build/
 
       - name: Build Web
-        run: flutter build web ${{ inputs.build_type == 'release' && '--release' || '--profile' }} --base-href /
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+        run: flutter build web ${{ inputs.build_type == 'release' && '--release' || '--profile' }} --base-href / --build-name=$APP_VERSION --build-number=$BUILD_NUMBER
 
       - name: Upload Web
         uses: actions/upload-artifact@v7
@@ -309,6 +357,7 @@ jobs:
   # Linux Build
   build-linux:
     name: Linux (${{ inputs.build_type }})
+    needs: [prepare]
     if: inputs.build_desktop
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -330,9 +379,12 @@ jobs:
         uses: ./.github/actions/flutter-setup
 
       - name: Build Linux
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
-          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+          BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           flutter build linux $BUILD_ARGS
 
       - name: Package Linux bundle
@@ -350,6 +402,7 @@ jobs:
   # Windows Build
   build-windows:
     name: Windows (${{ inputs.build_type }})
+    needs: [prepare]
     if: inputs.build_desktop
     runs-on: windows-latest
     timeout-minutes: 25
@@ -365,9 +418,12 @@ jobs:
         uses: ./.github/actions/flutter-setup
 
       - name: Build Windows
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
         run: |
           $buildArgs = "${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
-          if ("${{ inputs.version }}" -ne "") { $buildArgs += " --build-name=${{ inputs.version }}" }
+          $buildArgs += " --build-name=$env:APP_VERSION --build-number=$env:BUILD_NUMBER"
           flutter build windows $buildArgs
         shell: pwsh
 
@@ -387,6 +443,7 @@ jobs:
   # macOS Build
   build-macos:
     name: macOS (${{ inputs.build_type }})
+    needs: [prepare]
     if: inputs.build_desktop
     runs-on: macos-latest
     timeout-minutes: 45
@@ -413,9 +470,12 @@ jobs:
         run: cd macos && pod install --repo-update || pod install
 
       - name: Build macOS
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
-          [ -n "${{ inputs.version }}" ] && BUILD_ARGS="$BUILD_ARGS --build-name=${{ inputs.version }}"
+          BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           flutter build macos $BUILD_ARGS
 
       - name: Package macOS app
