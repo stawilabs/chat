@@ -175,9 +175,18 @@ func (mb *messageBusiness) SendEvents(
 
 	// Phase 1: Validate all events and prepare valid ones for bulk save
 	for i, reqEvt := range requestEvents {
-		// Assign ID if not provided
+		// Assign ID if not provided; otherwise the client-supplied ID must be a
+		// valid xid. History ordering and cursor pagination depend on event IDs
+		// being lexicographically time-sortable xids — an arbitrary string would
+		// corrupt timeline ordering and poison cursors for the whole room.
 		if reqEvt.GetId() == "" {
 			reqEvt.Id = util.IDString()
+		} else if !chatutil.IsValidEventID(reqEvt.GetId()) {
+			responses[i] = ackEventError(reqEvt.GetId(), connect.NewError(
+				connect.CodeInvalidArgument,
+				errors.New("event id must be a valid xid"),
+			))
+			continue
 		}
 
 		// Map event ID to its position in the request for ordered responses

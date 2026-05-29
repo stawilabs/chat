@@ -12,11 +12,14 @@ require (
 	buf.build/gen/go/antinvestor/notification/protocolbuffers/go v1.36.11-20260420185629-7892d788a2b9.1
 	buf.build/gen/go/antinvestor/profile/connectrpc/go v1.19.2-20260415203305-aa11e5e50dc9.1
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.11-20260415203305-aa11e5e50dc9.1
+	buf.build/gen/go/stawi/chat/connectrpc/go v1.19.2-20260430172303-85050c8677bb.1
+	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.11-20260430172303-85050c8677bb.1
 	connectrpc.com/connect v1.19.2
 	connectrpc.com/otelconnect v0.9.0
 	github.com/antinvestor/common v1.4.5-0.20260420095807-503acb7eca75
 	github.com/pitabwire/frame v1.94.6
 	github.com/pitabwire/util v0.8.0
+	github.com/rs/xid v1.6.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	google.golang.org/grpc v1.80.0
@@ -27,8 +30,6 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
 	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.11-20230414000709-087bc8072ce4.1 // indirect
-	buf.build/gen/go/stawi/chat/connectrpc/go v1.19.2-20260430172303-85050c8677bb.1 // indirect
-	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.11-20260430172303-85050c8677bb.1 // indirect
 	buf.build/go/protovalidate v1.2.0 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
@@ -98,7 +99,6 @@ require (
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
-	github.com/rs/xid v1.6.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
