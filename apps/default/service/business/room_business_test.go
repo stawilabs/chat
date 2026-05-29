@@ -40,10 +40,18 @@ func (s *RoomBusinessTestSuite) setupBusinessLayer(
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
+	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
+	messageBusiness := business.NewMessageBusiness(
+		evtsMan,
+		eventRepo,
+		outboxRepo,
+		subRepo,
+		subscriptionSvc,
+		s.AuthzMiddleware,
+	)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,
@@ -916,11 +924,19 @@ func (s *RoomBusinessTestSuite) setupBusinessLayerWithProposals(
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
+	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, subRepo)
-	messageBusiness := business.NewMessageBusiness(evtsMan, eventRepo, subRepo, subscriptionSvc, s.AuthzMiddleware)
+	messageBusiness := business.NewMessageBusiness(
+		evtsMan,
+		eventRepo,
+		outboxRepo,
+		subRepo,
+		subscriptionSvc,
+		s.AuthzMiddleware,
+	)
 	roomBusiness := business.NewRoomBusiness(
 		svc,
 		roomRepo,

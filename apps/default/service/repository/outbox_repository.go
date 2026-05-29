@@ -97,13 +97,21 @@ func (r *roomOutboxRepository) ListPending(
 	return rows, err
 }
 
+// DeleteByEventID removes the outbox row for an event, used when an event is
+// rolled back after persistence (e.g. call-state finalization failure).
+func (r *roomOutboxRepository) DeleteByEventID(ctx context.Context, eventID string) error {
+	return r.Pool().DB(ctx, false).
+		Where("event_id = ?", eventID).
+		Delete(&models.RoomOutbox{}).Error
+}
+
 // MarkDispatched marks the given outbox rows (by event ID) as dispatched.
 func (r *roomOutboxRepository) MarkDispatched(ctx context.Context, eventIDs []string) error {
 	if len(eventIDs) == 0 {
 		return nil
 	}
 	return r.Pool().DB(ctx, false).
-		Model(&models.RoomOutbox{}).
+		Table("room_outbox").
 		Where("event_id IN ?", eventIDs).
 		Updates(map[string]any{"dispatched": true, "dispatched_at": time.Now().UnixMilli()}).
 		Error

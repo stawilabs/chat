@@ -71,6 +71,7 @@ func NewChatServer(
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
+	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
@@ -102,6 +103,7 @@ func NewChatServer(
 	messageBusiness := business.NewMessageBusiness(
 		eventsMan,
 		eventRepo,
+		outboxRepo,
 		subRepo,
 		subscriptionSvc,
 		authzMiddleware,

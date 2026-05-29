@@ -20,8 +20,10 @@ import (
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
+	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
+	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
 
 	aconfig "github.com/stawilabs/chat/apps/default/config"
@@ -90,11 +92,9 @@ func runService(ctx context.Context) error {
 		log.WithError(err).Fatal("main -- Could not setup profile client")
 	}
 
-	// Handle database migration if requested. Hypertable setup runs inside the
-	// migrate job (after SQL migrations have applied the composite PK that
-	// TimescaleDB requires), never on a normal boot — otherwise a normal pod
-	// could promote room_events to a hypertable before the migration that adds
-	// the time column to its primary key, leaving it a plain table forever.
+	// Migration mode runs SQL migrations then hypertable setup (see
+	// handleDatabaseMigration) and exits; hypertables are never promoted on a
+	// normal boot, avoiding the boot-vs-migrate ordering race.
 	if handleDatabaseMigration(ctx, dbManager, dbPool, cfg) {
 		return nil
 	}
@@ -108,6 +108,9 @@ func runService(ctx context.Context) error {
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 
 	serviceOptions := []frame.Option{
+		// Outbox relay: sole publisher draining room_outbox, run as a frame
+		// background consumer so its lifecycle is owned by the service.
+		outboxRelayOption(ctx, dbPool, workMan, eventsMan),
 		frame.WithHTTPHandler(connectHandler),
 		frame.WithPermissionRegistration(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
@@ -127,16 +130,7 @@ func runService(ctx context.Context) error {
 		),
 	}
 
-	for i := range cfg.ShardCount {
-		gatewayQueueName := fmt.Sprintf(cfg.QueueGatewayEventDeliveryName, i)
-		gatewayQueueURI := cfg.QueueGatewayEventDeliveryURI[i]
-
-		gatewayQueuePublisher := frame.WithRegisterPublisher(
-			gatewayQueueName,
-			gatewayQueueURI,
-		)
-		serviceOptions = append(serviceOptions, gatewayQueuePublisher)
-	}
+	serviceOptions = append(serviceOptions, gatewayPublisherOptions(cfg)...)
 
 	// Register queue handlers and event handlers
 	serviceOptions = append(serviceOptions,
@@ -151,7 +145,6 @@ func runService(ctx context.Context) error {
 	// Initialize the service with all options
 	svc.Init(ctx, serviceOptions...)
 
-	// Start the service
 	return svc.Run(ctx, "")
 }
 
@@ -160,6 +153,31 @@ func main() {
 	if err := runService(ctx); err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not run service")
 	}
+}
+
+// gatewayPublisherOptions builds one publisher option per gateway delivery shard.
+func gatewayPublisherOptions(cfg aconfig.ChatConfig) []frame.Option {
+	opts := make([]frame.Option, 0, cfg.ShardCount)
+	for i := range cfg.ShardCount {
+		opts = append(opts, frame.WithRegisterPublisher(
+			fmt.Sprintf(cfg.QueueGatewayEventDeliveryName, i),
+			cfg.QueueGatewayEventDeliveryURI[i],
+		))
+	}
+	return opts
+}
+
+// outboxRelayOption builds the frame background-consumer option that runs the
+// transactional-outbox relay (sole publisher draining room_outbox) for the
+// lifetime of the service.
+func outboxRelayOption(
+	ctx context.Context,
+	dbPool pool.Pool,
+	workMan workerpool.Manager,
+	eventsMan frevents.Manager,
+) frame.Option {
+	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
+	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan).Run)
 }
 
 // ensureHypertables registers TimescaleDB hypertables idempotently.

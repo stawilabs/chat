@@ -277,10 +277,13 @@ func (rsr *roomSubscriptionRepository) DeactivateInRoom(
 	if len(ids) == 0 {
 		return 0, nil
 	}
+	// Use Table()+Updates(map) rather than Model()+Update — matching frame's
+	// BulkUpdate — to avoid GORM mis-scoping the UPDATE from an empty model
+	// entity (which silently matched zero rows under tenancy claims).
 	res := rsr.Pool().DB(ctx, false).
-		Model(&models.RoomSubscription{}).
+		Table("room_subscriptions").
 		Where("room_id = ? AND id IN ?", roomID, ids).
-		Update("subscription_state", models.RoomSubscriptionStateBlocked)
+		Updates(map[string]any{"subscription_state": models.RoomSubscriptionStateBlocked})
 	return res.RowsAffected, res.Error
 }
 

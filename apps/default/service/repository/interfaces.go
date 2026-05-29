@@ -125,6 +125,7 @@ type RoomOutboxRepository interface {
 	) (map[string]bool, error)
 	ListPending(ctx context.Context, olderThan time.Time, limit int) ([]*models.RoomOutbox, error)
 	MarkDispatched(ctx context.Context, eventIDs []string) error
+	DeleteByEventID(ctx context.Context, eventID string) error
 }
 
 // ProposalRepository defines the interface for proposal data access operations.

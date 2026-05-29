@@ -13,11 +13,11 @@ import (
 	"github.com/pitabwire/frame/data"
 	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/util"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stawilabs/chat/apps/default/service"
 	"github.com/stawilabs/chat/apps/default/service/authz"
-	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/pkg/chatutil"
@@ -31,6 +31,7 @@ const (
 
 type messageBusiness struct {
 	eventRepo       repository.RoomEventRepository
+	outboxRepo      repository.RoomOutboxRepository
 	subRepo         repository.RoomSubscriptionRepository
 	subscriptionSvc SubscriptionService
 	eventsManager   frevents.Manager
@@ -60,6 +61,7 @@ func WithCallPolicy(
 func NewMessageBusiness(
 	evtsManager frevents.Manager,
 	eventRepo repository.RoomEventRepository,
+	outboxRepo repository.RoomOutboxRepository,
 	subRepo repository.RoomSubscriptionRepository,
 	subscriptionSvc SubscriptionService,
 	authzMiddleware authz.Middleware,
@@ -69,6 +71,7 @@ func NewMessageBusiness(
 
 		eventsManager:   evtsManager,
 		eventRepo:       eventRepo,
+		outboxRepo:      outboxRepo,
 		subRepo:         subRepo,
 		subscriptionSvc: subscriptionSvc,
 		authzMiddleware: authzMiddleware,
@@ -261,17 +264,35 @@ func (mb *messageBusiness) SendEvents(
 
 	util.Log(ctx).WithField("valid_event_count", len(validEvents)).Debug("SendEvents bulk saving")
 
-	// Use CreateIgnoringDuplicates to atomically handle concurrent inserts.
-	// Returns which events were actually inserted vs skipped (duplicate from concurrent request).
-	insertedIDs, bulkCreateErr := mb.eventRepo.CreateIgnoringDuplicates(ctx, validEvents)
+	// Build the delivery Link payload for each event so it can be persisted in
+	// the outbox within the same transaction as the event.
+	payloads := make(map[string][]byte, len(validEvents))
+	for _, event := range validEvents {
+		sub, ok := subscriptionMap[event.SenderID]
+		if !ok {
+			continue
+		}
+		linkBytes, mErr := protojson.Marshal(buildOutboxLink(event, sub))
+		if mErr != nil {
+			util.Log(ctx).WithError(mErr).WithField("event_id", event.GetID()).
+				Error("failed to marshal outbox link")
+			continue
+		}
+		payloads[event.GetID()] = linkBytes
+	}
+
+	// Persist events and their outbox rows atomically. Delivery is performed by
+	// the outbox relay draining the outbox table — nothing is emitted inline, so
+	// a crash can never leave a persisted event undelivered.
+	insertedIDs, bulkCreateErr := mb.outboxRepo.SaveEventsWithOutbox(ctx, validEvents, payloads)
 	if bulkCreateErr == nil {
 		chattel.MessagesSentCounter.Add(ctx, int64(len(insertedIDs)))
 	}
 
-	// Phase 3: Process each valid event - emit to outbox or report errors
+	// Phase 3: finalize call state and ack each event.
 	for _, event := range validEvents {
 		responseIdx := eventToIndex[event.GetID()]
-		responses[responseIdx] = mb.emitOrAckEvent(
+		responses[responseIdx] = mb.finalizeEventAck(
 			ctx,
 			event,
 			insertedIDs,
@@ -282,6 +303,22 @@ func (mb *messageBusiness) SendEvents(
 	}
 
 	return responses, nil
+}
+
+// buildOutboxLink constructs the delivery Link persisted to the outbox and
+// emitted to the fan-out pipeline by the relay.
+func buildOutboxLink(event *models.RoomEvent, sub *models.RoomSubscription) *eventsv1.Link {
+	return &eventsv1.Link{
+		EventId: event.GetID(),
+		RoomId:  event.RoomID,
+		Source: &eventsv1.Subscription{
+			SubscriptionId: sub.GetID(),
+			ContactLink:    sub.ToLink(),
+		},
+		ParentId:  event.ParentID,
+		EventType: chatv1.RoomEventType(event.EventType),
+		CreatedAt: timestamppb.New(event.CreatedAt),
+	}
 }
 
 func (mb *messageBusiness) prepareEventForInsert(
@@ -345,9 +382,10 @@ func (mb *messageBusiness) prepareEventForInsert(
 	}, nil
 }
 
-// emitOrAckEvent processes a single event after bulk save: emits to outbox if newly inserted,
-// returns success ack for duplicates, or returns error ack on failure.
-func (mb *messageBusiness) emitOrAckEvent(
+// finalizeEventAck finalizes a single event after the atomic outbox save:
+// finalizes call state for call events and returns the ack. Delivery itself is
+// handled asynchronously by the outbox relay, so this never emits.
+func (mb *messageBusiness) finalizeEventAck(
 	ctx context.Context,
 	event *models.RoomEvent,
 	insertedIDs map[string]bool,
@@ -362,8 +400,8 @@ func (mb *messageBusiness) emitOrAckEvent(
 		))
 	}
 
-	// Skip events that were duplicates (already inserted by a concurrent request).
-	// The concurrent request will handle emitting to the outbox.
+	// Duplicate (already inserted by a concurrent request): the winning insert
+	// owns the outbox row and delivery. Ack success idempotently.
 	if !insertedIDs[event.GetID()] {
 		return &chatv1.AckEvent{
 			EventId: []string{event.GetID()},
@@ -383,51 +421,43 @@ func (mb *messageBusiness) emitOrAckEvent(
 	}
 
 	if callPayload := callPayloadsByEventID[event.GetID()]; callPayload != nil && mb.callPolicy != nil {
-		if callErr := mb.callPolicy.RecordPersistedEvent(
-			ctx,
-			event.RoomID,
-			subscription.GetID(),
-			callPayload,
-		); callErr != nil {
-			if delErr := mb.eventRepo.Delete(ctx, event.GetID()); delErr != nil {
-				util.Log(ctx).WithError(delErr).
-					WithField("event_id", event.GetID()).
-					Warn("failed to clean up call event after call state failure")
-			}
+		if callErr := mb.finalizeCallEvent(ctx, event, subscription, callPayload); callErr != nil {
 			return ackEventError(event.GetID(), callErr)
 		}
-	}
-
-	// Emit event to outbox for delivery
-	outboxEventLink := eventsv1.Link{
-		EventId: event.GetID(),
-		RoomId:  event.RoomID,
-		Source: &eventsv1.Subscription{
-			SubscriptionId: subscription.GetID(),
-			ContactLink:    subscription.ToLink(),
-		},
-		ParentId:  event.ParentID,
-		EventType: chatv1.RoomEventType(event.EventType),
-		CreatedAt: timestamppb.New(event.CreatedAt),
-	}
-
-	emitErr := mb.eventsManager.Emit(ctx, events.RoomOutboxLoggingEventName, &outboxEventLink)
-	if emitErr != nil {
-		// Keep the event in the DB rather than deleting it — the client's retry
-		// will be deduplicated by ExistsByIDs so no duplicates are created.
-		// Deleting risks an orphaned event if the delete itself fails.
-		util.Log(ctx).WithError(emitErr).
-			WithField("event_id", event.GetID()).
-			Warn("event saved but emit failed; client should retry")
-		return ackEventError(event.GetID(), connect.NewError(
-			connect.CodeUnavailable,
-			fmt.Errorf("event saved but delivery pending, retry later: %w", emitErr),
-		))
 	}
 
 	return &chatv1.AckEvent{
 		EventId: []string{event.GetID()},
 		AckAt:   timestamppb.Now(),
+	}
+}
+
+// finalizeCallEvent records call state for a persisted call event. On failure it
+// rolls back the event and its outbox row so a failed call is never delivered.
+func (mb *messageBusiness) finalizeCallEvent(
+	ctx context.Context,
+	event *models.RoomEvent,
+	subscription *models.RoomSubscription,
+	callPayload *chatv1.CallContent,
+) error {
+	if callErr := mb.callPolicy.RecordPersistedEvent(
+		ctx, event.RoomID, subscription.GetID(), callPayload,
+	); callErr != nil {
+		mb.rollbackEvent(ctx, event.GetID())
+		return callErr
+	}
+	return nil
+}
+
+// rollbackEvent best-effort removes a persisted event and its outbox row.
+func (mb *messageBusiness) rollbackEvent(ctx context.Context, eventID string) {
+	if delErr := mb.eventRepo.Delete(ctx, eventID); delErr != nil {
+		util.Log(ctx).WithError(delErr).WithField("event_id", eventID).
+			Warn("failed to clean up event after call state failure")
+	}
+	if obErr := mb.outboxRepo.DeleteByEventID(ctx, eventID); obErr != nil {
+		util.Log(ctx).WithError(obErr).WithField("event_id", eventID).
+			Warn("failed to clean up outbox row after call state failure")
 	}
 }
 

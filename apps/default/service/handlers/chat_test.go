@@ -361,15 +361,25 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 		}
 		require.NotEmpty(t, subscriptionID)
 
-		// Update role to moderator
+		// Update role to a valid role (admin). Unknown roles like "moderator"
+		// are rejected by validation — see the rejection assertion below.
 		updateReq := connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
 			RoomId:         roomID,
 			SubscriptionId: subscriptionID,
-			Roles:          []string{"moderator"},
+			Roles:          []string{"admin"},
 		})
 
 		_, err = chatServer.UpdateSubscriptionRole(ctx, updateReq)
 		require.NoError(t, err)
+
+		// An unrecognised role is rejected rather than silently downgraded.
+		badReq := connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+			RoomId:         roomID,
+			SubscriptionId: subscriptionID,
+			Roles:          []string{"moderator"},
+		})
+		_, err = chatServer.UpdateSubscriptionRole(ctx, badReq)
+		require.Error(t, err)
 	})
 }
 
