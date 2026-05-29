@@ -36,11 +36,13 @@ String thumbnailUrl(
     '${_trimBaseUrl(baseUrl)}/v1/media/thumbnail/${_serverName(baseUrl)}/$mediaId',
   );
   return uri
-      .replace(queryParameters: {
-        'width': '$width',
-        'height': '$height',
-        'method': method.name.toLowerCase(),
-      })
+      .replace(
+        queryParameters: {
+          'width': '$width',
+          'height': '$height',
+          'method': method.name.toLowerCase(),
+        },
+      )
       .toString();
 }
 

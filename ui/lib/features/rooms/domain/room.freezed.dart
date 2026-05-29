@@ -15,8 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Room {
 
- String get id; String get name; String get type;// 'direct' or 'group'
- String? get lastEventId; int get lastEventIndex; int get unreadCount; Map<String, dynamic>? get metadata;/// Disappearing messages timeout in seconds (null = disabled)
+ String get id; String get name; String get type; String? get lastEventId; int get lastEventIndex; int get unreadCount; Map<String, dynamic>? get metadata;/// Disappearing messages timeout in seconds (null = disabled)
 /// Supported values: null (off), 86400 (24h), 604800 (7d), 7776000 (90d)
  int? get disappearingTimeout;/// Mute notifications until this timestamp (milliseconds since epoch)
 /// - null = not muted
@@ -234,7 +233,6 @@ class _Room extends Room {
 @override final  String id;
 @override final  String name;
 @override final  String type;
-// 'direct' or 'group'
 @override final  String? lastEventId;
 @override@JsonKey() final  int lastEventIndex;
 @override@JsonKey() final  int unreadCount;

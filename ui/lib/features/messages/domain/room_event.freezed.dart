@@ -15,26 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RoomEvent {
 
-// Required parameters first
- String get id; String get roomId; String get senderId;// Subscription ID (room-specific sender identifier)
- RoomEventType get type; Map<String, dynamic> get content; int get createdAt;// Optional parameters
- String? get senderContactId;// Contact ID (from ContactLink.contactId)
- String? get parentId; EventStatus get status; int? get serverTs; String? get localId; int? get editedAt;// Timestamp when message was last edited
- bool get redacted;// Whether message is deleted
- int? get redactedAt;// Timestamp when message was deleted
- String? get redactedBy;// Profile ID of who deleted (for admin deletions)
- int get retryCount;// Number of send retry attempts
- String? get errorMessage;// Error reason if failed
-// Forwarding fields
- String? get forwardedFromRoom;// Room ID this was forwarded from
- String? get forwardedFromEvent;// Original event ID this was forwarded from
- int get forwardCount;// Times this message has been forwarded
- bool get forwardRestricted;// Cannot be forwarded
-// Disappearing messages
- int? get expiresAt;// Timestamp when message expires (for disappearing messages)
-// Starred messages
- bool get starred;// Whether message is starred/bookmarked
- int? get starredAt;
+ String get id; String get roomId; String get senderId; RoomEventType get type; Map<String, dynamic> get content; int get createdAt; String? get senderContactId; String? get parentId; EventStatus get status; int? get serverTs; String? get localId; int? get editedAt; bool get redacted; int? get redactedAt; String? get redactedBy; int get retryCount; String? get errorMessage; String? get forwardedFromRoom; String? get forwardedFromEvent; int get forwardCount; bool get forwardRestricted; int? get expiresAt; bool get starred; int? get starredAt;
 /// Create a copy of RoomEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -254,11 +235,9 @@ class _RoomEvent extends RoomEvent {
   const _RoomEvent({required this.id, required this.roomId, required this.senderId, required this.type, required final  Map<String, dynamic> content, required this.createdAt, this.senderContactId, this.parentId, this.status = EventStatus.pending, this.serverTs, this.localId, this.editedAt, this.redacted = false, this.redactedAt, this.redactedBy, this.retryCount = 0, this.errorMessage, this.forwardedFromRoom, this.forwardedFromEvent, this.forwardCount = 0, this.forwardRestricted = false, this.expiresAt, this.starred = false, this.starredAt}): _content = content,super._();
   factory _RoomEvent.fromJson(Map<String, dynamic> json) => _$RoomEventFromJson(json);
 
-// Required parameters first
 @override final  String id;
 @override final  String roomId;
 @override final  String senderId;
-// Subscription ID (room-specific sender identifier)
 @override final  RoomEventType type;
  final  Map<String, dynamic> _content;
 @override Map<String, dynamic> get content {
@@ -268,40 +247,23 @@ class _RoomEvent extends RoomEvent {
 }
 
 @override final  int createdAt;
-// Optional parameters
 @override final  String? senderContactId;
-// Contact ID (from ContactLink.contactId)
 @override final  String? parentId;
 @override@JsonKey() final  EventStatus status;
 @override final  int? serverTs;
 @override final  String? localId;
 @override final  int? editedAt;
-// Timestamp when message was last edited
 @override@JsonKey() final  bool redacted;
-// Whether message is deleted
 @override final  int? redactedAt;
-// Timestamp when message was deleted
 @override final  String? redactedBy;
-// Profile ID of who deleted (for admin deletions)
 @override@JsonKey() final  int retryCount;
-// Number of send retry attempts
 @override final  String? errorMessage;
-// Error reason if failed
-// Forwarding fields
 @override final  String? forwardedFromRoom;
-// Room ID this was forwarded from
 @override final  String? forwardedFromEvent;
-// Original event ID this was forwarded from
 @override@JsonKey() final  int forwardCount;
-// Times this message has been forwarded
 @override@JsonKey() final  bool forwardRestricted;
-// Cannot be forwarded
-// Disappearing messages
 @override final  int? expiresAt;
-// Timestamp when message expires (for disappearing messages)
-// Starred messages
 @override@JsonKey() final  bool starred;
-// Whether message is starred/bookmarked
 @override final  int? starredAt;
 
 /// Create a copy of RoomEvent

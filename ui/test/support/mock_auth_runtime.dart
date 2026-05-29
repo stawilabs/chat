@@ -58,7 +58,8 @@ class MockAuthRuntime implements AuthRuntime {
       Map<String, String>? headers,
       Object? body,
       Duration? timeout,
-    })? fetchHandler,
+    })?
+    fetchHandler,
   }) {
     return MockAuthRuntime(
       initialState: AuthState.authenticated,
@@ -96,7 +97,8 @@ class MockAuthRuntime implements AuthRuntime {
     Map<String, String>? headers,
     Object? body,
     Duration? timeout,
-  })? fetchHandler;
+  })?
+  fetchHandler;
 
   /// Optional hook invoked by [upload].
   Future<ApiResponse> Function(
@@ -108,7 +110,8 @@ class MockAuthRuntime implements AuthRuntime {
     required int length,
     Map<String, String>? headers,
     Duration? timeout,
-  })? uploadHandler;
+  })?
+  uploadHandler;
 
   /// List of paths passed to [fetch]. Useful for `expect` assertions.
   final List<String> fetchCalls = <String>[];

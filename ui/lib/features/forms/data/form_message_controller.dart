@@ -48,7 +48,8 @@ class FormMessageUiState {
   }
 
   bool get isLastStep =>
-      !hasVisibleSteps || currentVisibleStepPosition >= visibleStepIndexes.length - 1;
+      !hasVisibleSteps ||
+      currentVisibleStepPosition >= visibleStepIndexes.length - 1;
   bool get canEditForm =>
       form.permissions.canEditForSubscription(currentSubscriptionId);
   bool get canSubmitForm =>
@@ -70,7 +71,8 @@ class FormMessageUiState {
       form: form,
       answers: answers ?? this.answers,
       currentStep: currentStep ?? this.currentStep,
-      currentSubscriptionId: currentSubscriptionId ?? this.currentSubscriptionId,
+      currentSubscriptionId:
+          currentSubscriptionId ?? this.currentSubscriptionId,
       mode: mode ?? this.mode,
       reviewConfirmed: reviewConfirmed ?? this.reviewConfirmed,
       isSubmitting: isSubmitting ?? this.isSubmitting,
@@ -83,14 +85,10 @@ class FormMessageUiState {
   }
 }
 
-typedef FormSubmissionLookup =
-    ({String eventId, String? senderId});
+typedef FormSubmissionLookup = ({String eventId, String? senderId});
 
-final latestFormSubmissionEventProvider =
-    StreamProvider.autoDispose.family<domain.RoomEvent?, FormSubmissionLookup>((
-      ref,
-      params,
-    ) {
+final latestFormSubmissionEventProvider = StreamProvider.autoDispose
+    .family<domain.RoomEvent?, FormSubmissionLookup>((ref, params) {
       final repository = ref.watch(messageRepositoryProvider);
       return repository.watchLatestChildEventByType(
         params.eventId,
@@ -150,10 +148,7 @@ class FormMessageController extends _$FormMessageController {
 
     final draftAnswers = draft == null
         ? state.answers
-        : <String, dynamic>{
-            ...state.answers,
-            ...draft.answers,
-          };
+        : <String, dynamic>{...state.answers, ...draft.answers};
     final normalizedStep = FormLogic.normalizeStepIndex(
       state.form.schema,
       draftAnswers,
@@ -198,9 +193,7 @@ class FormMessageController extends _$FormMessageController {
         nextAnswers,
         preferredIndex: state.currentStep,
       ),
-      validationMessages: {
-        ...state.validationMessages,
-      }..remove(fieldKey),
+      validationMessages: {...state.validationMessages}..remove(fieldKey),
       clearSubmissionError: true,
     );
     _persistDraft();
@@ -296,7 +289,8 @@ class FormMessageController extends _$FormMessageController {
   void enterReview() {
     if (!state.canSubmitForm) {
       state = state.copyWith(
-        submissionError: 'Only the assigned member can review and submit this form.',
+        submissionError:
+            'Only the assigned member can review and submit this form.',
       );
       return;
     }

@@ -653,7 +653,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   /// Banner shown when the auth token has permanently expired.
   Widget _buildAuthExpiredBanner() {
     final connectionState = ref.watch(connectionStateProvider);
-    final isExpired = connectionState.whenOrNull(
+    final isExpired =
+        connectionState.whenOrNull(
           data: (state) => state == SyncConnectionState.authExpired,
         ) ??
         false;
@@ -675,10 +676,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           },
           child: const Text(
             'Sign In',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
       ],

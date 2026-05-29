@@ -225,7 +225,8 @@ class SyncEngine with WidgetsBindingObserver {
   /// Get current connection state synchronously
   SyncConnectionState get currentConnectionState {
     if (_isConnected) return SyncConnectionState.connected;
-    if (_authErrorCount > _maxAuthErrors) return SyncConnectionState.authExpired;
+    if (_authErrorCount > _maxAuthErrors)
+      return SyncConnectionState.authExpired;
     return SyncConnectionState.disconnected;
   }
 

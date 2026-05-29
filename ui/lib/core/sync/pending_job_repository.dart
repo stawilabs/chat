@@ -170,14 +170,14 @@ class PendingJobRepository {
       final localId = payload['localId'] as String?;
       if (localId != null && localId.isNotEmpty) {
         final deduplicationCutoff = now - _deduplicationWindowMs;
-        final existing = await (_database.select(_database.pendingJobs)
-              ..where(
-                (t) =>
-                    t.status.equals('pending') &
-                    t.type.isIn(_messageJobTypeNames) &
-                    t.createdAt.isBiggerOrEqualValue(deduplicationCutoff),
-              ))
-            .get();
+        final existing =
+            await (_database.select(_database.pendingJobs)..where(
+                  (t) =>
+                      t.status.equals('pending') &
+                      t.type.isIn(_messageJobTypeNames) &
+                      t.createdAt.isBiggerOrEqualValue(deduplicationCutoff),
+                ))
+                .get();
 
         for (final job in existing) {
           final jobPayload = _decodePayload(job.payload);
@@ -484,8 +484,9 @@ class PendingJobRepository {
       ..where(jobs.status.equals('pending'));
     final oldestRow = await oldestQuery.getSingle();
     final oldestCreatedAt = oldestRow.read(jobs.createdAt.min());
-    final oldestPendingAge =
-        oldestCreatedAt != null ? now - oldestCreatedAt : 0;
+    final oldestPendingAge = oldestCreatedAt != null
+        ? now - oldestCreatedAt
+        : 0;
 
     // Average retry count for pending jobs
     final retryQuery = _database.selectOnly(jobs)

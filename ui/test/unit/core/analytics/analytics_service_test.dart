@@ -239,8 +239,14 @@ void main() {
         analyticsService.trackScreenView('EntryScreen');
         analyticsService.trackScreenView('MiddleScreen');
         analyticsService.trackScreenView('ExitScreen');
-        expect(analyticsService.currentSession?.entryScreen, equals('EntryScreen'));
-        expect(analyticsService.currentSession?.exitScreen, equals('ExitScreen'));
+        expect(
+          analyticsService.currentSession?.entryScreen,
+          equals('EntryScreen'),
+        );
+        expect(
+          analyticsService.currentSession?.exitScreen,
+          equals('ExitScreen'),
+        );
       });
 
       test('trackUserLogout resets session', () {

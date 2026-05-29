@@ -19,10 +19,7 @@ class FormValidationIssue {
 class FormLogic {
   const FormLogic._();
 
-  static bool isFieldVisible(
-    FormField field,
-    Map<String, dynamic> answers,
-  ) {
+  static bool isFieldVisible(FormField field, Map<String, dynamic> answers) {
     if (field.hidden) {
       return false;
     }
@@ -211,7 +208,8 @@ class FormLogic {
         issues.add(
           FormValidationIssue(
             fieldKey: field.key,
-            message: '${field.label.isEmpty ? field.key : field.label} is required',
+            message:
+                '${field.label.isEmpty ? field.key : field.label} is required',
             stepIndex: stepIndex,
           ),
         );
@@ -219,7 +217,8 @@ class FormLogic {
       return issues;
     }
 
-    if (field.type == FormFieldType.group || field.type == FormFieldType.section) {
+    if (field.type == FormFieldType.group ||
+        field.type == FormFieldType.section) {
       final groupAnswers = Map<String, dynamic>.from(value as Map);
       for (final nestedField in field.nestedFields) {
         issues.addAll(
@@ -348,13 +347,15 @@ class FormLogic {
       }
     }
 
-    if ((field.type == FormFieldType.select || field.type == FormFieldType.radio) &&
+    if ((field.type == FormFieldType.select ||
+            field.type == FormFieldType.radio) &&
         value is String &&
         !_isAllowedOption(field, value)) {
       issues.add(
         FormValidationIssue(
           fieldKey: field.key,
-          message: '${field.label.isEmpty ? field.key : field.label} has an invalid option',
+          message:
+              '${field.label.isEmpty ? field.key : field.label} has an invalid option',
           stepIndex: stepIndex,
         ),
       );
@@ -368,7 +369,8 @@ class FormLogic {
         issues.add(
           FormValidationIssue(
             fieldKey: field.key,
-            message: '${field.label.isEmpty ? field.key : field.label} has an invalid option',
+            message:
+                '${field.label.isEmpty ? field.key : field.label} has an invalid option',
             stepIndex: stepIndex,
           ),
         );
@@ -392,7 +394,8 @@ class FormLogic {
       return const [];
     }
 
-    if (field.type == FormFieldType.group || field.type == FormFieldType.section) {
+    if (field.type == FormFieldType.group ||
+        field.type == FormFieldType.section) {
       final nestedAnswers = Map<String, dynamic>.from(value as Map);
       return [
         for (final nestedField in field.nestedFields)
@@ -432,26 +435,26 @@ class FormLogic {
     if (field.type == FormFieldType.boolean && value is bool) {
       return value ? 'Yes' : 'No';
     }
-    if ((field.type == FormFieldType.select || field.type == FormFieldType.radio) &&
+    if ((field.type == FormFieldType.select ||
+            field.type == FormFieldType.radio) &&
         value is String) {
       final matches = field.options.where((item) => item.value == value);
       return matches.isEmpty ? value : matches.first.label;
     }
     if (field.type == FormFieldType.checkboxGroup && value is List) {
-      final labels = value
-          .whereType<String>()
-          .map((entry) {
-            final matches = field.options.where((item) => item.value == entry);
-            return matches.isEmpty ? entry : matches.first.label;
-          })
-          .toList();
+      final labels = value.whereType<String>().map((entry) {
+        final matches = field.options.where((item) => item.value == entry);
+        return matches.isEmpty ? entry : matches.first.label;
+      }).toList();
       return labels.join(', ');
     }
     if ((field.type == FormFieldType.currency ||
             field.type == FormFieldType.decimal ||
             field.type == FormFieldType.number) &&
         value is num) {
-      final scale = field.formatting.decimalScale ?? (field.type == FormFieldType.number ? 0 : 2);
+      final scale =
+          field.formatting.decimalScale ??
+          (field.type == FormFieldType.number ? 0 : 2);
       return value.toStringAsFixed(math.max(0, scale));
     }
     if (value is List) {

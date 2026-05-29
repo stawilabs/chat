@@ -81,18 +81,18 @@ class TestHelpers {
   static MockAuthRuntime mockAuthRuntime = _buildAuthRuntime();
 
   static MockAuthRuntime _buildAuthRuntime() => MockAuthRuntime(
-        initialState: AuthState.authenticated,
-        claimsMap: const <String, dynamic>{
-          'sub': 'test-user',
-          'contact_id': 'test-contact',
-        },
-        roles: const <String>['user'],
-      );
+    initialState: AuthState.authenticated,
+    claimsMap: const <String, dynamic>{
+      'sub': 'test-user',
+      'contact_id': 'test-contact',
+    },
+    roles: const <String>['user'],
+  );
 
   static List<Override> get overrides => <Override>[
-        draftRepositoryProvider.overrideWithValue(mockDraftRepository),
-        authRuntimeProvider.overrideWithValue(mockAuthRuntime),
-      ];
+    draftRepositoryProvider.overrideWithValue(mockDraftRepository),
+    authRuntimeProvider.overrideWithValue(mockAuthRuntime),
+  ];
 
   /// Reset the mock runtime between tests so state mutations (logouts,
   /// role changes, etc.) don't leak.

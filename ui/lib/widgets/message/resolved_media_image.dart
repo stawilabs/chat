@@ -32,8 +32,7 @@ class ResolvedMediaImage extends ConsumerStatefulWidget {
   final double? height;
 
   @override
-  ConsumerState<ResolvedMediaImage> createState() =>
-      _ResolvedMediaImageState();
+  ConsumerState<ResolvedMediaImage> createState() => _ResolvedMediaImageState();
 }
 
 class _ResolvedMediaImageState extends ConsumerState<ResolvedMediaImage> {

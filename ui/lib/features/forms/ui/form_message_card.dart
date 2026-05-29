@@ -10,11 +10,7 @@ import '../domain/form_logic.dart';
 import '../domain/form_message_models.dart';
 
 class FormMessageCard extends ConsumerWidget {
-  const FormMessageCard({
-    required this.message,
-    required this.isMe,
-    super.key,
-  });
+  const FormMessageCard({required this.message, required this.isMe, super.key});
 
   final domain.RoomEvent message;
   final bool isMe;
@@ -27,17 +23,19 @@ class FormMessageCard extends ConsumerWidget {
         ? form.permissions.assigneeSubscriptionId
         : state.currentSubscriptionId;
     final submissionAsync = ref.watch(
-      latestFormSubmissionEventProvider(
-        (eventId: message.id, senderId: submissionOwnerId),
-      ),
+      latestFormSubmissionEventProvider((
+        eventId: message.id,
+        senderId: submissionOwnerId,
+      )),
     );
 
     final directSnapshot = form.finalSubmissionSnapshot;
     final linkedSubmission = submissionAsync.asData?.value;
     final linkedSnapshot = linkedSubmission == null
         ? null
-        : FormSubmissionResultMessageModel.fromContent(linkedSubmission.content)
-              .submissionSnapshot;
+        : FormSubmissionResultMessageModel.fromContent(
+            linkedSubmission.content,
+          ).submissionSnapshot;
 
     final directSnapshotMatchesCurrentUser =
         directSnapshot != null &&
@@ -50,11 +48,7 @@ class FormMessageCard extends ConsumerWidget {
         ? snapshot != null || form.state == FormMessageState.submitted
         : snapshot != null;
     if (shouldRenderSubmitted) {
-      return _SubmittedFormView(
-        form: form,
-        snapshot: snapshot,
-        isMe: isMe,
-      );
+      return _SubmittedFormView(form: form, snapshot: snapshot, isMe: isMe);
     }
 
     return _EditableFormView(message: message, form: form);
@@ -70,7 +64,9 @@ class _EditableFormView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(formMessageControllerProvider(message));
-    final controller = ref.read(formMessageControllerProvider(message).notifier);
+    final controller = ref.read(
+      formMessageControllerProvider(message).notifier,
+    );
 
     if (!state.hydrated) {
       return const Card(
@@ -190,10 +186,7 @@ class _FormLockedView extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                _StateChip(
-                  label: 'Assigned',
-                  color: Colors.blueGrey.shade700,
-                ),
+                _StateChip(label: 'Assigned', color: Colors.blueGrey.shade700),
               ],
             ),
             const SizedBox(height: 8),
@@ -232,10 +225,7 @@ class _FormHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
+              Text(label, style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 6),
               LinearProgressIndicator(
                 value: state.isReviewing
@@ -281,10 +271,7 @@ class _StepView extends StatelessWidget {
           Text(step.title, style: Theme.of(context).textTheme.titleSmall),
         if (step.description.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(
-            step.description,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(step.description, style: Theme.of(context).textTheme.bodySmall),
         ],
         const SizedBox(height: 12),
         for (final section in step.sections) ...[
@@ -313,7 +300,11 @@ class _StepView extends StatelessWidget {
                   answers: answers,
                   value: answers[field.key],
                   errorText: validationMessages[field.key],
-                  canEdit: FormLogic.isFieldEditable(field, answers, permissions),
+                  canEdit: FormLogic.isFieldEditable(
+                    field,
+                    answers,
+                    permissions,
+                  ),
                   onChanged: (value) => onChanged(field.key, value),
                 ),
               ),
@@ -385,9 +376,7 @@ class _FieldRenderer extends StatelessWidget {
                 value: option.value,
                 groupValue: value as String?,
                 onChanged: canEdit ? onChanged : null,
-                title: Text(
-                  option.label.isEmpty ? option.value : option.label,
-                ),
+                title: Text(option.label.isEmpty ? option.value : option.label),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -409,16 +398,15 @@ class _FieldRenderer extends StatelessWidget {
                     ? null
                     : (checked) {
                         final next = [...selected];
-                        if ((checked ?? false) && !next.contains(option.value)) {
+                        if ((checked ?? false) &&
+                            !next.contains(option.value)) {
                           next.add(option.value);
                         } else {
                           next.remove(option.value);
                         }
                         onChanged(next);
                       },
-                title: Text(
-                  option.label.isEmpty ? option.value : option.label,
-                ),
+                title: Text(option.label.isEmpty ? option.value : option.label),
                 dense: true,
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
@@ -428,7 +416,8 @@ class _FieldRenderer extends StatelessWidget {
       );
     }
 
-    if (field.type == FormFieldType.date || field.type == FormFieldType.datetime) {
+    if (field.type == FormFieldType.date ||
+        field.type == FormFieldType.datetime) {
       final text = value as String?;
       return InkWell(
         onTap: !canEdit
@@ -619,7 +608,9 @@ class _FieldRenderer extends StatelessWidget {
                 onPressed: !canEdit
                     ? null
                     : () {
-                        final next = rows.map(Map<String, dynamic>.from).toList();
+                        final next = rows
+                            .map(Map<String, dynamic>.from)
+                            .toList();
                         next.add(<String, dynamic>{});
                         onChanged(next);
                       },
@@ -829,7 +820,8 @@ class _SubmittedFormView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveSnapshot = snapshot ??
+    final effectiveSnapshot =
+        snapshot ??
         FormSubmissionSnapshotModel(
           formInstanceId: form.formInstanceId,
           schemaId: form.schemaId,
@@ -855,10 +847,7 @@ class _SubmittedFormView extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                _StateChip(
-                  label: 'Submitted',
-                  color: Colors.green.shade700,
-                ),
+                _StateChip(label: 'Submitted', color: Colors.green.shade700),
               ],
             ),
             const SizedBox(height: 8),
@@ -936,10 +925,7 @@ class _StateChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

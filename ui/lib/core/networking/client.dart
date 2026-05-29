@@ -6,13 +6,34 @@
 library;
 
 import 'package:stawi_api_chat/stawi_api_chat.dart'
-    hide Struct, Value, ListValue, NullValue, Timestamp, ContactLink, PageCursor;
+    hide
+        Struct,
+        Value,
+        ListValue,
+        NullValue,
+        Timestamp,
+        ContactLink,
+        PageCursor;
 import 'package:antinvestor_api_common/antinvestor_api_common.dart';
 import 'package:antinvestor_api_device/antinvestor_api_device.dart';
 import 'package:antinvestor_api_files/antinvestor_api_files.dart'
-    hide Struct, Value, ListValue, NullValue, Timestamp, ContactLink, PageCursor;
+    hide
+        Struct,
+        Value,
+        ListValue,
+        NullValue,
+        Timestamp,
+        ContactLink,
+        PageCursor;
 import 'package:antinvestor_api_profile/antinvestor_api_profile.dart'
-    hide DeviceClient, newDeviceClient, Struct, Value, ListValue, NullValue, Timestamp;
+    hide
+        DeviceClient,
+        newDeviceClient,
+        Struct,
+        Value,
+        ListValue,
+        NullValue,
+        Timestamp;
 import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:connectrpc/io.dart' as connect_io;
@@ -303,4 +324,3 @@ final filesServiceClientProvider = FutureProvider<FilesServiceClient>((
   final client = await ref.watch(filesClientProvider.future);
   return client.stub;
 });
-

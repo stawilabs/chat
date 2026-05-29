@@ -92,7 +92,8 @@ class FormMessageDraftRepository {
   }
 }
 
-final formMessageDraftRepositoryProvider =
-    Provider<FormMessageDraftRepository>((ref) {
-      return FormMessageDraftRepository(AppDatabase.instance);
-    });
+final formMessageDraftRepositoryProvider = Provider<FormMessageDraftRepository>(
+  (ref) {
+    return FormMessageDraftRepository(AppDatabase.instance);
+  },
+);

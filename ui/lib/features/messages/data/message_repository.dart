@@ -384,14 +384,13 @@ class MessageRepository {
 
   Future<domain.RoomEvent?> getLatestChildEventByType(
     String parentEventId,
-    domain.RoomEventType type,
-    {String? senderId}
-  ) async {
+    domain.RoomEventType type, {
+    String? senderId,
+  }) async {
     final query = _database.select(_database.roomEvents)
       ..where(
         (t) =>
-            t.parentId.equals(parentEventId) &
-            t.type.equals(type.storageCode),
+            t.parentId.equals(parentEventId) & t.type.equals(type.storageCode),
       )
       ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
       ..limit(1);
@@ -405,14 +404,13 @@ class MessageRepository {
 
   Stream<domain.RoomEvent?> watchLatestChildEventByType(
     String parentEventId,
-    domain.RoomEventType type,
-    {String? senderId}
-  ) {
+    domain.RoomEventType type, {
+    String? senderId,
+  }) {
     final query = _database.select(_database.roomEvents)
       ..where(
         (t) =>
-            t.parentId.equals(parentEventId) &
-            t.type.equals(type.storageCode),
+            t.parentId.equals(parentEventId) & t.type.equals(type.storageCode),
       )
       ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
       ..limit(1);

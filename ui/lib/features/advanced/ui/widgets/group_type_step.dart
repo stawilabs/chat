@@ -42,32 +42,34 @@ class GroupTypeStep extends StatelessWidget {
             }
           },
           child: Column(
-            children: GroupType.values.map(
-              (type) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: RadioListTile<GroupType>(
-                  value: type,
-                  title: Text(type.displayName),
-                  subtitle: Text(
-                    type.description,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: selected == type
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outlineVariant,
+            children: GroupType.values
+                .map(
+                  (type) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: RadioListTile<GroupType>(
+                      value: type,
+                      title: Text(type.displayName),
+                      subtitle: Text(
+                        type.description,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: selected == type
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      selected: selected == type,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                     ),
                   ),
-                  selected: selected == type,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                ),
-              ),
-            ).toList(),
+                )
+                .toList(),
           ),
         ),
       ],

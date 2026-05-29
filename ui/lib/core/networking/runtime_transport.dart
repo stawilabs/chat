@@ -38,15 +38,15 @@ class RuntimeTransport implements connect.Transport {
     required Uri baseUrl,
     List<connect.Interceptor>? interceptors,
     Duration? timeout,
-  })  : _runtime = runtime,
-        _baseUrl = baseUrl,
-        _timeout = timeout,
-        _delegate = connect_protocol.Transport(
-          baseUrl: baseUrl.toString(),
-          codec: const connect_protobuf.ProtoCodec(),
-          httpClient: _buildHttpClient(runtime, baseUrl, timeout),
-          interceptors: interceptors,
-        );
+  }) : _runtime = runtime,
+       _baseUrl = baseUrl,
+       _timeout = timeout,
+       _delegate = connect_protocol.Transport(
+         baseUrl: baseUrl.toString(),
+         codec: const connect_protobuf.ProtoCodec(),
+         httpClient: _buildHttpClient(runtime, baseUrl, timeout),
+         interceptors: interceptors,
+       );
 
   final AuthRuntime _runtime;
   // ignore: unused_field
@@ -60,8 +60,7 @@ class RuntimeTransport implements connect.Transport {
   AuthRuntime get runtime => _runtime;
 
   @override
-  Future<connect.UnaryResponse<I, O>>
-      unary<I extends Object, O extends Object>(
+  Future<connect.UnaryResponse<I, O>> unary<I extends Object, O extends Object>(
     connect.Spec<I, O> spec,
     I input, [
     connect.CallOptions? options,
@@ -70,12 +69,10 @@ class RuntimeTransport implements connect.Transport {
   }
 
   @override
-  Future<connect.StreamResponse<I, O>>
-      stream<I extends Object, O extends Object>(
-    connect.Spec<I, O> spec,
-    Stream<I> input, [
-    connect.CallOptions? options,
-  ]) {
+  Future<connect.StreamResponse<I, O>> stream<
+    I extends Object,
+    O extends Object
+  >(connect.Spec<I, O> spec, Stream<I> input, [connect.CallOptions? options]) {
     // TODO(auth-runtime-migration): runtime.fetch is unary-only. Streaming
     // RPCs (server / client / bidi) require either an isolate-friendly
     // streaming surface on AuthRuntime or a separate transport that bypasses
@@ -112,12 +109,12 @@ class RuntimeTransport implements connect.Transport {
       // Forward AbortSignal -> AuthError so the awaiting future surfaces the
       // cancellation rather than completing with a stale response.
       Future<ApiResponse> call() => runtime.fetch(
-            absoluteUrl,
-            method: req.method,
-            headers: headersMap.isEmpty ? null : headersMap,
-            body: body,
-            timeout: timeout,
-          );
+        absoluteUrl,
+        method: req.method,
+        headers: headersMap.isEmpty ? null : headersMap,
+        body: body,
+        timeout: timeout,
+      );
 
       final ApiResponse res;
       final signal = req.signal;
@@ -126,14 +123,21 @@ class RuntimeTransport implements connect.Transport {
       } else {
         // Race the fetch against the signal; whoever resolves first wins.
         final completer = Completer<ApiResponse>();
-        unawaited(signal.future.then((err) {
-          if (!completer.isCompleted) completer.completeError(err);
-        }));
-        unawaited(call().then((value) {
-          if (!completer.isCompleted) completer.complete(value);
-        }, onError: (Object err, StackTrace st) {
-          if (!completer.isCompleted) completer.completeError(err, st);
-        }));
+        unawaited(
+          signal.future.then((err) {
+            if (!completer.isCompleted) completer.completeError(err);
+          }),
+        );
+        unawaited(
+          call().then(
+            (value) {
+              if (!completer.isCompleted) completer.complete(value);
+            },
+            onError: (Object err, StackTrace st) {
+              if (!completer.isCompleted) completer.completeError(err, st);
+            },
+          ),
+        );
         res = await completer.future;
       }
 

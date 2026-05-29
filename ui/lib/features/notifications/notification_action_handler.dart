@@ -135,10 +135,11 @@ class NotificationActionHandler {
       );
       if (currentSubscriptionId != null && currentSubscriptionId.isNotEmpty) {
         final messageRepo = MessageRepository(AppDatabase.instance);
-        final latestUnreadId = await messageRepo.getLatestIncomingUnreadMessageId(
-          roomId,
-          excludingSenderId: currentSubscriptionId,
-        );
+        final latestUnreadId = await messageRepo
+            .getLatestIncomingUnreadMessageId(
+              roomId,
+              excludingSenderId: currentSubscriptionId,
+            );
         if (latestUnreadId != null) {
           await syncEngine.sendReadReceipts(roomId, [latestUnreadId]);
         }

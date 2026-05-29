@@ -5,13 +5,16 @@ class FormMessageState {
 
   final String value;
 
-  static const unspecified = FormMessageState._('FORM_MESSAGE_STATE_UNSPECIFIED');
+  static const unspecified = FormMessageState._(
+    'FORM_MESSAGE_STATE_UNSPECIFIED',
+  );
   static const open = FormMessageState._('FORM_MESSAGE_STATE_OPEN');
   static const inReview = FormMessageState._('FORM_MESSAGE_STATE_IN_REVIEW');
   static const submitting = FormMessageState._('FORM_MESSAGE_STATE_SUBMITTING');
   static const submitted = FormMessageState._('FORM_MESSAGE_STATE_SUBMITTED');
-  static const failedSubmission =
-      FormMessageState._('FORM_MESSAGE_STATE_FAILED_SUBMISSION');
+  static const failedSubmission = FormMessageState._(
+    'FORM_MESSAGE_STATE_FAILED_SUBMISSION',
+  );
   static const expired = FormMessageState._('FORM_MESSAGE_STATE_EXPIRED');
   static const cancelled = FormMessageState._('FORM_MESSAGE_STATE_CANCELLED');
 
@@ -57,13 +60,15 @@ class FormFieldType {
   static const datetime = FormFieldType._('FORM_FIELD_TYPE_DATETIME');
   static const select = FormFieldType._('FORM_FIELD_TYPE_SELECT');
   static const radio = FormFieldType._('FORM_FIELD_TYPE_RADIO');
-  static const checkboxGroup =
-      FormFieldType._('FORM_FIELD_TYPE_CHECKBOX_GROUP');
+  static const checkboxGroup = FormFieldType._(
+    'FORM_FIELD_TYPE_CHECKBOX_GROUP',
+  );
   static const boolean = FormFieldType._('FORM_FIELD_TYPE_BOOLEAN');
   static const file = FormFieldType._('FORM_FIELD_TYPE_FILE');
   static const address = FormFieldType._('FORM_FIELD_TYPE_ADDRESS');
-  static const repeatableGroup =
-      FormFieldType._('FORM_FIELD_TYPE_REPEATABLE_GROUP');
+  static const repeatableGroup = FormFieldType._(
+    'FORM_FIELD_TYPE_REPEATABLE_GROUP',
+  );
   static const group = FormFieldType._('FORM_FIELD_TYPE_GROUP');
   static const section = FormFieldType._('FORM_FIELD_TYPE_SECTION');
   static const hidden = FormFieldType._('FORM_FIELD_TYPE_HIDDEN');
@@ -114,36 +119,49 @@ class FormConditionOperator {
 
   final String value;
 
-  static const unspecified =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_UNSPECIFIED');
-  static const equals =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_EQUALS');
-  static const notEquals =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_NOT_EQUALS');
-  static const greaterThan =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_GREATER_THAN');
+  static const unspecified = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_UNSPECIFIED',
+  );
+  static const equals = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_EQUALS',
+  );
+  static const notEquals = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_NOT_EQUALS',
+  );
+  static const greaterThan = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_GREATER_THAN',
+  );
   static const greaterThanOrEqual = FormConditionOperator._(
     'FORM_CONDITION_OPERATOR_GREATER_THAN_OR_EQUAL',
   );
-  static const lessThan =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_LESS_THAN');
-  static const lessThanOrEqual =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_LESS_THAN_OR_EQUAL');
+  static const lessThan = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_LESS_THAN',
+  );
+  static const lessThanOrEqual = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_LESS_THAN_OR_EQUAL',
+  );
   static const within = FormConditionOperator._('FORM_CONDITION_OPERATOR_IN');
-  static const notWithin =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_NOT_IN');
-  static const contains =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_CONTAINS');
-  static const notContains =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_NOT_CONTAINS');
-  static const isTrue =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_IS_TRUE');
-  static const isFalse =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_IS_FALSE');
-  static const exists =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_EXISTS');
-  static const notExists =
-      FormConditionOperator._('FORM_CONDITION_OPERATOR_NOT_EXISTS');
+  static const notWithin = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_NOT_IN',
+  );
+  static const contains = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_CONTAINS',
+  );
+  static const notContains = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_NOT_CONTAINS',
+  );
+  static const isTrue = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_IS_TRUE',
+  );
+  static const isFalse = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_IS_FALSE',
+  );
+  static const exists = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_EXISTS',
+  );
+  static const notExists = FormConditionOperator._(
+    'FORM_CONDITION_OPERATOR_NOT_EXISTS',
+  );
 
   static const values = [
     unspecified,
@@ -320,10 +338,16 @@ class FormConditionGroup {
     final any = json?['any'] as List<dynamic>? ?? const [];
     return FormConditionGroup(
       all: all
-          .map((item) => FormConditionClause.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) =>
+                FormConditionClause.fromJson(item as Map<String, dynamic>),
+          )
           .toList(),
       any: any
-          .map((item) => FormConditionClause.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) =>
+                FormConditionClause.fromJson(item as Map<String, dynamic>),
+          )
           .toList(),
     );
   }
@@ -438,7 +462,9 @@ class FormField {
       requiredValue: json['required'] == true,
       defaultValue: json['defaultValue'],
       validationRules: validationRules
-          .map((item) => FormValidationRule.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => FormValidationRule.fromJson(item as Map<String, dynamic>),
+          )
           .toList(),
       visibilityCondition: FormConditionGroup.fromJson(
         json['visibilityCondition'] as Map<String, dynamic>?,
@@ -455,9 +481,7 @@ class FormField {
       nestedSections: nestedSections
           .map((item) => FormSection.fromJson(item as Map<String, dynamic>))
           .toList(),
-      review: FormReviewHint.fromJson(
-        json['review'] as Map<String, dynamic>?,
-      ),
+      review: FormReviewHint.fromJson(json['review'] as Map<String, dynamic>?),
       formatting: FormFormattingHint.fromJson(
         json['formatting'] as Map<String, dynamic>?,
       ),
@@ -661,9 +685,8 @@ class FormSubmissionSnapshotModel {
       ),
       formattedSections: sections
           .map(
-            (item) => FormReviewSectionModel.fromJson(
-              item as Map<String, dynamic>,
-            ),
+            (item) =>
+                FormReviewSectionModel.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
       submittedBySubscriptionId:
@@ -749,9 +772,7 @@ class FormRequestMessageModel {
       finalSubmissionSnapshot: json['finalSubmissionSnapshot'] == null
           ? null
           : FormSubmissionSnapshotModel.fromJson(
-              Map<String, dynamic>.from(
-                json['finalSubmissionSnapshot'] as Map,
-              ),
+              Map<String, dynamic>.from(json['finalSubmissionSnapshot'] as Map),
             ),
       permissions: FormPermissions.fromJson(
         json['permissions'] as Map<String, dynamic>?,

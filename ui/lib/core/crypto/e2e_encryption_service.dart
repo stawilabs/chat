@@ -441,9 +441,14 @@ class E2EEncryptionService {
     );
     // Append the 16-byte GCM auth tag to the ciphertext for a single blob,
     // matching the wire format used by the prior pointycastle implementation.
-    final blob = Uint8List(secretBox.cipherText.length + secretBox.mac.bytes.length)
-      ..setRange(0, secretBox.cipherText.length, secretBox.cipherText)
-      ..setRange(secretBox.cipherText.length, secretBox.cipherText.length + secretBox.mac.bytes.length, secretBox.mac.bytes);
+    final blob =
+        Uint8List(secretBox.cipherText.length + secretBox.mac.bytes.length)
+          ..setRange(0, secretBox.cipherText.length, secretBox.cipherText)
+          ..setRange(
+            secretBox.cipherText.length,
+            secretBox.cipherText.length + secretBox.mac.bytes.length,
+            secretBox.mac.bytes,
+          );
 
     AppLogger.debug(
       'Encrypted data with AES-256-GCM',
@@ -475,8 +480,13 @@ class E2EEncryptionService {
       if (encryptedData.data.length < macLen) {
         throw ArgumentError('Ciphertext shorter than GCM tag');
       }
-      final cipherText = encryptedData.data.sublist(0, encryptedData.data.length - macLen);
-      final mac = crypto.Mac(encryptedData.data.sublist(encryptedData.data.length - macLen));
+      final cipherText = encryptedData.data.sublist(
+        0,
+        encryptedData.data.length - macLen,
+      );
+      final mac = crypto.Mac(
+        encryptedData.data.sublist(encryptedData.data.length - macLen),
+      );
       final secretBox = crypto.SecretBox(cipherText, nonce: ivBytes, mac: mac);
       final decrypted = await algorithm.decrypt(
         secretBox,

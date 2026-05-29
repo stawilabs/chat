@@ -100,8 +100,6 @@ class AuthStateNotifier extends _$AuthStateNotifier {
   /// own refresh loop internally, so this is just a state snapshot.
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = AsyncValue.data(
-      _map(ref.read(runtime.authRuntimeProvider).state),
-    );
+    state = AsyncValue.data(_map(ref.read(runtime.authRuntimeProvider).state));
   }
 }

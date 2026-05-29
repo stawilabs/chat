@@ -257,7 +257,10 @@ void main() {
 
         var room = await repository.getRoomById('room-1');
         expect(room!.metadata!['historyBackwardCursor'], equals('cursor-back'));
-        expect(room.metadata!['historyForwardCursor'], equals('cursor-forward'));
+        expect(
+          room.metadata!['historyForwardCursor'],
+          equals('cursor-forward'),
+        );
 
         await repository.updateSyncMetadata(
           'room-1',

@@ -175,10 +175,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (unreadIds.isNotEmpty) {
           final syncEngine = await ref.read(syncEngineProvider.future);
           await syncEngine.sendReadReceipts(widget.roomId, unreadIds);
-          await RoomRepository(AppDatabase.instance).updateUnreadCount(
-            widget.roomId,
-            0,
-          );
+          await RoomRepository(
+            AppDatabase.instance,
+          ).updateUnreadCount(widget.roomId, 0);
         }
       } catch (e) {
         // Silently fail for read receipts - they're not critical

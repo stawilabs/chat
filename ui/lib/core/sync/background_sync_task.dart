@@ -62,9 +62,7 @@ class BackgroundSyncTask {
       });
 
       if (result == null) {
-        AppLogger.debug(
-          'No valid auth runtime for background sync; skipping',
-        );
+        AppLogger.debug('No valid auth runtime for background sync; skipping');
         return true; // Not a failure - foreground will resume and retry
       }
 
@@ -947,9 +945,7 @@ class BackgroundSyncTask {
     } else if (obj is String) {
       value.stringValue = obj;
     } else if (obj is List) {
-      value.listValue = pb.ListValue(
-        values: obj.map(_objectToValue).toList(),
-      );
+      value.listValue = pb.ListValue(values: obj.map(_objectToValue).toList());
     } else if (obj is Map<String, dynamic>) {
       value.structValue = _mapToStruct(obj);
     } else {

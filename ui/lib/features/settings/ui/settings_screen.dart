@@ -10,11 +10,7 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   static const _cardShadow = [
-    BoxShadow(
-      color: Color(0x0D000000),
-      blurRadius: 10,
-      offset: Offset(0, 2),
-    ),
+    BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 2)),
   ];
 
   @override

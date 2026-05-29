@@ -131,8 +131,14 @@ void main() {
         'target_amount': 50000,
       });
 
-      expect(sections.map((section) => section.stepId), equals(['product', 'savings_details']));
-      expect(sections.any((section) => section.stepId == 'loan_details'), isFalse);
+      expect(
+        sections.map((section) => section.stepId),
+        equals(['product', 'savings_details']),
+      );
+      expect(
+        sections.any((section) => section.stepId == 'loan_details'),
+        isFalse,
+      );
     });
   });
 }
