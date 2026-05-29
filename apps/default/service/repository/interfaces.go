@@ -113,6 +113,20 @@ type RoomSubscriptionRepository interface {
 	BulkCreate(ctx context.Context, subscriptions []*models.RoomSubscription) error
 }
 
+// RoomOutboxRepository defines the transactional-outbox data access surface.
+type RoomOutboxRepository interface {
+	datastore.BaseRepository[*models.RoomOutbox]
+	// SaveEventsWithOutbox atomically persists events and their outbox rows in a
+	// single transaction; returns the set of newly-inserted event IDs.
+	SaveEventsWithOutbox(
+		ctx context.Context,
+		events []*models.RoomEvent,
+		payloads map[string][]byte,
+	) (map[string]bool, error)
+	ListPending(ctx context.Context, olderThan time.Time, limit int) ([]*models.RoomOutbox, error)
+	MarkDispatched(ctx context.Context, eventIDs []string) error
+}
+
 // ProposalRepository defines the interface for proposal data access operations.
 // Proposals are generic and scoped by ScopeType + ScopeID, enabling reuse
 // for any entity type that needs an approval/voting workflow.

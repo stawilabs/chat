@@ -39,6 +39,32 @@ startup. The work is to **finalize and harden** it, not introduce it.
 - **WS-B · Message durability** — transactional outbox (+ relay/poller), idempotency keys
   with unique constraint, content/`ParentId`/payload validation.
 
+### WS-B detailed design — transactional outbox
+
+Canonical outbox with optimistic inline dispatch (keeps chat latency low) and a
+relay as the durability safety net:
+
+1. **`RoomOutbox` model** (`room_outbox`): `EventID` (unique), `RoomID`, `Payload`
+   (protojson of `eventsv1.Link`), `Dispatched` bool, `DispatchedAt`. Embeds
+   `data.BaseModel`; added to the AutoMigrate list.
+2. **`OutboxRepository`**:
+   - `SaveEventsWithOutbox(events, links)` — single transaction: insert events
+     (ON CONFLICT DO NOTHING) and, for each newly-inserted event, its outbox row.
+     This is the atomicity guarantee — an event is never committed without its
+     outbox row. Returns the set of inserted IDs.
+   - `ListPending(olderThan, limit)` / `MarkDispatched(ids)` — relay surface.
+3. **Wiring (slice 2)**: `SendEvents` builds each event's `Link` before save and
+   calls `SaveEventsWithOutbox` instead of `CreateIgnoringDuplicates`. After the
+   tx commits it inline-emits `RoomOutboxLoggingEventName` (fast path) and marks
+   the row dispatched.
+4. **Relay (slice 2)**: a poll loop (started in `main`, bound to the service
+   context, stopped on shutdown) that re-emits outbox rows still undispatched
+   after a short grace period — catching crashes between commit and inline emit.
+   At-least-once; downstream consumers must be idempotent (WS-D).
+
+Slice 1 (this commit) lands the model + migration + atomic repository method +
+tests, leaving the live path unchanged. Slice 2 wires `SendEvents` + the relay.
+
 ### Phase 2 — Backend pipeline & operability
 - **WS-D · Delivery pipeline** — idempotent consumers, broker-native retry backoff,
   fan-out batching + surface 100k drop, DLQ persistence, opportunistic replay trim.

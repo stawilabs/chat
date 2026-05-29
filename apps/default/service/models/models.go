@@ -309,3 +309,21 @@ func (p *Proposal) IsPending() bool {
 func (p *Proposal) IsExpired() bool {
 	return time.Now().After(p.ExpiresAt)
 }
+
+// RoomOutbox is the transactional-outbox record for a room event. It is written
+// in the SAME transaction as the RoomEvent so delivery intent is durable even if
+// the process crashes between persisting the event and publishing it to the
+// delivery pipeline. A relay drains undispatched rows as a safety net behind the
+// optimistic inline emit (see WS-B design). EventID is unique so an event has at
+// most one outbox row (idempotent re-saves).
+type RoomOutbox struct {
+	data.BaseModel
+	EventID      string `gorm:"type:varchar(50);uniqueIndex:idx_room_outbox_event"`
+	RoomID       string `gorm:"type:varchar(50);index"`
+	Payload      []byte `gorm:"type:bytea;not null"` // protojson-encoded eventsv1.Link
+	Dispatched   bool   `gorm:"index:idx_room_outbox_dispatched"`
+	DispatchedAt int64
+}
+
+// TableName returns the database table name for RoomOutbox.
+func (RoomOutbox) TableName() string { return "room_outbox" }
