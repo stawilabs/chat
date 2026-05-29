@@ -142,9 +142,15 @@ const (
 // RoomSubscription represents a user's subscription to a room.
 type RoomSubscription struct {
 	data.BaseModel
-	RoomID              string `gorm:"type:varchar(50);index:idx_roomsubscription_room_id_subscription_state;uniqueIndex:idx_room_subscription_unique_active"`
-	ProfileID           string `gorm:"type:varchar(50);uniqueIndex:idx_room_subscription_unique_active"`
-	ContactID           string `gorm:"type:varchar(50);uniqueIndex:idx_room_subscription_unique_active"`
+	// NOTE: the (room_id, profile_id, contact_id) uniqueness is enforced by a
+	// PARTIAL unique index (idx_room_subscription_unique_active) defined in SQL
+	// migrations, scoped to active/proposed states so a blocked member can be
+	// re-added. It must NOT be declared as a GORM uniqueIndex tag here: AutoMigrate
+	// runs before SQL migrations and would create a FULL (predicate-less) index of
+	// the same name, shadowing the partial one and blocking re-adds.
+	RoomID              string `gorm:"type:varchar(50);index:idx_roomsubscription_room_id_subscription_state"`
+	ProfileID           string `gorm:"type:varchar(50)"`
+	ContactID           string `gorm:"type:varchar(50)"`
 	Role                string
 	SubscriptionState   RoomSubscriptionState `gorm:"index:idx_roomsubscription_room_id_subscription_state"`
 	LastReadEventID     string                `gorm:"type:varchar(50)"` // ID of the last read event (naturally time-sorted)

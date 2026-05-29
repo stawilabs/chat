@@ -167,6 +167,40 @@ func (s *SubscriptionRepositoryTestSuite) TestDeactivateInRoomScoping() {
 	})
 }
 
+// TestPartialUniqueIndexAllowsReAddAfterBlock proves the partial unique index
+// (active/proposed only) lets a blocked member be re-added, while still blocking
+// two simultaneously-active rows for the same identity.
+func (s *SubscriptionRepositoryTestSuite) TestPartialUniqueIndexAllowsReAddAfterBlock() {
+	frametests.WithTestDependencies(s.T(), nil, func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		workMan, dbPool := s.GetRepoDeps(ctx, svc)
+		repo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+
+		roomID := util.IDString()
+		profileID := util.IDString()
+		contactID := util.IDString()
+		mk := func() *models.RoomSubscription {
+			sub := &models.RoomSubscription{
+				RoomID: roomID, ProfileID: profileID, ContactID: contactID,
+				Role: repository.RoleMember, SubscriptionState: models.RoomSubscriptionStateActive,
+			}
+			sub.GenID(ctx)
+			return sub
+		}
+
+		first := mk()
+		require.NoError(t, repo.Create(ctx, first))
+
+		// A second active row for the same identity must violate the unique index.
+		require.Error(t, repo.Create(ctx, mk()), "duplicate active subscription must be rejected")
+
+		// After blocking the first, re-adding (a new active row) must succeed.
+		_, err := repo.DeactivateInRoom(ctx, roomID, []string{first.GetID()})
+		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, mk()), "re-add after block must be allowed")
+	})
+}
+
 // TestCountActiveOwners verifies owner counting including comma-separated roles.
 func (s *SubscriptionRepositoryTestSuite) TestCountActiveOwners() {
 	frametests.WithTestDependencies(s.T(), nil, func(t *testing.T, dep *definition.DependencyOption) {

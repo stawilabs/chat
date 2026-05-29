@@ -37,7 +37,7 @@ import (
 var chatAPISpecFile []byte
 
 // runService initializes and starts the chat service with all dependencies.
-func runService(ctx context.Context) error { //nolint:funlen // service wiring is intentionally verbose
+func runService(ctx context.Context) error {
 	// Initialize configuration
 	cfg, err := config.LoadWithOIDC[aconfig.ChatConfig](ctx)
 	if err != nil {
@@ -90,13 +90,14 @@ func runService(ctx context.Context) error { //nolint:funlen // service wiring i
 		log.WithError(err).Fatal("main -- Could not setup profile client")
 	}
 
-	// Handle database migration if requested
-	if handleDatabaseMigration(ctx, dbManager, cfg) {
+	// Handle database migration if requested. Hypertable setup runs inside the
+	// migrate job (after SQL migrations have applied the composite PK that
+	// TimescaleDB requires), never on a normal boot — otherwise a normal pod
+	// could promote room_events to a hypertable before the migration that adds
+	// the time column to its primary key, leaving it a plain table forever.
+	if handleDatabaseMigration(ctx, dbManager, dbPool, cfg) {
 		return nil
 	}
-
-	// Register hypertables (no-op WARN if timescaledb extension is absent).
-	ensureHypertables(ctx, dbPool)
 
 	// Setup Keto authorization service
 	auth := sm.GetAuthorizer(ctx)
@@ -171,9 +172,13 @@ func ensureHypertables(ctx context.Context, dbPool pool.Pool) {
 }
 
 // handleDatabaseMigration performs database migration if configured to do so.
+// On success it also (idempotently) promotes the configured hypertables, so all
+// schema setup — SQL migrations then TimescaleDB hypertable conversion — happens
+// in one ordered place: the migrate job.
 func handleDatabaseMigration(
 	ctx context.Context,
 	dbManager datastore.Manager,
+	dbPool pool.Pool,
 	cfg aconfig.ChatConfig,
 ) bool {
 	if !cfg.DoDatabaseMigrate() {
@@ -184,6 +189,9 @@ func handleDatabaseMigration(
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- Could not migrate successfully")
 	}
+
+	// Promote hypertables after the SQL migrations have run.
+	ensureHypertables(ctx, dbPool)
 	return true
 }
 
