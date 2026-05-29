@@ -95,6 +95,17 @@ type RoomSubscriptionRepository interface {
 	UpdateRole(ctx context.Context, id, role string) error
 	UpdateLastReadEventID(ctx context.Context, id string, eventID string) error
 	Deactivate(ctx context.Context, id ...string) error
+	// GetByIDsInRoom returns subscriptions matching the given IDs that also
+	// belong to roomID. Used to validate that caller-supplied subscription IDs
+	// actually belong to the room being operated on (cross-room IDOR guard).
+	GetByIDsInRoom(ctx context.Context, roomID string, ids []string) ([]*models.RoomSubscription, error)
+	// DeactivateInRoom blocks the given subscriptions, scoped to roomID so a
+	// subscription belonging to another room can never be deactivated. Returns
+	// the number of rows affected.
+	DeactivateInRoom(ctx context.Context, roomID string, ids []string) (int64, error)
+	// CountActiveOwners counts active subscriptions holding the owner role in a
+	// room (role is a comma-separated list, so positional matches are included).
+	CountActiveOwners(ctx context.Context, roomID string) (int64, error)
 	Activate(ctx context.Context, id ...string) error
 	CountActiveMembers(ctx context.Context, roomID string) (int64, error)
 	HasPermission(ctx context.Context, roomID string, contactLink *commonv1.ContactLink, minRole string) (bool, error)

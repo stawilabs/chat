@@ -21,7 +21,10 @@ type ChatConfig struct {
 	ProfileServiceWorkloadAPITargetPath      string `envDefault:"/ns/profile/sa/service-profile" env:"PROFILE_SERVICE_WORKLOAD_API_TARGET_PATH"`
 	TenancyServiceWorkloadAPITargetPath      string `envDefault:"/ns/auth/sa/service-tenancy" env:"TENANCY_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
-	SystemAccessID string `envDefault:"c8cf0ldstmdlinc3eva0" env:"STATIC_SYSTEM_ACCESS_ID"`
+	// SystemAccessID must be supplied per-environment via STATIC_SYSTEM_ACCESS_ID.
+	// No default is baked in: a hardcoded, source-visible system access identifier
+	// would be a predictable, attacker-guessable privileged principal if shipped.
+	SystemAccessID string `env:"STATIC_SYSTEM_ACCESS_ID"`
 
 	QueueDeviceEventDeliveryName string `envDefault:"device.event.delivery"       env:"QUEUE_DEVICE_EVENT_DELIVERY_NAME"`
 	QueueDeviceEventDeliveryURI  string `envDefault:"mem://device.event.delivery" env:"QUEUE_DEVICE_EVENT_DELIVERY_URI"`

@@ -248,6 +248,55 @@ func (rsr *roomSubscriptionRepository) Deactivate(ctx context.Context, subscript
 	return nil
 }
 
+// GetByIDsInRoom returns the subscriptions whose IDs are in ids AND which
+// belong to roomID. Callers compare len(result) against the requested ID count
+// to detect IDs that belong to a different room.
+func (rsr *roomSubscriptionRepository) GetByIDsInRoom(
+	ctx context.Context,
+	roomID string,
+	ids []string,
+) ([]*models.RoomSubscription, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var subscriptions []*models.RoomSubscription
+	err := rsr.Pool().DB(ctx, true).
+		Where("room_id = ? AND id IN ?", roomID, ids).
+		Find(&subscriptions).Error
+	return subscriptions, err
+}
+
+// DeactivateInRoom blocks the given subscriptions scoped to roomID. The
+// room_id predicate ensures a subscription from another room can never be
+// deactivated even if its ID is supplied. Returns rows affected.
+func (rsr *roomSubscriptionRepository) DeactivateInRoom(
+	ctx context.Context,
+	roomID string,
+	ids []string,
+) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	res := rsr.Pool().DB(ctx, false).
+		Model(&models.RoomSubscription{}).
+		Where("room_id = ? AND id IN ?", roomID, ids).
+		Update("subscription_state", models.RoomSubscriptionStateBlocked)
+	return res.RowsAffected, res.Error
+}
+
+// CountActiveOwners counts active subscriptions holding the owner role. Role is
+// stored as a comma-separated list, so all four positional forms are matched.
+func (rsr *roomSubscriptionRepository) CountActiveOwners(ctx context.Context, roomID string) (int64, error) {
+	var count int64
+	err := rsr.Pool().DB(ctx, true).
+		Model(&models.RoomSubscription{}).
+		Where("room_id = ? AND subscription_state IN ?", roomID, rsr.activeSubscriptionStates).
+		Where("role = ? OR role LIKE ? OR role LIKE ? OR role LIKE ?",
+			RoleOwner, RoleOwner+",%", "%,"+RoleOwner, "%,"+RoleOwner+",%").
+		Count(&count).Error
+	return count, err
+}
+
 // Activate marks a subscription as active.
 func (rsr *roomSubscriptionRepository) Activate(ctx context.Context, subscriptionIDs ...string) error {
 	_, err := rsr.BulkUpdate(

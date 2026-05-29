@@ -118,6 +118,81 @@ func (s *SubscriptionRepositoryTestSuite) TestGetActiveByRoomAndProfile() {
 	})
 }
 
+// TestDeactivateInRoomScoping proves the cross-room IDOR guard: a subscription
+// that belongs to another room is never affected even if its ID is supplied,
+// and GetByIDsInRoom only returns IDs that belong to the room.
+func (s *SubscriptionRepositoryTestSuite) TestDeactivateInRoomScoping() {
+	frametests.WithTestDependencies(s.T(), nil, func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		workMan, dbPool := s.GetRepoDeps(ctx, svc)
+		repo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+
+		roomA := util.IDString()
+		roomB := util.IDString()
+
+		subA := &models.RoomSubscription{
+			RoomID: roomA, ProfileID: util.IDString(),
+			Role: repository.RoleMember, SubscriptionState: models.RoomSubscriptionStateActive,
+		}
+		subA.GenID(ctx)
+		require.NoError(t, repo.Create(ctx, subA))
+
+		subB := &models.RoomSubscription{
+			RoomID: roomB, ProfileID: util.IDString(),
+			Role: repository.RoleMember, SubscriptionState: models.RoomSubscriptionStateActive,
+		}
+		subB.GenID(ctx)
+		require.NoError(t, repo.Create(ctx, subB))
+
+		// Attempt to deactivate roomB's subscription while scoped to roomA.
+		affected, err := repo.DeactivateInRoom(ctx, roomA, []string{subB.GetID()})
+		require.NoError(t, err)
+		s.Equal(int64(0), affected, "must not deactivate a subscription from another room")
+
+		// roomB's subscription must still be active.
+		gotB, err := repo.GetByID(ctx, subB.GetID())
+		require.NoError(t, err)
+		s.Equal(models.RoomSubscriptionStateActive, gotB.SubscriptionState)
+
+		// GetByIDsInRoom must not return the foreign subscription.
+		scoped, err := repo.GetByIDsInRoom(ctx, roomA, []string{subA.GetID(), subB.GetID()})
+		require.NoError(t, err)
+		s.Len(scoped, 1)
+		s.Equal(subA.GetID(), scoped[0].GetID())
+
+		// Correctly-scoped deactivation works.
+		affected, err = repo.DeactivateInRoom(ctx, roomA, []string{subA.GetID()})
+		require.NoError(t, err)
+		s.Equal(int64(1), affected)
+	})
+}
+
+// TestCountActiveOwners verifies owner counting including comma-separated roles.
+func (s *SubscriptionRepositoryTestSuite) TestCountActiveOwners() {
+	frametests.WithTestDependencies(s.T(), nil, func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		workMan, dbPool := s.GetRepoDeps(ctx, svc)
+		repo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
+
+		roomID := util.IDString()
+		mk := func(role string, state models.RoomSubscriptionState) {
+			sub := &models.RoomSubscription{
+				RoomID: roomID, ProfileID: util.IDString(), Role: role, SubscriptionState: state,
+			}
+			sub.GenID(ctx)
+			require.NoError(t, repo.Create(ctx, sub))
+		}
+		mk(repository.RoleOwner, models.RoomSubscriptionStateActive)  // owner
+		mk("admin,owner", models.RoomSubscriptionStateActive)         // csv owner
+		mk(repository.RoleMember, models.RoomSubscriptionStateActive) // not owner
+		mk(repository.RoleOwner, models.RoomSubscriptionStateBlocked) // blocked owner, excluded
+
+		count, err := repo.CountActiveOwners(ctx, roomID)
+		require.NoError(t, err)
+		s.Equal(int64(2), count)
+	})
+}
+
 func (s *SubscriptionRepositoryTestSuite) TestGetByRoomID() {
 	frametests.WithTestDependencies(s.T(), nil, func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)

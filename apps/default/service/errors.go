@@ -82,6 +82,21 @@ var (
 	)
 	ErrRoomMemberNotFound = connect.NewError(connect.CodeNotFound, errors.New("member not found in room"))
 
+	// ErrCannotRemoveLastOwner is returned when an operation would leave a room
+	// with no owner (removing or demoting the last owner), which would orphan
+	// the room and make it permanently unmanageable.
+	ErrCannotRemoveLastOwner = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("cannot remove or demote the last owner of a room"),
+	)
+
+	// ErrInvalidRole is returned when a role string is not one of the recognised
+	// roles (owner, admin, member, guest).
+	ErrInvalidRole = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("invalid role: must be one of owner, admin, member, guest"),
+	)
+
 	// ErrMessageRoomIDRequired is returned when message room ID is not provided.
 	ErrMessageRoomIDRequired  = connect.NewError(connect.CodeInvalidArgument, errors.New("room ID is required"))
 	ErrMessageContentRequired = connect.NewError(connect.CodeInvalidArgument, errors.New("message content is required"))

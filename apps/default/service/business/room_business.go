@@ -529,6 +529,13 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 		return err
 	}
 
+	// Reject unknown role strings before any state change. Without this an owner
+	// could persist garbage roles that RoleToRelation silently maps to member,
+	// diverging the DB role from the Keto relation.
+	if err := validateRoles(req.GetRoles()); err != nil {
+		return err
+	}
+
 	// Check if the updater has permission to update roles
 	admin, err := rb.subscriptionSvc.CanRolesManage(ctx, actor, req.GetRoomId())
 	if err != nil {
@@ -560,6 +567,11 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 	// Verify subscription belongs to the specified room
 	if sub.RoomID != req.GetRoomId() {
 		return service.ErrRoomMemberNotFound
+	}
+
+	// Last-owner guard: refuse to demote the final owner of a room.
+	if err = rb.guardOwnerDemotion(ctx, req, sub); err != nil {
+		return err
 	}
 
 	// Update roles with DB-first semantics so we can compensate cleanly if authz update fails.
@@ -617,6 +629,85 @@ func (rb *roomBusiness) syncRoleUpdate(
 		}
 	}
 
+	return nil
+}
+
+// roleListContains reports whether the comma-separated role field contains the
+// target role exactly (so "owner" matches in "owner,admin" but not "co-owner").
+func roleListContains(roleField, target string) bool {
+	for _, r := range strings.Split(roleField, ",") {
+		if strings.TrimSpace(r) == target {
+			return true
+		}
+	}
+	return false
+}
+
+// validateRoles returns ErrInvalidRole if any role string is not recognised.
+func validateRoles(roles []string) error {
+	for _, r := range roles {
+		if !authz.IsValidRole(r) {
+			return service.ErrInvalidRole
+		}
+	}
+	return nil
+}
+
+// guardOwnerDemotion blocks demoting the last owner of a room: if the
+// subscription currently holds the owner role and the requested roles drop it,
+// it must not be the only remaining owner.
+func (rb *roomBusiness) guardOwnerDemotion(
+	ctx context.Context,
+	req *chatv1.UpdateSubscriptionRoleRequest,
+	sub *models.RoomSubscription,
+) error {
+	if !roleListContains(sub.Role, roleOwner) {
+		return nil
+	}
+	if roleListContains(strings.Join(req.GetRoles(), ","), roleOwner) {
+		return nil
+	}
+	return rb.guardLastOwner(ctx, req.GetRoomId(), []*models.RoomSubscription{sub})
+}
+
+// uniqueStrings returns the distinct values of in, preserving no particular order.
+func uniqueStrings(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+
+// guardLastOwner returns ErrCannotRemoveLastOwner if losing the owner role on
+// the supplied active owner subscriptions would leave the room with no owner.
+func (rb *roomBusiness) guardLastOwner(
+	ctx context.Context,
+	roomID string,
+	losing []*models.RoomSubscription,
+) error {
+	losingOwners := 0
+	for _, s := range losing {
+		if s.SubscriptionState == models.RoomSubscriptionStateActive && roleListContains(s.Role, roleOwner) {
+			losingOwners++
+		}
+	}
+	if losingOwners == 0 {
+		return nil
+	}
+
+	totalOwners, err := rb.subscriptionRepo.CountActiveOwners(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to count room owners: %w", err)
+	}
+	if totalOwners-int64(losingOwners) < 1 {
+		return service.ErrCannotRemoveLastOwner
+	}
 	return nil
 }
 
@@ -945,9 +1036,27 @@ func (rb *roomBusiness) removeRoomMembersBySubscriptionID(
 		"subscription_count": len(subscriptionIDs),
 	}).Debug("removeRoomMembersBySubscriptionID")
 
-	// Deactivate subscriptions directly
-	err := rb.subscriptionRepo.Deactivate(ctx, subscriptionIDs...)
+	// Validate that every supplied subscription ID actually belongs to this
+	// room. Without this check, an admin of room A could pass subscription IDs
+	// from room B and have them deactivated (cross-room IDOR).
+	subs, err := rb.subscriptionRepo.GetByIDsInRoom(ctx, roomID, subscriptionIDs)
 	if err != nil {
+		return fmt.Errorf("failed to load subscriptions for removal: %w", err)
+	}
+	if len(subs) != len(uniqueStrings(subscriptionIDs)) {
+		// At least one ID does not belong to this room.
+		return service.ErrRoomMemberNotFound
+	}
+
+	// Last-owner guard: refuse to remove the final owner(s), which would orphan
+	// the room (no one could ever delete or manage it again).
+	if err = rb.guardLastOwner(ctx, roomID, subs); err != nil {
+		return err
+	}
+
+	// Deactivate subscriptions, scoped to this room so a stray ID can never
+	// affect another room even if validation above is bypassed in future.
+	if _, err = rb.subscriptionRepo.DeactivateInRoom(ctx, roomID, subscriptionIDs); err != nil {
 		return fmt.Errorf("failed to deactivate subscription: %w", err)
 	}
 

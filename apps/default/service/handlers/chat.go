@@ -1084,6 +1084,24 @@ func (ps *ChatServer) liveRequestSource(
 			return nil, err
 		}
 
+		// An internal caller (e.g. the gateway) may forward events on behalf of
+		// an authenticated user. Require a real platform identity (profile_id)
+		// for the impersonated source — IsValidContactLink alone accepts a
+		// contact_id-only link, which would let an internal token assert an
+		// unverified identity. Downstream SendEvents still enforces that this
+		// source has an active subscription to the target room.
+		if source.GetProfileId() == "" {
+			return nil, connect.NewError(connect.CodePermissionDenied,
+				errors.New("impersonated source must carry a profile_id"))
+		}
+
+		// Audit the impersonation for non-repudiation.
+		util.Log(ctx).WithFields(map[string]any{
+			"internal_caller":      internalContact.GetProfileId(),
+			"impersonated_as":      source.GetProfileId(),
+			"impersonated_contact": source.GetContactId(),
+		}).Info("internal caller sending on behalf of user")
+
 		return source, nil
 	}
 
