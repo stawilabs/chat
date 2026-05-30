@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+) backup/transfer rules. Excludes all app data from cloud
+  backup and device-to-device transfer so the local message/transaction/contact
+  database (and secure-store-backed material) cannot leave the device via backup.
+  Pairs with android:allowBackup="false" / fullBackupContent="false" for older APIs.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+    </device-transfer>
+</data-extraction-rules>
