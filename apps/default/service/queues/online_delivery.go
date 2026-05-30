@@ -7,6 +7,7 @@ import (
 	"io"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
@@ -40,7 +41,18 @@ type hotPathDeliveryQueueHandler struct {
 	offlinePub     queue.Publisher
 	offlinePubOnce sync.Once
 	offlinePubErr  error
+
+	// deliveryCounter samples replay trimming so we don't issue a per-device
+	// DELETE on every message (steady-state write amplification).
+	deliveryCounter atomic.Uint64
 }
+
+// replayTrimSampleInterval controls how often the replay log is trimmed: once
+// per this many durable deliveries instead of every message. The per-device cap
+// can overshoot by at most this many entries between trims, which is acceptable
+// and trades a tiny amount of storage for a large reduction in write IOPS —
+// important on lean hardware.
+const replayTrimSampleInterval = 20
 
 func NewHotPathDeliveryQueueHandler(
 	cfg *config.ChatConfig,
@@ -326,11 +338,25 @@ func (dq *hotPathDeliveryQueueHandler) indexReplayEntries(
 		}
 	}
 
-	if err = dq.trimReplayDevices(ctx, profileID, devices); err != nil {
+	if err = dq.maybeTrimReplayDevices(ctx, profileID, devices); err != nil {
 		return nil, err
 	}
 
 	return entries, nil
+}
+
+// maybeTrimReplayDevices trims the replay log only once every
+// replayTrimSampleInterval deliveries, avoiding a per-device DELETE on every
+// message while keeping per-device replay growth bounded.
+func (dq *hotPathDeliveryQueueHandler) maybeTrimReplayDevices(
+	ctx context.Context,
+	profileID string,
+	devices []deliveryDevice,
+) error {
+	if dq.deliveryCounter.Add(1)%replayTrimSampleInterval != 0 {
+		return nil
+	}
+	return dq.trimReplayDevices(ctx, profileID, devices)
 }
 
 func collectDeviceIDs(devices []deliveryDevice) []string {
