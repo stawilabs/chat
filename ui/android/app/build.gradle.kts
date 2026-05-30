@@ -80,6 +80,19 @@ android {
     }
 }
 
+// Fail loudly if a release build is requested without signing material, instead
+// of silently producing an unsigned / debug-signed release artifact (which the
+// Play Store rejects or which ships updatable by anyone holding the debug key).
+gradle.taskGraph.whenReady {
+    val buildingRelease = allTasks.any { it.name.contains("Release", ignoreCase = true) }
+    if (buildingRelease && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "Release build requires android/key.properties with the signing keystore. " +
+                "Refusing to produce an unsigned/debug-signed release artifact.",
+        )
+    }
+}
+
 flutter {
     source = "../.."
 }
