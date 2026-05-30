@@ -30,6 +30,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/handlers"
+	"github.com/stawilabs/chat/apps/default/service/health"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/queues"
 	"github.com/stawilabs/chat/apps/default/service/repository"
@@ -75,6 +76,10 @@ func runService(ctx context.Context) error {
 
 	dbManager := svc.DatastoreManager()
 	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)
+
+	// Readiness reflects real DB connectivity, so a pod with a dead pool is
+	// pulled from rotation instead of black-holing traffic.
+	svc.AddHealthCheck(health.DBChecker{Pool: dbPool})
 
 	// Setup clients and services
 	deviceCli, err := setupDeviceClient(ctx, cfg)
