@@ -33,6 +33,12 @@ class _CallScreenState extends ConsumerState<CallScreen> {
 
   @override
   void dispose() {
+    // Release camera/mic and tear down the peer connection if the user leaves
+    // the call screen by ANY route (OS back gesture, navigation), not only via
+    // the explicit end-call button. Without this the camera/mic stay live and
+    // signalling keeps running after the screen is gone. Fire-and-forget since
+    // dispose cannot await; endCall() is safe to call when already ended.
+    ref.read(callManagerProvider).value?.endCall();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     super.dispose();
