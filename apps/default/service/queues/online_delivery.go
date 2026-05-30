@@ -239,6 +239,7 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 		err := dq.publishToOnlineDevice(ctx, dev, msg, replayEntry)
 		if err == nil {
 			chattel.MessagesDeliveredCounter.Add(ctx, 1)
+			recordDeliveryLatency(ctx, msg)
 			return nil
 		}
 		util.Log(ctx).WithError(err).WithField("device_id", dev.id).
@@ -255,6 +256,21 @@ func (dq *hotPathDeliveryQueueHandler) deliver(
 	}
 
 	return offlineDeliveryTopic.Publish(ctx, msg, deviceHeader)
+}
+
+// recordDeliveryLatency records end-to-end delivery latency (event creation to
+// online delivery) so the p95 delivery SLO is actually measurable. The event's
+// creation time travels in the Link's CreatedAt.
+func recordDeliveryLatency(ctx context.Context, msg *eventsv1.Delivery) {
+	createdAt := msg.GetEvent().GetCreatedAt()
+	if createdAt == nil {
+		return
+	}
+	latencyMs := float64(time.Since(createdAt.AsTime()).Milliseconds())
+	if latencyMs < 0 {
+		return
+	}
+	chattel.DeliveryLatencyHistogram.Record(ctx, latencyMs)
 }
 
 func (dq *hotPathDeliveryQueueHandler) deviceIsOnline(
