@@ -603,7 +603,14 @@ class SyncEngine with WidgetsBindingObserver {
         }
       } finally {
         _isConnected = false;
-        _connectionStateController.add(SyncConnectionState.disconnected);
+        // Do NOT overwrite a terminal authExpired state with disconnected.
+        // The auth-expired branch above emits authExpired then returns, which
+        // runs this finally; emitting disconnected here would hide the
+        // re-login prompt from the UI. _authErrorCount only exceeds
+        // _maxAuthErrors in exactly that branch.
+        if (_authErrorCount <= _maxAuthErrors) {
+          _connectionStateController.add(SyncConnectionState.disconnected);
+        }
 
         // Close the request controller to clean up resources
         await _requestController?.close();
