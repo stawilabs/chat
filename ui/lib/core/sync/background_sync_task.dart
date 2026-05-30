@@ -854,19 +854,28 @@ class BackgroundSyncTask {
     final response = await chatClient.sendEvent(request);
 
     // Update local message status
-    if (payload['localId'] != null && response.ack.isNotEmpty) {
-      final ackEventId = response.ack.first.eventId;
-      await messageRepo.updateMessageIdAfterAck(
-        payload['localId'] as String,
-        serverId: ackEventId.first,
-        senderId: subscriptionId,
-        status: domain.EventStatus.sent,
-        serverTs: now.millisecondsSinceEpoch,
-      );
-      AppLogger.debug(
-        'Message sent in background',
-        data: {'localId': payload['localId'], 'serverId': ackEventId},
-      );
+    if (response.ack.isNotEmpty) {
+      final ack = response.ack.first;
+      // Server rejected the send — throw so the job is retried/failed instead
+      // of being recorded as sent.
+      if (ack.hasError()) {
+        throw StateError(ack.error.message);
+      }
+      final ackEventIds = ack.eventId;
+      final localId = payload['localId'] as String?;
+      if ((localId ?? '').isNotEmpty && ackEventIds.isNotEmpty) {
+        await messageRepo.updateMessageIdAfterAck(
+          localId!,
+          serverId: ackEventIds.first,
+          senderId: subscriptionId,
+          status: domain.EventStatus.sent,
+          serverTs: now.millisecondsSinceEpoch,
+        );
+        AppLogger.debug(
+          'Message sent in background',
+          data: {'localId': localId, 'serverId': ackEventIds.first},
+        );
+      }
     }
   }
 

@@ -2094,21 +2094,30 @@ class SyncEngine with WidgetsBindingObserver {
     final request = pb.SendEventRequest(event: [event]);
     final response = await _chatClient.sendEvent(request);
 
-    // Update the existing local row (id=localId) with the server-assigned ID
-    // Use subscriptionId (not profileId) as senderId to match UI's isMe detection
-    if (payload['localId'] != null && response.ack.isNotEmpty) {
-      final ackEventId = response.ack.first.eventId;
-      final localId = payload['localId'] as String;
-      // Use the same subscriptionId that was used at message creation time
-      // so the UI's isMe check (senderId == currentUserSubscriptionId) stays consistent
-      final senderSubId = subscriptionId;
-      await _messageRepo.updateMessageIdAfterAck(
-        localId,
-        serverId: ackEventId.first,
-        senderId: senderSubId,
-        status: domain.EventStatus.sent,
-        serverTs: now.millisecondsSinceEpoch,
-      );
+    if (response.ack.isNotEmpty) {
+      final ack = response.ack.first;
+      // Server rejected the send (e.g. insufficient credit, permission denied,
+      // room closed). Throw so the job is retried/failed rather than the message
+      // being silently shown as sent — critical for financial operations that
+      // flow through sendEvent.
+      if (ack.hasError()) {
+        throw StateError(ack.error.message);
+      }
+
+      // Update the existing local row (id=localId) with the server-assigned ID.
+      // Use subscriptionId (not profileId) as senderId so the UI's isMe check
+      // (senderId == currentUserSubscriptionId) stays consistent.
+      final ackEventIds = ack.eventId;
+      final localId = payload['localId'] as String?;
+      if ((localId ?? '').isNotEmpty && ackEventIds.isNotEmpty) {
+        await _messageRepo.updateMessageIdAfterAck(
+          localId!,
+          serverId: ackEventIds.first,
+          senderId: subscriptionId,
+          status: domain.EventStatus.sent,
+          serverTs: now.millisecondsSinceEpoch,
+        );
+      }
     }
   }
 
@@ -2285,20 +2294,28 @@ class SyncEngine with WidgetsBindingObserver {
     final response = await _chatClient.sendEvent(request);
 
     // Update local message with server ID
-    if (localId != null && response.ack.isNotEmpty) {
-      final ackEventId = response.ack.first.eventId;
-      final updatedEvent = domain.RoomEvent(
-        id: ackEventId.first,
-        roomId: destinationRoomId,
-        senderId: subscriptionId,
-        type: localType,
-        content: content,
-        status: domain.EventStatus.sent,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-        localId: localId,
-        forwardedFromEvent: originalMessageId,
-      );
-      await _messageRepo.insertMessage(updatedEvent);
+    if (response.ack.isNotEmpty) {
+      final ack = response.ack.first;
+      if (ack.hasError()) {
+        // Server rejected the forward — throw so the job retries/fails rather
+        // than recording it as sent.
+        throw StateError(ack.error.message);
+      }
+      final ackEventIds = ack.eventId;
+      if (localId != null && ackEventIds.isNotEmpty) {
+        final updatedEvent = domain.RoomEvent(
+          id: ackEventIds.first,
+          roomId: destinationRoomId,
+          senderId: subscriptionId,
+          type: localType,
+          content: content,
+          status: domain.EventStatus.sent,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          localId: localId,
+          forwardedFromEvent: originalMessageId,
+        );
+        await _messageRepo.insertMessage(updatedEvent);
+      }
     }
 
     AppLogger.info(
