@@ -311,6 +311,24 @@ class PendingJobRepository {
     AppLogger.debug('Job deleted from queue', data: {'jobId': id});
   }
 
+  /// Atomically claim a pending job for processing.
+  ///
+  /// Transitions status 'pending' -> 'processing' only if it is still 'pending',
+  /// returning true if THIS caller won the claim. The foreground sync engine and
+  /// the background WorkManager isolate share the same SQLite file but not the
+  /// in-process lock, so without an atomic DB-level claim both could fetch and
+  /// send the same job — double-sending a message/transaction. A failed claim
+  /// (false) means another worker already owns the job; the caller must skip it.
+  /// Retry/defer paths reset the status back to 'pending'; orphaned 'processing'
+  /// rows (from a crashed isolate) are reclaimed by performStartupCleanup.
+  Future<bool> claimJob(int id) async {
+    final updated =
+        await (_database.update(_database.pendingJobs)
+              ..where((t) => t.id.equals(id) & t.status.equals('pending')))
+            .write(const PendingJobsCompanion(status: Value('processing')));
+    return updated > 0;
+  }
+
   /// Defer a job without incrementing retry count.
   ///
   /// Use this for transient prerequisites (e.g. missing subscription ID)
@@ -330,6 +348,9 @@ class PendingJobRepository {
       _database.pendingJobs,
     )..where((t) => t.id.equals(id))).write(
       PendingJobsCompanion(
+        // Return the job to the pending pool so it can be re-claimed after the
+        // defer window (it may have been claimed as 'processing').
+        status: const Value('pending'),
         nextRetryAt: Value(nextRetryAt),
         lastError: Value(errorData),
       ),
@@ -406,6 +427,9 @@ class PendingJobRepository {
       _database.pendingJobs,
     )..where((t) => t.id.equals(id))).write(
       PendingJobsCompanion(
+        // Return to the pending pool so the scheduled retry can be re-claimed
+        // (the job may have been claimed as 'processing').
+        status: const Value('pending'),
         retryCount: Value(newRetryCount),
         nextRetryAt: Value(nextRetryAt),
         lastError: Value(errorData),

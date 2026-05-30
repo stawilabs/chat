@@ -1711,6 +1711,12 @@ class SyncEngine with WidgetsBindingObserver {
   }
 
   Future<void> _processJob(domain_job.PendingJob job) async {
+    // Atomically claim the job so the background isolate (or a re-entrant
+    // foreground pass) cannot process the same job concurrently and double-send.
+    if (!await _jobRepo.claimJob(job.id)) {
+      return;
+    }
+
     // Skip jobs that have exceeded retry limit — mark as failed so they are
     // visible in the FailedJobsBanner instead of silently disappearing.
     if (job.retryCount >= PendingJobRepository.maxRetries) {

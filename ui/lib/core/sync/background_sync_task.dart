@@ -480,6 +480,13 @@ class BackgroundSyncTask {
     PendingJobRepository jobRepo,
     String? currentProfileId,
   ) async {
+    // Atomically claim the job so the foreground sync engine cannot process the
+    // same job concurrently and double-send (the two isolates share the SQLite
+    // file but not the in-process upload lock).
+    if (!await jobRepo.claimJob(job.id)) {
+      return;
+    }
+
     switch (job.type) {
       case domain_job.JobType.sendMessage:
       case domain_job.JobType.sendMediaMessage:
