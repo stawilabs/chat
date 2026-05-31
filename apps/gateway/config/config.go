@@ -28,11 +28,14 @@ type GatewayConfig struct {
 	MaxEventsPerSecond int `envDefault:"100" env:"MAX_EVENTS_PER_SECOND"`
 	MaxEventBurst      int `envDefault:"20"  env:"MAX_EVENT_BURST"`
 
-	// Resource tuning for constrained environments
-	ConnectionPoolExpectedDevices int `envDefault:"128" env:"CONNECTION_POOL_EXPECTED_DEVICES"`
-	ConnectionPoolMinSize         int `envDefault:"256" env:"CONNECTION_POOL_MIN_SIZE"`
-	DispatchBufferSize            int `envDefault:"16"  env:"DISPATCH_BUFFER_SIZE"`
-	DispatchTimeoutMs             int `envDefault:"100" env:"DISPATCH_TIMEOUT_MS"`
+	// Resource tuning for constrained environments. The pool size is a map
+	// capacity hint (the pool grows dynamically), so these defaults give a
+	// sane connection ceiling on lean hardware (~2k connections) without the
+	// old 256 cap that hard-failed real load. Raise these for large instances.
+	ConnectionPoolExpectedDevices int `envDefault:"2048" env:"CONNECTION_POOL_EXPECTED_DEVICES"`
+	ConnectionPoolMinSize         int `envDefault:"1024" env:"CONNECTION_POOL_MIN_SIZE"`
+	DispatchBufferSize            int `envDefault:"16"   env:"DISPATCH_BUFFER_SIZE"`
+	DispatchTimeoutMs             int `envDefault:"100"  env:"DISPATCH_TIMEOUT_MS"`
 
 	// Resume replay limits
 	ResumeReplayRoomPageSize    int `envDefault:"50"   env:"RESUME_REPLAY_ROOM_PAGE_SIZE"`
