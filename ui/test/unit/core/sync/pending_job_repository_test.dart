@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/core/db/database.dart';
 import 'package:stawi/core/sync/pending_job.dart' as domain;
