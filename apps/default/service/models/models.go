@@ -327,3 +327,18 @@ type RoomOutbox struct {
 
 // TableName returns the database table name for RoomOutbox.
 func (RoomOutbox) TableName() string { return "room_outbox" }
+
+// DeadLetterEvent is a durable record of a message that exhausted its retries
+// and was dead-lettered. Persisting it (instead of only logging + ACKing) keeps
+// failed deliveries available for forensics and manual replay rather than being
+// lost after the log rotates. Operators should apply a retention policy.
+type DeadLetterEvent struct {
+	data.BaseModel
+	OriginalQueue string `gorm:"type:varchar(255);index"`
+	ErrorMessage  string `gorm:"type:text"`
+	Payload       []byte `gorm:"type:bytea"`
+	Headers       data.JSONMap
+}
+
+// TableName returns the database table name for DeadLetterEvent.
+func (DeadLetterEvent) TableName() string { return "dead_letter_events" }

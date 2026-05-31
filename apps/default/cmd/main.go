@@ -111,6 +111,7 @@ func runService(ctx context.Context) error {
 	// Setup Connect server and HTTP handlers
 	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
+	deadLetterRepo := repository.NewDeadLetterRepository(ctx, dbPool, workMan)
 
 	serviceOptions := []frame.Option{
 		// Outbox relay: sole publisher draining room_outbox, run as a frame
@@ -121,7 +122,7 @@ func runService(ctx context.Context) error {
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI,
-			queues.NewDeadLetterConsumer(&cfg),
+			queues.NewDeadLetterConsumer(&cfg, deadLetterRepo),
 		),
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(

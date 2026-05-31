@@ -14,6 +14,9 @@ import (
 const (
 	defaultSubscriptionLimit = 1000
 
+	// colSubscriptionState is the DB column name for a subscription's state.
+	colSubscriptionState = "subscription_state"
+
 	RoleOwner  = "owner"
 	RoleAdmin  = "admin"
 	RoleMember = "member"
@@ -240,7 +243,7 @@ func (rsr *roomSubscriptionRepository) Deactivate(ctx context.Context, subscript
 	_, err := rsr.BulkUpdate(
 		ctx,
 		subscriptionIDs,
-		map[string]any{"subscription_state": models.RoomSubscriptionStateBlocked},
+		map[string]any{colSubscriptionState: models.RoomSubscriptionStateBlocked},
 	)
 	if err != nil {
 		return err
@@ -283,7 +286,7 @@ func (rsr *roomSubscriptionRepository) DeactivateInRoom(
 	res := rsr.Pool().DB(ctx, false).
 		Table("room_subscriptions").
 		Where("room_id = ? AND id IN ?", roomID, ids).
-		Updates(map[string]any{"subscription_state": models.RoomSubscriptionStateBlocked})
+		Updates(map[string]any{colSubscriptionState: models.RoomSubscriptionStateBlocked})
 	return res.RowsAffected, res.Error
 }
 
@@ -305,7 +308,7 @@ func (rsr *roomSubscriptionRepository) Activate(ctx context.Context, subscriptio
 	_, err := rsr.BulkUpdate(
 		ctx,
 		subscriptionIDs,
-		map[string]any{"subscription_state": models.RoomSubscriptionStateActive},
+		map[string]any{colSubscriptionState: models.RoomSubscriptionStateActive},
 	)
 	if err != nil {
 		return err
