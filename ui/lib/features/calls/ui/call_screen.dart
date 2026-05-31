@@ -5,6 +5,25 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../services/call_manager.dart';
 
+/// Stable top-level providers for the call media streams. Defining them at file
+/// scope (instead of `StreamProvider(...)` inline in build) means ref.listen
+/// tracks the SAME provider across rebuilds — the inline form created a new
+/// provider every frame (e.g. on each mute/camera toggle), leaking a stream
+/// subscription each time.
+final _localCallStreamProvider = StreamProvider.autoDispose<MediaStream?>((
+  ref,
+) async* {
+  final manager = await ref.watch(callManagerProvider.future);
+  yield* manager.localStreamStream;
+});
+
+final _remoteCallStreamProvider = StreamProvider.autoDispose<MediaStream?>((
+  ref,
+) async* {
+  final manager = await ref.watch(callManagerProvider.future);
+  yield* manager.remoteStreamStream;
+});
+
 class CallScreen extends ConsumerStatefulWidget {
   const CallScreen({required this.roomId, required this.roomName, super.key});
   final String roomId;
@@ -96,28 +115,29 @@ class _CallScreenState extends ConsumerState<CallScreen> {
     WidgetRef ref,
     CallManager callManager,
   ) {
-    // Listen to streams
-    ref.listen<AsyncValue<MediaStream?>>(
-      StreamProvider((ref) => callManager.localStreamStream),
-      (previous, next) {
-        next.whenData((stream) {
-          if (stream != null) {
-            _localRenderer.srcObject = stream;
-          }
-        });
-      },
-    );
+    // Listen to the stable top-level stream providers (no per-build provider
+    // churn). Bind each media stream to its renderer as it arrives.
+    ref.listen<AsyncValue<MediaStream?>>(_localCallStreamProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((stream) {
+        if (stream != null) {
+          _localRenderer.srcObject = stream;
+        }
+      });
+    });
 
-    ref.listen<AsyncValue<MediaStream?>>(
-      StreamProvider((ref) => callManager.remoteStreamStream),
-      (previous, next) {
-        next.whenData((stream) {
-          if (stream != null) {
-            _remoteRenderer.srcObject = stream;
-          }
-        });
-      },
-    );
+    ref.listen<AsyncValue<MediaStream?>>(_remoteCallStreamProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((stream) {
+        if (stream != null) {
+          _remoteRenderer.srcObject = stream;
+        }
+      });
+    });
 
     return Scaffold(
       backgroundColor: Colors.black,
