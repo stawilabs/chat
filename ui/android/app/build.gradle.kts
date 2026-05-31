@@ -62,6 +62,16 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            // R8 code shrinking + resource shrinking + obfuscation. Reduces APK
+            // size and makes the OAuth client id, API hosts and crypto flow far
+            // harder to reverse-engineer. Keep rules for the reflection-using
+            // native/plugin stack live in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
