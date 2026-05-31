@@ -17,6 +17,7 @@ import (
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
@@ -83,6 +84,10 @@ func (csq *RoomOutboxLoggingQueue) Execute(ctx context.Context, payload any) err
 		err = errors.New("invalid payload type")
 		return err
 	}
+
+	// Tag the logger so every log line in the fan-out for this event carries the
+	// event_id/room_id correlation fields across this and downstream hops.
+	ctx = chatutil.ContextWithEventLog(ctx, evtLink.GetEventId(), evtLink.GetRoomId())
 
 	subscriptions, fetchErr := csq.fetchSubscriberBatch(ctx, evtLink)
 	if fetchErr != nil {

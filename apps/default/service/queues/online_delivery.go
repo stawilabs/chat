@@ -153,6 +153,9 @@ func (dq *hotPathDeliveryQueueHandler) processDelivery(
 	headers map[string]string,
 	eventDelivery *eventsv1.Delivery,
 ) error {
+	ctx = chatutil.ContextWithEventLog(ctx,
+		eventDelivery.GetEvent().GetEventId(), eventDelivery.GetEvent().GetRoomId())
+
 	profileID := extractProfileID(eventDelivery)
 
 	if profileID == "" {

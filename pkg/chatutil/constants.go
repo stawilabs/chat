@@ -19,4 +19,5 @@ const (
 	KeyProfileID      = "profile_id"
 	KeySubscriptionID = "subscription_id"
 	KeyOriginalQueue  = "original_queue"
+	KeyEventID        = "event_id"
 )
