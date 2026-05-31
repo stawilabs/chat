@@ -480,6 +480,13 @@ class BackgroundSyncTask {
     PendingJobRepository jobRepo,
     String? currentProfileId,
   ) async {
+    // Atomically claim the job so the foreground sync engine cannot process the
+    // same job concurrently and double-send (the two isolates share the SQLite
+    // file but not the in-process upload lock).
+    if (!await jobRepo.claimJob(job.id)) {
+      return;
+    }
+
     switch (job.type) {
       case domain_job.JobType.sendMessage:
       case domain_job.JobType.sendMediaMessage:
@@ -854,19 +861,28 @@ class BackgroundSyncTask {
     final response = await chatClient.sendEvent(request);
 
     // Update local message status
-    if (payload['localId'] != null && response.ack.isNotEmpty) {
-      final ackEventId = response.ack.first.eventId;
-      await messageRepo.updateMessageIdAfterAck(
-        payload['localId'] as String,
-        serverId: ackEventId.first,
-        senderId: subscriptionId,
-        status: domain.EventStatus.sent,
-        serverTs: now.millisecondsSinceEpoch,
-      );
-      AppLogger.debug(
-        'Message sent in background',
-        data: {'localId': payload['localId'], 'serverId': ackEventId},
-      );
+    if (response.ack.isNotEmpty) {
+      final ack = response.ack.first;
+      // Server rejected the send — throw so the job is retried/failed instead
+      // of being recorded as sent.
+      if (ack.hasError()) {
+        throw StateError(ack.error.message);
+      }
+      final ackEventIds = ack.eventId;
+      final localId = payload['localId'] as String?;
+      if ((localId ?? '').isNotEmpty && ackEventIds.isNotEmpty) {
+        await messageRepo.updateMessageIdAfterAck(
+          localId!,
+          serverId: ackEventIds.first,
+          senderId: subscriptionId,
+          status: domain.EventStatus.sent,
+          serverTs: now.millisecondsSinceEpoch,
+        );
+        AppLogger.debug(
+          'Message sent in background',
+          data: {'localId': localId, 'serverId': ackEventIds.first},
+        );
+      }
     }
   }
 

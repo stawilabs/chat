@@ -54,6 +54,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _hasMoreMessages = true;
   int _pageSize = 50;
 
+  /// Upper bound on the in-memory message window. Without this, each "load more"
+  /// grew the single query limit forever and re-decoded an ever-larger slice on
+  /// every DB change — unbounded memory/CPU on long histories.
+  static const _maxPageSize = 500;
+
   @override
   void initState() {
     super.initState();
@@ -734,9 +739,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (mounted) {
         setState(() {
-          _hasMoreMessages = hasMore;
-          if (hasMore) {
-            _pageSize += 30;
+          // Stop growing the window once the cap is reached so memory/CPU stay
+          // bounded on very long histories.
+          if (hasMore && _pageSize < _maxPageSize) {
+            _pageSize = (_pageSize + 30).clamp(0, _maxPageSize);
+            _hasMoreMessages = true;
+          } else {
+            _hasMoreMessages = hasMore && _pageSize < _maxPageSize;
           }
           _isLoadingMore = false;
         });

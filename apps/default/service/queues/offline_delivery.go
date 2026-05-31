@@ -16,6 +16,7 @@ import (
 
 	"github.com/stawilabs/chat/apps/default/config"
 	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
@@ -65,6 +66,9 @@ func (dq *offlineDeliveryQueueHandler) Handle(
 		}
 		return nil
 	}
+
+	ctx = chatutil.ContextWithEventLog(ctx,
+		evtMsg.GetEvent().GetEventId(), evtMsg.GetEvent().GetRoomId())
 
 	// Check if delivery has exceeded max retries
 	if dq.dlp != nil && dq.dlp.ShouldDeadLetter(evtMsg.GetRetryCount()) {

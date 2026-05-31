@@ -49,6 +49,7 @@ func (s *MessageBusinessTestSuite) setupBusinessLayerWithCallPolicy(
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
+	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
 	subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 
@@ -56,6 +57,7 @@ func (s *MessageBusinessTestSuite) setupBusinessLayerWithCallPolicy(
 	messageBusiness := business.NewMessageBusiness(
 		evtsMan,
 		eventRepo,
+		outboxRepo,
 		subRepo,
 		subscriptionSvc,
 		s.AuthzMiddleware,

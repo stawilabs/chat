@@ -48,3 +48,41 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+
+# --- AppAuth / OAuth redirect (antinvestor_auth_runtime -> flutter_appauth) ---
+-keep class net.openid.appauth.** { *; }
+-dontwarn net.openid.appauth.**
+
+# --- flutter_secure_storage (AndroidX EncryptedSharedPreferences) ---
+-keep class androidx.security.crypto.** { *; }
+-dontwarn androidx.security.crypto.**
+
+# --- WorkManager (background sync isolate) ---
+-keep class androidx.work.** { *; }
+
+# --- SQLCipher native bindings (when SQLCipher is enabled) ---
+-keep class net.sqlcipher.** { *; }
+-dontwarn net.sqlcipher.**
+
+# --- Protobuf / Connect RPC generated messages (reflection on fields) ---
+-keep class com.google.protobuf.** { *; }
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+-dontwarn com.google.protobuf.**
+
+# --- Keep enum values()/valueOf used by serialization ---
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# --- Keep native (JNI) methods ---
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# --- Keep Parcelable CREATOR fields ---
+-keepclassmembers class * implements android.os.Parcelable {
+    public static final ** CREATOR;
+}

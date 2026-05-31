@@ -38,6 +38,26 @@ class SensitiveDataFilter {
     'bank_account',
   ];
 
+  /// Keys whose VALUES are user content / PII and must be redacted wherever they
+  /// appear (including nested in a notification `data` map). Matched by exact
+  /// (case-insensitive) key name so legitimate keys like `messageId`,
+  /// `contentType`, or `roomId` are NOT over-redacted.
+  static const Set<String> _sensitiveContentKeys = {
+    'body',
+    'message',
+    'text',
+    'content',
+    'caption',
+    'title',
+    'sendername',
+    'roomname',
+    'displayname',
+    'preview',
+    'lastmessage',
+    'notificationbody',
+    'messagebody',
+  };
+
   /// Regex patterns for detecting sensitive data in strings
   static final List<RegExp> _sensitiveValuePatterns = [
     // Email addresses
@@ -114,6 +134,9 @@ class SensitiveDataFilter {
   /// Check if a key name indicates sensitive data
   static bool _isSensitiveKey(String key) {
     final lowerKey = key.toLowerCase();
+    if (_sensitiveContentKeys.contains(lowerKey)) {
+      return true;
+    }
     return _sensitiveFieldPatterns.any(lowerKey.contains);
   }
 

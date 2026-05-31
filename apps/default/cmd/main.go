@@ -20,14 +20,17 @@ import (
 	"github.com/pitabwire/frame/config"
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
+	frevents "github.com/pitabwire/frame/events"
 	"github.com/pitabwire/frame/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
+	"github.com/pitabwire/frame/workerpool"
 	"github.com/pitabwire/util"
 
 	aconfig "github.com/stawilabs/chat/apps/default/config"
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/handlers"
+	"github.com/stawilabs/chat/apps/default/service/health"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/queues"
 	"github.com/stawilabs/chat/apps/default/service/repository"
@@ -37,7 +40,7 @@ import (
 var chatAPISpecFile []byte
 
 // runService initializes and starts the chat service with all dependencies.
-func runService(ctx context.Context) error { //nolint:funlen // service wiring is intentionally verbose
+func runService(ctx context.Context) error {
 	// Initialize configuration
 	cfg, err := config.LoadWithOIDC[aconfig.ChatConfig](ctx)
 	if err != nil {
@@ -74,6 +77,10 @@ func runService(ctx context.Context) error { //nolint:funlen // service wiring i
 	dbManager := svc.DatastoreManager()
 	dbPool := dbManager.GetPool(ctx, datastore.DefaultPoolName)
 
+	// Readiness reflects real DB connectivity, so a pod with a dead pool is
+	// pulled from rotation instead of black-holing traffic.
+	svc.AddHealthCheck(health.DBChecker{Pool: dbPool})
+
 	// Setup clients and services
 	deviceCli, err := setupDeviceClient(ctx, cfg)
 	if err != nil {
@@ -90,13 +97,12 @@ func runService(ctx context.Context) error { //nolint:funlen // service wiring i
 		log.WithError(err).Fatal("main -- Could not setup profile client")
 	}
 
-	// Handle database migration if requested
-	if handleDatabaseMigration(ctx, dbManager, cfg) {
+	// Migration mode runs SQL migrations then hypertable setup (see
+	// handleDatabaseMigration) and exits; hypertables are never promoted on a
+	// normal boot, avoiding the boot-vs-migrate ordering race.
+	if handleDatabaseMigration(ctx, dbManager, dbPool, cfg) {
 		return nil
 	}
-
-	// Register hypertables (no-op WARN if timescaledb extension is absent).
-	ensureHypertables(ctx, dbPool)
 
 	// Setup Keto authorization service
 	auth := sm.GetAuthorizer(ctx)
@@ -105,14 +111,18 @@ func runService(ctx context.Context) error { //nolint:funlen // service wiring i
 	// Setup Connect server and HTTP handlers
 	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
+	deadLetterRepo := repository.NewDeadLetterRepository(ctx, dbPool, workMan)
 
 	serviceOptions := []frame.Option{
+		// Outbox relay: sole publisher draining room_outbox, run as a frame
+		// background consumer so its lifecycle is owned by the service.
+		outboxRelayOption(ctx, dbPool, workMan, eventsMan),
 		frame.WithHTTPHandler(connectHandler),
 		frame.WithPermissionRegistration(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI,
-			queues.NewDeadLetterConsumer(&cfg),
+			queues.NewDeadLetterConsumer(&cfg, deadLetterRepo),
 		),
 		frame.WithRegisterPublisher(cfg.QueueDeviceEventDeliveryName, cfg.QueueDeviceEventDeliveryURI),
 		frame.WithRegisterSubscriber(
@@ -126,16 +136,7 @@ func runService(ctx context.Context) error { //nolint:funlen // service wiring i
 		),
 	}
 
-	for i := range cfg.ShardCount {
-		gatewayQueueName := fmt.Sprintf(cfg.QueueGatewayEventDeliveryName, i)
-		gatewayQueueURI := cfg.QueueGatewayEventDeliveryURI[i]
-
-		gatewayQueuePublisher := frame.WithRegisterPublisher(
-			gatewayQueueName,
-			gatewayQueueURI,
-		)
-		serviceOptions = append(serviceOptions, gatewayQueuePublisher)
-	}
+	serviceOptions = append(serviceOptions, gatewayPublisherOptions(cfg)...)
 
 	// Register queue handlers and event handlers
 	serviceOptions = append(serviceOptions,
@@ -150,7 +151,6 @@ func runService(ctx context.Context) error { //nolint:funlen // service wiring i
 	// Initialize the service with all options
 	svc.Init(ctx, serviceOptions...)
 
-	// Start the service
 	return svc.Run(ctx, "")
 }
 
@@ -159,6 +159,31 @@ func main() {
 	if err := runService(ctx); err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not run service")
 	}
+}
+
+// gatewayPublisherOptions builds one publisher option per gateway delivery shard.
+func gatewayPublisherOptions(cfg aconfig.ChatConfig) []frame.Option {
+	opts := make([]frame.Option, 0, cfg.ShardCount)
+	for i := range cfg.ShardCount {
+		opts = append(opts, frame.WithRegisterPublisher(
+			fmt.Sprintf(cfg.QueueGatewayEventDeliveryName, i),
+			cfg.QueueGatewayEventDeliveryURI[i],
+		))
+	}
+	return opts
+}
+
+// outboxRelayOption builds the frame background-consumer option that runs the
+// transactional-outbox relay (sole publisher draining room_outbox) for the
+// lifetime of the service.
+func outboxRelayOption(
+	ctx context.Context,
+	dbPool pool.Pool,
+	workMan workerpool.Manager,
+	eventsMan frevents.Manager,
+) frame.Option {
+	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
+	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan).Run)
 }
 
 // ensureHypertables registers TimescaleDB hypertables idempotently.
@@ -171,9 +196,13 @@ func ensureHypertables(ctx context.Context, dbPool pool.Pool) {
 }
 
 // handleDatabaseMigration performs database migration if configured to do so.
+// On success it also (idempotently) promotes the configured hypertables, so all
+// schema setup — SQL migrations then TimescaleDB hypertable conversion — happens
+// in one ordered place: the migrate job.
 func handleDatabaseMigration(
 	ctx context.Context,
 	dbManager datastore.Manager,
+	dbPool pool.Pool,
 	cfg aconfig.ChatConfig,
 ) bool {
 	if !cfg.DoDatabaseMigrate() {
@@ -184,6 +213,9 @@ func handleDatabaseMigration(
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- Could not migrate successfully")
 	}
+
+	// Promote hypertables after the SQL migrations have run.
+	ensureHypertables(ctx, dbPool)
 	return true
 }
 

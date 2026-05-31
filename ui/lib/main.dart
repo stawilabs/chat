@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
@@ -11,6 +12,7 @@ import 'core/auth/migration.dart';
 import 'core/auth/runtime_provider.dart';
 import 'core/error/error_tracking_service.dart';
 import 'core/logging/app_logger.dart';
+import 'core/navigation/deep_link_handler.dart';
 import 'core/security/lock_state_manager.dart';
 import 'core/startup/startup_metrics.dart';
 import 'core/startup/startup_service.dart';
@@ -80,11 +82,25 @@ Future<void> _runApp(StartupMetrics metrics) async {
   metrics.endPhase('run_app');
 }
 
-class ChatApp extends ConsumerWidget {
+class ChatApp extends ConsumerStatefulWidget {
   const ChatApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatApp> createState() => _ChatAppState();
+}
+
+class _ChatAppState extends ConsumerState<ChatApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Start deep-link handling after the first frame so the router exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ref.read(deepLinkHandlerProvider).initialize());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
 
     return SplashScreen(

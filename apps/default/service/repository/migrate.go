@@ -22,6 +22,8 @@ func Migrate(ctx context.Context, dbManager datastore.Manager, migrationPath str
 		&models.Room{},
 		&models.RoomSubscription{},
 		&models.RoomEvent{},
+		&models.RoomOutbox{},
+		&models.DeadLetterEvent{},
 		&models.DeviceReplayEvent{},
 		&models.RoomCall{},
 		&models.Proposal{},

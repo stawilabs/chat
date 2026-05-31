@@ -142,9 +142,15 @@ const (
 // RoomSubscription represents a user's subscription to a room.
 type RoomSubscription struct {
 	data.BaseModel
-	RoomID              string `gorm:"type:varchar(50);index:idx_roomsubscription_room_id_subscription_state;uniqueIndex:idx_room_subscription_unique_active"`
-	ProfileID           string `gorm:"type:varchar(50);uniqueIndex:idx_room_subscription_unique_active"`
-	ContactID           string `gorm:"type:varchar(50);uniqueIndex:idx_room_subscription_unique_active"`
+	// NOTE: the (room_id, profile_id, contact_id) uniqueness is enforced by a
+	// PARTIAL unique index (idx_room_subscription_unique_active) defined in SQL
+	// migrations, scoped to active/proposed states so a blocked member can be
+	// re-added. It must NOT be declared as a GORM uniqueIndex tag here: AutoMigrate
+	// runs before SQL migrations and would create a FULL (predicate-less) index of
+	// the same name, shadowing the partial one and blocking re-adds.
+	RoomID              string `gorm:"type:varchar(50);index:idx_roomsubscription_room_id_subscription_state"`
+	ProfileID           string `gorm:"type:varchar(50)"`
+	ContactID           string `gorm:"type:varchar(50)"`
 	Role                string
 	SubscriptionState   RoomSubscriptionState `gorm:"index:idx_roomsubscription_room_id_subscription_state"`
 	LastReadEventID     string                `gorm:"type:varchar(50)"` // ID of the last read event (naturally time-sorted)
@@ -303,3 +309,36 @@ func (p *Proposal) IsPending() bool {
 func (p *Proposal) IsExpired() bool {
 	return time.Now().After(p.ExpiresAt)
 }
+
+// RoomOutbox is the transactional-outbox record for a room event. It is written
+// in the SAME transaction as the RoomEvent so delivery intent is durable even if
+// the process crashes between persisting the event and publishing it to the
+// delivery pipeline. A relay drains undispatched rows as a safety net behind the
+// optimistic inline emit (see WS-B design). EventID is unique so an event has at
+// most one outbox row (idempotent re-saves).
+type RoomOutbox struct {
+	data.BaseModel
+	EventID      string `gorm:"type:varchar(50);uniqueIndex:idx_room_outbox_event"`
+	RoomID       string `gorm:"type:varchar(50);index"`
+	Payload      []byte `gorm:"type:bytea;not null"` // protojson-encoded eventsv1.Link
+	Dispatched   bool   `gorm:"index:idx_room_outbox_dispatched"`
+	DispatchedAt int64
+}
+
+// TableName returns the database table name for RoomOutbox.
+func (RoomOutbox) TableName() string { return "room_outbox" }
+
+// DeadLetterEvent is a durable record of a message that exhausted its retries
+// and was dead-lettered. Persisting it (instead of only logging + ACKing) keeps
+// failed deliveries available for forensics and manual replay rather than being
+// lost after the log rotates. Operators should apply a retention policy.
+type DeadLetterEvent struct {
+	data.BaseModel
+	OriginalQueue string `gorm:"type:varchar(255);index"`
+	ErrorMessage  string `gorm:"type:text"`
+	Payload       []byte `gorm:"type:bytea"`
+	Headers       data.JSONMap
+}
+
+// TableName returns the database table name for DeadLetterEvent.
+func (DeadLetterEvent) TableName() string { return "dead_letter_events" }

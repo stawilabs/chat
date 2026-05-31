@@ -105,6 +105,18 @@ class MessageRepository {
   }
 
   Future<void> insertMessage(domain.RoomEvent event) async {
+    // Ensure the room row exists before inserting the event. Incoming events can
+    // arrive before the room metadata has synced (e.g. just invited to a room);
+    // without this the FK constraint (room_events.room_id -> rooms.id, with
+    // foreign_keys=ON) throws and the event is silently dropped upstream.
+    // insertOrIgnore never clobbers an existing room's metadata.
+    await _database
+        .into(_database.rooms)
+        .insert(
+          RoomsCompanion.insert(id: event.roomId),
+          mode: InsertMode.insertOrIgnore,
+        );
+
     await _database
         .into(_database.roomEvents)
         .insertOnConflictUpdate(

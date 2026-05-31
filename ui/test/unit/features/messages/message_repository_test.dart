@@ -58,6 +58,34 @@ void main() {
         expect(result.content['text'], equals('Hello, world!'));
       });
 
+      test(
+        'inserts a message for an unknown room without dropping it (FK auto-heal)',
+        () async {
+          // No createTestRoom() — the room does not exist yet. Previously this
+          // threw a foreign-key error and the event was silently dropped.
+          final event = RoomEvent(
+            id: 'event-x',
+            roomId: 'room-unsynced',
+            senderId: 'sender-1',
+            type: RoomEventType.text,
+            content: {'text': 'arrived before room sync'},
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+          );
+
+          await repository.insertMessage(event);
+
+          final result = await repository.getEventById('event-x');
+          expect(result, isNotNull);
+          expect(result!.roomId, equals('room-unsynced'));
+
+          // A placeholder room row now exists to satisfy the FK.
+          final room = await (testDb.select(
+            testDb.rooms,
+          )..where((r) => r.id.equals('room-unsynced'))).getSingleOrNull();
+          expect(room, isNotNull);
+        },
+      );
+
       test('updates existing message on conflict', () async {
         await createTestRoom('room-1');
 

@@ -86,6 +86,9 @@ func (feh *FanoutEventHandler) Execute(ctx context.Context, payload any) error {
 		return err
 	}
 
+	ctx = chatutil.ContextWithEventLog(ctx,
+		broadcast.GetEvent().GetEventId(), broadcast.GetEvent().GetRoomId())
+
 	destinations := broadcast.GetDestinations()
 	if len(destinations) == 0 {
 		return nil

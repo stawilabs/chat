@@ -24,6 +24,11 @@ const (
 	retryBaseDelayMs = 500
 	// retryMaxDelayMs is the maximum delay in milliseconds for any retry.
 	retryMaxDelayMs = 8000
+	// maxDeferSleepMs caps how long a deferred message blocks its worker before
+	// being re-enqueued. This turns the previous hot re-publish loop into at most
+	// one re-enqueue per this interval, drastically cutting broker churn during
+	// downstream outages without occupying a worker for the full backoff window.
+	maxDeferSleepMs = 500
 )
 
 // retryDelay returns the exponential backoff duration for the given retry count.
@@ -161,6 +166,24 @@ func ShouldDeferRetry(
 		return false, nil //nolint:nilerr // Malformed header — process the message normally.
 	}
 	if time.Now().UnixMilli() >= retryAfter {
+		return false, nil
+	}
+
+	// Block this worker for a short, bounded, context-cancellable interval before
+	// re-enqueueing. This collapses what was a hot re-publish loop (re-enqueue as
+	// fast as the broker redelivers) into at most one re-enqueue per
+	// maxDeferSleepMs, sharply reducing broker load during outages.
+	remainingMs := retryAfter - time.Now().UnixMilli()
+	sleepMs := min(remainingMs, int64(maxDeferSleepMs))
+	if sleepMs > 0 {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		case <-time.After(time.Duration(sleepMs) * time.Millisecond):
+		}
+	}
+	if time.Now().UnixMilli() >= retryAfter {
+		// Backoff elapsed during the sleep — process the message now.
 		return false, nil
 	}
 

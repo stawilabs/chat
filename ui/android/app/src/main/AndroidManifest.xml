@@ -2,7 +2,10 @@
     <application
             android:label="stawi"
             android:name="${applicationName}"
-            android:icon="@mipmap/ic_launcher">
+            android:icon="@mipmap/ic_launcher"
+            android:allowBackup="false"
+            android:fullBackupContent="false"
+            android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
                 android:name=".MainActivity"
                 android:exported="true"
@@ -32,6 +35,14 @@
                 <data android:scheme="org.stawi.chat"
                       android:host="sso"
                       android:pathPrefix="/redirect"/>
+            </intent-filter>
+            <!-- Deep link to a room: org.stawi.chat://room/{roomId} -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="org.stawi.chat"
+                      android:host="room"/>
             </intent-filter>
         </activity>
         <activity

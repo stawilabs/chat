@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
+import '../error/error_tracking_service.dart';
 import 'correlation_id.dart';
 import 'log_entry.dart';
 import 'log_storage.dart';
@@ -353,31 +356,28 @@ class AppLogger {
     Map<String, dynamic>? data, {
     bool isFatal = false,
   }) {
-    // Only report errors in release mode to avoid noise during development
+    // Only report errors in release mode to avoid noise during development.
     if (!kReleaseMode) {
       return;
     }
 
-    // Note: Error reporting service integration will be implemented when needed
-    // Example for Sentry:
-    // Sentry.captureException(
-    //   error,
-    //   stackTrace: stackTrace,
-    //   hint: Hint.withMap({
-    //     'message': message,
-    //     'data': data,
-    //     'isFatal': isFatal,
-    //   }),
-    // );
-
-    // Example for Firebase Crashlytics:
-    // FirebaseCrashlytics.instance.recordError(
-    //   error,
-    //   stackTrace,
-    //   reason: message,
-    //   fatal: isFatal,
-    //   information: data?.entries.map((e) => '${e.key}: ${e.value}').toList() ?? [],
-    // );
+    // Forward every logged error to crash reporting. Previously this was a
+    // stub, so the dominant error class — handled errors caught and logged
+    // across the message/sync/call pipeline — never reached Sentry; only
+    // unhandled zone errors did.
+    unawaited(
+      ErrorTrackingService.report(
+        message,
+        error: error,
+        stackTrace: stackTrace,
+        extra: <String, dynamic>{
+          'message': message,
+          ...?data,
+          'isFatal': isFatal,
+        },
+        fatal: isFatal,
+      ),
+    );
   }
 
   /// Export all logs as a string for support

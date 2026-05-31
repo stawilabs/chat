@@ -11,6 +11,7 @@ import '../../app/router.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/networking/client.dart';
 import '../../core/storage/key_manager.dart';
+import '../rooms/data/room_service.dart';
 import '../settings/data/settings_providers.dart';
 import 'mute_service.dart';
 import 'notification_grouping_service.dart';
@@ -367,8 +368,14 @@ class NotificationService {
     await _groupingService?.deleteRoomChannel(roomId);
   }
 
-  /// Navigate to chat screen for a specific room
-  void _navigateToChat(String roomId, String? roomName) {
+  /// Navigate to chat screen for a specific room.
+  ///
+  /// The FCM payload is untrusted input, so the target room is validated against
+  /// the local database (which only contains rooms the user belongs to) before
+  /// navigating. Unknown rooms route to the room list instead of force-opening
+  /// an attacker-supplied room ID, and the locally-known room name is used
+  /// rather than the attacker-suppliable payload value.
+  Future<void> _navigateToChat(String roomId, String? roomName) async {
     AppLogger.info(
       'Navigating to chat from notification',
       data: {'roomId': roomId, 'roomName': roomName},
@@ -376,8 +383,19 @@ class NotificationService {
 
     try {
       final router = _ref.read(routerProvider);
-      final encodedName = Uri.encodeComponent(roomName ?? 'Chat');
-      router.go('/chat/$roomId?name=$encodedName');
+      final room = await _ref.read(roomRepositoryProvider).getRoomById(roomId);
+      if (room == null) {
+        AppLogger.warning(
+          'Notification room not found locally; routing to room list',
+          data: {'roomId': roomId},
+        );
+        router.go('/');
+        return;
+      }
+      final displayName = room.name.isNotEmpty
+          ? room.name
+          : (roomName ?? 'Chat');
+      router.go('/chat/$roomId?name=${Uri.encodeComponent(displayName)}');
     } catch (e, stackTrace) {
       AppLogger.error(
         'Failed to navigate to chat from notification',

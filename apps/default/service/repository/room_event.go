@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/pitabwire/frame/datastore"
 	"github.com/pitabwire/frame/datastore/pool"
 	"github.com/pitabwire/frame/workerpool"
+	"github.com/rs/xid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -13,6 +15,18 @@ import (
 )
 
 const defaultUnboundedLimit = 500
+
+// eventTimeBound returns the second-resolution timestamp embedded in a cursor
+// xid. Every event's created_at is derived from its xid timestamp (and event IDs
+// are validated as xids on write), so pairing the id keyset with a created_at
+// bound lets TimescaleDB prune chunks by time without changing the result set.
+func eventTimeBound(cursor string) (time.Time, bool) {
+	id, err := xid.FromString(cursor)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return id.Time(), true
+}
 
 type roomEventRepository struct {
 	datastore.BaseRepository[*models.RoomEvent]
@@ -67,10 +81,19 @@ func (rer *roomEventRepository) GetHistory(
 
 	if beforeEventID != "" {
 		query = query.Where("id < ?", beforeEventID)
+		// Chunk-exclusion bound: created_at <= cursor time is implied by id < cursor
+		// (created_at is the xid timestamp), so this prunes chunks without
+		// changing results.
+		if t, ok := eventTimeBound(beforeEventID); ok {
+			query = query.Where("created_at <= ?", t)
+		}
 	}
 
 	if afterEventID != "" {
 		query = query.Where("id > ?", afterEventID)
+		if t, ok := eventTimeBound(afterEventID); ok {
+			query = query.Where("created_at >= ?", t)
+		}
 	}
 
 	// "before" queries page backwards from the newest entries, while "after"

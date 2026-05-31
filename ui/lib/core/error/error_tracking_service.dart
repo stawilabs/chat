@@ -114,6 +114,29 @@ class ErrorTrackingService {
     );
   }
 
+  /// Report a handled error or message without the caller referencing Sentry
+  /// types. Used by AppLogger so every logged error reaches crash reporting,
+  /// not only unhandled zone errors.
+  static Future<void> report(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, dynamic>? extra,
+    bool fatal = false,
+  }) async {
+    final level = fatal ? SentryLevel.fatal : SentryLevel.error;
+    if (error != null) {
+      await captureException(
+        error,
+        stackTrace: stackTrace,
+        extra: extra,
+        level: level,
+      );
+    } else {
+      await captureMessage(message, level: level, extra: extra);
+    }
+  }
+
   /// Capture a message for logging
   static Future<void> captureMessage(
     String message, {

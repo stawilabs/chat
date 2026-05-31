@@ -174,10 +174,10 @@ func (opts ConnectionManagerOptions) withDefaults() ConnectionManagerOptions {
 		opts.HeartbeatIntervalSec = 30
 	}
 	if opts.PoolExpectedDevices <= 0 {
-		opts.PoolExpectedDevices = 128
+		opts.PoolExpectedDevices = 2048
 	}
 	if opts.PoolMinSize <= 0 {
-		opts.PoolMinSize = 256
+		opts.PoolMinSize = 1024
 	}
 
 	connOpts := ConnectionOptions{
