@@ -173,7 +173,7 @@ jobs:
             cat > android/key.properties << EOF
           storePassword=$KEYSTORE_PASSWORD
           keyPassword=$SIGNING_KEY_PASSWORD
-          keyAlias=key
+          keyAlias=upload
           storeFile=keystore.jks
           EOF
           fi
