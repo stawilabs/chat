@@ -23,6 +23,21 @@ on:
         required: false
         type: boolean
         default: true
+      build_android:
+        description: 'Build Android'
+        required: false
+        type: boolean
+        default: true
+      build_ios:
+        description: 'Build iOS'
+        required: false
+        type: boolean
+        default: true
+      build_web:
+        description: 'Build Web'
+        required: false
+        type: boolean
+        default: true
       oauth2_client_id:
         description: 'OAuth2 client_id override (via --dart-define)'
         required: false
@@ -92,6 +107,7 @@ jobs:
   build-android:
     name: Android (${{ inputs.build_type }})
     needs: [prepare]
+    if: inputs.build_android
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -202,6 +218,7 @@ jobs:
   build-ios:
     name: iOS (${{ inputs.build_type }})
     needs: [prepare]
+    if: inputs.build_ios
     runs-on: macos-latest
     timeout-minutes: 45
     defaults:
@@ -334,6 +351,7 @@ jobs:
   build-web:
     name: Web (${{ inputs.build_type }})
     needs: [prepare]
+    if: inputs.build_web
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
