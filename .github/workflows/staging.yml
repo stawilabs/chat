@@ -1,5 +1,7 @@
 # Staging Deployment - Triggered on pushes to main
-# Tests already passed in CI (PR phase), so just build and deploy
+# Tests already passed in CI (PR phase), so just build and deploy.
+# Testing channel is the Play Store *internal* track: testers' devices
+# auto-update whenever a new build lands on main.
 name: Deploy to Staging
 
 on:
@@ -12,14 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Build all platforms using reusable workflow
-  # Release build required for Play Store (even internal track)
+  # Build Android only (release AAB). Web/iOS/desktop are not part of the
+  # staging auto-update channel, so we skip them to keep CI lean.
   build:
     name: Build
     uses: ./.github/workflows/build.yml
     with:
       environment: staging
       build_type: release
+      build_android: true
+      build_ios: false
+      build_web: false
       build_desktop: false
       oauth2_client_id: d6qbqdkpf2t52mcunf4g
     secrets:
@@ -29,48 +34,13 @@ jobs:
       GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
       IOS_GOOGLE_SERVICES_PLIST: ${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}
 
-  # Deploy Web to Firebase Hosting
-  deploy-web:
-    name: Deploy Web
-    needs: build
-    runs-on: ubuntu-latest
-    if: always() && !cancelled()
-    timeout-minutes: 10
-    environment:
-      name: staging
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Download web build
-        id: download
-        uses: actions/download-artifact@v8
-        with:
-          name: web-build-staging
-          path: build/web
-        continue-on-error: true
-
-      - name: Check artifact exists
-        if: steps.download.outcome == 'failure'
-        run: |
-          echo "::error::Web build artifact not found. Web build may have failed."
-          exit 1
-
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          channelId: live
-
-  # Deploy Android to Play Store (internal track for auto-updates)
+  # Deploy Android to the Play Store internal track for auto-updates.
+  # Fails loudly: a missing artifact, missing service account, or a rejected
+  # upload all surface as a failed run instead of a misleading green tick.
   deploy-android:
-    name: Deploy Android
+    name: Deploy Android (Play internal)
     needs: build
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
     timeout-minutes: 20
     environment:
       name: staging
@@ -79,32 +49,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Preflight - require Play service account
+        env:
+          PLAY_SA: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$PLAY_SA" ]; then
+            echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT secret is not configured."
+            echo "::error::Add a Play Console service-account JSON with release access to enable internal-track uploads."
+            exit 1
+          fi
+
       - name: Download AAB
-        id: download
         uses: actions/download-artifact@v8
         with:
           name: android-aab-staging
           path: artifacts/
-        continue-on-error: true
-
-      - name: Check artifact exists
-        if: steps.download.outcome == 'failure'
-        run: |
-          echo "::warning::Android AAB artifact not found. Android build may have failed."
-          exit 0
 
       - name: Create changelog
-        if: steps.download.outcome == 'success'
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
           mkdir -p fastlane/metadata/android/en-US/changelogs
           cat > fastlane/metadata/android/en-US/changelogs/default.txt << EOF
-          Staging Build
-          Commit: ${{ github.sha }}
-          Build: ${{ github.run_number }}
+          Staging build
+          Commit: ${COMMIT_SHA}
+          Build: ${RUN_NUMBER}
           EOF
 
       - name: Upload to Play Store (internal track)
-        if: steps.download.outcome == 'success'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
@@ -113,64 +86,26 @@ jobs:
           track: internal
           status: completed
           whatsNewDirectory: fastlane/metadata/android/en-US/changelogs
-        continue-on-error: true
-
-  # Deploy iOS to Firebase App Distribution (no Play Store equivalent yet)
-  deploy-ios:
-    name: Deploy iOS
-    needs: build
-    runs-on: ubuntu-latest
-    if: always() && !cancelled()
-    timeout-minutes: 15
-    environment:
-      name: staging
-
-    steps:
-      - name: Download IPA
-        id: download
-        uses: actions/download-artifact@v8
-        with:
-          name: ios-ipa-staging
-          path: artifacts/
-        continue-on-error: true
-
-      - name: Check artifact exists
-        if: steps.download.outcome == 'failure'
-        run: |
-          echo "::warning::iOS IPA artifact not found. iOS build may have failed."
-          exit 0
-
-      - name: Upload to Firebase App Distribution
-        if: steps.download.outcome == 'success'
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
-        with:
-          appId: ${{ secrets.FIREBASE_APP_ID_IOS }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          groups: internal-testers
-          file: artifacts/Runner.ipa
-          releaseNotes: |
-            Staging Build
-            Commit: ${{ github.sha }}
-            Branch: main
-            Build: ${{ github.run_number }}
-        continue-on-error: true
 
   # Summary
   notify:
     name: Summary
-    needs: [deploy-web, deploy-android, deploy-ios]
+    needs: [deploy-android]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
       - name: Create deployment summary
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          ANDROID_RESULT: ${{ needs.deploy-android.result }}
         run: |
-          echo "## Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Platform | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Web (Firebase Hosting) | ${{ needs.deploy-web.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Android (Play Store internal) | ${{ needs.deploy-android.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| iOS (Firebase App Distribution) | ${{ needs.deploy-ios.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Staging Deployment Summary"
+            echo ""
+            echo "| Platform | Status |"
+            echo "|----------|--------|"
+            echo "| Android (Play Store internal) | ${ANDROID_RESULT} |"
+            echo ""
+            echo "**Commit:** \`${COMMIT_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
