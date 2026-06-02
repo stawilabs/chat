@@ -109,8 +109,8 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   json_serializable: ^6.13.0
-  # patrol: ^4.1.1  # Disabled: PatrolServer Kotlin compilation error with current Gradle/Kotlin setup
-  # patrol_finders: ^3.0.0
+  patrol: ^4.1.1
+  patrol_finders: ^3.0.0
   riverpod_generator: 4.0.4-dev.3
 
 import_sorter:
