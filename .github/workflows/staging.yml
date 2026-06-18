@@ -27,6 +27,7 @@ jobs:
       build_web: false
       build_desktop: false
       oauth2_client_id: d6qbqdkpf2t52mcunf4g
+      google_server_client_id: 265397001887-hjrrjml6ekekmrjlg4ku4bsgtobgid85.apps.googleusercontent.com
     secrets:
       ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
       ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}

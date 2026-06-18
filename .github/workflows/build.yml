@@ -43,6 +43,11 @@ on:
         required: false
         type: string
         default: ''
+      google_server_client_id:
+        description: 'Google server/web OAuth client_id for native Google sign-in'
+        required: false
+        type: string
+        default: '265397001887-hjrrjml6ekekmrjlg4ku4bsgtobgid85.apps.googleusercontent.com'
     secrets:
       ANDROID_SIGNING_KEY:
         required: false
@@ -184,10 +189,12 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release --shrink' || '--debug' }}"
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
+          [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
 
           flutter build apk $BUILD_ARGS
 
@@ -318,6 +325,7 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
         run: |
           if [ "${{ inputs.build_type }}" == "release" ] && [ "${{ inputs.environment }}" == "production" ]; then
             BUILD_ARGS="--release"
@@ -326,6 +334,7 @@ jobs:
           fi
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
+          [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
 
           flutter build ios $BUILD_ARGS
 
@@ -373,9 +382,11 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--profile' }} --base-href / --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
+          [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
           flutter build web $BUILD_ARGS
 
       - name: Upload Web
@@ -414,10 +425,12 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
+          [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
           flutter build linux $BUILD_ARGS
 
       - name: Package Linux bundle
@@ -455,10 +468,12 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
         run: |
           $buildArgs = "${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
           $buildArgs += " --build-name=$env:APP_VERSION --build-number=$env:BUILD_NUMBER"
           if ($env:OAUTH2_CLIENT_ID) { $buildArgs += " --dart-define=OAUTH2_CLIENT_ID=$env:OAUTH2_CLIENT_ID" }
+          if ($env:GOOGLE_SERVER_CLIENT_ID) { $buildArgs += " --dart-define=GOOGLE_SERVER_CLIENT_ID=$env:GOOGLE_SERVER_CLIENT_ID" }
           flutter build windows $buildArgs
         shell: pwsh
 
@@ -509,10 +524,12 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
+          [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
           flutter build macos $BUILD_ARGS
 
       - name: Package macOS app

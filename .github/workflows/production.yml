@@ -70,6 +70,7 @@ jobs:
       environment: production
       build_type: release
       version: ${{ needs.prepare.outputs.version }}
+      google_server_client_id: 265397001887-hjrrjml6ekekmrjlg4ku4bsgtobgid85.apps.googleusercontent.com
     secrets:
       ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
       ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
