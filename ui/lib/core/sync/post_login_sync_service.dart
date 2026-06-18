@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:stawi_api_chat/stawi_api_chat.dart' as pb_chat;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb_chat;
 
 import '../../features/rooms/data/room_repository.dart';
 import '../../features/rooms/data/room_service.dart';

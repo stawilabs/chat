@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import 'package:drift/drift.dart';
 import 'package:fixnum/fixnum.dart' as fixnum;
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 
 import '../../features/messages/data/message_repository.dart';
 import '../../features/messages/domain/room_event.dart' as domain;

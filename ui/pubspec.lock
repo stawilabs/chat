@@ -77,10 +77,10 @@ packages:
     dependency: "direct main"
     description:
       name: antinvestor_auth_runtime
-      sha256: dd067734641dd595728f241407cf2dffcaa612e550c6306eea1138afc275ddbe
+      sha256: f90c1354f336cc97eca724e13d808d89441fdfc3603947ed929b273b23612aed
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.1"
+    version: "0.4.2"
   app_badge_plus:
     dependency: "direct main"
     description:

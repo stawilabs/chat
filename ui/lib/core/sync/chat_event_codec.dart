@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import 'package:fixnum/fixnum.dart';
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 
 import '../../features/messages/domain/room_event.dart' as domain;
 

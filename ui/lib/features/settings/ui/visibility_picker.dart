@@ -55,49 +55,47 @@ class VisibilityPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentOption = VisibilityOption.fromValue(currentValue);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 8,
           ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        title: Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+          title: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+          ),
+          subtitle: Text(
+            currentOption.label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppTheme.primaryGreen),
+          ),
+          trailing: Icon(
+            Icons.chevron_right,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            size: 20,
+          ),
+          onTap: () async {
+            final result = await show(
+              context: context,
+              title: title,
+              description: description,
+              currentValue: currentValue,
+            );
+            if (result != null) {
+              onChanged(result);
+            }
+          },
         ),
-        subtitle: Text(
-          currentOption.label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: AppTheme.primaryGreen),
-        ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          size: 20,
-        ),
-        onTap: () async {
-          final result = await show(
-            context: context,
-            title: title,
-            description: description,
-            currentValue: currentValue,
-          );
-          if (result != null) {
-            onChanged(result);
-          }
-        },
       ),
     );
   }

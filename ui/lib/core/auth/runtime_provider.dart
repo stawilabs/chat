@@ -17,8 +17,8 @@ import '../networking/api_config.dart';
 /// Platform manifest state (verified by CHAT-9):
 ///   * Android — `ui/android/app/src/main/AndroidManifest.xml` declares an
 ///     `android:scheme="org.stawi.chat"` intent-filter with host
-///     `sso` and path-prefix `/redirect` on `MainActivity`, which matches
-///     [kChatRedirectUri] end-to-end.
+///     `sso` and path-prefix `/redirect` on flutter_web_auth_2's
+///     `CallbackActivity`, which matches [kChatRedirectUri] end-to-end.
 ///   * iOS — `ui/ios/Runner/Info.plist` registers `org.stawi.chat`
 ///     under `CFBundleURLTypes`. (iOS Runner assets are provisioned at
 ///     build time; see `ios_oauth_setup.md` for the reference payload.)
@@ -42,4 +42,10 @@ const AuthConfig kChatAuthConfig = AuthConfig(
 ///
 /// Call once at app start and override `authRuntimeProvider` with the
 /// resulting instance so widget tree consumers share the same runtime.
-AuthRuntime buildChatRuntime() => createAuthRuntime(kChatAuthConfig);
+AuthRuntime buildChatRuntime() => createAuthRuntime(
+  kChatAuthConfig,
+  nativeCredentialConfig: const NativeCredentialConfig(
+    googleServerClientId: ApiConfig.googleServerClientId,
+    enableApple: true,
+  ),
+);

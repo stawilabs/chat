@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -302,7 +303,7 @@ class _VirtualizedMessageListState extends ConsumerState<VirtualizedMessageList>
     return CustomScrollView(
       controller: _scrollController,
       reverse: true,
-      cacheExtent: cacheExtent,
+      scrollCacheExtent: ScrollCacheExtent.pixels(cacheExtent),
       physics:
           widget.config.scrollPhysics ??
           const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),

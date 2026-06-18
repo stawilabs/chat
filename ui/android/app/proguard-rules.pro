@@ -49,9 +49,8 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
 
-# --- AppAuth / OAuth redirect (antinvestor_auth_runtime -> flutter_appauth) ---
--keep class net.openid.appauth.** { *; }
--dontwarn net.openid.appauth.**
+# --- OAuth redirect (antinvestor_auth_runtime -> flutter_web_auth_2) ---
+-keep class com.linusu.flutter_web_auth_2.** { *; }
 
 # --- flutter_secure_storage (AndroidX EncryptedSharedPreferences) ---
 -keep class androidx.security.crypto.** { *; }

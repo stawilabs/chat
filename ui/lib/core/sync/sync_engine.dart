@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 
 import '../../features/messages/data/message_providers.dart';
 import '../../features/messages/data/message_repository.dart';
@@ -225,8 +225,9 @@ class SyncEngine with WidgetsBindingObserver {
   /// Get current connection state synchronously
   SyncConnectionState get currentConnectionState {
     if (_isConnected) return SyncConnectionState.connected;
-    if (_authErrorCount > _maxAuthErrors)
+    if (_authErrorCount > _maxAuthErrors) {
       return SyncConnectionState.authExpired;
+    }
     return SyncConnectionState.disconnected;
   }
 

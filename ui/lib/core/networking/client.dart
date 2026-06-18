@@ -5,15 +5,6 @@
 /// and service-specific clients.
 library;
 
-import 'package:stawi_api_chat/stawi_api_chat.dart'
-    hide
-        Struct,
-        Value,
-        ListValue,
-        NullValue,
-        Timestamp,
-        ContactLink,
-        PageCursor;
 import 'package:antinvestor_api_common/antinvestor_api_common.dart';
 import 'package:antinvestor_api_device/antinvestor_api_device.dart';
 import 'package:antinvestor_api_files/antinvestor_api_files.dart'
@@ -41,6 +32,15 @@ import 'package:connectrpc/protobuf.dart' as connect_protobuf;
 import 'package:connectrpc/protocol/connect.dart' as connect_protocol;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:stawi_api_chat/stawi_api_chat.dart'
+    hide
+        Struct,
+        Value,
+        ListValue,
+        NullValue,
+        Timestamp,
+        ContactLink,
+        PageCursor;
 
 import 'api_config.dart';
 import 'certificate_pinning.dart';

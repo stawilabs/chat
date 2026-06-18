@@ -40,6 +40,9 @@ class ApiConfig {
     'OAUTH2_CLIENT_ID',
     defaultValue: 'd6qbqdkpf2t52mcunf40',
   );
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+  );
 
   // Connection settings optimized for low-resource devices
   static const Duration connectionTimeout = Duration(seconds: 30);
