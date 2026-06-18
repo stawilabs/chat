@@ -35,7 +35,7 @@ const AuthConfig kChatAuthConfig = AuthConfig(
   apiBaseUrl: 'https://api.stawi.org',
   redirectScheme: 'org.stawi.chat',
   redirectUri: kChatRedirectUri,
-  scopes: ['openid', 'profile', 'contact', 'offline_access'],
+  scopes: ['openid', 'profile', 'offline_access'],
 );
 
 /// Constructs a fresh [AuthRuntime] for the chat app.
