@@ -13,6 +13,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 concurrency:
   group: production-deploy
   cancel-in-progress: false
@@ -70,6 +73,10 @@ jobs:
       environment: production
       build_type: release
       version: ${{ needs.prepare.outputs.version }}
+      build_android: true
+      build_ios: false
+      build_web: false
+      build_desktop: false
       google_server_client_id: 265397001887-hjrrjml6ekekmrjlg4ku4bsgtobgid85.apps.googleusercontent.com
     secrets:
       ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
@@ -159,7 +166,7 @@ jobs:
     name: Deploy Web
     needs: [prepare, build]
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
+    if: false
     timeout-minutes: 10
     environment:
       name: production
@@ -232,7 +239,7 @@ jobs:
           packageName: ${{ vars.ANDROID_PACKAGE_NAME || 'org.stawi.chat' }}
           releaseFiles: artifacts/app-release.aab
           track: production
-          status: completed
+          status: draft
           releaseName: ${{ needs.prepare.outputs.version }}
           whatsNewDirectory: fastlane/metadata/android/en-US/changelogs
 
@@ -241,7 +248,7 @@ jobs:
     name: Deploy iOS
     needs: [prepare, build]
     runs-on: macos-latest
-    if: always() && !cancelled()
+    if: false
     timeout-minutes: 30
     environment:
       name: production
