@@ -131,23 +131,31 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          [ -f "artifacts/android-apk-production/app-release.apk" ] && \
+          if [ -f "artifacts/android-apk-production/app-release.apk" ]; then
             cp artifacts/android-apk-production/app-release.apk release-assets/chat-${VERSION}-android.apk
+          fi
 
-          [ -f "artifacts/android-aab-production/app-release.aab" ] && \
+          if [ -f "artifacts/android-aab-production/app-release.aab" ]; then
             cp artifacts/android-aab-production/app-release.aab release-assets/chat-${VERSION}-android.aab
+          fi
 
-          [ -f "artifacts/ios-ipa-production/Runner.ipa" ] && \
+          if [ -f "artifacts/ios-ipa-production/Runner.ipa" ]; then
             cp artifacts/ios-ipa-production/Runner.ipa release-assets/chat-${VERSION}-ios.ipa
+          fi
 
-          [ -d "artifacts/web-build-production" ] && \
+          if [ -d "artifacts/web-build-production" ]; then
             (cd artifacts/web-build-production && zip -r ../../release-assets/chat-${VERSION}-web.zip .)
+          fi
 
-          [ -f "artifacts/linux-bundle-production/linux-bundle.tar.gz" ] && \
+          if [ -f "artifacts/linux-bundle-production/linux-bundle.tar.gz" ]; then
             cp artifacts/linux-bundle-production/linux-bundle.tar.gz release-assets/chat-${VERSION}-linux-x64.tar.gz
+          fi
 
-          [ -f "artifacts/macos-app-production/macos-app.zip" ] && \
+          if [ -f "artifacts/macos-app-production/macos-app.zip" ]; then
             cp artifacts/macos-app-production/macos-app.zip release-assets/chat-${VERSION}-macos.zip
+          fi
+
+          find release-assets -maxdepth 1 -type f -print
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
