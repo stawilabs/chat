@@ -38,7 +38,7 @@ dependencies:
   antinvestor_api_profile: ^1.53.0
   antinvestor_auth_runtime:
     git:
-      url: git@github.com:antinvestor/service-authentication.git
+      url: https://github.com/antinvestor/service-authentication.git
       ref: ui/runtime/v0.4.3
       path: ui/runtime
   app_badge_plus: ^1.2.8
