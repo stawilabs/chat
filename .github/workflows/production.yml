@@ -240,16 +240,71 @@ jobs:
           mkdir -p fastlane/metadata/android/en-US/changelogs
           echo "Version $VERSION" > fastlane/metadata/android/en-US/changelogs/default.txt
 
-      - name: Upload to Play Store
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
-          packageName: ${{ vars.ANDROID_PACKAGE_NAME || 'org.stawi.chat' }}
-          releaseFiles: artifacts/app-release.aab
-          track: production
-          status: draft
-          releaseName: ${{ needs.prepare.outputs.version }}
-          whatsNewDirectory: fastlane/metadata/android/en-US/changelogs
+      - name: Promote internal build to Play production draft
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PACKAGE_NAME: ${{ vars.ANDROID_PACKAGE_NAME || 'org.stawi.chat' }}
+          PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+
+          VERSION_CODE=$(awk '/^version:/ { split($2, parts, "+"); print parts[2] }' ui/pubspec.yaml)
+          RELEASE_NOTES=$(cat fastlane/metadata/android/en-US/changelogs/default.txt)
+          SERVICE_ACCOUNT_FILE=$(mktemp)
+          PRIVATE_KEY_FILE=$(mktemp)
+          trap 'rm -f "$SERVICE_ACCOUNT_FILE" "$PRIVATE_KEY_FILE"' EXIT
+
+          printf '%s' "$PLAY_SERVICE_ACCOUNT" > "$SERVICE_ACCOUNT_FILE"
+          CLIENT_EMAIL=$(jq -r '.client_email' "$SERVICE_ACCOUNT_FILE")
+          jq -r '.private_key' "$SERVICE_ACCOUNT_FILE" > "$PRIVATE_KEY_FILE"
+
+          b64url() {
+            openssl base64 -A | tr '+/' '-_' | tr -d '='
+          }
+
+          NOW=$(date +%s)
+          EXP=$((NOW + 3600))
+          HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+          PAYLOAD=$(jq -nc \
+            --arg iss "$CLIENT_EMAIL" \
+            --arg scope "https://www.googleapis.com/auth/androidpublisher" \
+            --arg aud "https://oauth2.googleapis.com/token" \
+            --argjson iat "$NOW" \
+            --argjson exp "$EXP" \
+            '{iss:$iss,scope:$scope,aud:$aud,iat:$iat,exp:$exp}' | b64url)
+          SIGNATURE=$(printf '%s.%s' "$HEADER" "$PAYLOAD" \
+            | openssl dgst -sha256 -sign "$PRIVATE_KEY_FILE" -binary \
+            | b64url)
+          ASSERTION="$HEADER.$PAYLOAD.$SIGNATURE"
+
+          ACCESS_TOKEN=$(curl -fsS -X POST "https://oauth2.googleapis.com/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
+            --data-urlencode "assertion=$ASSERTION" \
+            | jq -r '.access_token')
+
+          API_ROOT="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PACKAGE_NAME"
+          EDIT_ID=$(curl -fsS -X POST "$API_ROOT/edits" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            | jq -r '.id')
+
+          TRACK_BODY=$(jq -nc \
+            --arg name "$VERSION" \
+            --arg code "$VERSION_CODE" \
+            --arg notes "$RELEASE_NOTES" \
+            '{releases:[{name:$name,versionCodes:[$code],status:"draft",releaseNotes:[{language:"en-US",text:$notes}]}]}')
+
+          curl -fsS -X PUT "$API_ROOT/edits/$EDIT_ID/tracks/production" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$TRACK_BODY" > /dev/null
+
+          curl -fsS -X POST "$API_ROOT/edits/$EDIT_ID:commit" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{}' > /dev/null
 
   # Deploy iOS
   deploy-ios:
