@@ -77,11 +77,11 @@ packages:
     dependency: "direct main"
     description:
       path: "ui/runtime"
-      ref: "ui/runtime/v0.4.3"
-      resolved-ref: "099ee976fdb7ea80d346f74c700a5636ed4c9959"
+      ref: "ui/runtime/v0.4.4"
+      resolved-ref: c5743c77af4efff3cf233c98705fac90df3557db
       url: "https://github.com/antinvestor/service-authentication.git"
     source: git
-    version: "0.4.3"
+    version: "0.4.4"
   app_badge_plus:
     dependency: "direct main"
     description:

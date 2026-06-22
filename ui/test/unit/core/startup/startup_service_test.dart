@@ -1,5 +1,8 @@
+import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/core/startup/startup_service.dart';
+
+import '../../../support/mock_auth_runtime.dart';
 
 void main() {
   group('StartupPhase', () {
@@ -402,6 +405,38 @@ void main() {
       expect(updated.currentTask, equals(progress.currentTask));
       expect(updated.progress, equals(progress.progress));
       expect(updated.errorMessage, equals(progress.errorMessage));
+    });
+  });
+
+  group('waitForPassiveAuthRestore', () {
+    test(
+      'does not call ensureAuthenticated while waiting for restore',
+      () async {
+        final runtime = MockAuthRuntime(initialState: AuthState.initializing);
+
+        Future<void>.microtask(() {
+          runtime.setAuthState(AuthState.unauthenticated);
+        });
+
+        final restored = await waitForPassiveAuthRestore(
+          runtime,
+          timeout: const Duration(milliseconds: 50),
+        );
+
+        expect(restored, AuthState.unauthenticated);
+        expect(runtime.ensureAuthenticatedCalls, 0);
+        await runtime.dispose();
+      },
+    );
+
+    test('returns authenticated snapshot without interactive auth', () async {
+      final runtime = MockAuthRuntime.authenticated();
+
+      final restored = await waitForPassiveAuthRestore(runtime);
+
+      expect(restored, AuthState.authenticated);
+      expect(runtime.ensureAuthenticatedCalls, 0);
+      await runtime.dispose();
     });
   });
 }

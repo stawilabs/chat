@@ -22,6 +22,30 @@ import 'startup_metrics.dart';
 
 part 'startup_service.g.dart';
 
+const Duration kAuthRestoreTimeout = Duration(seconds: 3);
+
+/// Waits for the auth runtime's passive session restore to settle.
+///
+/// This must not call [AuthRuntime.ensureAuthenticated], because that method
+/// is the interactive login entry point and may open native Google One Tap,
+/// Credential Manager, Sign in with Apple, or browser OAuth.
+Future<AuthState> waitForPassiveAuthRestore(
+  AuthRuntime runtime, {
+  Duration timeout = kAuthRestoreTimeout,
+}) async {
+  final snapshot = runtime.state;
+  if (snapshot != AuthState.initializing && snapshot != AuthState.refreshing) {
+    return snapshot;
+  }
+
+  return runtime.authStateStream
+      .firstWhere(
+        (next) =>
+            next != AuthState.initializing && next != AuthState.refreshing,
+      )
+      .timeout(timeout, onTimeout: () => AuthState.unauthenticated);
+}
+
 /// Initialization phases
 enum StartupPhase {
   /// Critical: Must complete before showing any UI
@@ -246,25 +270,16 @@ class StartupService extends _$StartupService {
   /// Needed for basic app functionality
   Future<void> _initializeEssential() async {
     final runtime = ref.read(authRuntimeProvider);
-    // Let the runtime restore/refresh its session. If the user has a
-    // stored refresh token this short-circuits to authenticated without
-    // any browser round-trip.
+    // Wait only for passive session restore. Calling ensureAuthenticated()
+    // here would open native Google One Tap / browser OAuth before the
+    // user taps the login button.
     state = state.copyWith(currentTask: 'Verifying authentication...');
-    try {
-      await runtime.ensureAuthenticated();
-    } catch (e) {
-      // AuthError (Error subtype) and plain Exceptions both mean the
-      // runtime could not restore a session. Any branch falls through
-      // to the login screen.
+    final restoredState = await waitForPassiveAuthRestore(runtime);
+    if (restoredState != AuthState.authenticated) {
       AppLogger.info(
-        'Auth runtime could not restore session, user will see login',
-        data: {'error': e.toString()},
+        'No restored auth session, user will see login',
+        data: {'state': restoredState.name},
       );
-      return;
-    }
-
-    if (!runtime.isAuthenticated) {
-      AppLogger.debug('User not logged in, skipping service initialization');
       return;
     }
 
