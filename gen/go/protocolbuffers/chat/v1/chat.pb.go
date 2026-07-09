@@ -21,16 +21,17 @@
 package chatv1
 
 import (
-	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
+
 	v1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	_ "buf.build/gen/go/gnostic/gnostic/protocolbuffers/go/gnostic/openapi/v3"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
 )
 
 const (
