@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/pitabwire/frame/datastore/pool"
+	"github.com/pitabwire/frame/v2/datastore/pool"
 )
 
 // dbHealthTimeout bounds how long a database health probe may take.

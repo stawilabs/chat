@@ -105,8 +105,8 @@ import (
 	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/cache"
-	"github.com/pitabwire/frame/telemetry"
+	"github.com/pitabwire/frame/v2/cache"
+	"github.com/pitabwire/frame/v2/telemetry"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/pkg/chatutil"

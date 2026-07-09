@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	frevents "github.com/pitabwire/frame/events"
+	frevents "github.com/pitabwire/frame/v2/events"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/pkg/chatutil"

@@ -3,7 +3,7 @@ package queues
 import (
 	"context"
 
-	"github.com/pitabwire/frame/queue"
+	"github.com/pitabwire/frame/v2/queue"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/config"

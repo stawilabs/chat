@@ -12,18 +12,19 @@ import (
 	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/antinvestor/common"
-	"github.com/antinvestor/common/connection"
-	"github.com/antinvestor/common/permissions"
-	"github.com/antinvestor/common/timescale"
-	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/config"
-	"github.com/pitabwire/frame/datastore"
-	"github.com/pitabwire/frame/datastore/pool"
-	frevents "github.com/pitabwire/frame/events"
-	"github.com/pitabwire/frame/security/authorizer"
-	connectInterceptors "github.com/pitabwire/frame/security/interceptors/connect"
-	"github.com/pitabwire/frame/workerpool"
+	"github.com/antinvestor/common/v2"
+	"github.com/antinvestor/common/v2/connection"
+	"github.com/antinvestor/common/v2/servicecatalog"
+	"github.com/antinvestor/common/v2/permissions"
+	"github.com/antinvestor/common/v2/timescale"
+	"github.com/pitabwire/frame/v2"
+	"github.com/pitabwire/frame/v2/config"
+	"github.com/pitabwire/frame/v2/datastore"
+	"github.com/pitabwire/frame/v2/datastore/pool"
+	frevents "github.com/pitabwire/frame/v2/events"
+	"github.com/pitabwire/frame/v2/security/authorizer"
+	connectInterceptors "github.com/pitabwire/frame/v2/security/interceptors/connect"
+	"github.com/pitabwire/frame/v2/workerpool"
 	"github.com/pitabwire/util"
 
 	aconfig "github.com/stawilabs/chat/apps/default/config"
@@ -226,7 +227,7 @@ func setupNotificationClient(
 	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.NotificationServiceURI,
 		WorkloadAPITargetPath: cfg.NotificationServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_notification"},
+		ServiceID:             servicecatalog.ServiceNotification,
 	}, notificationv1connect.NewNotificationServiceClient)
 }
 
@@ -237,7 +238,7 @@ func setupProfileClient(
 	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.ProfileServiceURI,
 		WorkloadAPITargetPath: cfg.ProfileServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_profile"},
+		ServiceID:             servicecatalog.ServiceProfile,
 	}, profilev1connect.NewProfileServiceClient)
 }
 
@@ -248,7 +249,7 @@ func setupDeviceClient(
 	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.DeviceServiceURI,
 		WorkloadAPITargetPath: cfg.DeviceServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_device"},
+		ServiceID:             servicecatalog.ServiceDevices,
 	}, devicev1connect.NewDeviceServiceClient)
 }
 

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"github.com/pitabwire/frame/datastore"
-	"github.com/pitabwire/frame/frametests/definition"
+	"github.com/pitabwire/frame/v2/datastore"
+	"github.com/pitabwire/frame/v2/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

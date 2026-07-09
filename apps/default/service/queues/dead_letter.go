@@ -8,7 +8,7 @@ import (
 	"time"
 
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"github.com/pitabwire/frame/queue"
+	"github.com/pitabwire/frame/v2/queue"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/config"

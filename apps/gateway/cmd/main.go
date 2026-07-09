@@ -11,15 +11,16 @@ import (
 	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
-	"github.com/antinvestor/common"
-	"github.com/antinvestor/common/connection"
-	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/cache"
-	"github.com/pitabwire/frame/cache/jetstreamkv"
-	"github.com/pitabwire/frame/cache/valkey"
-	"github.com/pitabwire/frame/config"
-	"github.com/pitabwire/frame/data"
-	securityconnect "github.com/pitabwire/frame/security/interceptors/connect"
+	"github.com/antinvestor/common/v2"
+	"github.com/antinvestor/common/v2/connection"
+	"github.com/antinvestor/common/v2/servicecatalog"
+	"github.com/pitabwire/frame/v2"
+	"github.com/pitabwire/frame/v2/cache"
+	"github.com/pitabwire/frame/v2/cache/jetstreamkv"
+	"github.com/pitabwire/frame/v2/cache/valkey"
+	"github.com/pitabwire/frame/v2/config"
+	"github.com/pitabwire/frame/v2/data"
+	securityconnect "github.com/pitabwire/frame/v2/security/interceptors/connect"
 	"github.com/pitabwire/util"
 
 	gtwconfig "github.com/stawilabs/chat/apps/gateway/config"
@@ -170,7 +171,7 @@ func setupChatServiceClient(
 	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.ChatServiceURI,
 		WorkloadAPITargetPath: cfg.ChatServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_chat_drone"},
+		ServiceID:             servicecatalog.ServiceChatDrone,
 	}, chatv1connect.NewChatServiceClient)
 }
 
@@ -182,7 +183,7 @@ func setupDeviceClient(
 	return connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
 		Endpoint:              cfg.DeviceServiceURI,
 		WorkloadAPITargetPath: cfg.DeviceServiceWorkloadAPITargetPath,
-		Audiences:             []string{"service_device"},
+		ServiceID:             servicecatalog.ServiceDevices,
 	}, devicev1connect.NewDeviceServiceClient)
 }
 

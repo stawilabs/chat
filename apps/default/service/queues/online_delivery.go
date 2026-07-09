@@ -15,9 +15,9 @@ import (
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/datastore/pool"
-	"github.com/pitabwire/frame/queue"
-	"github.com/pitabwire/frame/workerpool"
+	"github.com/pitabwire/frame/v2/datastore/pool"
+	"github.com/pitabwire/frame/v2/queue"
+	"github.com/pitabwire/frame/v2/workerpool"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 
