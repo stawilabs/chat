@@ -1,7 +1,7 @@
 // Package telemetry provides OpenTelemetry metrics and tracing for the chat service.
 package telemetry
 
-import "github.com/pitabwire/frame/telemetry"
+import "github.com/pitabwire/frame/v2/telemetry"
 
 // Message metrics track message send/receive operations.
 //

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/pitabwire/frame"
+	"github.com/pitabwire/frame/v2"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/service"

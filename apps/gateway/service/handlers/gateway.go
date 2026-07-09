@@ -6,8 +6,8 @@ import (
 	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/security"
+	"github.com/pitabwire/frame/v2"
+	"github.com/pitabwire/frame/v2/security"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

@@ -6,7 +6,7 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	frevents "github.com/pitabwire/frame/events"
+	frevents "github.com/pitabwire/frame/v2/events"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stawilabs/chat/apps/default/service/models"

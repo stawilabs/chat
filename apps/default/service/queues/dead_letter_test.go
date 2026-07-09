@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pitabwire/frame/queue"
+	"github.com/pitabwire/frame/v2/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"

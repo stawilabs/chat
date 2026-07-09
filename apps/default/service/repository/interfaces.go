@@ -5,7 +5,7 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/pitabwire/frame/datastore"
+	"github.com/pitabwire/frame/v2/datastore"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 )

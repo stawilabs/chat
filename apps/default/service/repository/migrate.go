@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/pitabwire/frame/datastore"
+	"github.com/pitabwire/frame/v2/datastore"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 )

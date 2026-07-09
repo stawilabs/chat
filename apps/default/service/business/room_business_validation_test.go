@@ -10,9 +10,9 @@ import (
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
-	"github.com/pitabwire/frame"
-	"github.com/pitabwire/frame/datastore"
-	"github.com/pitabwire/frame/frametests/definition"
+	"github.com/pitabwire/frame/v2"
+	"github.com/pitabwire/frame/v2/datastore"
+	"github.com/pitabwire/frame/v2/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 

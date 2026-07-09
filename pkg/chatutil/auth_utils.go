@@ -7,7 +7,7 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/security"
+	"github.com/pitabwire/frame/v2/security"
 )
 
 // AuthContactLink extracts contact link from validated authentication claims.

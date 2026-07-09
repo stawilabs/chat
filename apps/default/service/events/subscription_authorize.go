@@ -7,9 +7,9 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"github.com/pitabwire/frame/datastore/pool"
-	frevents "github.com/pitabwire/frame/events"
-	"github.com/pitabwire/frame/workerpool"
+	"github.com/pitabwire/frame/v2/datastore/pool"
+	frevents "github.com/pitabwire/frame/v2/events"
+	"github.com/pitabwire/frame/v2/workerpool"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/service/authz"
