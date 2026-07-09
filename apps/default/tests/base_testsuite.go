@@ -46,7 +46,6 @@ const (
 	waitTimeout      = 10 * time.Second
 	waitPollInterval = 50 * time.Millisecond
 	startupDelay     = 200 * time.Millisecond
-	shutdownTimeout  = 5 * time.Second
 )
 
 type BaseTestSuite struct {
@@ -129,8 +128,9 @@ func (bs *BaseTestSuite) CreateService(
 	})
 
 	cfg.DatabaseTraceQueries = true
-	cfg.DatabaseMaxOpenConnections = 1
-	cfg.DatabaseMaxIdleConnections = 0
+	// Migration advisory lock needs a second connection (frame >= v1.95).
+	cfg.DatabaseMaxOpenConnections = 5
+	cfg.DatabaseMaxIdleConnections = 1
 	cfg.DatabasePrimaryURL = []string{testDS.String()}
 
 	// Configure real Keto authorizer URIs
@@ -158,9 +158,8 @@ func (bs *BaseTestSuite) CreateService(
 	authzMw := authz.NewMiddleware(sm.GetAuthorizer(ctx))
 	bs.AuthzMiddleware = authzMw
 
-	// Register queue handlers and event handlers BEFORE Run() to avoid
-	// race conditions. The queue consumer starts during Run(), so all
-	// handlers must be registered before that point.
+	// Register queue handlers and event handlers BEFORE Run() so subscribers
+	// start during initServer with handlers already registered.
 	serviceOptions := []frame.Option{
 		frame.WithRegisterPublisher(
 			cfg.QueueDeviceEventDeliveryName,
@@ -180,40 +179,21 @@ func (bs *BaseTestSuite) CreateService(
 		),
 	}
 
-	// Initialize the service with all options
 	svc.Init(ctx, serviceOptions...)
 
-	runCtx, cancelRun := context.WithCancel(context.Background())
-	runDone := make(chan error, 1)
+	// WithNoopDriver (frame v2.0.3+), Run returns after startups complete
+	// without shutting down queues/workerpool — keep service alive until Stop.
+	require.NoError(t, svc.Run(ctx, ""))
 
-	// Run the service in a goroutine with a random port so the queue
-	// subscribers stay alive for the full event chain (RoomCreated →
-	// SubscriptionAdd → SubscriptionAuthorize). Using empty port ""
-	// causes Run to exit immediately, which kills the queue subscriber
-	// before all async events are processed.
-	go func() {
-		runDone <- svc.Run(runCtx, ":0")
-	}()
-
-	// Stop the service and close DB connections when this test finishes.
-	// The run goroutine owns service shutdown; cleanup only cancels and waits.
 	t.Cleanup(func() {
-		cancelRun()
-
-		select {
-		case <-runDone:
-		case <-time.After(shutdownTimeout):
-			svc.Stop(context.Background())
-			select {
-			case <-runDone:
-			case <-time.After(shutdownTimeout):
-			}
+		bg := context.Background()
+		svc.Stop(bg)
+		if dbMan := svc.DatastoreManager(); dbMan != nil {
+			dbMan.Close(bg)
 		}
-
-		svc.DatastoreManager().Close(context.Background())
 	})
 
-	// Give queue listeners time to start before the test proceeds
+	// Give queue listeners a beat before emitting work.
 	time.Sleep(startupDelay)
 
 	return ctx, svc
