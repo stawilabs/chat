@@ -1,5 +1,8 @@
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+# Do not default TARGETARCH — buildx injects the target platform per-arch.
+# A default of amd64 previously published x86-64 binaries under the arm64
+# manifest (exec format error on arm nodes).
+ARG TARGETOS
+ARG TARGETARCH
 
 # ---------- Builder ----------
 FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
