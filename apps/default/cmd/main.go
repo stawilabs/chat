@@ -82,7 +82,16 @@ func runService(ctx context.Context) error {
 	// pulled from rotation instead of black-holing traffic.
 	svc.AddHealthCheck(health.DBChecker{Pool: dbPool})
 
-	// Setup clients and services
+	// Migration mode runs SQL migrations then hypertable setup (see
+	// handleDatabaseMigration) and exits. Skip outbound service clients:
+	// they require a resolved OIDC token endpoint and are unused by migrate.
+	// Hypertables are never promoted on a normal boot, avoiding the
+	// boot-vs-migrate ordering race.
+	if handleDatabaseMigration(ctx, dbManager, dbPool, cfg) {
+		return nil
+	}
+
+	// Setup clients and services (runtime path only)
 	deviceCli, err := setupDeviceClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup device client")
@@ -96,13 +105,6 @@ func runService(ctx context.Context) error {
 	profileCli, err := setupProfileClient(ctx, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("main -- Could not setup profile client")
-	}
-
-	// Migration mode runs SQL migrations then hypertable setup (see
-	// handleDatabaseMigration) and exits; hypertables are never promoted on a
-	// normal boot, avoiding the boot-vs-migrate ordering race.
-	if handleDatabaseMigration(ctx, dbManager, dbPool, cfg) {
-		return nil
 	}
 
 	// Setup Keto authorization service
@@ -213,15 +215,18 @@ func handleDatabaseMigration(
 		return false
 	}
 
+	util.Log(ctx).Info("main -- starting database migration")
 	err := repository.Migrate(ctx, dbManager, cfg.GetDatabaseMigrationPath())
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- Could not migrate successfully")
 	}
+	util.Log(ctx).Info("main -- database migration complete; ensuring hypertables")
 
 	// Promote hypertables after the SQL migrations have run.
 	if tsErr := ensureHypertables(ctx, dbPool); tsErr != nil {
 		util.Log(ctx).WithError(tsErr).Fatal("main -- Could not ensure TimescaleDB hypertables")
 	}
+	util.Log(ctx).Info("main -- TimescaleDB hypertables ensured; migrate job exiting")
 	return true
 }
 
