@@ -57,6 +57,9 @@ LABEL org.opencontainers.image.source=$REPOSITORY
 WORKDIR /
 # Copy binary from builder
 COPY --from=builder /drone /drone
+# Required for DO_MIGRATION: frame defaults MIGRATION_PATH to ./migrations/0001.
+# Omitting this silently skips SQL patches (composite PK), so create_hypertable fails with TS103.
+COPY --from=builder /app/apps/default/migrations /migrations
 
 # Set entrypoint
 ENTRYPOINT ["/drone"]

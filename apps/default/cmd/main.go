@@ -188,12 +188,15 @@ func outboxRelayOption(
 }
 
 // ensureHypertables registers TimescaleDB hypertables idempotently.
-// Errors are logged as warnings so the service continues when TimescaleDB
-// is not yet available.
-func ensureHypertables(ctx context.Context, dbPool pool.Pool) {
+// Called only from the migrate job after SQL migrations (composite PK must
+// include the time-partition column). Returns an error so the migrate job
+// fails closed when TimescaleDB conversion cannot complete — a silent WARN
+// previously let the job report success while room_events stayed a plain table.
+func ensureHypertables(ctx context.Context, dbPool pool.Pool) error {
 	if tsErr := timescale.Ensure(ctx, dbPool.DB(ctx, false), models.Hypertables()); tsErr != nil {
-		util.Log(ctx).WithError(tsErr).Warn("timescale hypertable setup skipped — will retry after cluster migration")
+		return tsErr
 	}
+	return nil
 }
 
 // handleDatabaseMigration performs database migration if configured to do so.
@@ -216,7 +219,9 @@ func handleDatabaseMigration(
 	}
 
 	// Promote hypertables after the SQL migrations have run.
-	ensureHypertables(ctx, dbPool)
+	if tsErr := ensureHypertables(ctx, dbPool); tsErr != nil {
+		util.Log(ctx).WithError(tsErr).Fatal("main -- Could not ensure TimescaleDB hypertables")
+	}
 	return true
 }
 
