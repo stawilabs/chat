@@ -4,8 +4,9 @@ name: Deploy to Production
 
 on:
   push:
+    # Flutter mobile releases only. Backend docker releases use v1.*.* (see release.yaml).
     tags:
-      - 'v*'
+      - 'v0.*.*'
   workflow_dispatch:
     inputs:
       version:
