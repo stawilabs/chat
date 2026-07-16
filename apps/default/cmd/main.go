@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
@@ -215,8 +217,23 @@ func handleDatabaseMigration(
 		return false
 	}
 
+	// Frame's migration scanner stores basenames, then SaveMigrationString
+	// does os.Stat(basename). When WORKDIR is "/" (container default) the
+	// file is not found, so frame prefixes names with "string:" and treats
+	// every migration as new — re-applying SQL that already ran. Chdir into
+	// the migrations directory so basename lookups succeed.
+	migrationPath := cfg.GetDatabaseMigrationPath()
+	if abs, err := filepath.Abs(migrationPath); err == nil {
+		if chdirErr := os.Chdir(abs); chdirErr != nil {
+			util.Log(ctx).WithError(chdirErr).WithField("path", abs).
+				Warn("main -- could not chdir to migration path; string: migration duplicates may appear")
+		} else {
+			migrationPath = "."
+		}
+	}
+
 	util.Log(ctx).Info("main -- starting database migration")
-	err := repository.Migrate(ctx, dbManager, cfg.GetDatabaseMigrationPath())
+	err := repository.Migrate(ctx, dbManager, migrationPath)
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- Could not migrate successfully")
 	}
