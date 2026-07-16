@@ -1,7 +1,8 @@
 name: Release
 on:
   push:
-    tags: ["v*.*.*"]
+    # Backend service images only. Flutter app releases use v0.*.* (see production.yml).
+    tags: ["v1.*.*"]
 jobs:
   docker:
     permissions:

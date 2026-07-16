@@ -48,7 +48,7 @@ ARG REPOSITORY
 ARG VERSION
 ARG REVISION
 ARG BUILDTIME
-LABEL org.opencontainers.image.title="Drone Service"
+LABEL org.opencontainers.image.title="Stawi Chat Drone"
 LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.revision=$REVISION
 LABEL org.opencontainers.image.created=$BUILDTIME
