@@ -22,12 +22,17 @@ import (
 
 const (
 	roomEventsChunkInterval = 24 * time.Hour
-	roomEventsCompressAfter = 7 * 24 * time.Hour
 )
 
 // Hypertables returns the TimescaleDB configuration for this app's
-// append-only tables. Applied idempotently by timescale.Ensure at
-// service startup.
+// append-only tables. Applied idempotently by timescale.Ensure after
+// SQL migrations in the migrate job.
+//
+// CompressAfter is deliberately zero: TimescaleDB columnstore/compression
+// rejects ENABLE ROW LEVEL SECURITY (SQLSTATE 0A000). Frame tenancy
+// installs RLS on every Tenanted model (including RoomEvent) during
+// Migrate, so enabling compression would make every subsequent migrate
+// job fail fatally and block Helm upgrades.
 func Hypertables() []timescale.Hypertable {
 	return []timescale.Hypertable{
 		{
@@ -35,7 +40,7 @@ func Hypertables() []timescale.Hypertable {
 			TimeColumn:    "created_at",
 			ChunkInterval: roomEventsChunkInterval,
 			SegmentBy:     []string{"partition_id", "room_id"},
-			CompressAfter: roomEventsCompressAfter,
+			CompressAfter: 0, // incompatible with frame RLS on hypertables
 			RetainFor:     0, // chat history is durable forever
 		},
 	}
