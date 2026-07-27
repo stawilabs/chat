@@ -170,7 +170,7 @@ func TestGatewayConfig_Validate(t *testing.T) {
 func validGatewayConfig() config.GatewayConfig {
 	return config.GatewayConfig{
 		ChatServiceURI:                "127.0.0.1:7010",
-		DeviceServiceURI:              "devices.stawi.org:443",
+		DeviceServiceURI:              "device.api.stawi.org:443",
 		MaxConnectionsPerDevice:       1,
 		ConnectionTimeoutSec:          300,
 		HeartbeatIntervalSec:          30,

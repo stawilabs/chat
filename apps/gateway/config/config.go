@@ -16,7 +16,7 @@ type GatewayConfig struct {
 	ChatServiceWorkloadAPITargetPath string `envDefault:"/ns/chat/sa/service-chat-drone" env:"CHAT_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
 	// Device service configuration - for delivery status tracking
-	DeviceServiceURI                   string `envDefault:"devices.stawi.org:443"          env:"DEVICE_SERVICE_URI"`
+	DeviceServiceURI                   string `envDefault:"device.api.stawi.org:443"       env:"DEVICE_SERVICE_URI"`
 	DeviceServiceWorkloadAPITargetPath string `envDefault:"/ns/profile/sa/service-devices" env:"DEVICE_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
 	// Connection management
