@@ -18,7 +18,6 @@ import (
 	"github.com/antinvestor/common/v2/connection"
 	"github.com/antinvestor/common/v2/permissions"
 	"github.com/antinvestor/common/v2/servicecatalog"
-	"github.com/antinvestor/common/v2/timescale"
 	"github.com/pitabwire/frame/v2"
 	"github.com/pitabwire/frame/v2/config"
 	"github.com/pitabwire/frame/v2/datastore"
@@ -34,7 +33,6 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/handlers"
 	"github.com/stawilabs/chat/apps/default/service/health"
-	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/queues"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 )
@@ -84,12 +82,10 @@ func runService(ctx context.Context) error {
 	// pulled from rotation instead of black-holing traffic.
 	svc.AddHealthCheck(health.DBChecker{Pool: dbPool})
 
-	// Migration mode runs SQL migrations then hypertable setup (see
-	// handleDatabaseMigration) and exits. Skip outbound service clients:
-	// they require a resolved OIDC token endpoint and are unused by migrate.
-	// Hypertables are never promoted on a normal boot, avoiding the
-	// boot-vs-migrate ordering race.
-	if handleDatabaseMigration(ctx, dbManager, dbPool, cfg) {
+	// Migration mode runs SQL migrations (see handleDatabaseMigration) and
+	// exits. Skip outbound service clients: they require a resolved OIDC
+	// token endpoint and are unused by migrate.
+	if handleDatabaseMigration(ctx, dbManager, cfg) {
 		return nil
 	}
 
@@ -191,26 +187,10 @@ func outboxRelayOption(
 	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan).Run)
 }
 
-// ensureHypertables registers TimescaleDB hypertables idempotently.
-// Called only from the migrate job after SQL migrations (composite PK must
-// include the time-partition column). Returns an error so the migrate job
-// fails closed when TimescaleDB conversion cannot complete — a silent WARN
-// previously let the job report success while room_events stayed a plain table.
-func ensureHypertables(ctx context.Context, dbPool pool.Pool) error {
-	if tsErr := timescale.Ensure(ctx, dbPool.DB(ctx, false), models.Hypertables()); tsErr != nil {
-		return tsErr
-	}
-	return nil
-}
-
 // handleDatabaseMigration performs database migration if configured to do so.
-// On success it also (idempotently) promotes the configured hypertables, so all
-// schema setup — SQL migrations then TimescaleDB hypertable conversion — happens
-// in one ordered place: the migrate job.
 func handleDatabaseMigration(
 	ctx context.Context,
 	dbManager datastore.Manager,
-	dbPool pool.Pool,
 	cfg aconfig.ChatConfig,
 ) bool {
 	if !cfg.DoDatabaseMigrate() {
@@ -237,13 +217,7 @@ func handleDatabaseMigration(
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- Could not migrate successfully")
 	}
-	util.Log(ctx).Info("main -- database migration complete; ensuring hypertables")
-
-	// Promote hypertables after the SQL migrations have run.
-	if tsErr := ensureHypertables(ctx, dbPool); tsErr != nil {
-		util.Log(ctx).WithError(tsErr).Fatal("main -- Could not ensure TimescaleDB hypertables")
-	}
-	util.Log(ctx).Info("main -- TimescaleDB hypertables ensured; migrate job exiting")
+	util.Log(ctx).Info("main -- database migration complete; migrate job exiting")
 	return true
 }
 
