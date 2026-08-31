@@ -215,7 +215,7 @@ jobs:
         with:
           name: android-apk-${{ inputs.environment }}
           path: ${{ steps.build.outputs.apk_path }}
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
 
       - name: Upload AAB
         if: inputs.build_type == 'release'
@@ -223,7 +223,7 @@ jobs:
         with:
           name: android-aab-${{ inputs.environment }}
           path: ${{ steps.build.outputs.aab_path }}
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
 
   # iOS Build
   build-ios:
@@ -358,7 +358,7 @@ jobs:
         with:
           name: ios-ipa-${{ inputs.environment }}
           path: ui/build/ios/ipa/
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
 
   # Web Build
   build-web:
@@ -398,7 +398,7 @@ jobs:
         with:
           name: web-build-${{ inputs.environment }}
           path: ui/build/web/
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
 
   # Linux Build
   build-linux:
@@ -447,7 +447,7 @@ jobs:
         with:
           name: linux-bundle-${{ inputs.environment }}
           path: linux-bundle.tar.gz
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
 
   # Windows Build
   build-windows:
@@ -492,7 +492,7 @@ jobs:
         with:
           name: windows-app-${{ inputs.environment }}
           path: windows-app.zip
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
 
   # macOS Build
   build-macos:
@@ -547,4 +547,4 @@ jobs:
         with:
           name: macos-app-${{ inputs.environment }}
           path: macos-app.zip
-          retention-days: ${{ inputs.environment == 'staging' && 1 || 14 }}
+          retention-days: ${{ inputs.environment == 'staging' && 1 || 3 }}
