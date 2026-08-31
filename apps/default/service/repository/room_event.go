@@ -19,7 +19,8 @@ const defaultUnboundedLimit = 500
 // eventTimeBound returns the second-resolution timestamp embedded in a cursor
 // xid. Every event's created_at is derived from its xid timestamp (and event IDs
 // are validated as xids on write), so pairing the id keyset with a created_at
-// bound lets TimescaleDB prune chunks by time without changing the result set.
+// bound lets Postgres prune by the created_at index without changing the
+// result set.
 func eventTimeBound(cursor string) (time.Time, bool) {
 	id, err := xid.FromString(cursor)
 	if err != nil {
