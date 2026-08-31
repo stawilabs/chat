@@ -45,8 +45,6 @@ func NewOfflineDeliveryQueueHandler(
 	}
 }
 
-//
-//nolint:nonamedreturns // named return required for deferred tracing
 func (dq *offlineDeliveryQueueHandler) Handle(
 	ctx context.Context,
 	headers map[string]string,

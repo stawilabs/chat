@@ -88,7 +88,7 @@ func NewMessageBusiness(
 	return mb
 }
 
-//nolint:gocognit,funlen,nonamedreturns // Complex event validation; named return needed for deferred tracing
+//nolint:gocognit,funlen // Complex event validation; named return needed for deferred tracing
 func (mb *messageBusiness) SendEvents(
 	ctx context.Context,
 	req *chatv1.SendEventRequest,
@@ -519,7 +519,6 @@ func (mb *messageBusiness) GetMessage(
 	return event, nil
 }
 
-//nolint:nonamedreturns // named return needed for deferred tracing
 func (mb *messageBusiness) GetHistory(
 	ctx context.Context,
 	req *chatv1.GetHistoryRequest,
@@ -592,7 +591,6 @@ func (mb *messageBusiness) GetHistory(
 	return protoEvents, nil
 }
 
-//nolint:nonamedreturns // named return needed for deferred tracing
 func (mb *messageBusiness) DeleteMessage(
 	ctx context.Context, messageID string, deletedBy *commonv1.ContactLink,
 ) (err error) {

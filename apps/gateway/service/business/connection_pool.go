@@ -36,7 +36,7 @@ type connectionPool struct {
 	shards      [poolShardCount]*poolShard
 	hashSeed    maphash.Seed // Pre-seeded hasher for zero-allocation hashing
 	maxSize     int32
-	currentSize int32 // Atomic access
+	currentSize atomic.Int32
 }
 
 // newConnectionPool creates a sharded connection pool with the specified capacity.
@@ -72,24 +72,23 @@ func (p *connectionPool) getShard(key string) *poolShard {
 // add inserts a connection into the pool.
 // Returns ErrConnectionPoolFull if the pool is at capacity.
 // If a connection with the same key exists, it is not replaced.
-// Thread-safe: Uses atomic load before acquiring shard write lock.
+// Thread-safe: capacity is reserved with an atomic add (rolled back on
+// failure), so concurrent adds on different shards cannot exceed maxSize.
 func (p *connectionPool) add(conn Connection) error {
 	key := conn.Metadata().Key()
 	shard := p.getShard(key)
 
 	shard.mu.Lock()
-	// Capacity check is inside the shard lock so concurrent goroutines
-	// cannot both pass and both increment past maxSize.
-	if p.currentSize >= p.maxSize {
-		shard.mu.Unlock()
-		return ErrConnectionPoolFull
-	}
 	if _, exists := shard.connections[key]; exists {
 		shard.mu.Unlock()
 		return ErrConnectionExists
 	}
+	if p.currentSize.Add(1) > p.maxSize {
+		p.currentSize.Add(-1)
+		shard.mu.Unlock()
+		return ErrConnectionPoolFull
+	}
 	shard.connections[key] = conn
-	atomic.AddInt32(&p.currentSize, 1)
 	shard.mu.Unlock()
 	return nil
 }
@@ -105,12 +104,12 @@ func (p *connectionPool) swap(conn Connection) (Connection, error) {
 	shard.mu.Lock()
 	old, existed := shard.connections[key]
 	if !existed {
-		// No existing connection — check capacity before inserting.
-		if p.currentSize >= p.maxSize {
+		// No existing connection — reserve capacity before inserting.
+		if p.currentSize.Add(1) > p.maxSize {
+			p.currentSize.Add(-1)
 			shard.mu.Unlock()
 			return nil, ErrConnectionPoolFull
 		}
-		atomic.AddInt32(&p.currentSize, 1)
 	}
 	shard.connections[key] = conn
 	shard.mu.Unlock()
@@ -140,7 +139,7 @@ func (p *connectionPool) remove(key string) Connection {
 	c, exists := shard.connections[key]
 	if exists {
 		delete(shard.connections, key)
-		atomic.AddInt32(&p.currentSize, -1)
+		p.currentSize.Add(-1)
 	}
 	shard.mu.Unlock()
 	return c
@@ -149,7 +148,7 @@ func (p *connectionPool) remove(key string) Connection {
 // size returns the current number of connections in the pool.
 // Thread-safe: Lock-free atomic read.
 func (p *connectionPool) size() int32 {
-	return atomic.LoadInt32(&p.currentSize)
+	return p.currentSize.Load()
 }
 
 // forEach iterates over all connections in the pool, calling fn for each.
@@ -157,7 +156,7 @@ func (p *connectionPool) size() int32 {
 // Thread-safe: Releases each shard's read lock before calling fn.
 func (p *connectionPool) forEach(fn func(Connection)) {
 	// Pre-allocate with known pool size to avoid repeated slice growth.
-	allConns := make([]Connection, 0, atomic.LoadInt32(&p.currentSize))
+	allConns := make([]Connection, 0, p.currentSize.Load())
 
 	for i := range poolShardCount {
 		shard := p.shards[i]

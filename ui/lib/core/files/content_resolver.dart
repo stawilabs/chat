@@ -162,7 +162,7 @@ class ContentResolver {
     try {
       final file = File(path);
       if (file.existsSync()) {
-        return file.readAsBytes();
+        return await file.readAsBytes();
       }
       return null;
     } catch (e) {
