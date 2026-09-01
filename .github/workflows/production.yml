@@ -249,7 +249,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          VERSION_CODE=$(awk '/^version:/ { split($2, parts, "+"); print parts[2] }' ui/pubspec.yaml)
           RELEASE_NOTES=$(cat fastlane/metadata/android/en-US/changelogs/default.txt)
           SERVICE_ACCOUNT_FILE=$(mktemp)
           PRIVATE_KEY_FILE=$(mktemp)
@@ -290,6 +289,18 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{}' \
             | jq -r '.id')
+
+          # Promote whatever is currently live on the internal track (staging
+          # uploads there with a derived, strictly increasing versionCode; the
+          # code is no longer pinned in pubspec.yaml).
+          VERSION_CODE=$(curl -fsS "$API_ROOT/edits/$EDIT_ID/tracks/internal" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            | jq -r '[.releases[]? | select(.status == "completed") | .versionCodes[]? | tonumber] | max // empty')
+          if [ -z "$VERSION_CODE" ]; then
+            echo "::error::No completed release found on the Play internal track to promote."
+            exit 1
+          fi
+          echo "Promoting internal versionCode $VERSION_CODE to production (draft)"
 
           TRACK_BODY=$(jq -nc \
             --arg name "$VERSION" \
