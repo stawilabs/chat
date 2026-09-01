@@ -100,10 +100,21 @@ jobs:
             fi
           fi
 
-          BUILD_NUMBER=$(git rev-list HEAD --count)
-          PUBSPEC_BUILD_NUMBER=$(awk '/^version:/ { split($2, parts, "+"); print parts[2] }' ui/pubspec.yaml)
-          if [ -n "$PUBSPEC_BUILD_NUMBER" ] && [ "$PUBSPEC_BUILD_NUMBER" -gt "$BUILD_NUMBER" ]; then
-            BUILD_NUMBER="$PUBSPEC_BUILD_NUMBER"
+          # Android versionCode: must be unique app-wide, above the highest code
+          # already uploaded to Play (2099000002 was burned as a fixed constant),
+          # and below Play's hard cap of 2100000000. Derive a strictly increasing
+          # code per commit, re-run-safe via the attempt offset:
+          #   2099000000 + commits*10 + (run_attempt-1)%10
+          # Headroom: ~99,900 commits before the cap; re-runs of the same commit
+          # get distinct codes for the first 10 attempts.
+          VC_BASE=2099000000
+          VC_CAP=2100000000
+          COMMITS=$(git rev-list HEAD --count)
+          ATTEMPT=$(( (${GITHUB_RUN_ATTEMPT:-1} - 1) % 10 ))
+          BUILD_NUMBER=$((VC_BASE + COMMITS * 10 + ATTEMPT))
+          if [ "$BUILD_NUMBER" -ge "$VC_CAP" ]; then
+            echo "::error::Derived versionCode $BUILD_NUMBER exceeds Play's cap ($VC_CAP); the scheme needs a new base."
+            exit 1
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
