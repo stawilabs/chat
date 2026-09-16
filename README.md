@@ -18,51 +18,57 @@ The chat service implements a scalable, queue-based architecture for real-time m
 │  ┌────────────────────────────────────────────────┐    │
 │  │ MessageBusiness.SendEvents()                    │    │
 │  │  - Validates room access                        │    │
-│  │  - Saves RoomEvent to database                  │    │
-│  │  - Emits "room.outbox.logging.event"            │    │
+│  │  - Saves RoomEvent + room_outbox row in ONE     │    │
+│  │    transaction (nothing is emitted inline)      │    │
+│  └──────────────────┬──────────────────────────────┘    │
+│                     ▼                                    │
+│  ┌────────────────────────────────────────────────┐    │
+│  │ OutboxRelay (Background Consumer)               │    │
+│  │  - Sole publisher: drains room_outbox           │    │
+│  │  - Emits "room.outbox.logging.event" (Link)     │    │
+│  │  - For rooms whose metadata carries             │    │
+│  │    stawi.group_id, also publishes the durable   │    │
+│  │    "chat.room.event.published" fact             │    │
 │  └──────────────────┬──────────────────────────────┘    │
 │                     ▼                                    │
 │  ┌────────────────────────────────────────────────┐    │
 │  │ RoomOutboxLoggingQueue (Event Handler)          │    │
-│  │  - Gets all active room subscribers             │    │
-│  │  - Creates outbox entry for each subscriber     │    │
-│  │  - Batch inserts to database                    │    │
-│  │  - Emits "outbox.delivery.event" with           │    │
-│  │    EventBroadcast (event + targets)             │    │
+│  │  - Pages active room subscribers (1000/batch)   │    │
+│  │  - Emits "room.message.fanout.event" with       │    │
+│  │    Broadcast (event + destinations + payload)   │    │
 │  └──────────────────┬──────────────────────────────┘    │
 │                     ▼                                    │
 │  ┌────────────────────────────────────────────────┐    │
-│  │ OutboxDeliveryEventHandler (Event Handler)      │    │
-│  │  - Gets full event data from database           │    │
-│  │  - For each target (recipient):                 │    │
-│  │    - Creates EventDelivery proto                 │    │
-│  │    - Publishes to "user.event.delivery" queue   │    │
+│  │ FanoutEventHandler (Event Handler)              │    │
+│  │  - Builds a Delivery per destination            │    │
+│  │  - Publishes to "device.event.delivery" queue   │    │
 │  └──────────────────┬──────────────────────────────┘    │
 └────────────────────┼──────────────────────────────────┘
                      │
                      ▼
          ┌────────────────────────┐
          │  QUEUE INFRASTRUCTURE  │
-         │  (user.event.delivery) │
+         │ (device.event.delivery)│
          └──────────┬──────────────┘
                     │
                     ▼
 ┌───────────────────────────────────────────────────────────┐
-│  EventDeliveryQueueHandler (Queue Subscriber)              │
-│   - Queries device service for user's devices             │
+│  HotPathDeliveryQueueHandler (Queue Subscriber)            │
+│   - Queries device service for the recipient's devices    │
 │   - For each device:                                      │
-│     - Checks if online (TODO: query gateway cache)        │
-│     - If online: Publishes to queue with headers:         │
+│     - Online: publishes to the device's gateway shard     │
+│       queue with headers:                                 │
 │         * profile_id: {recipient_id}                      │
 │         * device_id: {device_id}                          │
-│     - If offline: TODO: Send push notification            │
+│     - Offline: hands off to "offline.event.delivery"      │
+│   - Exhausted retries go to "dead.letter.queue"           │
 └───────────────────┬───────────────────────────────────────┘
                     │
                     ▼
          ┌────────────────────────┐
          │  QUEUE INFRASTRUCTURE  │
-         │  (user.event.delivery) │
-         │   with header filters  │
+         │ (gateway.event.delivery│
+         │   .N, header filters)  │
          └──────────┬──────────────┘
                     │
                     ├──────────────┐ ┌──────────────┐
@@ -89,29 +95,62 @@ The chat service implements a scalable, queue-based architecture for real-time m
 #### 1. MessageBusiness (`apps/default/service/business/message_business.go`)
 - **SendEvents()**: Entry point for sending messages
 - Validates sender has room access
-- Saves event to database
-- Emits internal event for async processing
+- Saves the event and its outbox row in a single transaction
+- Emits nothing inline: the outbox relay is the sole publisher
 
-#### 2. RoomOutboxLoggingQueue (`apps/default/service/events/outbox_logging.go`)
+#### 2. OutboxRelay (`apps/default/service/events/outbox_relay.go`)
+- Background consumer draining `room_outbox` (one row per event)
+- Emits "room.outbox.logging.event" (`events.v1.Link`), then marks the row dispatched
+- Publishes the durable `chat.room.event.published` fact for rooms whose
+  metadata carries `stawi.group_id`, in outbox order and at least once
+- Delivery is at-least-once; downstream consumers must be idempotent
+
+#### 3. RoomOutboxLoggingQueue (`apps/default/service/events/messages_distribution.go`)
 - Event handler for "room.outbox.logging.event"
-- Creates outbox entries for all room subscribers
-- Batch inserts to optimize database writes
-- Emits EventBroadcast for delivery processing
+- Pages active room subscribers and emits "room.message.fanout.event"
+  (`events.v1.Broadcast`) per batch, with the event payload pre-fetched once
+- Re-emits itself with a cursor to continue fan-out for large rooms
 
-#### 3. OutboxDeliveryEventHandler (`apps/default/service/events/outbox_delivery.go`)
-- Event handler for "outbox.delivery.event"
-- Retrieves full event data with content
-- Creates EventDelivery proto for each recipient
-- Publishes to queue for gateway consumption
-- **Lazy initializes publisher** on first use via `service.GetPublisher()`
+#### 4. FanoutEventHandler (`apps/default/service/events/messages_fanout.go`)
+- Event handler for "room.message.fanout.event"
+- Builds an `events.v1.Delivery` per destination
+- Publishes to the "device.event.delivery" queue
 
-#### 4. EventDeliveryQueueHandler (`apps/default/service/queues/last_mile_delivery.go`)
-- Queue subscriber for "user.event.delivery"
+#### 5. HotPathDeliveryQueueHandler (`apps/default/service/queues/online_delivery.go`)
+- Queue subscriber for "device.event.delivery"
 - Queries device service for recipient's devices
 - For each device:
-  - Publishes to queue **with header filters** (profile_id, device_id)
+  - Publishes to the gateway shard queue **with header filters** (profile_id, device_id)
   - Headers enable queue-level routing to specific devices
-- TODO: Implement offline detection and push notifications
+- Offline devices fall through to "offline.event.delivery"
+  (`apps/default/service/queues/offline_delivery.go`); deliveries that exhaust
+  their retries go to "dead.letter.queue"
+
+### Durable room fact: `chat.room.event.published`
+
+Rooms opt in by carrying `stawi.group_id` in their room metadata; rooms without
+that key publish nothing. For a marked room the outbox relay publishes one JSON
+fact per durable, non-encrypted event, in outbox order and at least once
+(consumers must be idempotent on `event_id`). Encrypted payloads are never
+projected, and the fact carries no role, claim, token, permission or signature:
+it is a signal a consumer may render or draft from, never an authorization.
+
+```json
+{
+  "event_id": "...", "room_id": "...", "group_id": "...",
+  "subscription_id": "...", "profile_id": "...", "parent_id": "...",
+  "room_event_type": "ROOM_EVENT_TYPE_EVENT",
+  "payload_type": "PAYLOAD_TYPE_VOTE",
+  "sent_at": "RFC3339", "published_at": "RFC3339",
+  "vote": {"motion_id": "...", "choice_id": "..."},
+  "room_change": {"action": "...", "actor_subscription_id": "...", "target_subscription_ids": ["..."]},
+  "form_submission_result": {"form_instance_id": "...", "schema_id": "...", "schema_version": 1, "source_event_id": "...", "state": "..."},
+  "payload": { "...": "verbatim payload in protojson form" }
+}
+```
+
+Configure the stream with `QUEUE_ROOM_EVENT_PUBLISHED_NAME` /
+`QUEUE_ROOM_EVENT_PUBLISHED_URI`; an empty name disables it.
 
 ### Gateway Service
 
@@ -132,7 +171,7 @@ The chat service implements a scalable, queue-based architecture for real-time m
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│            user.event.delivery Queue                  │
+│          gateway.event.delivery.N Queues              │
 │                                                        │
 │  Messages published with headers:                     │
 │    - profile_id: user123                              │
@@ -179,23 +218,26 @@ The chat service implements a scalable, queue-based architecture for real-time m
 
 ## Message Proto Definitions
 
-### EventDelivery (`proto/events/v1/payloads.proto`)
+### Delivery (`proto/events/v1/events.proto`)
 ```protobuf
-message EventDelivery {
-  EventLink event = 1;           // The chat event
-  EventReceipt target = 2;     // Recipient info
-  google.protobuf.Struct payload = 3;  // Message content
-  bool is_compressed = 4;
-  int32 retry_count = 5;
+message Delivery {
+  Link event = 1;                // The chat event
+  Subscription destination = 2;  // Recipient info
+  Subscription source = 3;
+  chat.v1.Payload payload = 5;   // Message content
+  bool is_compressed = 10;
+  int32 retry_count = 11;
+  string device_id = 12;
 }
 ```
 
-### EventBroadcast
+### Broadcast
 ```protobuf
-message EventBroadcast {
-  EventLink event = 1;              // The chat event
-  repeated EventReceipt targets = 2;  // All recipients
-  int32 priority = 3;
+message Broadcast {
+  Link event = 1;                        // The chat event
+  repeated Subscription destinations = 2;  // Recipients in this batch
+  Priority priority = 3;
+  chat.v1.Payload payload = 4;           // Pre-fetched payload
 }
 ```
 
@@ -203,14 +245,18 @@ message EventBroadcast {
 
 ### Default Service (`apps/default/config/config.go`)
 ```go
-QueueUserEventDeliveryName string `envDefault:"user.event.delivery"`
-QueueUserEventDeliveryURI  string `envDefault:"mem://user.event.delivery"`
+QueueDeviceEventDeliveryName  string   `envDefault:"device.event.delivery"`
+QueueDeviceEventDeliveryURI   string   `envDefault:"mem://device.event.delivery"`
+QueueGatewayEventDeliveryName string   `envDefault:"gateway.event.delivery.%d"`
+QueueGatewayEventDeliveryURI  []string `envDefault:"mem://gateway.event.delivery.0"`
+QueueRoomEventPublishedName   string   `envDefault:"chat.room.event.published"`
+QueueRoomEventPublishedURI    string   `envDefault:"mem://chat.room.event.published"`
 ```
 
 ### Gateway Service (`apps/gateway/config/config.go`)
 ```go
-QueueUserEventDeliveryName string `envDefault:"user.event.delivery"`
-QueueUserEventDeliveryURI  string `envDefault:"mem://user.event.delivery"`
+QueueGatewayEventDeliveryName string   `envDefault:"gateway.event.delivery.%d"`
+QueueGatewayEventDeliveryURI  []string `envDefault:"mem://gateway.event.delivery.0"`
 CacheURI  string `envDefault:"redis://localhost:6379"`
 ```
 
@@ -231,17 +277,17 @@ CacheURI  string `envDefault:"redis://localhost:6379"`
 Both services can use in-memory queues (`mem://`) for development:
 ```bash
 # Default service
-QUEUE_USER_EVENT_DELIVERY_URI=mem://user.event.delivery
+QUEUE_DEVICE_EVENT_DELIVERY_URI=mem://device.event.delivery
 
-# Gateway service  
-QUEUE_USER_EVENT_DELIVERY_URI=mem://user.event.delivery
+# Gateway service
+QUEUE_GATEWAY_EVENT_DELIVERY_URI=mem://gateway.event.delivery.0
 ```
 
 ### Production
 Use a distributed queue system (Redis, RabbitMQ, Kafka, etc.):
 ```bash
 # Both services point to same queue infrastructure
-QUEUE_USER_EVENT_DELIVERY_URI=redis://redis:6379/delivery
+QUEUE_GATEWAY_EVENT_DELIVERY_URI=redis://redis:6379/gateway.event.delivery.0
 ```
 
 ## Summary

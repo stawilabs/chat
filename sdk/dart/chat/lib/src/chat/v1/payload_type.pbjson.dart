@@ -31,6 +31,7 @@ const PayloadType$json = {
     {'1': 'PAYLOAD_TYPE_VOTE_TALLY', '2': 25},
     {'1': 'PAYLOAD_TYPE_FORM_REQUEST', '2': 30},
     {'1': 'PAYLOAD_TYPE_FORM_SUBMISSION_RESULT', '2': 31},
+    {'1': 'PAYLOAD_TYPE_FINANCE_CARD', '2': 40},
   ],
 };
 
@@ -43,7 +44,7 @@ final $typed_data.Uint8List payloadTypeDescriptor = $convert.base64Decode(
     'REVSQVRJT04QFRIXChNQQVlMT0FEX1RZUEVfTU9USU9OEBYSFQoRUEFZTE9BRF9UWVBFX1ZPVE'
     'UQFxIdChlQQVlMT0FEX1RZUEVfTU9USU9OX1RBTExZEBgSGwoXUEFZTE9BRF9UWVBFX1ZPVEVf'
     'VEFMTFkQGRIdChlQQVlMT0FEX1RZUEVfRk9STV9SRVFVRVNUEB4SJwojUEFZTE9BRF9UWVBFX0'
-    'ZPUk1fU1VCTUlTU0lPTl9SRVNVTFQQHw==');
+    'ZPUk1fU1VCTUlTU0lPTl9SRVNVTFQQHxIdChlQQVlMT0FEX1RZUEVfRklOQU5DRV9DQVJEECg=');
 
 @$core.Deprecated('Use roomChangeActionDescriptor instead')
 const RoomChangeAction$json = {
@@ -921,6 +922,39 @@ final $typed_data.Uint8List formSubmissionResultContentDescriptor = $convert.bas
     'UhJzdWJtaXNzaW9uU25hcHNob3QSMwoIbWV0YWRhdGEYCCABKAsyFy5nb29nbGUucHJvdG9idW'
     'YuU3RydWN0UghtZXRhZGF0YQ==');
 
+@$core.Deprecated('Use financeCardContentDescriptor instead')
+const FinanceCardContent$json = {
+  '1': 'FinanceCardContent',
+  '2': [
+    {'1': 'card_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'cardId'},
+    {'1': 'group_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'groupId'},
+    {'1': 'kind', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'kind'},
+    {'1': 'title', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'title'},
+    {'1': 'body', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'body'},
+    {'1': 'data', '3': 6, '4': 3, '5': 11, '6': '.chat.v1.FinanceCardContent.DataEntry', '8': {}, '10': 'data'},
+  ],
+  '3': [FinanceCardContent_DataEntry$json],
+};
+
+@$core.Deprecated('Use financeCardContentDescriptor instead')
+const FinanceCardContent_DataEntry$json = {
+  '1': 'DataEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `FinanceCardContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List financeCardContentDescriptor = $convert.base64Decode(
+    'ChJGaW5hbmNlQ2FyZENvbnRlbnQSIgoHY2FyZF9pZBgBIAEoCUIJukgGcgQQARhAUgZjYXJkSW'
+    'QSJAoIZ3JvdXBfaWQYAiABKAlCCbpIBnIEEAEYQFIHZ3JvdXBJZBIdCgRraW5kGAMgASgJQgm6'
+    'SAZyBBABGEBSBGtpbmQSIAoFdGl0bGUYBCABKAlCCrpIB3IFEAEYyAFSBXRpdGxlEhwKBGJvZH'
+    'kYBSABKAlCCLpIBXIDGKAfUgRib2R5ElIKBGRhdGEYBiADKAsyJS5jaGF0LnYxLkZpbmFuY2VD'
+    'YXJkQ29udGVudC5EYXRhRW50cnlCF7pIFJoBERAgIgZyBBABGEAqBXIDGIAEUgRkYXRhGjcKCU'
+    'RhdGFFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+
 @$core.Deprecated('Use payloadDescriptor instead')
 const Payload$json = {
   '1': 'Payload',
@@ -940,6 +974,7 @@ const Payload$json = {
     {'1': 'vote_tally', '3': 29, '4': 1, '5': 11, '6': '.chat.v1.VoteTally', '9': 0, '10': 'voteTally'},
     {'1': 'form_request', '3': 30, '4': 1, '5': 11, '6': '.chat.v1.FormRequestContent', '9': 0, '10': 'formRequest'},
     {'1': 'form_submission_result', '3': 31, '4': 1, '5': 11, '6': '.chat.v1.FormSubmissionResultContent', '9': 0, '10': 'formSubmissionResult'},
+    {'1': 'finance_card', '3': 40, '4': 1, '5': 11, '6': '.chat.v1.FinanceCardContent', '9': 0, '10': 'financeCard'},
   ],
   '8': [
     {'1': 'data'},
@@ -963,5 +998,6 @@ final $typed_data.Uint8List payloadDescriptor = $convert.base64Decode(
     'LmNoYXQudjEuVm90ZVRhbGx5SABSCXZvdGVUYWxseRJACgxmb3JtX3JlcXVlc3QYHiABKAsyGy'
     '5jaGF0LnYxLkZvcm1SZXF1ZXN0Q29udGVudEgAUgtmb3JtUmVxdWVzdBJcChZmb3JtX3N1Ym1p'
     'c3Npb25fcmVzdWx0GB8gASgLMiQuY2hhdC52MS5Gb3JtU3VibWlzc2lvblJlc3VsdENvbnRlbn'
-    'RIAFIUZm9ybVN1Ym1pc3Npb25SZXN1bHRCBgoEZGF0YQ==');
+    'RIAFIUZm9ybVN1Ym1pc3Npb25SZXN1bHQSQAoMZmluYW5jZV9jYXJkGCggASgLMhsuY2hhdC52'
+    'MS5GaW5hbmNlQ2FyZENvbnRlbnRIAFILZmluYW5jZUNhcmRCBgoEZGF0YQ==');
 

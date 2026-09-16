@@ -1,0 +1,29 @@
+# Regenerates the vendored Go protobuf module in gen/go/protocolbuffers, which
+# go.work uses in place of the published buf.build/gen/go/stawi/chat module.
+# Run from this directory after changing a proto:
+#
+#   buf generate --template buf.gen.go.yaml
+#
+# Managed mode is disabled for this module so the generated files keep the
+# go_package options the protos declare, and the dependency overrides point at
+# the same BSR Go modules the published module uses, which keeps the vendored
+# module and the published one interchangeable.
+version: v2
+managed:
+  enabled: true
+  disable:
+    - module: buf.build/stawi/chat
+  override:
+    - file_option: go_package_prefix
+      module: buf.build/antinvestor/common
+      value: buf.build/gen/go/antinvestor/common/protocolbuffers/go
+    - file_option: go_package_prefix
+      module: buf.build/bufbuild/protovalidate
+      value: buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go
+    - file_option: go_package_prefix
+      module: buf.build/gnostic/gnostic
+      value: buf.build/gen/go/gnostic/gnostic/protocolbuffers/go
+plugins:
+  - local: protoc-gen-go
+    out: ../gen/go/protocolbuffers
+    opt: paths=source_relative

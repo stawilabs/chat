@@ -10,6 +10,18 @@ info:
     name: Apache License
     url: https://github.com/antinvestor/apis/blob/master/LICENSE
   version: v1.0.0
+x-service-namespace: service_chat
+x-service-permissions:
+  - event_view
+  - event_send
+  - room_view
+  - room_create
+  - room_update
+  - room_delete
+  - subscription_view
+  - subscription_manage
+  - proposal_view
+  - proposal_manage
 paths:
   /chat.v1.GatewayService/Stream: {}
 components:
@@ -36,8 +48,9 @@ components:
           type: string
           title: subscription_id
         ackAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: ack_at
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
         error:
           oneOf:
             - $ref: '#/components/schemas/common.v1.ErrorDetail'
@@ -66,9 +79,7 @@ components:
           title: mime_type
           description: MIME type (e.g. image/png, application/pdf)
         sizeBytes:
-          type:
-            - integer
-            - string
+          type: string
           title: size_bytes
           format: int64
           description: Size in bytes (for quota enforcement & UX)
@@ -118,9 +129,7 @@ components:
           type: string
           title: uri
         sizeBytes:
-          type:
-            - integer
-            - string
+          type: string
           title: size_bytes
           format: int64
       title: AttachmentPreview
@@ -132,15 +141,17 @@ components:
           type: string
           title: call_id
         type:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.CallContent.CallType'
           title: type
-          $ref: '#/components/schemas/chat.v1.CallContent.CallType'
         action:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.CallContent.CallAction'
           title: action
           description: |-
             OFFER, ANSWER → sdp required
              ICE_CANDIDATE → ice_candidate required
              END → no payload required
-          $ref: '#/components/schemas/chat.v1.CallContent.CallAction'
         sdp:
           type:
             - string
@@ -154,9 +165,10 @@ components:
           title: ice_candidate
           description: Optional ICE candidate (when action = ICE_CANDIDATE)
         metadata:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: metadata
           description: Optional metadata (bitrate, codecs, device hints)
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: CallContent
       additionalProperties: false
     chat.v1.CallContent.CallAction:
@@ -178,59 +190,82 @@ components:
         - CALL_TYPE_SCREEN_SHARE
     chat.v1.ClientCommand:
       type: object
-      oneOf:
+      anyOf:
         - type: object
           properties:
             ack:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.AckEvent'
               title: ack
-              $ref: '#/components/schemas/chat.v1.AckEvent'
           title: ack
-          required:
-            - ack
         - type: object
           properties:
             event:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.RoomEvent'
               title: event
-              $ref: '#/components/schemas/chat.v1.RoomEvent'
           title: event
-          required:
-            - event
         - type: object
           properties:
             presence:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.PresenceEvent'
               title: presence
               description: send a presence message to a room
-              $ref: '#/components/schemas/chat.v1.PresenceEvent'
           title: presence
-          required:
-            - presence
         - type: object
           properties:
             readMarker:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ReadMarker'
               title: read_marker
-              $ref: '#/components/schemas/chat.v1.ReadMarker'
           title: read_marker
-          required:
-            - readMarker
         - type: object
           properties:
             receipt:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ReceiptEvent'
               title: receipt
               description: receipt acknowledgement for message delivery
-              $ref: '#/components/schemas/chat.v1.ReceiptEvent'
           title: receipt
-          required:
-            - receipt
         - type: object
           properties:
             typing:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.TypingEvent'
               title: typing
-              $ref: '#/components/schemas/chat.v1.TypingEvent'
           title: typing
-          required:
-            - typing
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - ack
+              - required:
+                  - event
+              - required:
+                  - presence
+              - required:
+                  - readMarker
+              - required:
+                  - receipt
+              - required:
+                  - typing
+          - not:
+              oneOf:
+                - required:
+                    - ack
+                - required:
+                    - event
+                - required:
+                    - presence
+                - required:
+                    - readMarker
+                - required:
+                    - receipt
+                - required:
+                    - typing
       title: ClientCommand
-      additionalProperties: false
       description: |-
         ClientCommand represents durable state changes initiated by the client.
          Commands are validated, persisted, and broadcast as needed.
@@ -283,6 +318,59 @@ components:
           description: Optional key agreement context identifier
       title: EncryptedContent
       additionalProperties: false
+    chat.v1.FinanceCardContent:
+      type: object
+      properties:
+        cardId:
+          type: string
+          title: card_id
+          maxLength: 64
+          minLength: 1
+          description: |-
+            Identifier of the finance fact this card renders. Stable across
+             re-renders so a client can de-duplicate.
+        groupId:
+          type: string
+          title: group_id
+          maxLength: 64
+          minLength: 1
+          description: |-
+            Finance group the card belongs to; matches the room's
+             `stawi.group_id` metadata.
+        kind:
+          type: string
+          title: kind
+          maxLength: 64
+          minLength: 1
+          description: Card kind, e.g. "PROPOSAL", "MOTION_TALLY", "CONTRIBUTION".
+        title:
+          type: string
+          title: title
+          maxLength: 200
+          minLength: 1
+          description: Human-readable heading.
+        body:
+          type: string
+          title: body
+          maxLength: 4000
+          description: Human-readable body.
+        data:
+          type: object
+          title: data
+          maxProperties: 32
+          additionalProperties:
+            type: string
+            title: value
+            maxLength: 512
+          description: Display-only values for the renderer (identifiers, amounts, labels).
+      title: FinanceCardContent
+      additionalProperties: false
+      description: |-
+        FinanceCardContent is a finance fact rendered into a room. It is display
+         only: chat never carries authorization, so a card carries no token,
+         signature, capability or approval. Any action a card offers is completed by
+         the client as a device-signed command to the finance service, never by
+         replying in chat.
     chat.v1.FormConditionClause:
       type: object
       properties:
@@ -290,11 +378,13 @@ components:
           type: string
           title: field_key
         operator:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormConditionOperator'
           title: operator
-          $ref: '#/components/schemas/chat.v1.FormConditionOperator'
         value:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Value'
           title: value
-          $ref: '#/components/schemas/google.protobuf.Value'
         values:
           type: array
           items:
@@ -343,8 +433,9 @@ components:
           type: string
           title: key
         type:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormFieldType'
           title: type
-          $ref: '#/components/schemas/chat.v1.FormFieldType'
         label:
           type: string
           title: label
@@ -358,19 +449,22 @@ components:
           type: boolean
           title: required
         defaultValue:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Value'
           title: default_value
-          $ref: '#/components/schemas/google.protobuf.Value'
         validationRules:
           type: array
           items:
             $ref: '#/components/schemas/chat.v1.FormValidationRule'
           title: validation_rules
         visibilityCondition:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormConditionGroup'
           title: visibility_condition
-          $ref: '#/components/schemas/chat.v1.FormConditionGroup'
         editabilityCondition:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormConditionGroup'
           title: editability_condition
-          $ref: '#/components/schemas/chat.v1.FormConditionGroup'
         options:
           type: array
           items:
@@ -387,14 +481,17 @@ components:
             $ref: '#/components/schemas/chat.v1.FormSection'
           title: nested_sections
         formatting:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormFormattingHint'
           title: formatting
-          $ref: '#/components/schemas/chat.v1.FormFormattingHint'
         uiHints:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: ui_hints
-          $ref: '#/components/schemas/google.protobuf.Struct'
         review:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormReviewHint'
           title: review
-          $ref: '#/components/schemas/chat.v1.FormReviewHint'
         visibleToRoles:
           type: array
           items:
@@ -485,8 +582,9 @@ components:
           type: boolean
           title: disabled
         metadata:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: metadata
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: FormOption
       additionalProperties: false
     chat.v1.FormPermissions:
@@ -529,32 +627,40 @@ components:
           type: string
           title: description
         state:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormMessageState'
           title: state
-          $ref: '#/components/schemas/chat.v1.FormMessageState'
         reviewRequired:
           type: boolean
           title: review_required
         schema:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormSchema'
           title: schema
-          $ref: '#/components/schemas/chat.v1.FormSchema'
         initialValues:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: initial_values
-          $ref: '#/components/schemas/google.protobuf.Struct'
         serverDraftValues:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: server_draft_values
-          $ref: '#/components/schemas/google.protobuf.Struct'
         finalSubmissionSnapshot:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormSubmissionSnapshot'
           title: final_submission_snapshot
-          $ref: '#/components/schemas/chat.v1.FormSubmissionSnapshot'
         permissions:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormPermissions'
           title: permissions
-          $ref: '#/components/schemas/chat.v1.FormPermissions'
         expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: expires_at
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
         workflowContext:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: workflow_context
-          $ref: '#/components/schemas/google.protobuf.Struct'
         currentWorkflowState:
           type: string
           title: current_workflow_state
@@ -645,11 +751,13 @@ components:
             $ref: '#/components/schemas/chat.v1.FormStep'
           title: steps
         workflowMetadata:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: workflow_metadata
-          $ref: '#/components/schemas/google.protobuf.Struct'
         uiHints:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: ui_hints
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: FormSchema
       additionalProperties: false
     chat.v1.FormSection:
@@ -670,8 +778,9 @@ components:
             $ref: '#/components/schemas/chat.v1.FormField'
           title: fields
         uiHints:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: ui_hints
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: FormSection
       additionalProperties: false
     chat.v1.FormStep:
@@ -692,11 +801,13 @@ components:
             $ref: '#/components/schemas/chat.v1.FormSection'
           title: sections
         uiHints:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: ui_hints
-          $ref: '#/components/schemas/google.protobuf.Struct'
         visibilityCondition:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormConditionGroup'
           title: visibility_condition
-          $ref: '#/components/schemas/chat.v1.FormConditionGroup'
       title: FormStep
       additionalProperties: false
     chat.v1.FormSubmissionResultContent:
@@ -716,17 +827,20 @@ components:
           type: string
           title: source_event_id
         state:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormMessageState'
           title: state
-          $ref: '#/components/schemas/chat.v1.FormMessageState'
         reviewConfirmed:
           type: boolean
           title: review_confirmed
         submissionSnapshot:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormSubmissionSnapshot'
           title: submission_snapshot
-          $ref: '#/components/schemas/chat.v1.FormSubmissionSnapshot'
         metadata:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: metadata
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: FormSubmissionResultContent
       additionalProperties: false
     chat.v1.FormSubmissionSnapshot:
@@ -743,14 +857,16 @@ components:
           title: schema_version
           format: int32
         submittedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: submitted_at
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
         submittedBySubscriptionId:
           type: string
           title: submitted_by_subscription_id
         answers:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: answers
-          $ref: '#/components/schemas/google.protobuf.Struct'
         formattedSections:
           type: array
           items:
@@ -760,8 +876,9 @@ components:
           type: string
           title: submission_reference
         status:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.FormMessageState'
           title: status
-          $ref: '#/components/schemas/chat.v1.FormMessageState'
         backendMessage:
           type: string
           title: backend_message
@@ -769,93 +886,114 @@ components:
           type: string
           title: workflow_message
         metadata:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: metadata
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: FormSubmissionSnapshot
       additionalProperties: false
     chat.v1.FormValidationRule:
       type: object
-      allOf:
-        - properties:
-            code:
-              type: string
-              title: code
-            message:
-              type: string
-              title: message
-        - oneOf:
-            - type: object
-              properties:
-                maxItems:
-                  type: integer
-                  title: max_items
-                  format: int32
+      anyOf:
+        - type: object
+          properties:
+            maxItems:
+              type: integer
               title: max_items
-              required:
-                - maxItems
-            - type: object
-              properties:
-                maxLength:
-                  type: integer
-                  title: max_length
-                  format: int32
+              format: int32
+          title: max_items
+        - type: object
+          properties:
+            maxLength:
+              type: integer
               title: max_length
-              required:
-                - maxLength
-            - type: object
-              properties:
-                maxValue:
-                  type: number
-                  title: max_value
-                  format: double
+              format: int32
+          title: max_length
+        - type: object
+          properties:
+            maxValue:
+              type: number
               title: max_value
-              required:
-                - maxValue
-            - type: object
-              properties:
-                minItems:
-                  type: integer
-                  title: min_items
-                  format: int32
+              format: double
+          title: max_value
+        - type: object
+          properties:
+            minItems:
+              type: integer
               title: min_items
-              required:
-                - minItems
-            - type: object
-              properties:
-                minLength:
-                  type: integer
-                  title: min_length
-                  format: int32
+              format: int32
+          title: min_items
+        - type: object
+          properties:
+            minLength:
+              type: integer
               title: min_length
-              required:
-                - minLength
-            - type: object
-              properties:
-                minValue:
-                  type: number
-                  title: min_value
-                  format: double
+              format: int32
+          title: min_length
+        - type: object
+          properties:
+            minValue:
+              type: number
               title: min_value
-              required:
-                - minValue
-            - type: object
-              properties:
-                pattern:
-                  type: string
-                  title: pattern
+              format: double
+          title: min_value
+        - type: object
+          properties:
+            pattern:
+              type: string
               title: pattern
-              required:
-                - pattern
-            - type: object
-              properties:
-                required:
-                  type: boolean
-                  title: required
+          title: pattern
+        - type: object
+          properties:
+            required:
+              type: boolean
               title: required
-              required:
-                - required
+          title: required
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - maxItems
+              - required:
+                  - maxLength
+              - required:
+                  - maxValue
+              - required:
+                  - minItems
+              - required:
+                  - minLength
+              - required:
+                  - minValue
+              - required:
+                  - pattern
+              - required:
+                  - required
+          - not:
+              oneOf:
+                - required:
+                    - maxItems
+                - required:
+                    - maxLength
+                - required:
+                    - maxValue
+                - required:
+                    - minItems
+                - required:
+                    - minLength
+                - required:
+                    - minValue
+                - required:
+                    - pattern
+                - required:
+                    - required
+      properties:
+        code:
+          type: string
+          title: code
+        message:
+          type: string
+          title: message
       title: FormValidationRule
-      additionalProperties: false
     chat.v1.ModerationContent:
       type: object
       properties:
@@ -886,11 +1024,12 @@ components:
             Subscription IDs of entities targeted by the action.
              Must not contain duplicates and must not include the actor.
         metadata:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: metadata
           description: |-
             Optional structured metadata associated with the action.
              Use only for non-indexed, auxiliary data.
-          $ref: '#/components/schemas/google.protobuf.Struct'
         language:
           type:
             - string
@@ -926,12 +1065,13 @@ components:
           title: eligible_votes
           description: Snapshot of eligible voters at creation time (optional, cached)
         passingRule:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.PassingRule'
           title: passing_rule
           description: |-
             Number of votes required to pass
              Can represent absolute count or percentage thresholds
              Passing rule
-          $ref: '#/components/schemas/chat.v1.PassingRule'
         choices:
           type: array
           items:
@@ -940,7 +1080,6 @@ components:
           description: Available choices (YES / NO / ABSTAIN, etc)
         closesAt:
           type:
-            - integer
             - string
             - "null"
           title: closes_at
@@ -986,172 +1125,239 @@ components:
       additionalProperties: false
     chat.v1.PassingRule:
       type: object
-      allOf:
-        - properties:
-            passingChoiceId:
-              type: string
-              title: passing_choice_id
-              description: Which choice constitutes "passing" (usually YES)
-        - oneOf:
-            - type: object
-              properties:
-                absolute:
-                  type: integer
-                  title: absolute
-                  description: Absolute number of votes required
+      anyOf:
+        - type: object
+          properties:
+            absolute:
+              type: integer
               title: absolute
-              required:
-                - absolute
-            - type: object
-              properties:
-                percentage:
-                  type: integer
-                  title: percentage
-                  description: Percentage required to pass (0–100)
+              description: Absolute number of votes required
+          title: absolute
+        - type: object
+          properties:
+            percentage:
+              type: integer
               title: percentage
-              required:
-                - percentage
+              description: Percentage required to pass (0–100)
+          title: percentage
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - absolute
+              - required:
+                  - percentage
+          - not:
+              oneOf:
+                - required:
+                    - absolute
+                - required:
+                    - percentage
+      properties:
+        passingChoiceId:
+          type: string
+          title: passing_choice_id
+          description: Which choice constitutes "passing" (usually YES)
       title: PassingRule
-      additionalProperties: false
     chat.v1.Payload:
       type: object
-      allOf:
-        - properties:
-            type:
-              title: type
-              description: |-
-                The `type` MUST correspond to the populated payload.
-                 Servers MUST reject mismatches.
-              $ref: '#/components/schemas/chat.v1.PayloadType'
-        - oneOf:
-            - type: object
-              properties:
-                attachment:
-                  title: attachment
-                  description: type = PAYLOAD_TYPE_ATTACHMENT
-                  $ref: '#/components/schemas/chat.v1.AttachmentContent'
+      anyOf:
+        - type: object
+          properties:
+            attachment:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.AttachmentContent'
               title: attachment
-              required:
-                - attachment
-            - type: object
-              properties:
-                call:
-                  title: call
-                  description: type = PAYLOAD_TYPE_CALL
-                  $ref: '#/components/schemas/chat.v1.CallContent'
+              description: type = PAYLOAD_TYPE_ATTACHMENT
+          title: attachment
+        - type: object
+          properties:
+            call:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.CallContent'
               title: call
-              required:
-                - call
-            - type: object
-              properties:
-                default:
-                  title: default
-                  description: type = PAYLOAD_TYPE_UNSPECIFIED
-                  $ref: '#/components/schemas/google.protobuf.Struct'
+              description: type = PAYLOAD_TYPE_CALL
+          title: call
+        - type: object
+          properties:
+            default:
+              allOf:
+                - $ref: '#/components/schemas/google.protobuf.Struct'
               title: default
-              required:
-                - default
-            - type: object
-              properties:
-                encrypted:
-                  title: encrypted
-                  description: type = PAYLOAD_TYPE_ENCRYPTED
-                  $ref: '#/components/schemas/chat.v1.EncryptedContent'
+              description: type = PAYLOAD_TYPE_UNSPECIFIED
+          title: default
+        - type: object
+          properties:
+            encrypted:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.EncryptedContent'
               title: encrypted
-              required:
-                - encrypted
-            - type: object
-              properties:
-                formRequest:
-                  title: form_request
-                  description: type = PAYLOAD_TYPE_FORM_REQUEST
-                  $ref: '#/components/schemas/chat.v1.FormRequestContent'
+              description: type = PAYLOAD_TYPE_ENCRYPTED
+          title: encrypted
+        - type: object
+          properties:
+            financeCard:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.FinanceCardContent'
+              title: finance_card
+              description: type = PAYLOAD_TYPE_FINANCE_CARD
+          title: finance_card
+        - type: object
+          properties:
+            formRequest:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.FormRequestContent'
               title: form_request
-              required:
-                - formRequest
-            - type: object
-              properties:
-                formSubmissionResult:
-                  title: form_submission_result
-                  description: type = PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
-                  $ref: '#/components/schemas/chat.v1.FormSubmissionResultContent'
+              description: type = PAYLOAD_TYPE_FORM_REQUEST
+          title: form_request
+        - type: object
+          properties:
+            formSubmissionResult:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.FormSubmissionResultContent'
               title: form_submission_result
-              required:
-                - formSubmissionResult
-            - type: object
-              properties:
-                moderation:
-                  title: moderation
-                  description: type = PAYLOAD_TYPE_MODERATION
-                  $ref: '#/components/schemas/chat.v1.ModerationContent'
+              description: type = PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
+          title: form_submission_result
+        - type: object
+          properties:
+            moderation:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ModerationContent'
               title: moderation
-              required:
-                - moderation
-            - type: object
-              properties:
-                motion:
-                  title: motion
-                  description: type = PAYLOAD_TYPE_MOTION
-                  $ref: '#/components/schemas/chat.v1.MotionContent'
+              description: type = PAYLOAD_TYPE_MODERATION
+          title: moderation
+        - type: object
+          properties:
+            motion:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.MotionContent'
               title: motion
-              required:
-                - motion
-            - type: object
-              properties:
-                motionTally:
-                  title: motion_tally
-                  description: type = PAYLOAD_TYPE_MOTION_TALLY
-                  $ref: '#/components/schemas/chat.v1.MotionTally'
+              description: type = PAYLOAD_TYPE_MOTION
+          title: motion
+        - type: object
+          properties:
+            motionTally:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.MotionTally'
               title: motion_tally
-              required:
-                - motionTally
-            - type: object
-              properties:
-                reaction:
-                  title: reaction
-                  description: type = PAYLOAD_TYPE_REACTION
-                  $ref: '#/components/schemas/chat.v1.ReactionContent'
+              description: type = PAYLOAD_TYPE_MOTION_TALLY
+          title: motion_tally
+        - type: object
+          properties:
+            reaction:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ReactionContent'
               title: reaction
-              required:
-                - reaction
-            - type: object
-              properties:
-                roomChange:
-                  title: room_change
-                  description: type = PAYLOAD_TYPE_ROOM_CHANGE
-                  $ref: '#/components/schemas/chat.v1.RoomChangeContent'
+              description: type = PAYLOAD_TYPE_REACTION
+          title: reaction
+        - type: object
+          properties:
+            roomChange:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.RoomChangeContent'
               title: room_change
-              required:
-                - roomChange
-            - type: object
-              properties:
-                text:
-                  title: text
-                  description: type = PAYLOAD_TYPE_TEXT
-                  $ref: '#/components/schemas/chat.v1.TextContent'
+              description: type = PAYLOAD_TYPE_ROOM_CHANGE
+          title: room_change
+        - type: object
+          properties:
+            text:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.TextContent'
               title: text
-              required:
-                - text
-            - type: object
-              properties:
-                vote:
-                  title: vote
-                  description: type = PAYLOAD_TYPE_VOTE
-                  $ref: '#/components/schemas/chat.v1.VoteCast'
+              description: type = PAYLOAD_TYPE_TEXT
+          title: text
+        - type: object
+          properties:
+            vote:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.VoteCast'
               title: vote
-              required:
-                - vote
-            - type: object
-              properties:
-                voteTally:
-                  title: vote_tally
-                  description: type = PAYLOAD_TYPE_VOTE_TALLY
-                  $ref: '#/components/schemas/chat.v1.VoteTally'
+              description: type = PAYLOAD_TYPE_VOTE
+          title: vote
+        - type: object
+          properties:
+            voteTally:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.VoteTally'
               title: vote_tally
-              required:
-                - voteTally
+              description: type = PAYLOAD_TYPE_VOTE_TALLY
+          title: vote_tally
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - attachment
+              - required:
+                  - call
+              - required:
+                  - default
+              - required:
+                  - encrypted
+              - required:
+                  - financeCard
+              - required:
+                  - formRequest
+              - required:
+                  - formSubmissionResult
+              - required:
+                  - moderation
+              - required:
+                  - motion
+              - required:
+                  - motionTally
+              - required:
+                  - reaction
+              - required:
+                  - roomChange
+              - required:
+                  - text
+              - required:
+                  - vote
+              - required:
+                  - voteTally
+          - not:
+              oneOf:
+                - required:
+                    - attachment
+                - required:
+                    - call
+                - required:
+                    - default
+                - required:
+                    - encrypted
+                - required:
+                    - financeCard
+                - required:
+                    - formRequest
+                - required:
+                    - formSubmissionResult
+                - required:
+                    - moderation
+                - required:
+                    - motion
+                - required:
+                    - motionTally
+                - required:
+                    - reaction
+                - required:
+                    - roomChange
+                - required:
+                    - text
+                - required:
+                    - vote
+                - required:
+                    - voteTally
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.PayloadType'
+          title: type
+          description: |-
+            The `type` MUST correspond to the populated payload.
+             Servers MUST reject mismatches.
       title: Payload
-      additionalProperties: false
     chat.v1.PayloadType:
       type: string
       title: PayloadType
@@ -1170,22 +1376,26 @@ components:
         - PAYLOAD_TYPE_VOTE_TALLY
         - PAYLOAD_TYPE_FORM_REQUEST
         - PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
+        - PAYLOAD_TYPE_FINANCE_CARD
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
     chat.v1.PresenceEvent:
       type: object
       properties:
         source:
+          allOf:
+            - $ref: '#/components/schemas/common.v1.ContactLink'
           title: source
-          $ref: '#/components/schemas/common.v1.ContactLink'
         status:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.PresenceStatus'
           title: status
-          $ref: '#/components/schemas/chat.v1.PresenceStatus'
         statusMsg:
           type: string
           title: status_msg
         lastActive:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: last_active
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: PresenceEvent
       additionalProperties: false
       description: Presence event affecting a user (and visible to rooms the user is a member of)
@@ -1284,8 +1494,9 @@ components:
       type: object
       properties:
         action:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.RoomChangeAction'
           title: action
-          $ref: '#/components/schemas/chat.v1.RoomChangeAction'
         actorSubscriptionId:
           type: string
           title: actor_subscription_id
@@ -1299,9 +1510,10 @@ components:
           title: body
           description: Human-readable summary (server-generated, for display)
         details:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: details
           description: Optional structured detail (depends on action)
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: RoomChangeContent
       additionalProperties: false
     chat.v1.RoomEvent:
@@ -1329,11 +1541,13 @@ components:
           title: subscription_id
           description: profile_id or service/bot id
         type:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.RoomEventType'
           title: type
-          $ref: '#/components/schemas/chat.v1.RoomEventType'
         sentAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: sent_at
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
         edited:
           type: boolean
           title: edited
@@ -1350,8 +1564,9 @@ components:
           pattern: '[0-9a-z_-]{3,40}'
           description: if this message is a followup event on an original message
         payload:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.Payload'
           title: payload
-          $ref: '#/components/schemas/chat.v1.Payload'
       title: RoomEvent
       additionalProperties: false
       description: Unified message (user / bot / system / signalling)
@@ -1386,8 +1601,9 @@ components:
             type: string
             title: value
         clientTime:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: client_time
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: StreamHello
       additionalProperties: false
       description: |-
@@ -1396,113 +1612,136 @@ components:
          capabilities: list of capabilities supported by the client.
          StreamHello MUST be the first message sent by the client.
          Servers MUST reject any other message types before StreamHello.
-    chat.v1.StreamHello.CapabilitiesEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          type: string
-          title: value
-      title: CapabilitiesEntry
-      additionalProperties: false
     chat.v1.StreamRequest:
       type: object
-      oneOf:
+      anyOf:
         - type: object
           properties:
             command:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ClientCommand'
               title: command
-              $ref: '#/components/schemas/chat.v1.ClientCommand'
           title: command
-          required:
-            - command
         - type: object
           properties:
             hello:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StreamHello'
               title: hello
-              $ref: '#/components/schemas/chat.v1.StreamHello'
           title: hello
-          required:
-            - hello
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - command
+              - required:
+                  - hello
+          - not:
+              oneOf:
+                - required:
+                    - command
+                - required:
+                    - hello
       title: StreamRequest
-      additionalProperties: false
       description: Client message over Connect stream. After initial connect frame, client sends acks/commands.
     chat.v1.StreamResponse:
       type: object
-      allOf:
-        - properties:
-            id:
-              type: string
-              title: id
-              maxLength: 40
-              minLength: 3
-              pattern: '[0-9a-z_-]{3,40}'
-              description: |-
-                NOTE:
-                 Stream IDs are XIDs and MUST be lexicographically sortable by creation time.
-                 Clients MUST NOT assume any other ordering mechanism.
-            timestamp:
-              title: timestamp
-              $ref: '#/components/schemas/google.protobuf.Timestamp'
-        - oneOf:
-            - type: object
-              properties:
-                error:
-                  title: error
-                  description: |-
-                    error:
-                     - If present, represents a server-side error related to the stream or event.
-                     - MAY be recoverable (client should continue stream) or fatal.
-                     - Fatal errors MUST be followed by stream termination.
-                  $ref: '#/components/schemas/common.v1.ErrorDetail'
+      anyOf:
+        - type: object
+          properties:
+            error:
+              allOf:
+                - $ref: '#/components/schemas/common.v1.ErrorDetail'
               title: error
-              required:
-                - error
-            - type: object
-              properties:
-                message:
-                  title: message
-                  $ref: '#/components/schemas/chat.v1.RoomEvent'
+              description: |-
+                error:
+                 - If present, represents a server-side error related to the stream or event.
+                 - MAY be recoverable (client should continue stream) or fatal.
+                 - Fatal errors MUST be followed by stream termination.
+          title: error
+        - type: object
+          properties:
+            message:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.RoomEvent'
               title: message
-              required:
-                - message
-            - type: object
-              properties:
-                presenceEvent:
-                  title: presence_event
-                  description: user presence change affecting the room
-                  $ref: '#/components/schemas/chat.v1.PresenceEvent'
+          title: message
+        - type: object
+          properties:
+            presenceEvent:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.PresenceEvent'
               title: presence_event
-              required:
-                - presenceEvent
-            - type: object
-              properties:
-                readEvent:
-                  title: read_event
-                  $ref: '#/components/schemas/chat.v1.ReadMarker'
+              description: user presence change affecting the room
+          title: presence_event
+        - type: object
+          properties:
+            readEvent:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ReadMarker'
               title: read_event
-              required:
-                - readEvent
-            - type: object
-              properties:
-                receiptEvent:
-                  title: receipt_event
-                  $ref: '#/components/schemas/chat.v1.ReceiptEvent'
+          title: read_event
+        - type: object
+          properties:
+            receiptEvent:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.ReceiptEvent'
               title: receipt_event
-              required:
-                - receiptEvent
-            - type: object
-              properties:
-                typingEvent:
-                  title: typing_event
-                  $ref: '#/components/schemas/chat.v1.TypingEvent'
+          title: receipt_event
+        - type: object
+          properties:
+            typingEvent:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.TypingEvent'
               title: typing_event
-              required:
-                - typingEvent
+          title: typing_event
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - error
+              - required:
+                  - message
+              - required:
+                  - presenceEvent
+              - required:
+                  - readEvent
+              - required:
+                  - receiptEvent
+              - required:
+                  - typingEvent
+          - not:
+              oneOf:
+                - required:
+                    - error
+                - required:
+                    - message
+                - required:
+                    - presenceEvent
+                - required:
+                    - readEvent
+                - required:
+                    - receiptEvent
+                - required:
+                    - typingEvent
+      properties:
+        id:
+          type: string
+          title: id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: |-
+            NOTE:
+             Stream IDs are XIDs and MUST be lexicographically sortable by creation time.
+             Clients MUST NOT assume any other ordering mechanism.
+        timestamp:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: timestamp
       title: StreamResponse
-      additionalProperties: false
       description: |-
         Server -> Client event payload. All events in a room are delivered over Connect stream.
          event_id: globally unique id (opaque string) assigned by server, strictly monotonically increasing per room.
@@ -1511,8 +1750,9 @@ components:
       type: object
       properties:
         type:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.TextAnnotation.Type'
           title: type
-          $ref: '#/components/schemas/chat.v1.TextAnnotation.Type'
         offset:
           type: integer
           title: offset
@@ -1585,8 +1825,9 @@ components:
           type: boolean
           title: typing
         since:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: since
-          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: TypingEvent
       additionalProperties: false
       description: Typing indicator
@@ -1681,9 +1922,10 @@ components:
           pattern: '[0-9a-z_-]{3,250}'
           description: Additional contact details (e.g., email, phone, handle)
         extras:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Struct'
           title: extras
           description: Extended metadata for the contact link
-          $ref: '#/components/schemas/google.protobuf.Struct'
       title: ContactLink
       additionalProperties: false
       description: |-
@@ -1714,26 +1956,17 @@ components:
       description: |-
         Standard error codes used by API responses.
          Use gRPC status codes; the application-level ErrorDetail below may carry more.
-    common.v1.ErrorDetail.MetaEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          type: string
-          title: value
-      title: MetaEntry
-      additionalProperties: false
     connect-protocol-version:
       type: number
-      title: Connect-Protocol-Version
-      enum:
+      examples:
         - 1
+      title: Connect-Protocol-Version
       description: Define the version of the Connect protocol
       const: 1
     connect-timeout-header:
       type: number
+      examples:
+        - 1000
       title: Connect-Timeout-Ms
       description: Define the timeout, in ms
     connect.error:
@@ -1777,168 +2010,50 @@ components:
       properties:
         type:
           type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
         value:
           type: string
           format: binary
           description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
         debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
+          type: object
           title: Debug
+          additionalProperties: true
           description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.ListValue:
-      type: object
-      properties:
-        values:
-          type: array
-          items:
-            $ref: '#/components/schemas/google.protobuf.Value'
-          title: values
-          description: Repeated field of dynamically typed values.
-      title: ListValue
-      additionalProperties: false
-      description: |-
-        `ListValue` is a wrapper around a repeated field of values.
-
-         The JSON representation for `ListValue` is JSON array.
+      type: array
+      items:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: A JSON array whose elements may be any JSON value.
     google.protobuf.NullValue:
       type: string
       title: NullValue
       enum:
         - NULL_VALUE
       description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
+        Represents a JSON `null`.
 
-         The JSON representation for `NullValue` is JSON `null`.
+         `NullValue` is a sentinel, using an enum with only one value to represent
+         the null value for the `Value` type union.
+
+         A field of type `NullValue` with any value other than `0` is considered
+         invalid. Most ProtoJSON serializers will emit a Value with a `null_value` set
+         as a JSON `null` regardless of the integer value, and so will round trip to
+         a `0` value.
     google.protobuf.Struct:
       type: object
       additionalProperties:
         $ref: '#/components/schemas/google.protobuf.Value'
-      description: |-
-        `Struct` represents a structured data value, consisting of fields
-         which map to dynamically typed values. In some languages, `Struct`
-         might be supported by a native representation. For example, in
-         scripting languages like JS a struct is represented as an
-         object. The details of that representation are described together
-         with the proto support for the language.
-
-         The JSON representation for `Struct` is JSON object.
-    google.protobuf.Struct.FieldsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/google.protobuf.Value'
-      title: FieldsEntry
-      additionalProperties: false
+      description: A JSON object whose property values may be any JSON value.
     google.protobuf.Timestamp:
       type: string
       examples:
         - "2023-01-15T01:30:15.01Z"
         - "2024-12-25T12:00:00Z"
       format: date-time
-      description: |-
-        A Timestamp represents a point in time independent of any time zone or local
-         calendar, encoded as a count of seconds and fractions of seconds at
-         nanosecond resolution. The count is relative to an epoch at UTC midnight on
-         January 1, 1970, in the proleptic Gregorian calendar which extends the
-         Gregorian calendar backwards to year one.
-
-         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
-         second table is needed for interpretation, using a [24-hour linear
-         smear](https://developers.google.com/time/smear).
-
-         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
-         restricting to that range, we ensure that we can convert to and from [RFC
-         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
-
-         # Examples
-
-         Example 1: Compute Timestamp from POSIX `time()`.
-
-             Timestamp timestamp;
-             timestamp.set_seconds(time(NULL));
-             timestamp.set_nanos(0);
-
-         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
-
-             struct timeval tv;
-             gettimeofday(&tv, NULL);
-
-             Timestamp timestamp;
-             timestamp.set_seconds(tv.tv_sec);
-             timestamp.set_nanos(tv.tv_usec * 1000);
-
-         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
-
-             FILETIME ft;
-             GetSystemTimeAsFileTime(&ft);
-             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-
-             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
-             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
-             Timestamp timestamp;
-             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
-             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
-
-         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
-
-             long millis = System.currentTimeMillis();
-
-             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
-                 .setNanos((int) ((millis % 1000) * 1000000)).build();
-
-         Example 5: Compute Timestamp from Java `Instant.now()`.
-
-             Instant now = Instant.now();
-
-             Timestamp timestamp =
-                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
-                     .setNanos(now.getNano()).build();
-
-         Example 6: Compute Timestamp from current time in Python.
-
-             timestamp = Timestamp()
-             timestamp.GetCurrentTime()
-
-         # JSON Mapping
-
-         In JSON format, the Timestamp type is encoded as a string in the
-         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
-         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
-         where {year} is always expressed using four digits while {month}, {day},
-         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
-         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
-         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
-         is required. A proto3 JSON serializer should always use UTC (as indicated by
-         "Z") when printing the Timestamp type and a proto3 JSON parser should be
-         able to accept both UTC and other timezones (as indicated by an offset).
-
-         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
-         01:30 UTC on January 15, 2017.
-
-         In JavaScript, one can convert a Date object to this format using the
-         standard
-         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
-         method. In Python, a standard `datetime.datetime` object can be converted
-         to this format using
-         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
-         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
-         the Joda Time's [`ISODateTimeFormat.dateTime()`](
-         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
-         ) to obtain a formatter capable of generating timestamps in this format.
+      description: A point in time in RFC 3339 format, with up to nanosecond precision. Output uses UTC (`Z`); input may use an offset from UTC.
     google.protobuf.Value:
       oneOf:
         - type: "null"
@@ -1948,13 +2063,7 @@ components:
         - type: array
         - type: object
           additionalProperties: true
-      description: |-
-        `Value` represents a dynamically typed value which can be either
-         null, a number, a string, a boolean, a recursive struct value, or a
-         list of values. A producer of value is expected to set one of these
-         variants. Absence of any variant indicates an error.
-
-         The JSON representation for `Value` is JSON value.
+      description: 'Any JSON value: `null`, number, string, boolean, array, or object.'
   securitySchemes:
     BearerAuth:
       type: http

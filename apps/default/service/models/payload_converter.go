@@ -17,6 +17,8 @@ const (
 	PayloadTypeField      = "p_type"
 	ContentField          = "content"
 	maxPayloadTypeOrdinal = int64(2147483647)
+	// nullJSONContent is the JSON encoding of an absent typed payload.
+	nullJSONContent = "null"
 )
 
 // PayloadConverter handles conversion between protobuf payloads and JSON maps.
@@ -185,6 +187,8 @@ func (c *PayloadConverter) FromProto(protoEvent *chatv1.Payload) (data.JSONMap, 
 		payload = protoEvent.GetFormRequest()
 	case chatv1.PayloadType_PAYLOAD_TYPE_FORM_SUBMISSION_RESULT:
 		payload = protoEvent.GetFormSubmissionResult()
+	case chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD:
+		payload = protoEvent.GetFinanceCard()
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		payload = protoEvent.GetDefault()
 	default: // Covers unknown types
@@ -202,7 +206,14 @@ func (c *PayloadConverter) FromProto(protoEvent *chatv1.Payload) (data.JSONMap, 
 			return nil, err
 		}
 
-		content[ContentField] = jsonContent
+		// A payload type this build does not know carries no matching oneof
+		// member, so the typed payload marshals to "null". Storing that would
+		// make the event undecodable on the way out; leaving the content unset
+		// keeps an unknown type deliverable (clients ignore what they cannot
+		// render) instead of failing the send.
+		if string(jsonContent) != nullJSONContent {
+			content[ContentField] = jsonContent
+		}
 	}
 
 	// Return structured result
@@ -237,6 +248,8 @@ func inferPayloadType(protoEvent *chatv1.Payload) chatv1.PayloadType {
 		return chatv1.PayloadType_PAYLOAD_TYPE_FORM_REQUEST
 	case *chatv1.Payload_FormSubmissionResult:
 		return chatv1.PayloadType_PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
+	case *chatv1.Payload_FinanceCard:
+		return chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD
 	case *chatv1.Payload_Default:
 		return chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED
 	default:
@@ -349,6 +362,13 @@ func (c *PayloadConverter) setTypedContent(
 		protoEvent.Data = &chatv1.Payload_FormSubmissionResult{
 			FormSubmissionResult: &payload,
 		}
+		return nil
+	case chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD:
+		var payload chatv1.FinanceCardContent
+		if err := json.Unmarshal(content, &payload); err != nil {
+			return err
+		}
+		protoEvent.Data = &chatv1.Payload_FinanceCard{FinanceCard: &payload}
 		return nil
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		var payload structpb.Struct

@@ -40,6 +40,7 @@ enum PayloadType {
   PAYLOAD_TYPE_VOTE_TALLY = 25;
   PAYLOAD_TYPE_FORM_REQUEST = 30;
   PAYLOAD_TYPE_FORM_SUBMISSION_RESULT = 31;
+  PAYLOAD_TYPE_FINANCE_CARD = 40;
 }
 
 enum RoomChangeAction {
@@ -555,6 +556,56 @@ message FormSubmissionResultContent {
   google.protobuf.Struct metadata = 8;
 }
 
+// FinanceCardContent is a finance fact rendered into a room. It is display
+// only: chat never carries authorization, so a card carries no token,
+// signature, capability or approval. Any action a card offers is completed by
+// the client as a device-signed command to the finance service, never by
+// replying in chat.
+message FinanceCardContent {
+  // Identifier of the finance fact this card renders. Stable across
+  // re-renders so a client can de-duplicate.
+  string card_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Finance group the card belongs to; matches the room's
+  // `stawi.group_id` metadata.
+  string group_id = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Card kind, e.g. "PROPOSAL", "MOTION_TALLY", "CONTRIBUTION".
+  string kind = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Human-readable heading.
+  string title = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 200
+  ];
+
+  // Human-readable body.
+  string body = 5 [(buf.validate.field).string.max_len = 4000];
+
+  // Display-only values for the renderer (identifiers, amounts, labels).
+  map<string, string> data = 6 [
+    (buf.validate.field).map.max_pairs = 32,
+    (buf.validate.field).map.keys = {
+      string: {
+        min_len: 1
+        max_len: 64
+      }
+    },
+    (buf.validate.field).map.values = {
+      string: {max_len: 512}
+    }
+  ];
+}
+
 message Payload {
   // The `type` MUST correspond to the populated payload.
   // Servers MUST reject mismatches.
@@ -601,5 +652,8 @@ message Payload {
 
     // type = PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
     FormSubmissionResultContent form_submission_result = 31;
+
+    // type = PAYLOAD_TYPE_FINANCE_CARD
+    FinanceCardContent finance_card = 40;
   }
 }

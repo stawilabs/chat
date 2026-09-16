@@ -156,6 +156,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> GatewaySer
   '.chat.v1.FormReviewItem': $7.FormReviewItem$json,
   '.chat.v1.FormPermissions': $7.FormPermissions$json,
   '.chat.v1.FormSubmissionResultContent': $7.FormSubmissionResultContent$json,
+  '.chat.v1.FinanceCardContent': $7.FinanceCardContent$json,
+  '.chat.v1.FinanceCardContent.DataEntry': $7.FinanceCardContent_DataEntry$json,
   '.chat.v1.StreamResponse': StreamResponse$json,
 };
 

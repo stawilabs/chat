@@ -986,6 +986,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> ChatServic
   '.chat.v1.FormReviewItem': $7.FormReviewItem$json,
   '.chat.v1.FormPermissions': $7.FormPermissions$json,
   '.chat.v1.FormSubmissionResultContent': $7.FormSubmissionResultContent$json,
+  '.chat.v1.FinanceCardContent': $7.FinanceCardContent$json,
+  '.chat.v1.FinanceCardContent.DataEntry': $7.FinanceCardContent_DataEntry$json,
   '.chat.v1.SendEventResponse': SendEventResponse$json,
   '.chat.v1.AckEvent': $9.AckEvent$json,
   '.common.v1.ErrorDetail': $8.ErrorDetail$json,

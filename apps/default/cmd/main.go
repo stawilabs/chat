@@ -23,6 +23,7 @@ import (
 	"github.com/pitabwire/frame/v2/datastore"
 	"github.com/pitabwire/frame/v2/datastore/pool"
 	frevents "github.com/pitabwire/frame/v2/events"
+	"github.com/pitabwire/frame/v2/queue"
 	"github.com/pitabwire/frame/v2/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/v2/security/interceptors/connect"
 	"github.com/pitabwire/frame/v2/workerpool"
@@ -117,10 +118,11 @@ func runService(ctx context.Context) error {
 	serviceOptions := []frame.Option{
 		// Outbox relay: sole publisher draining room_outbox, run as a frame
 		// background consumer so its lifecycle is owned by the service.
-		outboxRelayOption(ctx, dbPool, workMan, eventsMan),
+		outboxRelayOption(ctx, &cfg, dbPool, workMan, queueMan, eventsMan),
 		frame.WithHTTPHandler(connectHandler),
 		frame.WithPermissionRegistration(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
+		frame.WithRegisterPublisher(cfg.QueueRoomEventPublishedName, cfg.QueueRoomEventPublishedURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI,
 			queues.NewDeadLetterConsumer(&cfg, deadLetterRepo),
@@ -176,15 +178,26 @@ func gatewayPublisherOptions(cfg aconfig.ChatConfig) []frame.Option {
 
 // outboxRelayOption builds the frame background-consumer option that runs the
 // transactional-outbox relay (sole publisher draining room_outbox) for the
-// lifetime of the service.
+// lifetime of the service. The relay also publishes the durable
+// chat.room.event.published fact for rooms that opted in through room
+// metadata, so the fact stream shares the relay's ordering and delivery
+// guarantees instead of introducing a second publisher.
 func outboxRelayOption(
 	ctx context.Context,
+	cfg *aconfig.ChatConfig,
 	dbPool pool.Pool,
 	workMan workerpool.Manager,
+	queueMan queue.Manager,
 	eventsMan frevents.Manager,
 ) frame.Option {
 	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
-	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan).Run)
+	factPublisher := events.NewRoomEventFactPublisher(
+		repository.NewRoomRepository(ctx, dbPool, workMan),
+		repository.NewRoomEventRepository(ctx, dbPool, workMan),
+		queueMan,
+		cfg.QueueRoomEventPublishedName,
+	)
+	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan, factPublisher).Run)
 }
 
 // handleDatabaseMigration performs database migration if configured to do so.

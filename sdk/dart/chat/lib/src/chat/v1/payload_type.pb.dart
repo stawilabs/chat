@@ -3880,6 +3880,133 @@ class FormSubmissionResultContent extends $pb.GeneratedMessage {
   $4.Struct ensureMetadata() => $_ensure(7);
 }
 
+/// FinanceCardContent is a finance fact rendered into a room. It is display
+/// only: chat never carries authorization, so a card carries no token,
+/// signature, capability or approval. Any action a card offers is completed by
+/// the client as a device-signed command to the finance service, never by
+/// replying in chat.
+class FinanceCardContent extends $pb.GeneratedMessage {
+  factory FinanceCardContent({
+    $core.String? cardId,
+    $core.String? groupId,
+    $core.String? kind,
+    $core.String? title,
+    $core.String? body,
+    $core.Map<$core.String, $core.String>? data,
+  }) {
+    final $result = create();
+    if (cardId != null) {
+      $result.cardId = cardId;
+    }
+    if (groupId != null) {
+      $result.groupId = groupId;
+    }
+    if (kind != null) {
+      $result.kind = kind;
+    }
+    if (title != null) {
+      $result.title = title;
+    }
+    if (body != null) {
+      $result.body = body;
+    }
+    if (data != null) {
+      $result.data.addAll(data);
+    }
+    return $result;
+  }
+  FinanceCardContent._() : super();
+  factory FinanceCardContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FinanceCardContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FinanceCardContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'cardId')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..aOS(3, _omitFieldNames ? '' : 'kind')
+    ..aOS(4, _omitFieldNames ? '' : 'title')
+    ..aOS(5, _omitFieldNames ? '' : 'body')
+    ..m<$core.String, $core.String>(6, _omitFieldNames ? '' : 'data', entryClassName: 'FinanceCardContent.DataEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('chat.v1'))
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FinanceCardContent clone() => FinanceCardContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FinanceCardContent copyWith(void Function(FinanceCardContent) updates) => super.copyWith((message) => updates(message as FinanceCardContent)) as FinanceCardContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FinanceCardContent create() => FinanceCardContent._();
+  FinanceCardContent createEmptyInstance() => create();
+  static $pb.PbList<FinanceCardContent> createRepeated() => $pb.PbList<FinanceCardContent>();
+  @$core.pragma('dart2js:noInline')
+  static FinanceCardContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FinanceCardContent>(create);
+  static FinanceCardContent? _defaultInstance;
+
+  /// Identifier of the finance fact this card renders. Stable across
+  /// re-renders so a client can de-duplicate.
+  @$pb.TagNumber(1)
+  $core.String get cardId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cardId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCardId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCardId() => clearField(1);
+
+  /// Finance group the card belongs to; matches the room's
+  /// `stawi.group_id` metadata.
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => clearField(2);
+
+  /// Card kind, e.g. "PROPOSAL", "MOTION_TALLY", "CONTRIBUTION".
+  @$pb.TagNumber(3)
+  $core.String get kind => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set kind($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasKind() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearKind() => clearField(3);
+
+  /// Human-readable heading.
+  @$pb.TagNumber(4)
+  $core.String get title => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set title($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTitle() => clearField(4);
+
+  /// Human-readable body.
+  @$pb.TagNumber(5)
+  $core.String get body => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set body($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasBody() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBody() => clearField(5);
+
+  /// Display-only values for the renderer (identifiers, amounts, labels).
+  @$pb.TagNumber(6)
+  $core.Map<$core.String, $core.String> get data => $_getMap(5);
+}
+
 enum Payload_Data {
   default_7, 
   roomChange, 
@@ -3895,6 +4022,7 @@ enum Payload_Data {
   voteTally, 
   formRequest, 
   formSubmissionResult, 
+  financeCard, 
   notSet
 }
 
@@ -3915,6 +4043,7 @@ class Payload extends $pb.GeneratedMessage {
     VoteTally? voteTally,
     FormRequestContent? formRequest,
     FormSubmissionResultContent? formSubmissionResult,
+    FinanceCardContent? financeCard,
   }) {
     final $result = create();
     if (type != null) {
@@ -3962,6 +4091,9 @@ class Payload extends $pb.GeneratedMessage {
     if (formSubmissionResult != null) {
       $result.formSubmissionResult = formSubmissionResult;
     }
+    if (financeCard != null) {
+      $result.financeCard = financeCard;
+    }
     return $result;
   }
   Payload._() : super();
@@ -3983,10 +4115,11 @@ class Payload extends $pb.GeneratedMessage {
     29 : Payload_Data.voteTally,
     30 : Payload_Data.formRequest,
     31 : Payload_Data.formSubmissionResult,
+    40 : Payload_Data.financeCard,
     0 : Payload_Data.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Payload', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
-    ..oo(0, [7, 8, 10, 15, 16, 17, 18, 19, 25, 26, 28, 29, 30, 31])
+    ..oo(0, [7, 8, 10, 15, 16, 17, 18, 19, 25, 26, 28, 29, 30, 31, 40])
     ..e<PayloadType>(1, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE, defaultOrMaker: PayloadType.PAYLOAD_TYPE_UNSPECIFIED, valueOf: PayloadType.valueOf, enumValues: PayloadType.values)
     ..aOM<$4.Struct>(7, _omitFieldNames ? '' : 'default', subBuilder: $4.Struct.create)
     ..aOM<RoomChangeContent>(8, _omitFieldNames ? '' : 'roomChange', subBuilder: RoomChangeContent.create)
@@ -4002,6 +4135,7 @@ class Payload extends $pb.GeneratedMessage {
     ..aOM<VoteTally>(29, _omitFieldNames ? '' : 'voteTally', subBuilder: VoteTally.create)
     ..aOM<FormRequestContent>(30, _omitFieldNames ? '' : 'formRequest', subBuilder: FormRequestContent.create)
     ..aOM<FormSubmissionResultContent>(31, _omitFieldNames ? '' : 'formSubmissionResult', subBuilder: FormSubmissionResultContent.create)
+    ..aOM<FinanceCardContent>(40, _omitFieldNames ? '' : 'financeCard', subBuilder: FinanceCardContent.create)
     ..hasRequiredFields = false
   ;
 
@@ -4207,6 +4341,18 @@ class Payload extends $pb.GeneratedMessage {
   void clearFormSubmissionResult() => clearField(31);
   @$pb.TagNumber(31)
   FormSubmissionResultContent ensureFormSubmissionResult() => $_ensure(14);
+
+  /// type = PAYLOAD_TYPE_FINANCE_CARD
+  @$pb.TagNumber(40)
+  FinanceCardContent get financeCard => $_getN(15);
+  @$pb.TagNumber(40)
+  set financeCard(FinanceCardContent v) { setField(40, v); }
+  @$pb.TagNumber(40)
+  $core.bool hasFinanceCard() => $_has(15);
+  @$pb.TagNumber(40)
+  void clearFinanceCard() => clearField(40);
+  @$pb.TagNumber(40)
+  FinanceCardContent ensureFinanceCard() => $_ensure(15);
 }
 
 

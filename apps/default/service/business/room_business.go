@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -100,6 +101,11 @@ func (rb *roomBusiness) CreateRoom(
 		Description:      req.GetDescription(),
 		IsPublic:         !req.GetIsPrivate(),
 		RequiresApproval: req.GetRequiresApproval(),
+	}
+	// Room metadata is persisted so it survives the request: consumers of the
+	// durable room fact stream opt in through it (events.GroupMetadataKey).
+	if metadata := req.GetMetadata(); metadata != nil {
+		createdRoom.Properties = data.JSONMap(metadata.AsMap())
 	}
 	if req.GetId() != "" {
 		createdRoom.ID = req.GetId()
@@ -257,6 +263,12 @@ func (rb *roomBusiness) UpdateRoom(
 	}
 	if req.GetDescription() != "" {
 		room.Description = req.GetDescription()
+	}
+	if metadata := req.GetMetadata(); metadata != nil {
+		if room.Properties == nil {
+			room.Properties = data.JSONMap{}
+		}
+		maps.Copy(room.Properties, metadata.AsMap())
 	}
 
 	// Save the updated room

@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ const (
 	PayloadType_PAYLOAD_TYPE_VOTE_TALLY             PayloadType = 25
 	PayloadType_PAYLOAD_TYPE_FORM_REQUEST           PayloadType = 30
 	PayloadType_PAYLOAD_TYPE_FORM_SUBMISSION_RESULT PayloadType = 31
+	PayloadType_PAYLOAD_TYPE_FINANCE_CARD           PayloadType = 40
 )
 
 // Enum value maps for PayloadType.
@@ -76,6 +77,7 @@ var (
 		25: "PAYLOAD_TYPE_VOTE_TALLY",
 		30: "PAYLOAD_TYPE_FORM_REQUEST",
 		31: "PAYLOAD_TYPE_FORM_SUBMISSION_RESULT",
+		40: "PAYLOAD_TYPE_FINANCE_CARD",
 	}
 	PayloadType_value = map[string]int32{
 		"PAYLOAD_TYPE_UNSPECIFIED":            0,
@@ -92,6 +94,7 @@ var (
 		"PAYLOAD_TYPE_VOTE_TALLY":             25,
 		"PAYLOAD_TYPE_FORM_REQUEST":           30,
 		"PAYLOAD_TYPE_FORM_SUBMISSION_RESULT": 31,
+		"PAYLOAD_TYPE_FINANCE_CARD":           40,
 	}
 )
 
@@ -3434,6 +3437,103 @@ func (x *FormSubmissionResultContent) GetMetadata() *structpb.Struct {
 	return nil
 }
 
+// FinanceCardContent is a finance fact rendered into a room. It is display
+// only: chat never carries authorization, so a card carries no token,
+// signature, capability or approval. Any action a card offers is completed by
+// the client as a device-signed command to the finance service, never by
+// replying in chat.
+type FinanceCardContent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Identifier of the finance fact this card renders. Stable across
+	// re-renders so a client can de-duplicate.
+	CardId string `protobuf:"bytes,1,opt,name=card_id,json=cardId,proto3" json:"card_id,omitempty"`
+	// Finance group the card belongs to; matches the room's
+	// `stawi.group_id` metadata.
+	GroupId string `protobuf:"bytes,2,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// Card kind, e.g. "PROPOSAL", "MOTION_TALLY", "CONTRIBUTION".
+	Kind string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Human-readable heading.
+	Title string `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	// Human-readable body.
+	Body string `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
+	// Display-only values for the renderer (identifiers, amounts, labels).
+	Data          map[string]string `protobuf:"bytes,6,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinanceCardContent) Reset() {
+	*x = FinanceCardContent{}
+	mi := &file_chat_v1_payload_type_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinanceCardContent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinanceCardContent) ProtoMessage() {}
+
+func (x *FinanceCardContent) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_payload_type_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinanceCardContent.ProtoReflect.Descriptor instead.
+func (*FinanceCardContent) Descriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *FinanceCardContent) GetCardId() string {
+	if x != nil {
+		return x.CardId
+	}
+	return ""
+}
+
+func (x *FinanceCardContent) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *FinanceCardContent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *FinanceCardContent) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *FinanceCardContent) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *FinanceCardContent) GetData() map[string]string {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
 type Payload struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The `type` MUST correspond to the populated payload.
@@ -3455,6 +3555,7 @@ type Payload struct {
 	//	*Payload_VoteTally
 	//	*Payload_FormRequest
 	//	*Payload_FormSubmissionResult
+	//	*Payload_FinanceCard
 	Data          isPayload_Data `protobuf_oneof:"data"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3462,7 +3563,7 @@ type Payload struct {
 
 func (x *Payload) Reset() {
 	*x = Payload{}
-	mi := &file_chat_v1_payload_type_proto_msgTypes[31]
+	mi := &file_chat_v1_payload_type_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3474,7 +3575,7 @@ func (x *Payload) String() string {
 func (*Payload) ProtoMessage() {}
 
 func (x *Payload) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_payload_type_proto_msgTypes[31]
+	mi := &file_chat_v1_payload_type_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3487,7 +3588,7 @@ func (x *Payload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Payload.ProtoReflect.Descriptor instead.
 func (*Payload) Descriptor() ([]byte, []int) {
-	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{31}
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *Payload) GetType() PayloadType {
@@ -3630,6 +3731,15 @@ func (x *Payload) GetFormSubmissionResult() *FormSubmissionResultContent {
 	return nil
 }
 
+func (x *Payload) GetFinanceCard() *FinanceCardContent {
+	if x != nil {
+		if x, ok := x.Data.(*Payload_FinanceCard); ok {
+			return x.FinanceCard
+		}
+	}
+	return nil
+}
+
 type isPayload_Data interface {
 	isPayload_Data()
 }
@@ -3704,6 +3814,11 @@ type Payload_FormSubmissionResult struct {
 	FormSubmissionResult *FormSubmissionResultContent `protobuf:"bytes,31,opt,name=form_submission_result,json=formSubmissionResult,proto3,oneof"`
 }
 
+type Payload_FinanceCard struct {
+	// type = PAYLOAD_TYPE_FINANCE_CARD
+	FinanceCard *FinanceCardContent `protobuf:"bytes,40,opt,name=finance_card,json=financeCard,proto3,oneof"`
+}
+
 func (*Payload_Default) isPayload_Data() {}
 
 func (*Payload_RoomChange) isPayload_Data() {}
@@ -3731,6 +3846,8 @@ func (*Payload_VoteTally) isPayload_Data() {}
 func (*Payload_FormRequest) isPayload_Data() {}
 
 func (*Payload_FormSubmissionResult) isPayload_Data() {}
+
+func (*Payload_FinanceCard) isPayload_Data() {}
 
 var File_chat_v1_payload_type_proto protoreflect.FileDescriptor
 
@@ -4027,7 +4144,18 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x05state\x18\x05 \x01(\x0e2\x19.chat.v1.FormMessageStateR\x05state\x12)\n" +
 	"\x10review_confirmed\x18\x06 \x01(\bR\x0freviewConfirmed\x12P\n" +
 	"\x13submission_snapshot\x18\a \x01(\v2\x1f.chat.v1.FormSubmissionSnapshotR\x12submissionSnapshot\x123\n" +
-	"\bmetadata\x18\b \x01(\v2\x17.google.protobuf.StructR\bmetadata\"\xe1\x06\n" +
+	"\bmetadata\x18\b \x01(\v2\x17.google.protobuf.StructR\bmetadata\"\xca\x02\n" +
+	"\x12FinanceCardContent\x12\"\n" +
+	"\acard_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x06cardId\x12$\n" +
+	"\bgroup_id\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\agroupId\x12\x1d\n" +
+	"\x04kind\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04kind\x12 \n" +
+	"\x05title\x18\x04 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x05title\x12\x1c\n" +
+	"\x04body\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xa0\x1fR\x04body\x12R\n" +
+	"\x04data\x18\x06 \x03(\v2%.chat.v1.FinanceCardContent.DataEntryB\x17\xbaH\x14\x9a\x01\x11\x10 \"\x06r\x04\x10\x01\x18@*\x05r\x03\x18\x80\x04R\x04data\x1a7\n" +
+	"\tDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa3\a\n" +
 	"\aPayload\x12(\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x14.chat.v1.PayloadTypeR\x04type\x123\n" +
 	"\adefault\x18\a \x01(\v2\x17.google.protobuf.StructH\x00R\adefault\x12=\n" +
@@ -4050,8 +4178,9 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\n" +
 	"vote_tally\x18\x1d \x01(\v2\x12.chat.v1.VoteTallyH\x00R\tvoteTally\x12@\n" +
 	"\fform_request\x18\x1e \x01(\v2\x1b.chat.v1.FormRequestContentH\x00R\vformRequest\x12\\\n" +
-	"\x16form_submission_result\x18\x1f \x01(\v2$.chat.v1.FormSubmissionResultContentH\x00R\x14formSubmissionResultB\x06\n" +
-	"\x04data*\x9c\x03\n" +
+	"\x16form_submission_result\x18\x1f \x01(\v2$.chat.v1.FormSubmissionResultContentH\x00R\x14formSubmissionResult\x12@\n" +
+	"\ffinance_card\x18( \x01(\v2\x1b.chat.v1.FinanceCardContentH\x00R\vfinanceCardB\x06\n" +
+	"\x04data*\xbb\x03\n" +
 	"\vPayloadType\x12\x1c\n" +
 	"\x18PAYLOAD_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18PAYLOAD_TYPE_ROOM_CHANGE\x10\x01\x12\x15\n" +
@@ -4066,7 +4195,8 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x19PAYLOAD_TYPE_MOTION_TALLY\x10\x18\x12\x1b\n" +
 	"\x17PAYLOAD_TYPE_VOTE_TALLY\x10\x19\x12\x1d\n" +
 	"\x19PAYLOAD_TYPE_FORM_REQUEST\x10\x1e\x12'\n" +
-	"#PAYLOAD_TYPE_FORM_SUBMISSION_RESULT\x10\x1f*\x87\x02\n" +
+	"#PAYLOAD_TYPE_FORM_SUBMISSION_RESULT\x10\x1f\x12\x1d\n" +
+	"\x19PAYLOAD_TYPE_FINANCE_CARD\x10(*\x87\x02\n" +
 	"\x10RoomChangeAction\x12\"\n" +
 	"\x1eROOM_CHANGE_ACTION_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aROOM_CHANGE_ACTION_CREATED\x10\x01\x12\x1e\n" +
@@ -4123,8 +4253,8 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x1fFORM_CONDITION_OPERATOR_IS_TRUE\x10\v\x12$\n" +
 	" FORM_CONDITION_OPERATOR_IS_FALSE\x10\f\x12\"\n" +
 	"\x1eFORM_CONDITION_OPERATOR_EXISTS\x10\r\x12&\n" +
-	"\"FORM_CONDITION_OPERATOR_NOT_EXISTS\x10\x0eB\x8b\x01\n" +
-	"\vcom.chat.v1B\x10PayloadTypeProtoP\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
+	"\"FORM_CONDITION_OPERATOR_NOT_EXISTS\x10\x0eB9\n" +
+	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
 
 var (
 	file_chat_v1_payload_type_proto_rawDescOnce sync.Once
@@ -4139,7 +4269,7 @@ func file_chat_v1_payload_type_proto_rawDescGZIP() []byte {
 }
 
 var file_chat_v1_payload_type_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_chat_v1_payload_type_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_chat_v1_payload_type_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_chat_v1_payload_type_proto_goTypes = []any{
 	(PayloadType)(0),                    // 0: chat.v1.PayloadType
 	(RoomChangeAction)(0),               // 1: chat.v1.RoomChangeAction
@@ -4180,33 +4310,35 @@ var file_chat_v1_payload_type_proto_goTypes = []any{
 	(*FormSubmissionSnapshot)(nil),      // 36: chat.v1.FormSubmissionSnapshot
 	(*FormRequestContent)(nil),          // 37: chat.v1.FormRequestContent
 	(*FormSubmissionResultContent)(nil), // 38: chat.v1.FormSubmissionResultContent
-	(*Payload)(nil),                     // 39: chat.v1.Payload
-	(*structpb.Struct)(nil),             // 40: google.protobuf.Struct
-	(*structpb.Value)(nil),              // 41: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),       // 42: google.protobuf.Timestamp
+	(*FinanceCardContent)(nil),          // 39: chat.v1.FinanceCardContent
+	(*Payload)(nil),                     // 40: chat.v1.Payload
+	nil,                                 // 41: chat.v1.FinanceCardContent.DataEntry
+	(*structpb.Struct)(nil),             // 42: google.protobuf.Struct
+	(*structpb.Value)(nil),              // 43: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),       // 44: google.protobuf.Timestamp
 }
 var file_chat_v1_payload_type_proto_depIdxs = []int32{
 	1,  // 0: chat.v1.RoomChangeContent.action:type_name -> chat.v1.RoomChangeAction
-	40, // 1: chat.v1.RoomChangeContent.details:type_name -> google.protobuf.Struct
-	40, // 2: chat.v1.ModerationContent.metadata:type_name -> google.protobuf.Struct
+	42, // 1: chat.v1.RoomChangeContent.details:type_name -> google.protobuf.Struct
+	42, // 2: chat.v1.ModerationContent.metadata:type_name -> google.protobuf.Struct
 	11, // 3: chat.v1.TextContent.annotations:type_name -> chat.v1.TextAnnotation
 	5,  // 4: chat.v1.TextAnnotation.type:type_name -> chat.v1.TextAnnotation.Type
 	13, // 5: chat.v1.AttachmentContent.previews:type_name -> chat.v1.AttachmentPreview
 	10, // 6: chat.v1.AttachmentContent.caption:type_name -> chat.v1.TextContent
 	6,  // 7: chat.v1.CallContent.type:type_name -> chat.v1.CallContent.CallType
 	7,  // 8: chat.v1.CallContent.action:type_name -> chat.v1.CallContent.CallAction
-	40, // 9: chat.v1.CallContent.metadata:type_name -> google.protobuf.Struct
+	42, // 9: chat.v1.CallContent.metadata:type_name -> google.protobuf.Struct
 	19, // 10: chat.v1.MotionContent.passing_rule:type_name -> chat.v1.PassingRule
 	18, // 11: chat.v1.MotionContent.choices:type_name -> chat.v1.VoteChoice
 	21, // 12: chat.v1.MotionTally.tallies:type_name -> chat.v1.VoteTally
 	4,  // 13: chat.v1.FormConditionClause.operator:type_name -> chat.v1.FormConditionOperator
-	41, // 14: chat.v1.FormConditionClause.value:type_name -> google.protobuf.Value
-	41, // 15: chat.v1.FormConditionClause.values:type_name -> google.protobuf.Value
+	43, // 14: chat.v1.FormConditionClause.value:type_name -> google.protobuf.Value
+	43, // 15: chat.v1.FormConditionClause.values:type_name -> google.protobuf.Value
 	24, // 16: chat.v1.FormConditionGroup.all:type_name -> chat.v1.FormConditionClause
 	24, // 17: chat.v1.FormConditionGroup.any:type_name -> chat.v1.FormConditionClause
-	40, // 18: chat.v1.FormOption.metadata:type_name -> google.protobuf.Struct
+	42, // 18: chat.v1.FormOption.metadata:type_name -> google.protobuf.Struct
 	3,  // 19: chat.v1.FormField.type:type_name -> chat.v1.FormFieldType
-	41, // 20: chat.v1.FormField.default_value:type_name -> google.protobuf.Value
+	43, // 20: chat.v1.FormField.default_value:type_name -> google.protobuf.Value
 	23, // 21: chat.v1.FormField.validation_rules:type_name -> chat.v1.FormValidationRule
 	25, // 22: chat.v1.FormField.visibility_condition:type_name -> chat.v1.FormConditionGroup
 	25, // 23: chat.v1.FormField.editability_condition:type_name -> chat.v1.FormConditionGroup
@@ -4214,53 +4346,55 @@ var file_chat_v1_payload_type_proto_depIdxs = []int32{
 	29, // 25: chat.v1.FormField.nested_fields:type_name -> chat.v1.FormField
 	30, // 26: chat.v1.FormField.nested_sections:type_name -> chat.v1.FormSection
 	27, // 27: chat.v1.FormField.formatting:type_name -> chat.v1.FormFormattingHint
-	40, // 28: chat.v1.FormField.ui_hints:type_name -> google.protobuf.Struct
+	42, // 28: chat.v1.FormField.ui_hints:type_name -> google.protobuf.Struct
 	28, // 29: chat.v1.FormField.review:type_name -> chat.v1.FormReviewHint
 	29, // 30: chat.v1.FormSection.fields:type_name -> chat.v1.FormField
-	40, // 31: chat.v1.FormSection.ui_hints:type_name -> google.protobuf.Struct
+	42, // 31: chat.v1.FormSection.ui_hints:type_name -> google.protobuf.Struct
 	30, // 32: chat.v1.FormStep.sections:type_name -> chat.v1.FormSection
-	40, // 33: chat.v1.FormStep.ui_hints:type_name -> google.protobuf.Struct
+	42, // 33: chat.v1.FormStep.ui_hints:type_name -> google.protobuf.Struct
 	25, // 34: chat.v1.FormStep.visibility_condition:type_name -> chat.v1.FormConditionGroup
 	31, // 35: chat.v1.FormSchema.steps:type_name -> chat.v1.FormStep
-	40, // 36: chat.v1.FormSchema.workflow_metadata:type_name -> google.protobuf.Struct
-	40, // 37: chat.v1.FormSchema.ui_hints:type_name -> google.protobuf.Struct
+	42, // 36: chat.v1.FormSchema.workflow_metadata:type_name -> google.protobuf.Struct
+	42, // 37: chat.v1.FormSchema.ui_hints:type_name -> google.protobuf.Struct
 	34, // 38: chat.v1.FormReviewSection.items:type_name -> chat.v1.FormReviewItem
-	42, // 39: chat.v1.FormSubmissionSnapshot.submitted_at:type_name -> google.protobuf.Timestamp
-	40, // 40: chat.v1.FormSubmissionSnapshot.answers:type_name -> google.protobuf.Struct
+	44, // 39: chat.v1.FormSubmissionSnapshot.submitted_at:type_name -> google.protobuf.Timestamp
+	42, // 40: chat.v1.FormSubmissionSnapshot.answers:type_name -> google.protobuf.Struct
 	35, // 41: chat.v1.FormSubmissionSnapshot.formatted_sections:type_name -> chat.v1.FormReviewSection
 	2,  // 42: chat.v1.FormSubmissionSnapshot.status:type_name -> chat.v1.FormMessageState
-	40, // 43: chat.v1.FormSubmissionSnapshot.metadata:type_name -> google.protobuf.Struct
+	42, // 43: chat.v1.FormSubmissionSnapshot.metadata:type_name -> google.protobuf.Struct
 	2,  // 44: chat.v1.FormRequestContent.state:type_name -> chat.v1.FormMessageState
 	32, // 45: chat.v1.FormRequestContent.schema:type_name -> chat.v1.FormSchema
-	40, // 46: chat.v1.FormRequestContent.initial_values:type_name -> google.protobuf.Struct
-	40, // 47: chat.v1.FormRequestContent.server_draft_values:type_name -> google.protobuf.Struct
+	42, // 46: chat.v1.FormRequestContent.initial_values:type_name -> google.protobuf.Struct
+	42, // 47: chat.v1.FormRequestContent.server_draft_values:type_name -> google.protobuf.Struct
 	36, // 48: chat.v1.FormRequestContent.final_submission_snapshot:type_name -> chat.v1.FormSubmissionSnapshot
 	33, // 49: chat.v1.FormRequestContent.permissions:type_name -> chat.v1.FormPermissions
-	42, // 50: chat.v1.FormRequestContent.expires_at:type_name -> google.protobuf.Timestamp
-	40, // 51: chat.v1.FormRequestContent.workflow_context:type_name -> google.protobuf.Struct
+	44, // 50: chat.v1.FormRequestContent.expires_at:type_name -> google.protobuf.Timestamp
+	42, // 51: chat.v1.FormRequestContent.workflow_context:type_name -> google.protobuf.Struct
 	2,  // 52: chat.v1.FormSubmissionResultContent.state:type_name -> chat.v1.FormMessageState
 	36, // 53: chat.v1.FormSubmissionResultContent.submission_snapshot:type_name -> chat.v1.FormSubmissionSnapshot
-	40, // 54: chat.v1.FormSubmissionResultContent.metadata:type_name -> google.protobuf.Struct
-	0,  // 55: chat.v1.Payload.type:type_name -> chat.v1.PayloadType
-	40, // 56: chat.v1.Payload.default:type_name -> google.protobuf.Struct
-	8,  // 57: chat.v1.Payload.room_change:type_name -> chat.v1.RoomChangeContent
-	9,  // 58: chat.v1.Payload.moderation:type_name -> chat.v1.ModerationContent
-	10, // 59: chat.v1.Payload.text:type_name -> chat.v1.TextContent
-	12, // 60: chat.v1.Payload.attachment:type_name -> chat.v1.AttachmentContent
-	14, // 61: chat.v1.Payload.reaction:type_name -> chat.v1.ReactionContent
-	15, // 62: chat.v1.Payload.encrypted:type_name -> chat.v1.EncryptedContent
-	16, // 63: chat.v1.Payload.call:type_name -> chat.v1.CallContent
-	17, // 64: chat.v1.Payload.motion:type_name -> chat.v1.MotionContent
-	22, // 65: chat.v1.Payload.motion_tally:type_name -> chat.v1.MotionTally
-	20, // 66: chat.v1.Payload.vote:type_name -> chat.v1.VoteCast
-	21, // 67: chat.v1.Payload.vote_tally:type_name -> chat.v1.VoteTally
-	37, // 68: chat.v1.Payload.form_request:type_name -> chat.v1.FormRequestContent
-	38, // 69: chat.v1.Payload.form_submission_result:type_name -> chat.v1.FormSubmissionResultContent
-	70, // [70:70] is the sub-list for method output_type
-	70, // [70:70] is the sub-list for method input_type
-	70, // [70:70] is the sub-list for extension type_name
-	70, // [70:70] is the sub-list for extension extendee
-	0,  // [0:70] is the sub-list for field type_name
+	42, // 54: chat.v1.FormSubmissionResultContent.metadata:type_name -> google.protobuf.Struct
+	41, // 55: chat.v1.FinanceCardContent.data:type_name -> chat.v1.FinanceCardContent.DataEntry
+	0,  // 56: chat.v1.Payload.type:type_name -> chat.v1.PayloadType
+	42, // 57: chat.v1.Payload.default:type_name -> google.protobuf.Struct
+	8,  // 58: chat.v1.Payload.room_change:type_name -> chat.v1.RoomChangeContent
+	9,  // 59: chat.v1.Payload.moderation:type_name -> chat.v1.ModerationContent
+	10, // 60: chat.v1.Payload.text:type_name -> chat.v1.TextContent
+	12, // 61: chat.v1.Payload.attachment:type_name -> chat.v1.AttachmentContent
+	14, // 62: chat.v1.Payload.reaction:type_name -> chat.v1.ReactionContent
+	15, // 63: chat.v1.Payload.encrypted:type_name -> chat.v1.EncryptedContent
+	16, // 64: chat.v1.Payload.call:type_name -> chat.v1.CallContent
+	17, // 65: chat.v1.Payload.motion:type_name -> chat.v1.MotionContent
+	22, // 66: chat.v1.Payload.motion_tally:type_name -> chat.v1.MotionTally
+	20, // 67: chat.v1.Payload.vote:type_name -> chat.v1.VoteCast
+	21, // 68: chat.v1.Payload.vote_tally:type_name -> chat.v1.VoteTally
+	37, // 69: chat.v1.Payload.form_request:type_name -> chat.v1.FormRequestContent
+	38, // 70: chat.v1.Payload.form_submission_result:type_name -> chat.v1.FormSubmissionResultContent
+	39, // 71: chat.v1.Payload.finance_card:type_name -> chat.v1.FinanceCardContent
+	72, // [72:72] is the sub-list for method output_type
+	72, // [72:72] is the sub-list for method input_type
+	72, // [72:72] is the sub-list for extension type_name
+	72, // [72:72] is the sub-list for extension extendee
+	0,  // [0:72] is the sub-list for field type_name
 }
 
 func init() { file_chat_v1_payload_type_proto_init() }
@@ -4289,7 +4423,7 @@ func file_chat_v1_payload_type_proto_init() {
 		(*FormValidationRule_MinItems)(nil),
 		(*FormValidationRule_MaxItems)(nil),
 	}
-	file_chat_v1_payload_type_proto_msgTypes[31].OneofWrappers = []any{
+	file_chat_v1_payload_type_proto_msgTypes[32].OneofWrappers = []any{
 		(*Payload_Default)(nil),
 		(*Payload_RoomChange)(nil),
 		(*Payload_Moderation)(nil),
@@ -4304,6 +4438,7 @@ func file_chat_v1_payload_type_proto_init() {
 		(*Payload_VoteTally)(nil),
 		(*Payload_FormRequest)(nil),
 		(*Payload_FormSubmissionResult)(nil),
+		(*Payload_FinanceCard)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -4311,7 +4446,7 @@ func file_chat_v1_payload_type_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chat_v1_payload_type_proto_rawDesc), len(file_chat_v1_payload_type_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   32,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

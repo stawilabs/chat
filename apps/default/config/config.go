@@ -37,6 +37,11 @@ type ChatConfig struct {
 
 	ShardCount int `envDefault:"1" env:"SHARD_COUNT"`
 
+	// Durable room-fact stream (chat.room.event.published). Published only for
+	// rooms whose metadata carries the group key; an empty name disables it.
+	QueueRoomEventPublishedName string `envDefault:"chat.room.event.published"       env:"QUEUE_ROOM_EVENT_PUBLISHED_NAME"`
+	QueueRoomEventPublishedURI  string `envDefault:"mem://chat.room.event.published" env:"QUEUE_ROOM_EVENT_PUBLISHED_URI"`
+
 	// Dead-letter queue for deliveries that exceed max retries
 	QueueDeadLetterName            string `envDefault:"dead.letter.queue"       env:"QUEUE_DEAD_LETTER_NAME"`
 	QueueDeadLetterURI             string `envDefault:"mem://dead.letter.queue" env:"QUEUE_DEAD_LETTER_URI"`
@@ -83,6 +88,11 @@ func (c *ChatConfig) validateQueueURIs() []error {
 	}
 	if err := validateQueueURI(c.QueueOfflineEventDeliveryURI, "QueueOfflineEventDeliveryURI"); err != nil {
 		errs = append(errs, err)
+	}
+	if c.QueueRoomEventPublishedName != "" {
+		if err := validateQueueURI(c.QueueRoomEventPublishedURI, "QueueRoomEventPublishedURI"); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	for i, uri := range c.QueueGatewayEventDeliveryURI {
 		if err := validateQueueURI(uri, fmt.Sprintf("QueueGatewayEventDeliveryURI[%d]", i)); err != nil {

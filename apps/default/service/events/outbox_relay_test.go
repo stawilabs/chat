@@ -32,7 +32,7 @@ func (s *OutboxRelayTestSuite) TestDrainDispatchesAndDropsPoison() {
 		workMan := svc.WorkManager()
 		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 		outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
-		relay := events.NewOutboxRelay(outboxRepo, svc.EventsManager())
+		relay := events.NewOutboxRelay(outboxRepo, svc.EventsManager(), nil)
 
 		// A valid pending row: drain must emit it and mark it dispatched.
 		link := &eventsv1.Link{EventId: util.IDString(), RoomId: util.IDString()}

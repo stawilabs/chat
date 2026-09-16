@@ -154,9 +154,19 @@ func (dq *offlineDeliveryQueueHandler) extractMessageBody(evtMsg *eventsv1.Deliv
 	return dq.bodyFromPayload(eventPayload)
 }
 
+// financeCardBody is the offline notification copy for a finance card. Only
+// the card's own heading is shown; a card is display only, so the notification
+// never implies an action was taken or authorized.
+func financeCardBody(card *chatv1.FinanceCardContent) string {
+	if card.GetTitle() != "" {
+		return card.GetTitle()
+	}
+	return "Shared a finance update"
+}
+
 // bodyFromPayload extracts a human-readable body string from a typed payload.
 //
-//nolint:gocognit,nestif // Notification copy is intentionally dispatched by payload shape.
+//nolint:cyclop,gocognit,gocyclo,nestif // Notification copy is intentionally dispatched by payload shape.
 func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payload) string {
 	switch eventPayload.GetType() {
 	case chatv1.PayloadType_PAYLOAD_TYPE_MODERATION:
@@ -218,6 +228,8 @@ func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payl
 			}
 		}
 		return "Submitted a form"
+	case chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD:
+		return financeCardBody(eventPayload.GetFinanceCard())
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		// No body for unspecified type
 	}

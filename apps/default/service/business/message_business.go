@@ -343,6 +343,10 @@ func (mb *messageBusiness) prepareEventForInsert(
 		return nil, ackEventError(reqEvt.GetId(), formErr)
 	}
 
+	if cardErr := validateFinanceCardPayload(reqEvt); cardErr != nil {
+		return nil, ackEventError(reqEvt.GetId(), cardErr)
+	}
+
 	content, convertErr := mb.payloadConverter.FromProto(reqEvt.GetPayload())
 	if convertErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), connect.NewError(

@@ -29,6 +29,7 @@ class PayloadType extends $pb.ProtobufEnum {
   static const PayloadType PAYLOAD_TYPE_VOTE_TALLY = PayloadType._(25, _omitEnumNames ? '' : 'PAYLOAD_TYPE_VOTE_TALLY');
   static const PayloadType PAYLOAD_TYPE_FORM_REQUEST = PayloadType._(30, _omitEnumNames ? '' : 'PAYLOAD_TYPE_FORM_REQUEST');
   static const PayloadType PAYLOAD_TYPE_FORM_SUBMISSION_RESULT = PayloadType._(31, _omitEnumNames ? '' : 'PAYLOAD_TYPE_FORM_SUBMISSION_RESULT');
+  static const PayloadType PAYLOAD_TYPE_FINANCE_CARD = PayloadType._(40, _omitEnumNames ? '' : 'PAYLOAD_TYPE_FINANCE_CARD');
 
   static const $core.List<PayloadType> values = <PayloadType> [
     PAYLOAD_TYPE_UNSPECIFIED,
@@ -45,6 +46,7 @@ class PayloadType extends $pb.ProtobufEnum {
     PAYLOAD_TYPE_VOTE_TALLY,
     PAYLOAD_TYPE_FORM_REQUEST,
     PAYLOAD_TYPE_FORM_SUBMISSION_RESULT,
+    PAYLOAD_TYPE_FINANCE_CARD,
   ];
 
   static final $core.Map<$core.int, PayloadType> _byValue = $pb.ProtobufEnum.initByValue(values);
