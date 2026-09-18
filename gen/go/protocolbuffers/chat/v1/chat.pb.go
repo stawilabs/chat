@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,6 @@
 package chatv1
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	v1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	_ "buf.build/gen/go/gnostic/gnostic/protocolbuffers/go/gnostic/openapi/v3"
@@ -32,6 +28,9 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -845,14 +844,24 @@ func (x *Room) GetRequiresApproval() bool {
 }
 
 type CreateRoomRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Id          string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"` // optional client-provided idempotency key
-	Name        string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Type        RoomType               `protobuf:"varint,10,opt,name=type,proto3,enum=chat.v1.RoomType" json:"type,omitempty"`
-	IsPrivate   bool                   `protobuf:"varint,6,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
-	Members     []*v1.ContactLink      `protobuf:"bytes,7,rep,name=members,proto3" json:"members,omitempty"` // optional
-	Metadata    *structpb.Struct       `protobuf:"bytes,8,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional caller-supplied room identifier.
+	//
+	// A room is the entity: its id in chat, in the finance service and on chain
+	// is one value. When a room is created in finance first, the caller hands
+	// chat that id here; when it is omitted chat mints one as before. Creating
+	// the same id twice returns the room that already exists, so a caller may
+	// safely retry.
+	//
+	// The identifier format is the platform's own (an xid, as util.IDString
+	// mints): 20 characters over [0-9a-v]. Anything else is refused.
+	Id          string            `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string            `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Description string            `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Type        RoomType          `protobuf:"varint,10,opt,name=type,proto3,enum=chat.v1.RoomType" json:"type,omitempty"`
+	IsPrivate   bool              `protobuf:"varint,6,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
+	Members     []*v1.ContactLink `protobuf:"bytes,7,rep,name=members,proto3" json:"members,omitempty"` // optional
+	Metadata    *structpb.Struct  `protobuf:"bytes,8,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	// If true, changes to this room require approval from owners before execution
 	RequiresApproval bool `protobuf:"varint,9,opt,name=requires_approval,json=requiresApproval,proto3" json:"requires_approval,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -3093,7 +3102,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x11requires_approval\x18\n" +
 	" \x01(\bR\x10requiresApproval\"\xdc\x02\n" +
 	"\x11CreateRoomRequest\x12+\n" +
-	"\x02id\x18\x03 \x01(\tB\x1b\xbaH\x18r\x16\x10\x03\x18(2\x10[0-9a-z_-]{3,40}R\x02id\x12\x1e\n" +
+	"\x02id\x18\x03 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x132\x0e^[0-9a-v]{20}$\x98\x01\x14R\x02id\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x02\x18\xc8\x01R\x04name\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12%\n" +
@@ -3387,9 +3396,10 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"event_view\x12\n" +
 	"event_send\x12\troom_view\x12\x11subscription_view\x1a\x94\x01\b\x06\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manageB\x8c\x06\xbaG\xcf\x05\x12\xa3\x05\n" +
-	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"U\n" +
-	"\x10Ant Investor Ltd\x12+https://github.com/antinvestor/service-chat\x1a\x14info@antinvestor.com*I\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manageB\xf6\x05\xbaG\xb9\x05\x12\x8d\x05\n" +
+	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"?\n" +
+	"\n" +
+	"Stawi Labs\x12!https://github.com/stawilabs/chat\x1a\x0einfo@stawi.org*I\n" +
 	"\x0eApache License\x127https://github.com/antinvestor/apis/blob/master/LICENSE2\x06v1.0.0*':%\n" +
 	"#\n" +
 	"\n" +

@@ -94,6 +94,17 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, service.ErrRoomNameRequired
 	}
 
+	// A room is the entity, and its id is one value: the same identifier names
+	// the room in chat, in the finance service and on chain. Normally the caller
+	// creates the room here and hands finance the id; when the room was created
+	// in finance first the caller supplies that id instead, and chat adopts it.
+	// Chat accepts only ids it could itself have minted, so the three records
+	// stay joinable on the exact value.
+	suppliedID := req.GetId()
+	if suppliedID != "" && !chatutil.IsValidRoomID(suppliedID) {
+		return nil, service.ErrRoomIDInvalid
+	}
+
 	// Create the room
 	createdRoom := &models.Room{
 		RoomType:         defaultGroupType,
@@ -107,22 +118,17 @@ func (rb *roomBusiness) CreateRoom(
 	if metadata := req.GetMetadata(); metadata != nil {
 		createdRoom.Properties = data.JSONMap(metadata.AsMap())
 	}
-	if req.GetId() != "" {
-		createdRoom.ID = req.GetId()
+	if suppliedID != "" {
+		createdRoom.ID = suppliedID
 	}
 
-	// Save the room
-	err = rb.roomRepo.Create(ctx, createdRoom)
+	var existingRoom *models.Room
+	existingRoom, err = rb.persistRoom(ctx, createdRoom)
 	if err != nil {
-		if data.ErrorIsDuplicateKey(err) {
-			existingRoom, getErr := rb.roomRepo.GetByID(ctx, createdRoom.GetID())
-			if getErr != nil {
-				return nil, fmt.Errorf("failed to load existing room after duplicate create: %w", getErr)
-			}
-
-			return existingRoom.ToAPI(), nil
-		}
-		return nil, fmt.Errorf("failed to save room: %w", err)
+		return nil, err
+	}
+	if existingRoom != nil {
+		return existingRoom.ToAPI(), nil
 	}
 
 	// Owner subscription
@@ -179,6 +185,34 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
+}
+
+// persistRoom inserts room and reports the room that already holds its id, if
+// any. Idempotence is enforced by the rooms primary key rather than by a
+// read-then-write check: two concurrent creates of the same id both INSERT, the
+// loser gets a unique violation, and both callers are answered with the one
+// room that exists.
+func (rb *roomBusiness) persistRoom(ctx context.Context, room *models.Room) (*models.Room, error) {
+	err := rb.roomRepo.Create(ctx, room)
+	if err == nil {
+		return nil, nil //nolint:nilnil // no pre-existing room; the insert won.
+	}
+	if !data.ErrorIsDuplicateKey(err) {
+		return nil, fmt.Errorf("failed to save room: %w", err)
+	}
+
+	existingRoom, getErr := rb.roomRepo.GetByID(ctx, room.GetID())
+	if getErr != nil {
+		if data.ErrorIsNoRows(getErr) {
+			// The id is held by a row that is no longer readable (a deleted
+			// room). Say so rather than reporting a lookup failure or silently
+			// reusing an identifier the rest of the platform still names.
+			return nil, service.ErrRoomIDTaken
+		}
+		return nil, fmt.Errorf("failed to load existing room after duplicate create: %w", getErr)
+	}
+
+	return existingRoom, nil
 }
 
 func (rb *roomBusiness) GetRoom(
