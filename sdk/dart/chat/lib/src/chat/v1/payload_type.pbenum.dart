@@ -29,6 +29,11 @@ class PayloadType extends $pb.ProtobufEnum {
   static const PayloadType PAYLOAD_TYPE_VOTE_TALLY = PayloadType._(25, _omitEnumNames ? '' : 'PAYLOAD_TYPE_VOTE_TALLY');
   static const PayloadType PAYLOAD_TYPE_FORM_REQUEST = PayloadType._(30, _omitEnumNames ? '' : 'PAYLOAD_TYPE_FORM_REQUEST');
   static const PayloadType PAYLOAD_TYPE_FORM_SUBMISSION_RESULT = PayloadType._(31, _omitEnumNames ? '' : 'PAYLOAD_TYPE_FORM_SUBMISSION_RESULT');
+  static const PayloadType PAYLOAD_TYPE_FINANCE_CARD = PayloadType._(40, _omitEnumNames ? '' : 'PAYLOAD_TYPE_FINANCE_CARD');
+  static const PayloadType PAYLOAD_TYPE_STAWI_ROOM_CONVERSION = PayloadType._(41, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_ROOM_CONVERSION');
+  static const PayloadType PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE = PayloadType._(42, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE');
+  static const PayloadType PAYLOAD_TYPE_STAWI_SIGNED_CALL = PayloadType._(43, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_SIGNED_CALL');
+  static const PayloadType PAYLOAD_TYPE_STAWI_CALL_OUTCOME = PayloadType._(44, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_CALL_OUTCOME');
 
   static const $core.List<PayloadType> values = <PayloadType> [
     PAYLOAD_TYPE_UNSPECIFIED,
@@ -45,6 +50,11 @@ class PayloadType extends $pb.ProtobufEnum {
     PAYLOAD_TYPE_VOTE_TALLY,
     PAYLOAD_TYPE_FORM_REQUEST,
     PAYLOAD_TYPE_FORM_SUBMISSION_RESULT,
+    PAYLOAD_TYPE_FINANCE_CARD,
+    PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
+    PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
+    PAYLOAD_TYPE_STAWI_SIGNED_CALL,
+    PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
   ];
 
   static final $core.Map<$core.int, PayloadType> _byValue = $pb.ProtobufEnum.initByValue(values);
@@ -197,6 +207,43 @@ class FormConditionOperator extends $pb.ProtobufEnum {
   static FormConditionOperator? valueOf($core.int value) => _byValue[value];
 
   const FormConditionOperator._($core.int v, $core.String n) : super(v, n);
+}
+
+/// StawiJoinPolicy is how someone may enter a Stawi room once it is on chain.
+class StawiJoinPolicy extends $pb.ProtobufEnum {
+  static const StawiJoinPolicy STAWI_JOIN_POLICY_UNSPECIFIED = StawiJoinPolicy._(0, _omitEnumNames ? '' : 'STAWI_JOIN_POLICY_UNSPECIFIED');
+  static const StawiJoinPolicy STAWI_JOIN_POLICY_PRIVATE = StawiJoinPolicy._(1, _omitEnumNames ? '' : 'STAWI_JOIN_POLICY_PRIVATE');
+  static const StawiJoinPolicy STAWI_JOIN_POLICY_PUBLIC = StawiJoinPolicy._(2, _omitEnumNames ? '' : 'STAWI_JOIN_POLICY_PUBLIC');
+
+  static const $core.List<StawiJoinPolicy> values = <StawiJoinPolicy> [
+    STAWI_JOIN_POLICY_UNSPECIFIED,
+    STAWI_JOIN_POLICY_PRIVATE,
+    STAWI_JOIN_POLICY_PUBLIC,
+  ];
+
+  static final $core.Map<$core.int, StawiJoinPolicy> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static StawiJoinPolicy? valueOf($core.int value) => _byValue[value];
+
+  const StawiJoinPolicy._($core.int v, $core.String n) : super(v, n);
+}
+
+class StawiCallOutcomeState extends $pb.ProtobufEnum {
+  static const StawiCallOutcomeState STAWI_CALL_OUTCOME_STATE_UNSPECIFIED = StawiCallOutcomeState._(0, _omitEnumNames ? '' : 'STAWI_CALL_OUTCOME_STATE_UNSPECIFIED');
+  static const StawiCallOutcomeState STAWI_CALL_OUTCOME_STATE_ACCEPTED = StawiCallOutcomeState._(1, _omitEnumNames ? '' : 'STAWI_CALL_OUTCOME_STATE_ACCEPTED');
+  static const StawiCallOutcomeState STAWI_CALL_OUTCOME_STATE_FAILED = StawiCallOutcomeState._(2, _omitEnumNames ? '' : 'STAWI_CALL_OUTCOME_STATE_FAILED');
+  static const StawiCallOutcomeState STAWI_CALL_OUTCOME_STATE_OBSERVED = StawiCallOutcomeState._(3, _omitEnumNames ? '' : 'STAWI_CALL_OUTCOME_STATE_OBSERVED');
+
+  static const $core.List<StawiCallOutcomeState> values = <StawiCallOutcomeState> [
+    STAWI_CALL_OUTCOME_STATE_UNSPECIFIED,
+    STAWI_CALL_OUTCOME_STATE_ACCEPTED,
+    STAWI_CALL_OUTCOME_STATE_FAILED,
+    STAWI_CALL_OUTCOME_STATE_OBSERVED,
+  ];
+
+  static final $core.Map<$core.int, StawiCallOutcomeState> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static StawiCallOutcomeState? valueOf($core.int value) => _byValue[value];
+
+  const StawiCallOutcomeState._($core.int v, $core.String n) : super(v, n);
 }
 
 class TextAnnotation_Type extends $pb.ProtobufEnum {

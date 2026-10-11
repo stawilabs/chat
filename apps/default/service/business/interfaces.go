@@ -90,6 +90,10 @@ type MessageBusiness interface {
 		sentBy *commonv1.ContactLink,
 	) ([]*chatv1.AckEvent, error)
 
+	// SendServiceEvents posts display-only cards and text into Stawi rooms the
+	// chain has, for a service principal holding stawi_card_post.
+	SendServiceEvents(ctx context.Context, req *chatv1.SendEventRequest) ([]*chatv1.AckEvent, error)
+
 	// GetMessage retrieves a single message by ID with access control
 	GetMessage(
 		ctx context.Context,

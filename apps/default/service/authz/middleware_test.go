@@ -524,3 +524,21 @@ func (s *MiddlewareTestSuite) TestCanViewRoom_ServiceError() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "authorization check failed")
 }
+
+// TestSetRoomMemberRole_LeavesOnlyTheGivenRole moves an owner to guest: the
+// guest relation is written and every other relation is gone.
+func (s *MiddlewareTestSuite) TestSetRoomMemberRole_LeavesOnlyTheGivenRole() {
+	ctx := context.Background()
+	roomID, subID := util.IDString(), util.IDString()
+	s.Require().NoError(s.middleware.AddRoomMember(ctx, roomID, subID, authz.RoleOwner))
+	s.Require().NoError(s.middleware.AddRoomMember(ctx, roomID, subID, authz.RoleMember))
+
+	s.Require().NoError(s.middleware.SetRoomMemberRole(ctx, roomID, subID, authz.RoleGuest))
+
+	s.Require().NoError(s.middleware.CanRoomView(ctx, subID, roomID))
+	s.Require().Error(s.middleware.CanMessageSend(ctx, subID, roomID))
+	s.Require().Error(s.middleware.CanRoomDelete(ctx, subID, roomID))
+
+	s.Require().NoError(s.middleware.SetRoomMemberRole(ctx, roomID, subID, authz.RoleGuest), "idempotent")
+	s.Require().NoError(s.middleware.CanRoomView(ctx, subID, roomID))
+}

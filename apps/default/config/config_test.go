@@ -146,5 +146,64 @@ func validChatConfig() config.ChatConfig {
 		CallDirectMaxParticipants:      2,
 		CallMeshMaxParticipants:        6,
 		CallMaxVideoPublishers:         5,
+		QueueStawiFactsName:            "stawi.settlement.facts",
+		QueueStawiFactsURI:             "mem://stawi.settlement.facts",
+		QueueStawiDriftName:            "chat.room.subscription_drift",
+		QueueStawiDriftURI:             "mem://chat.room.subscription_drift",
+		StawiReconcileIntervalSeconds:  300,
 	}
+}
+
+func productionStawiConfig(env string) config.ChatConfig {
+	cfg := validChatConfig()
+	cfg.ServiceEnvironment = env
+	cfg.SettlementServiceURI = "service-settlement.stawi.svc:80"
+	cfg.QueueStawiFactsURI = "nats://core-queue:4222?jetstream=true&subject=svc.stawi.settlement.events"
+	cfg.QueueStawiDriftURI = "nats://core-queue:4222?jetstream=true&subject=svc.chat.facts.room_subscription_drift"
+	return cfg
+}
+
+// TestChatConfig_StawiRooms covers the Stawi room settings: always well formed,
+// and in staging and production wired to real settlement, profile and queues.
+func TestChatConfig_StawiRooms(t *testing.T) {
+	t.Run("facts queue must have a valid scheme", func(t *testing.T) {
+		cfg := validChatConfig()
+		cfg.QueueStawiFactsURI = "bogus://x"
+		require.ErrorContains(t, cfg.Validate(), "QueueStawiFactsURI")
+	})
+	t.Run("reconcile interval must be positive", func(t *testing.T) {
+		cfg := validChatConfig()
+		cfg.StawiReconcileIntervalSeconds = 0
+		require.ErrorContains(t, cfg.Validate(), "StawiReconcileIntervalSeconds")
+	})
+	for _, env := range []string{"staging", "production", "prod"} {
+		t.Run(env+" accepts a wired configuration", func(t *testing.T) {
+			cfg := productionStawiConfig(env)
+			require.NoError(t, cfg.Validate())
+		})
+		t.Run(env+" needs the settlement endpoint", func(t *testing.T) {
+			cfg := productionStawiConfig(env)
+			cfg.SettlementServiceURI = ""
+			require.ErrorContains(t, cfg.Validate(), "SETTLEMENT_SERVICE_URI")
+		})
+		t.Run(env+" needs the profile endpoint", func(t *testing.T) {
+			cfg := productionStawiConfig(env)
+			cfg.ProfileServiceURI = ""
+			require.ErrorContains(t, cfg.Validate(), "PROFILE_SERVICE_URI")
+		})
+		t.Run(env+" needs a durable facts subscription", func(t *testing.T) {
+			cfg := productionStawiConfig(env)
+			cfg.QueueStawiFactsURI = "mem://stawi.settlement.facts"
+			require.ErrorContains(t, cfg.Validate(), "QUEUE_STAWI_FACTS_URI")
+		})
+		t.Run(env+" needs a durable drift queue", func(t *testing.T) {
+			cfg := productionStawiConfig(env)
+			cfg.QueueStawiDriftURI = "mem://chat.room.subscription_drift"
+			require.ErrorContains(t, cfg.Validate(), "QUEUE_STAWI_DRIFT_URI")
+		})
+	}
+	t.Run("development may run on in-memory queues without settlement", func(t *testing.T) {
+		cfg := validChatConfig()
+		require.NoError(t, cfg.Validate())
+	})
 }

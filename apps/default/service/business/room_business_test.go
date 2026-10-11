@@ -2,6 +2,7 @@ package business_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/tests"
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 type RoomBusinessTestSuite struct {
@@ -2621,5 +2623,114 @@ func (s *RoomBusinessTestSuite) TestUpdateSubscriptionRole_SyncRoleUpdate() {
 			Name:   "Should Fail",
 		}, member)
 		require.Error(t, err, "demoted member should not be able to update room")
+	})
+}
+
+// TestCreateRoom_CallerSuppliedID covers the identifier contract a room has
+// under Stawi's room model: a room is the entity, and its id is one value,
+// shared by chat, the finance service and the chain. When the room is created
+// in finance first the caller hands chat that id; otherwise chat mints one.
+// Subtests share a single WithTestDependencies call to keep to one container
+// stack, as the rest of this suite does.
+func (s *RoomBusinessTestSuite) TestCreateRoom_CallerSuppliedID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		roomBusiness := s.setupBusinessLayer(ctx, svc)
+
+		_, dbPool := s.GetRepoDeps(ctx, svc)
+
+		creator := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+
+		countRooms := func(roomID string) int64 {
+			var count int64
+			require.NoError(t, dbPool.DB(ctx, true).
+				Model(&models.Room{}).Where("id = ?", roomID).Count(&count).Error)
+			return count
+		}
+
+		t.Run("AdoptsSuppliedID", func(t *testing.T) {
+			roomID := util.IDString()
+
+			room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+				Id:   roomID,
+				Name: "Finance First Room",
+			}, creator)
+			require.NoError(t, err)
+			require.Equal(t, roomID, room.GetId())
+			require.Equal(t, int64(1), countRooms(roomID))
+		})
+
+		t.Run("MintsWhenAbsent", func(t *testing.T) {
+			room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+				Name: "Chat First Room",
+			}, creator)
+			require.NoError(t, err)
+			require.NotEmpty(t, room.GetId())
+			require.True(t, chatutil.IsValidRoomID(room.GetId()),
+				"a minted room id must be the platform identifier format")
+		})
+
+		t.Run("RefusesMalformedID", func(t *testing.T) {
+			for _, badID := range []string{"room-1", "not-an-xid", "zzzzzzzzzzzzzzzzzzzz", "../etc/passwd"} {
+				room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+					Id:   badID,
+					Name: "Malformed Room",
+				}, creator)
+				require.ErrorIs(t, err, service.ErrRoomIDInvalid, "id %q must be refused", badID)
+				require.Nil(t, room)
+				require.Equal(t, int64(0), countRooms(badID))
+			}
+		})
+
+		t.Run("DuplicateReturnsExistingRoom", func(t *testing.T) {
+			roomID := util.IDString()
+
+			first, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+				Id:   roomID,
+				Name: "Original Name",
+			}, creator)
+			require.NoError(t, err)
+
+			// A retrying caller sends the same id again; it gets the room that
+			// exists, not a second room and not an error.
+			second, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+				Id:   roomID,
+				Name: "Retried Name",
+			}, creator)
+			require.NoError(t, err)
+			require.Equal(t, first.GetId(), second.GetId())
+			require.Equal(t, "Original Name", second.GetName())
+			require.Equal(t, int64(1), countRooms(roomID))
+		})
+
+		t.Run("ConcurrentDuplicatesProduceOneRoom", func(t *testing.T) {
+			const attempts = 6
+			roomID := util.IDString()
+
+			var wg sync.WaitGroup
+			results := make([]*chatv1.Room, attempts)
+			errs := make([]error, attempts)
+
+			for i := range attempts {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					results[i], errs[i] = roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+						Id:   roomID,
+						Name: "Concurrent Room",
+					}, creator)
+				}()
+			}
+			wg.Wait()
+
+			// The rooms primary key, not a read-then-write check, is what makes
+			// this safe: every racer inserts, the losers get a unique violation
+			// and are answered with the room that won.
+			for i := range attempts {
+				require.NoError(t, errs[i], "attempt %d", i)
+				require.Equal(t, roomID, results[i].GetId(), "attempt %d", i)
+			}
+			require.Equal(t, int64(1), countRooms(roomID))
+		})
 	})
 }

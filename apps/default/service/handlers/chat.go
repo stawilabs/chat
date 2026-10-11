@@ -17,6 +17,8 @@ import (
 	"github.com/pitabwire/frame/v2/cache"
 	"github.com/pitabwire/frame/v2/data"
 	"github.com/pitabwire/frame/v2/datastore"
+	"github.com/pitabwire/frame/v2/security"
+	"github.com/pitabwire/frame/v2/security/authorizer"
 	"github.com/pitabwire/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,6 +31,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/business"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
@@ -57,6 +60,23 @@ type ChatServer struct {
 	chatv1connect.UnimplementedChatServiceHandler
 }
 
+// ServerOption configures optional ChatServer dependencies.
+type ServerOption func(*serverOptions)
+
+type serverOptions struct {
+	stawiRooms    stawi.Rooms
+	stawiAccounts stawi.AccountResolver
+}
+
+// WithStawi gives the server settlement's RoomService and the profile account
+// lookup, enabling Stawi room acts.
+func WithStawi(rooms stawi.Rooms, accounts stawi.AccountResolver) ServerOption {
+	return func(o *serverOptions) {
+		o.stawiRooms = rooms
+		o.stawiAccounts = accounts
+	}
+}
+
 // NewChatServer creates a new ChatServer with the business layers initialized.
 func NewChatServer(
 	ctx context.Context,
@@ -64,7 +84,15 @@ func NewChatServer(
 	notificationCli notificationv1connect.NotificationServiceClient,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
+	opts ...ServerOption,
 ) *ChatServer {
+	options := serverOptions{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&options)
+		}
+	}
+
 	workMan := service.WorkManager()
 	eventsMan := service.EventsManager()
 	dbPool := service.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
@@ -76,6 +104,7 @@ func NewChatServer(
 	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 	deviceReplayRepo := repository.NewDeviceReplayRepository(ctx, dbPool, workMan)
+	stawiBindings := repository.NewStawiRoomRepository(ctx, dbPool, workMan)
 
 	rawPresenceCache, ok := service.GetRawCache("presence")
 	if !ok {
@@ -108,6 +137,17 @@ func NewChatServer(
 		subscriptionSvc,
 		authzMiddleware,
 		business.WithCallPolicy(callRepo, callPolicy),
+		// Always wired: without a settlement client Stawi acts are refused as
+		// unavailable, but a room the chain has is still guarded.
+		business.WithStawiRooms(business.StawiDeps{
+			Rooms:    options.stawiRooms,
+			Accounts: options.stawiAccounts,
+			RoomRepo: roomRepo,
+			Bindings: stawiBindings,
+			CallRepo: repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
+		}),
+		business.WithServiceCards(authorizer.NewFunctionChecker( // stawi_card_post gate
+			service.SecurityManager().GetAuthorizer(ctx), business.ServiceNamespace)),
 	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
@@ -123,12 +163,14 @@ func NewChatServer(
 		messageBusiness,
 		profileCli,
 		authzMiddleware,
+		business.WithStawiBindings(stawiBindings),
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,
 		roomBusiness,
 		subscriptionSvc,
 		authzMiddleware,
+		business.WithProposalStawiBindings(stawiBindings),
 	)
 
 	return &ChatServer{
@@ -183,7 +225,13 @@ func (ps *ChatServer) SendEvent(
 	ctx context.Context,
 	req *connect.Request[chatv1.SendEventRequest],
 ) (*connect.Response[chatv1.SendEventResponse], error) {
-	// Validate authentication
+	// A service principal (no contact) posts display-only cards through its
+	// own, separately authorized path; everyone else must be a contact.
+	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetContactID() == "" &&
+		claims.IsInternalSystem() {
+		return ps.sendServiceEvents(ctx, req)
+	}
+
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
@@ -217,6 +265,24 @@ func (ps *ChatServer) SendEvent(
 	return connect.NewResponse(&chatv1.SendEventResponse{
 		Ack: acks,
 	}), nil
+}
+
+// sendServiceEvents is SendEvent for a service principal posting cards.
+func (ps *ChatServer) sendServiceEvents(
+	ctx context.Context,
+	req *connect.Request[chatv1.SendEventRequest],
+) (*connect.Response[chatv1.SendEventResponse], error) {
+	if len(req.Msg.GetEvent()) > MaxBatchSize {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("too many events: max %d allowed", MaxBatchSize))
+	}
+	timeoutCtx, cancel := ps.withTimeout(ctx, sendEventsTimeout)
+	defer cancel()
+	acks, err := ps.MessageBusiness.SendServiceEvents(timeoutCtx, req.Msg)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+	return connect.NewResponse(&chatv1.SendEventResponse{Ack: acks}), nil
 }
 
 func (ps *ChatServer) GetHistory(

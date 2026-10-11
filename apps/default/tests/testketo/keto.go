@@ -59,6 +59,19 @@ class tenancy_access implements Namespace {
   }
 }
 
+class service_chat implements Namespace {
+  related: {
+    service: profile_user[]
+    granted_stawi_card_post: profile_user[]
+  }
+
+  permits = {
+    stawi_card_post: (ctx: Context): boolean =>
+      this.related.service.includes(ctx.subject) ||
+      this.related.granted_stawi_card_post.includes(ctx.subject),
+  }
+}
+
 class chat_profile implements Namespace {
   related: {
     self: chat_profile[]

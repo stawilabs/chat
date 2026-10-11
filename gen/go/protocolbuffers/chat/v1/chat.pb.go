@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Ant Investor Ltd
+// Copyright 2023-2026 Stawi Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -845,14 +845,24 @@ func (x *Room) GetRequiresApproval() bool {
 }
 
 type CreateRoomRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Id          string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"` // optional client-provided idempotency key
-	Name        string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Type        RoomType               `protobuf:"varint,10,opt,name=type,proto3,enum=chat.v1.RoomType" json:"type,omitempty"`
-	IsPrivate   bool                   `protobuf:"varint,6,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
-	Members     []*v1.ContactLink      `protobuf:"bytes,7,rep,name=members,proto3" json:"members,omitempty"` // optional
-	Metadata    *structpb.Struct       `protobuf:"bytes,8,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional caller-supplied room identifier.
+	//
+	// A room is the entity: its id in chat, in the finance service and on chain
+	// is one value. When a room is created in finance first, the caller hands
+	// chat that id here; when it is omitted chat mints one as before. Creating
+	// the same id twice returns the room that already exists, so a caller may
+	// safely retry.
+	//
+	// The identifier format is the platform's own (an xid, as util.IDString
+	// mints): 20 characters over [0-9a-v]. Anything else is refused.
+	Id          string            `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string            `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Description string            `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Type        RoomType          `protobuf:"varint,10,opt,name=type,proto3,enum=chat.v1.RoomType" json:"type,omitempty"`
+	IsPrivate   bool              `protobuf:"varint,6,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
+	Members     []*v1.ContactLink `protobuf:"bytes,7,rep,name=members,proto3" json:"members,omitempty"` // optional
+	Metadata    *structpb.Struct  `protobuf:"bytes,8,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	// If true, changes to this room require approval from owners before execution
 	RequiresApproval bool `protobuf:"varint,9,opt,name=requires_approval,json=requiresApproval,proto3" json:"requires_approval,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -3093,7 +3103,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x11requires_approval\x18\n" +
 	" \x01(\bR\x10requiresApproval\"\xdc\x02\n" +
 	"\x11CreateRoomRequest\x12+\n" +
-	"\x02id\x18\x03 \x01(\tB\x1b\xbaH\x18r\x16\x10\x03\x18(2\x10[0-9a-z_-]{3,40}R\x02id\x12\x1e\n" +
+	"\x02id\x18\x03 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x132\x0e^[0-9a-v]{20}$\x98\x01\x14R\x02id\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x02\x18\xc8\x01R\x04name\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12%\n" +
@@ -3297,7 +3307,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x0eProposalAction\x12\x1f\n" +
 	"\x1bPROPOSAL_ACTION_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17PROPOSAL_ACTION_APPROVE\x10\x01\x12\x1a\n" +
-	"\x16PROPOSAL_ACTION_REJECT\x10\x022\x887\n" +
+	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xaa7\n" +
 	"\vChatService\x12\xa1\x02\n" +
 	"\tSendEvent\x12\x19.chat.v1.SendEventRequest\x1a\x1a.chat.v1.SendEventResponse\"\xdc\x01\xbaG\xc8\x01\n" +
 	"\bMessages\x12\x17Send an event to a room\x1a\x97\x01Sends one or more events to chat rooms. Supports text, attachments, reactions, and system messages. Idempotent when idempotency_key header is provided.*\tsendEvent\x82\xb5\x18\f\n" +
@@ -3373,10 +3383,10 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x10ListReplayEvents\x12 .chat.v1.ListReplayEventsRequest\x1a!.chat.v1.ListReplayEventsResponse\"\x8d\x02\xbaG\xf6\x01\n" +
 	"\rDevice Replay\x12!List replay events after a cursor\x1a\xaf\x01Returns a paginated list of replay events for a device starting after a given cursor up to an upper bound. Used by the gateway to stream missed events to reconnecting clients.*\x10listReplayEvents\x82\xb5\x18\f\n" +
 	"\n" +
-	"event_view\x90\x02\x01\x1a\x9d\x06\x82\xb5\x18\x98\x06\n" +
+	"event_view\x90\x02\x01\x1a\xbf\x06\x82\xb5\x18\xba\x06\n" +
 	"\fservice_chat\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x1a\x94\x01\b\x01\x12\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x1a\x94\x01\b\x01\x12\n" +
 	"event_view\x12\n" +
 	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x1a\x87\x01\b\x02\x12\n" +
 	"event_view\x12\n" +
@@ -3385,18 +3395,19 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"event_send\x12\troom_view\x12\x11subscription_view\x12\rproposal_view\x1a;\b\x04\x12\n" +
 	"event_view\x12\troom_view\x12\x11subscription_view\x12\rproposal_view\x1a8\b\x05\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\x11subscription_view\x1a\x94\x01\b\x06\x12\n" +
+	"event_send\x12\troom_view\x12\x11subscription_view\x1a\xa5\x01\b\x06\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manageB\x8c\x06\xbaG\xcf\x05\x12\xa3\x05\n" +
-	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"U\n" +
-	"\x10Ant Investor Ltd\x12+https://github.com/antinvestor/service-chat\x1a\x14info@antinvestor.com*I\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_postB\xd1\x06\xbaG\xb9\x05\x12\x8d\x05\n" +
+	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"?\n" +
+	"\n" +
+	"Stawi Labs\x12!https://github.com/stawilabs/chat\x1a\x0einfo@stawi.org*I\n" +
 	"\x0eApache License\x127https://github.com/antinvestor/apis/blob/master/LICENSE2\x06v1.0.0*':%\n" +
 	"#\n" +
 	"\n" +
 	"BearerAuth\x12\x15\n" +
 	"\x13\n" +
 	"\x04http*\x06bearer2\x03JWT\n" +
-	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
+	"\vcom.chat.v1B\tChatProtoP\x01Z=buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
 
 var (
 	file_chat_v1_chat_proto_rawDescOnce sync.Once

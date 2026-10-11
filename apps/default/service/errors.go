@@ -49,8 +49,23 @@ var (
 	ErrItemDoesNotExist   = connect.NewError(connect.CodeNotFound, errors.New("specified item does not exist"))
 
 	// ErrRoomNameRequired is returned when room name is not provided.
-	ErrRoomNameRequired    = connect.NewError(connect.CodeInvalidArgument, errors.New("room name is required"))
-	ErrRoomIDRequired      = connect.NewError(connect.CodeInvalidArgument, errors.New("room ID is required"))
+	ErrRoomNameRequired = connect.NewError(connect.CodeInvalidArgument, errors.New("room name is required"))
+	ErrRoomIDRequired   = connect.NewError(connect.CodeInvalidArgument, errors.New("room ID is required"))
+	// ErrRoomIDInvalid is returned when a caller supplies a room ID that is not
+	// the platform's identifier format. A room's id is one value shared by chat,
+	// the finance service and the chain, so chat may accept an id it did not
+	// mint but never one it could not have minted.
+	ErrRoomIDInvalid = connect.NewError(
+		connect.CodeInvalidArgument,
+		errors.New("room ID must be a valid identifier"),
+	)
+	// ErrRoomIDTaken is returned when a caller supplies a room ID that is already
+	// in use by a room this caller cannot be shown, so the creation can neither
+	// proceed nor be answered idempotently.
+	ErrRoomIDTaken = connect.NewError(
+		connect.CodeAlreadyExists,
+		errors.New("room ID is already in use"),
+	)
 	ErrRoomMembersRequired = connect.NewError(
 		connect.CodeInvalidArgument,
 		errors.New("at least one member is required"),
@@ -136,6 +151,15 @@ var (
 		connect.CodePermissionDenied,
 		errors.New("you don't have permission to approve or reject proposals"),
 	)
+	// ErrStawiRoomChainManaged refuses the chat-native ways of changing a Stawi
+	// room that is on chain: its membership, roles, proposals and existence
+	// follow the chain only.
+	ErrStawiRoomChainManaged = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("this is a Stawi room: its members, roles, proposals and existence change only on chain; "+
+			"prepare the call through settlement, sign it on the device and send it as a STAWI_SIGNED_CALL payload"),
+	)
+
 	ErrProposalRequired = connect.NewError(
 		connect.CodeFailedPrecondition,
 		errors.New("this operation requires approval; a proposal has been created"),

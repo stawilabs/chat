@@ -7,22 +7,26 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
 	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/common/v2"
 	"github.com/antinvestor/common/v2/connection"
 	"github.com/antinvestor/common/v2/permissions"
 	"github.com/antinvestor/common/v2/servicecatalog"
+	"github.com/antinvestor/service-profile/client/accounts"
 	"github.com/pitabwire/frame/v2"
 	"github.com/pitabwire/frame/v2/config"
 	"github.com/pitabwire/frame/v2/datastore"
 	"github.com/pitabwire/frame/v2/datastore/pool"
 	frevents "github.com/pitabwire/frame/v2/events"
+	"github.com/pitabwire/frame/v2/queue"
 	"github.com/pitabwire/frame/v2/security/authorizer"
 	connectInterceptors "github.com/pitabwire/frame/v2/security/interceptors/connect"
 	"github.com/pitabwire/frame/v2/workerpool"
@@ -30,11 +34,14 @@ import (
 
 	aconfig "github.com/stawilabs/chat/apps/default/config"
 	"github.com/stawilabs/chat/apps/default/service/authz"
+	"github.com/stawilabs/chat/apps/default/service/business"
 	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/handlers"
 	"github.com/stawilabs/chat/apps/default/service/health"
 	"github.com/stawilabs/chat/apps/default/service/queues"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/service/stawi"
+	"github.com/stawilabs/chat/apps/default/service/stawi/settlement"
 )
 
 //go:embed spec/chat.openapi.yaml
@@ -109,18 +116,19 @@ func runService(ctx context.Context) error {
 	auth := sm.GetAuthorizer(ctx)
 	authzMiddleware := authz.NewMiddleware(auth)
 
-	// Setup Connect server and HTTP handlers
-	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
+	stawiChain, stawiServer := setupStawi(ctx, &cfg, dbPool, workMan, queueMan, profileCli, authzMiddleware)
+	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware, stawiServer)
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 	deadLetterRepo := repository.NewDeadLetterRepository(ctx, dbPool, workMan)
 
 	serviceOptions := []frame.Option{
 		// Outbox relay: sole publisher draining room_outbox, run as a frame
 		// background consumer so its lifecycle is owned by the service.
-		outboxRelayOption(ctx, dbPool, workMan, eventsMan),
+		outboxRelayOption(ctx, &cfg, dbPool, workMan, queueMan, eventsMan),
 		frame.WithHTTPHandler(connectHandler),
 		frame.WithPermissionRegistration(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
+		frame.WithRegisterPublisher(cfg.QueueRoomEventPublishedName, cfg.QueueRoomEventPublishedURI),
 		frame.WithRegisterSubscriber(
 			cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI,
 			queues.NewDeadLetterConsumer(&cfg, deadLetterRepo),
@@ -138,6 +146,7 @@ func runService(ctx context.Context) error {
 	}
 
 	serviceOptions = append(serviceOptions, gatewayPublisherOptions(cfg)...)
+	serviceOptions = append(serviceOptions, stawiOptions(cfg, stawiChain)...)
 
 	// Register queue handlers and event handlers
 	serviceOptions = append(serviceOptions,
@@ -176,15 +185,26 @@ func gatewayPublisherOptions(cfg aconfig.ChatConfig) []frame.Option {
 
 // outboxRelayOption builds the frame background-consumer option that runs the
 // transactional-outbox relay (sole publisher draining room_outbox) for the
-// lifetime of the service.
+// lifetime of the service. The relay also publishes the durable
+// chat.room.event.published fact for rooms that opted in through room
+// metadata, so the fact stream shares the relay's ordering and delivery
+// guarantees instead of introducing a second publisher.
 func outboxRelayOption(
 	ctx context.Context,
+	cfg *aconfig.ChatConfig,
 	dbPool pool.Pool,
 	workMan workerpool.Manager,
+	queueMan queue.Manager,
 	eventsMan frevents.Manager,
 ) frame.Option {
 	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
-	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan).Run)
+	factPublisher := events.NewRoomEventFactPublisher(
+		repository.NewRoomRepository(ctx, dbPool, workMan),
+		repository.NewRoomEventRepository(ctx, dbPool, workMan),
+		queueMan,
+		cfg.QueueRoomEventPublishedName,
+	)
+	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan, factPublisher).Run)
 }
 
 // handleDatabaseMigration performs database migration if configured to do so.
@@ -219,6 +239,93 @@ func handleDatabaseMigration(
 	}
 	util.Log(ctx).Info("main -- database migration complete; migrate job exiting")
 	return true
+}
+
+// stawiOptions subscribes the chain consumer to settlement's facts, runs the
+// reconciler on its interval and registers the drift publisher.
+func stawiOptions(cfg aconfig.ChatConfig, chain *business.StawiChain) []frame.Option {
+	opts := []frame.Option{
+		frame.WithRegisterSubscriber(
+			cfg.QueueStawiFactsName,
+			cfg.QueueStawiFactsURI,
+			queues.NewStawiFactsHandler(chain),
+		),
+		frame.WithBackgroundConsumer(func(ctx context.Context) error {
+			return chain.Run(ctx, time.Duration(cfg.StawiReconcileIntervalSeconds)*time.Second)
+		}),
+	}
+	if cfg.QueueStawiDriftName != "" {
+		opts = append(opts, frame.WithRegisterPublisher(cfg.QueueStawiDriftName, cfg.QueueStawiDriftURI))
+	}
+	return opts
+}
+
+// setupSettlementRooms connects to settlement's RoomService as chat's
+// service principal (workload identity, OAuth2 and retries from cfg). An empty
+// endpoint is a development posture: Stawi room acts are then refused as
+// unavailable, while bound rooms stay guarded and facts are applied.
+func setupSettlementRooms(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, error) {
+	if cfg.SettlementServiceURI == "" {
+		util.Log(ctx).Warn("main -- no settlement endpoint; Stawi room acts are refused")
+		return nil, nil //nolint:nilnil // no endpoint is a development posture, not an error
+	}
+	cli, err := connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.SettlementServiceURI,
+		WorkloadAPITargetPath: cfg.SettlementServiceWorkloadAPITargetPath,
+		ServiceID:             servicecatalog.ServiceStawiSettlement,
+	}, settlementv1connect.NewRoomServiceClient)
+	if err != nil {
+		return nil, err
+	}
+	return settlement.NewRooms(cli), nil
+}
+
+// setupStawi wires Stawi rooms: settlement relays room acts, profile maps
+// chain addresses to profiles (client/accounts over the profile client), and
+// the chain consumer applies settlement's facts.
+func setupStawi(
+	ctx context.Context,
+	cfg *aconfig.ChatConfig,
+	dbPool pool.Pool,
+	workMan workerpool.Manager,
+	queueMan queue.Manager,
+	profileCli profilev1connect.ProfileServiceClient,
+	authzMiddleware authz.Middleware,
+) (*business.StawiChain, handlers.ServerOption) {
+	rooms, err := setupSettlementRooms(ctx, *cfg)
+	if err != nil {
+		util.Log(ctx).WithError(err).Fatal("main -- could not set up the settlement client")
+	}
+	accountResolver := accounts.New(profileCli)
+	chain := newStawiChain(ctx, dbPool, workMan, queueMan, cfg, rooms, accountResolver, authzMiddleware)
+	return chain, handlers.WithStawi(rooms, accountResolver)
+}
+
+// newStawiChain builds the chain consumer that applies settlement's facts.
+func newStawiChain(
+	ctx context.Context,
+	dbPool pool.Pool,
+	workMan workerpool.Manager,
+	queueMan queue.Manager,
+	cfg *aconfig.ChatConfig,
+	rooms stawi.Rooms,
+	accountResolver stawi.AccountResolver,
+	authzMiddleware authz.Middleware,
+) *business.StawiChain {
+	return business.NewStawiChain(business.StawiChainDeps{
+		Pool:     dbPool,
+		RoomRepo: repository.NewRoomRepository(ctx, dbPool, workMan),
+		SubRepo:  repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan),
+		Bindings: repository.NewStawiRoomRepository(ctx, dbPool, workMan),
+		Calls:    repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
+		Store:    repository.NewStawiChainStore(dbPool),
+		Accounts: accountResolver,
+		Rooms:    rooms,
+		Authz:    authzMiddleware,
+		Drift:    queues.NewStawiDriftPublisher(queueMan, cfg.QueueStawiDriftName),
+		// Refused activations are kept with the dead letters for an operator.
+		DeadLetters: repository.NewDeadLetterRepository(ctx, dbPool, workMan),
+	})
 }
 
 // setupNotificationClient creates and configures the notification client.
@@ -259,6 +366,7 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 	notificationCli notificationv1connect.NotificationServiceClient,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
+	opts ...handlers.ServerOption,
 ) http.Handler {
 	securityMan := svc.SecurityManager()
 
@@ -280,7 +388,7 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 		util.Log(ctx).WithError(err).Fatal("could not configure interceptors")
 	}
 
-	implementation := handlers.NewChatServer(ctx, svc, notificationCli, profileCli, authzMiddleware)
+	implementation := handlers.NewChatServer(ctx, svc, notificationCli, profileCli, authzMiddleware, opts...)
 
 	_, serverHandler := chatv1connect.NewChatServiceHandler(
 		implementation, connect.WithInterceptors(defaultInterceptorList...))

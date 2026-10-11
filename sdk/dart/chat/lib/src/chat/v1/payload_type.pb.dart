@@ -3880,6 +3880,818 @@ class FormSubmissionResultContent extends $pb.GeneratedMessage {
   $4.Struct ensureMetadata() => $_ensure(7);
 }
 
+/// FinanceCardContent is a finance fact rendered into a room. It is display
+/// only: chat never carries authorization, so a card carries no token,
+/// signature, capability or approval. Any action a card offers is completed by
+/// the client as a device-signed command to the finance service, never by
+/// replying in chat.
+class FinanceCardContent extends $pb.GeneratedMessage {
+  factory FinanceCardContent({
+    $core.String? cardId,
+    $core.String? groupId,
+    $core.String? kind,
+    $core.String? title,
+    $core.String? body,
+    $core.Map<$core.String, $core.String>? data,
+  }) {
+    final $result = create();
+    if (cardId != null) {
+      $result.cardId = cardId;
+    }
+    if (groupId != null) {
+      $result.groupId = groupId;
+    }
+    if (kind != null) {
+      $result.kind = kind;
+    }
+    if (title != null) {
+      $result.title = title;
+    }
+    if (body != null) {
+      $result.body = body;
+    }
+    if (data != null) {
+      $result.data.addAll(data);
+    }
+    return $result;
+  }
+  FinanceCardContent._() : super();
+  factory FinanceCardContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory FinanceCardContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FinanceCardContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'cardId')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..aOS(3, _omitFieldNames ? '' : 'kind')
+    ..aOS(4, _omitFieldNames ? '' : 'title')
+    ..aOS(5, _omitFieldNames ? '' : 'body')
+    ..m<$core.String, $core.String>(6, _omitFieldNames ? '' : 'data', entryClassName: 'FinanceCardContent.DataEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('chat.v1'))
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  FinanceCardContent clone() => FinanceCardContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  FinanceCardContent copyWith(void Function(FinanceCardContent) updates) => super.copyWith((message) => updates(message as FinanceCardContent)) as FinanceCardContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FinanceCardContent create() => FinanceCardContent._();
+  FinanceCardContent createEmptyInstance() => create();
+  static $pb.PbList<FinanceCardContent> createRepeated() => $pb.PbList<FinanceCardContent>();
+  @$core.pragma('dart2js:noInline')
+  static FinanceCardContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FinanceCardContent>(create);
+  static FinanceCardContent? _defaultInstance;
+
+  /// Identifier of the finance fact this card renders. Stable across
+  /// re-renders so a client can de-duplicate.
+  @$pb.TagNumber(1)
+  $core.String get cardId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cardId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCardId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCardId() => clearField(1);
+
+  /// Finance group the card belongs to; matches the room's
+  /// `stawi.group_id` metadata.
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => clearField(2);
+
+  /// Card kind, e.g. "PROPOSAL", "MOTION_TALLY", "CONTRIBUTION".
+  @$pb.TagNumber(3)
+  $core.String get kind => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set kind($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasKind() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearKind() => clearField(3);
+
+  /// Human-readable heading.
+  @$pb.TagNumber(4)
+  $core.String get title => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set title($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasTitle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTitle() => clearField(4);
+
+  /// Human-readable body.
+  @$pb.TagNumber(5)
+  $core.String get body => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set body($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasBody() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBody() => clearField(5);
+
+  /// Display-only values for the renderer (identifiers, amounts, labels).
+  @$pb.TagNumber(6)
+  $core.Map<$core.String, $core.String> get data => $_getMap(5);
+}
+
+/// StawiRoomConversionContent asks for this room to become a Stawi room: the
+/// chain creates custody for the room under the room's own id once the
+/// founders have signed the genesis. Chat relays the request to settlement,
+/// which compiles the constitution and prepares the genesis; chat then fills
+/// in `genesis` on the stored event, so the event itself is the genesis card.
+class StawiRoomConversionContent extends $pb.GeneratedMessage {
+  factory StawiRoomConversionContent({
+    $core.String? templateId,
+    $core.Map<$core.String, $core.String>? ruleValues,
+    $core.Iterable<$core.String>? founderSubscriptionIds,
+    StawiJoinPolicy? joinPolicy,
+    StawiGenesis? genesis,
+  }) {
+    final $result = create();
+    if (templateId != null) {
+      $result.templateId = templateId;
+    }
+    if (ruleValues != null) {
+      $result.ruleValues.addAll(ruleValues);
+    }
+    if (founderSubscriptionIds != null) {
+      $result.founderSubscriptionIds.addAll(founderSubscriptionIds);
+    }
+    if (joinPolicy != null) {
+      $result.joinPolicy = joinPolicy;
+    }
+    if (genesis != null) {
+      $result.genesis = genesis;
+    }
+    return $result;
+  }
+  StawiRoomConversionContent._() : super();
+  factory StawiRoomConversionContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory StawiRoomConversionContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'StawiRoomConversionContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'templateId')
+    ..m<$core.String, $core.String>(2, _omitFieldNames ? '' : 'ruleValues', entryClassName: 'StawiRoomConversionContent.RuleValuesEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OS, packageName: const $pb.PackageName('chat.v1'))
+    ..pPS(3, _omitFieldNames ? '' : 'founderSubscriptionIds')
+    ..e<StawiJoinPolicy>(4, _omitFieldNames ? '' : 'joinPolicy', $pb.PbFieldType.OE, defaultOrMaker: StawiJoinPolicy.STAWI_JOIN_POLICY_UNSPECIFIED, valueOf: StawiJoinPolicy.valueOf, enumValues: StawiJoinPolicy.values)
+    ..aOM<StawiGenesis>(5, _omitFieldNames ? '' : 'genesis', subBuilder: StawiGenesis.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  StawiRoomConversionContent clone() => StawiRoomConversionContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  StawiRoomConversionContent copyWith(void Function(StawiRoomConversionContent) updates) => super.copyWith((message) => updates(message as StawiRoomConversionContent)) as StawiRoomConversionContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiRoomConversionContent create() => StawiRoomConversionContent._();
+  StawiRoomConversionContent createEmptyInstance() => create();
+  static $pb.PbList<StawiRoomConversionContent> createRepeated() => $pb.PbList<StawiRoomConversionContent>();
+  @$core.pragma('dart2js:noInline')
+  static StawiRoomConversionContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiRoomConversionContent>(create);
+  static StawiRoomConversionContent? _defaultInstance;
+
+  /// Constitution template the rules are applied to.
+  @$pb.TagNumber(1)
+  $core.String get templateId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set templateId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasTemplateId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTemplateId() => clearField(1);
+
+  /// Rule values for the template, keyed by rule name. Values are strings
+  /// (decimal numbers, durations, enum names); settlement parses and checks
+  /// them against the template when it compiles the constitution.
+  @$pb.TagNumber(2)
+  $core.Map<$core.String, $core.String> get ruleValues => $_getMap(1);
+
+  /// Subscriptions of this room whose holders found the Stawi room. Each must
+  /// be an active subscription of the room.
+  @$pb.TagNumber(3)
+  $core.List<$core.String> get founderSubscriptionIds => $_getList(2);
+
+  @$pb.TagNumber(4)
+  StawiJoinPolicy get joinPolicy => $_getN(3);
+  @$pb.TagNumber(4)
+  set joinPolicy(StawiJoinPolicy v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasJoinPolicy() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearJoinPolicy() => clearField(4);
+
+  /// Output only: the genesis settlement prepared. Set by the server on the
+  /// stored event; a client that sets it is refused.
+  @$pb.TagNumber(5)
+  StawiGenesis get genesis => $_getN(4);
+  @$pb.TagNumber(5)
+  set genesis(StawiGenesis v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasGenesis() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearGenesis() => clearField(5);
+  @$pb.TagNumber(5)
+  StawiGenesis ensureGenesis() => $_ensure(4);
+}
+
+/// StawiGenesis is a prepared room genesis awaiting founder signatures.
+class StawiGenesis extends $pb.GeneratedMessage {
+  factory StawiGenesis({
+    $core.String? genesisId,
+    $core.List<$core.int>? genesisHash,
+    $core.List<$core.int>? constitutionHash,
+    $2.Timestamp? expiresAt,
+    $core.Iterable<$core.String>? founderProfileIds,
+  }) {
+    final $result = create();
+    if (genesisId != null) {
+      $result.genesisId = genesisId;
+    }
+    if (genesisHash != null) {
+      $result.genesisHash = genesisHash;
+    }
+    if (constitutionHash != null) {
+      $result.constitutionHash = constitutionHash;
+    }
+    if (expiresAt != null) {
+      $result.expiresAt = expiresAt;
+    }
+    if (founderProfileIds != null) {
+      $result.founderProfileIds.addAll(founderProfileIds);
+    }
+    return $result;
+  }
+  StawiGenesis._() : super();
+  factory StawiGenesis.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory StawiGenesis.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'StawiGenesis', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'genesisId')
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'genesisHash', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'constitutionHash', $pb.PbFieldType.OY)
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'expiresAt', subBuilder: $2.Timestamp.create)
+    ..pPS(5, _omitFieldNames ? '' : 'founderProfileIds')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  StawiGenesis clone() => StawiGenesis()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  StawiGenesis copyWith(void Function(StawiGenesis) updates) => super.copyWith((message) => updates(message as StawiGenesis)) as StawiGenesis;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiGenesis create() => StawiGenesis._();
+  StawiGenesis createEmptyInstance() => create();
+  static $pb.PbList<StawiGenesis> createRepeated() => $pb.PbList<StawiGenesis>();
+  @$core.pragma('dart2js:noInline')
+  static StawiGenesis getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiGenesis>(create);
+  static StawiGenesis? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get genesisId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set genesisId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasGenesisId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGenesisId() => clearField(1);
+
+  /// The digest each founder's device signs (account-wrapped by the app).
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get genesisHash => $_getN(1);
+  @$pb.TagNumber(2)
+  set genesisHash($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasGenesisHash() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGenesisHash() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.List<$core.int> get constitutionHash => $_getN(2);
+  @$pb.TagNumber(3)
+  set constitutionHash($core.List<$core.int> v) { $_setBytes(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasConstitutionHash() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearConstitutionHash() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $2.Timestamp get expiresAt => $_getN(3);
+  @$pb.TagNumber(4)
+  set expiresAt($2.Timestamp v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasExpiresAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpiresAt() => clearField(4);
+  @$pb.TagNumber(4)
+  $2.Timestamp ensureExpiresAt() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.List<$core.String> get founderProfileIds => $_getList(4);
+}
+
+/// StawiGenesisSignatureContent is a founder's signature over a prepared
+/// genesis. Chat checks the sender is one of the genesis founders and hands
+/// the signature to settlement; at founding quorum settlement creates the
+/// room on chain.
+class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
+  factory StawiGenesisSignatureContent({
+    $core.String? genesisId,
+    $core.List<$core.int>? signature,
+    $core.String? signerKeyId,
+    $core.String? algorithm,
+    $core.List<$core.int>? webauthnAuthenticatorData,
+    $core.List<$core.int>? webauthnClientDataJson,
+  }) {
+    final $result = create();
+    if (genesisId != null) {
+      $result.genesisId = genesisId;
+    }
+    if (signature != null) {
+      $result.signature = signature;
+    }
+    if (signerKeyId != null) {
+      $result.signerKeyId = signerKeyId;
+    }
+    if (algorithm != null) {
+      $result.algorithm = algorithm;
+    }
+    if (webauthnAuthenticatorData != null) {
+      $result.webauthnAuthenticatorData = webauthnAuthenticatorData;
+    }
+    if (webauthnClientDataJson != null) {
+      $result.webauthnClientDataJson = webauthnClientDataJson;
+    }
+    return $result;
+  }
+  StawiGenesisSignatureContent._() : super();
+  factory StawiGenesisSignatureContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory StawiGenesisSignatureContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'StawiGenesisSignatureContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'genesisId')
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'signature', $pb.PbFieldType.OY)
+    ..aOS(3, _omitFieldNames ? '' : 'signerKeyId')
+    ..aOS(4, _omitFieldNames ? '' : 'algorithm')
+    ..a<$core.List<$core.int>>(5, _omitFieldNames ? '' : 'webauthnAuthenticatorData', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(6, _omitFieldNames ? '' : 'webauthnClientDataJson', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  StawiGenesisSignatureContent clone() => StawiGenesisSignatureContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  StawiGenesisSignatureContent copyWith(void Function(StawiGenesisSignatureContent) updates) => super.copyWith((message) => updates(message as StawiGenesisSignatureContent)) as StawiGenesisSignatureContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiGenesisSignatureContent create() => StawiGenesisSignatureContent._();
+  StawiGenesisSignatureContent createEmptyInstance() => create();
+  static $pb.PbList<StawiGenesisSignatureContent> createRepeated() => $pb.PbList<StawiGenesisSignatureContent>();
+  @$core.pragma('dart2js:noInline')
+  static StawiGenesisSignatureContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiGenesisSignatureContent>(create);
+  static StawiGenesisSignatureContent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get genesisId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set genesisId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasGenesisId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGenesisId() => clearField(1);
+
+  /// The device signature over the founder's signing digest: secp256k1
+  /// (65 bytes) or P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get signature => $_getN(1);
+  @$pb.TagNumber(2)
+  set signature($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasSignature() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSignature() => clearField(2);
+
+  /// The device key that produced the signature.
+  @$pb.TagNumber(3)
+  $core.String get signerKeyId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set signerKeyId($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSignerKeyId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSignerKeyId() => clearField(3);
+
+  /// "secp256k1" or "p256-webauthn".
+  @$pb.TagNumber(4)
+  $core.String get algorithm => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set algorithm($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasAlgorithm() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAlgorithm() => clearField(4);
+
+  /// WebAuthn assertion material; empty for secp256k1.
+  @$pb.TagNumber(5)
+  $core.List<$core.int> get webauthnAuthenticatorData => $_getN(4);
+  @$pb.TagNumber(5)
+  set webauthnAuthenticatorData($core.List<$core.int> v) { $_setBytes(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasWebauthnAuthenticatorData() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearWebauthnAuthenticatorData() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.List<$core.int> get webauthnClientDataJson => $_getN(5);
+  @$pb.TagNumber(6)
+  set webauthnClientDataJson($core.List<$core.int> v) { $_setBytes(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasWebauthnClientDataJson() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearWebauthnClientDataJson() => clearField(6);
+}
+
+/// StawiSignedCallContent carries a room governance call (invite, accept,
+/// join, admit, leave, suspend, roles, propose, vote, delegate, freeze) that
+/// the app prepared through settlement and signed with the device key. Chat
+/// checks the sender's subscription is the call's signer and relays it; the
+/// room changes only when the chain reports the call.
+class StawiSignedCallContent extends $pb.GeneratedMessage {
+  factory StawiSignedCallContent({
+    $core.String? callId,
+    $core.String? kind,
+    $core.List<$core.int>? signature,
+    $core.String? signerKeyId,
+    $core.String? summary,
+    $core.String? algorithm,
+    $core.List<$core.int>? webauthnAuthenticatorData,
+    $core.List<$core.int>? webauthnClientDataJson,
+  }) {
+    final $result = create();
+    if (callId != null) {
+      $result.callId = callId;
+    }
+    if (kind != null) {
+      $result.kind = kind;
+    }
+    if (signature != null) {
+      $result.signature = signature;
+    }
+    if (signerKeyId != null) {
+      $result.signerKeyId = signerKeyId;
+    }
+    if (summary != null) {
+      $result.summary = summary;
+    }
+    if (algorithm != null) {
+      $result.algorithm = algorithm;
+    }
+    if (webauthnAuthenticatorData != null) {
+      $result.webauthnAuthenticatorData = webauthnAuthenticatorData;
+    }
+    if (webauthnClientDataJson != null) {
+      $result.webauthnClientDataJson = webauthnClientDataJson;
+    }
+    return $result;
+  }
+  StawiSignedCallContent._() : super();
+  factory StawiSignedCallContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory StawiSignedCallContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'StawiSignedCallContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'callId')
+    ..aOS(2, _omitFieldNames ? '' : 'kind')
+    ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'signature', $pb.PbFieldType.OY)
+    ..aOS(4, _omitFieldNames ? '' : 'signerKeyId')
+    ..aOS(5, _omitFieldNames ? '' : 'summary')
+    ..aOS(6, _omitFieldNames ? '' : 'algorithm')
+    ..a<$core.List<$core.int>>(7, _omitFieldNames ? '' : 'webauthnAuthenticatorData', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(8, _omitFieldNames ? '' : 'webauthnClientDataJson', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  StawiSignedCallContent clone() => StawiSignedCallContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  StawiSignedCallContent copyWith(void Function(StawiSignedCallContent) updates) => super.copyWith((message) => updates(message as StawiSignedCallContent)) as StawiSignedCallContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiSignedCallContent create() => StawiSignedCallContent._();
+  StawiSignedCallContent createEmptyInstance() => create();
+  static $pb.PbList<StawiSignedCallContent> createRepeated() => $pb.PbList<StawiSignedCallContent>();
+  @$core.pragma('dart2js:noInline')
+  static StawiSignedCallContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiSignedCallContent>(create);
+  static StawiSignedCallContent? _defaultInstance;
+
+  /// The call id settlement returned when the call was prepared.
+  @$pb.TagNumber(1)
+  $core.String get callId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set callId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCallId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCallId() => clearField(1);
+
+  /// The call kind, as settlement names it (e.g. "INVITE", "CAST_VOTE").
+  @$pb.TagNumber(2)
+  $core.String get kind => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set kind($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasKind() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKind() => clearField(2);
+
+  /// The device signature over the call's digest: secp256k1 (65 bytes) or
+  /// P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
+  @$pb.TagNumber(3)
+  $core.List<$core.int> get signature => $_getN(2);
+  @$pb.TagNumber(3)
+  set signature($core.List<$core.int> v) { $_setBytes(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSignature() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSignature() => clearField(3);
+
+  /// The device key that produced the signature.
+  @$pb.TagNumber(4)
+  $core.String get signerKeyId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set signerKeyId($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasSignerKeyId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSignerKeyId() => clearField(4);
+
+  /// Human-readable description of the act, for display.
+  @$pb.TagNumber(5)
+  $core.String get summary => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set summary($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasSummary() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSummary() => clearField(5);
+
+  /// "secp256k1" or "p256-webauthn".
+  @$pb.TagNumber(6)
+  $core.String get algorithm => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set algorithm($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasAlgorithm() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAlgorithm() => clearField(6);
+
+  /// WebAuthn assertion material; empty for secp256k1.
+  @$pb.TagNumber(7)
+  $core.List<$core.int> get webauthnAuthenticatorData => $_getN(6);
+  @$pb.TagNumber(7)
+  set webauthnAuthenticatorData($core.List<$core.int> v) { $_setBytes(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasWebauthnAuthenticatorData() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearWebauthnAuthenticatorData() => clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.List<$core.int> get webauthnClientDataJson => $_getN(7);
+  @$pb.TagNumber(8)
+  set webauthnClientDataJson($core.List<$core.int> v) { $_setBytes(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasWebauthnClientDataJson() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearWebauthnClientDataJson() => clearField(8);
+}
+
+/// StawiCallOutcomeContent is server-generated: what became of a conversion,
+/// a genesis signature or a signed call. Clients cannot send it.
+class StawiCallOutcomeContent extends $pb.GeneratedMessage {
+  factory StawiCallOutcomeContent({
+    $core.String? callId,
+    $core.String? genesisId,
+    StawiCallOutcomeState? state,
+    $core.String? reason,
+    $core.String? sourceEventId,
+    $core.String? kind,
+    $fixnum.Int64? chainId,
+    $core.List<$core.int>? txHash,
+    $fixnum.Int64? blockNumber,
+    $fixnum.Int64? logIndex,
+  }) {
+    final $result = create();
+    if (callId != null) {
+      $result.callId = callId;
+    }
+    if (genesisId != null) {
+      $result.genesisId = genesisId;
+    }
+    if (state != null) {
+      $result.state = state;
+    }
+    if (reason != null) {
+      $result.reason = reason;
+    }
+    if (sourceEventId != null) {
+      $result.sourceEventId = sourceEventId;
+    }
+    if (kind != null) {
+      $result.kind = kind;
+    }
+    if (chainId != null) {
+      $result.chainId = chainId;
+    }
+    if (txHash != null) {
+      $result.txHash = txHash;
+    }
+    if (blockNumber != null) {
+      $result.blockNumber = blockNumber;
+    }
+    if (logIndex != null) {
+      $result.logIndex = logIndex;
+    }
+    return $result;
+  }
+  StawiCallOutcomeContent._() : super();
+  factory StawiCallOutcomeContent.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory StawiCallOutcomeContent.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'StawiCallOutcomeContent', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'callId')
+    ..aOS(2, _omitFieldNames ? '' : 'genesisId')
+    ..e<StawiCallOutcomeState>(3, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE, defaultOrMaker: StawiCallOutcomeState.STAWI_CALL_OUTCOME_STATE_UNSPECIFIED, valueOf: StawiCallOutcomeState.valueOf, enumValues: StawiCallOutcomeState.values)
+    ..aOS(4, _omitFieldNames ? '' : 'reason')
+    ..aOS(5, _omitFieldNames ? '' : 'sourceEventId')
+    ..aOS(6, _omitFieldNames ? '' : 'kind')
+    ..a<$fixnum.Int64>(7, _omitFieldNames ? '' : 'chainId', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$core.List<$core.int>>(8, _omitFieldNames ? '' : 'txHash', $pb.PbFieldType.OY)
+    ..a<$fixnum.Int64>(9, _omitFieldNames ? '' : 'blockNumber', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(10, _omitFieldNames ? '' : 'logIndex', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  StawiCallOutcomeContent clone() => StawiCallOutcomeContent()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  StawiCallOutcomeContent copyWith(void Function(StawiCallOutcomeContent) updates) => super.copyWith((message) => updates(message as StawiCallOutcomeContent)) as StawiCallOutcomeContent;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiCallOutcomeContent create() => StawiCallOutcomeContent._();
+  StawiCallOutcomeContent createEmptyInstance() => create();
+  static $pb.PbList<StawiCallOutcomeContent> createRepeated() => $pb.PbList<StawiCallOutcomeContent>();
+  @$core.pragma('dart2js:noInline')
+  static StawiCallOutcomeContent getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiCallOutcomeContent>(create);
+  static StawiCallOutcomeContent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get callId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set callId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCallId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCallId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get genesisId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set genesisId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasGenesisId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGenesisId() => clearField(2);
+
+  @$pb.TagNumber(3)
+  StawiCallOutcomeState get state => $_getN(2);
+  @$pb.TagNumber(3)
+  set state(StawiCallOutcomeState v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearState() => clearField(3);
+
+  /// Why a FAILED outcome failed.
+  @$pb.TagNumber(4)
+  $core.String get reason => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reason($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasReason() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReason() => clearField(4);
+
+  /// The chat event that carried the act, when the act came through chat.
+  @$pb.TagNumber(5)
+  $core.String get sourceEventId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set sourceEventId($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasSourceEventId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSourceEventId() => clearField(5);
+
+  /// The call kind, or the chain event an OBSERVED outcome reports.
+  @$pb.TagNumber(6)
+  $core.String get kind => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set kind($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasKind() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearKind() => clearField(6);
+
+  /// Where an OBSERVED outcome was seen on chain.
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get chainId => $_getI64(6);
+  @$pb.TagNumber(7)
+  set chainId($fixnum.Int64 v) { $_setInt64(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasChainId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearChainId() => clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.List<$core.int> get txHash => $_getN(7);
+  @$pb.TagNumber(8)
+  set txHash($core.List<$core.int> v) { $_setBytes(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasTxHash() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTxHash() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get blockNumber => $_getI64(8);
+  @$pb.TagNumber(9)
+  set blockNumber($fixnum.Int64 v) { $_setInt64(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasBlockNumber() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearBlockNumber() => clearField(9);
+
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get logIndex => $_getI64(9);
+  @$pb.TagNumber(10)
+  set logIndex($fixnum.Int64 v) { $_setInt64(9, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasLogIndex() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLogIndex() => clearField(10);
+}
+
 enum Payload_Data {
   default_7, 
   roomChange, 
@@ -3895,6 +4707,11 @@ enum Payload_Data {
   voteTally, 
   formRequest, 
   formSubmissionResult, 
+  financeCard, 
+  stawiRoomConversion, 
+  stawiGenesisSignature, 
+  stawiSignedCall, 
+  stawiCallOutcome, 
   notSet
 }
 
@@ -3915,6 +4732,11 @@ class Payload extends $pb.GeneratedMessage {
     VoteTally? voteTally,
     FormRequestContent? formRequest,
     FormSubmissionResultContent? formSubmissionResult,
+    FinanceCardContent? financeCard,
+    StawiRoomConversionContent? stawiRoomConversion,
+    StawiGenesisSignatureContent? stawiGenesisSignature,
+    StawiSignedCallContent? stawiSignedCall,
+    StawiCallOutcomeContent? stawiCallOutcome,
   }) {
     final $result = create();
     if (type != null) {
@@ -3962,6 +4784,21 @@ class Payload extends $pb.GeneratedMessage {
     if (formSubmissionResult != null) {
       $result.formSubmissionResult = formSubmissionResult;
     }
+    if (financeCard != null) {
+      $result.financeCard = financeCard;
+    }
+    if (stawiRoomConversion != null) {
+      $result.stawiRoomConversion = stawiRoomConversion;
+    }
+    if (stawiGenesisSignature != null) {
+      $result.stawiGenesisSignature = stawiGenesisSignature;
+    }
+    if (stawiSignedCall != null) {
+      $result.stawiSignedCall = stawiSignedCall;
+    }
+    if (stawiCallOutcome != null) {
+      $result.stawiCallOutcome = stawiCallOutcome;
+    }
     return $result;
   }
   Payload._() : super();
@@ -3983,10 +4820,15 @@ class Payload extends $pb.GeneratedMessage {
     29 : Payload_Data.voteTally,
     30 : Payload_Data.formRequest,
     31 : Payload_Data.formSubmissionResult,
+    40 : Payload_Data.financeCard,
+    41 : Payload_Data.stawiRoomConversion,
+    42 : Payload_Data.stawiGenesisSignature,
+    43 : Payload_Data.stawiSignedCall,
+    44 : Payload_Data.stawiCallOutcome,
     0 : Payload_Data.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Payload', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
-    ..oo(0, [7, 8, 10, 15, 16, 17, 18, 19, 25, 26, 28, 29, 30, 31])
+    ..oo(0, [7, 8, 10, 15, 16, 17, 18, 19, 25, 26, 28, 29, 30, 31, 40, 41, 42, 43, 44])
     ..e<PayloadType>(1, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE, defaultOrMaker: PayloadType.PAYLOAD_TYPE_UNSPECIFIED, valueOf: PayloadType.valueOf, enumValues: PayloadType.values)
     ..aOM<$4.Struct>(7, _omitFieldNames ? '' : 'default', subBuilder: $4.Struct.create)
     ..aOM<RoomChangeContent>(8, _omitFieldNames ? '' : 'roomChange', subBuilder: RoomChangeContent.create)
@@ -4002,6 +4844,11 @@ class Payload extends $pb.GeneratedMessage {
     ..aOM<VoteTally>(29, _omitFieldNames ? '' : 'voteTally', subBuilder: VoteTally.create)
     ..aOM<FormRequestContent>(30, _omitFieldNames ? '' : 'formRequest', subBuilder: FormRequestContent.create)
     ..aOM<FormSubmissionResultContent>(31, _omitFieldNames ? '' : 'formSubmissionResult', subBuilder: FormSubmissionResultContent.create)
+    ..aOM<FinanceCardContent>(40, _omitFieldNames ? '' : 'financeCard', subBuilder: FinanceCardContent.create)
+    ..aOM<StawiRoomConversionContent>(41, _omitFieldNames ? '' : 'stawiRoomConversion', subBuilder: StawiRoomConversionContent.create)
+    ..aOM<StawiGenesisSignatureContent>(42, _omitFieldNames ? '' : 'stawiGenesisSignature', subBuilder: StawiGenesisSignatureContent.create)
+    ..aOM<StawiSignedCallContent>(43, _omitFieldNames ? '' : 'stawiSignedCall', subBuilder: StawiSignedCallContent.create)
+    ..aOM<StawiCallOutcomeContent>(44, _omitFieldNames ? '' : 'stawiCallOutcome', subBuilder: StawiCallOutcomeContent.create)
     ..hasRequiredFields = false
   ;
 
@@ -4207,6 +5054,66 @@ class Payload extends $pb.GeneratedMessage {
   void clearFormSubmissionResult() => clearField(31);
   @$pb.TagNumber(31)
   FormSubmissionResultContent ensureFormSubmissionResult() => $_ensure(14);
+
+  /// type = PAYLOAD_TYPE_FINANCE_CARD
+  @$pb.TagNumber(40)
+  FinanceCardContent get financeCard => $_getN(15);
+  @$pb.TagNumber(40)
+  set financeCard(FinanceCardContent v) { setField(40, v); }
+  @$pb.TagNumber(40)
+  $core.bool hasFinanceCard() => $_has(15);
+  @$pb.TagNumber(40)
+  void clearFinanceCard() => clearField(40);
+  @$pb.TagNumber(40)
+  FinanceCardContent ensureFinanceCard() => $_ensure(15);
+
+  /// type = PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+  @$pb.TagNumber(41)
+  StawiRoomConversionContent get stawiRoomConversion => $_getN(16);
+  @$pb.TagNumber(41)
+  set stawiRoomConversion(StawiRoomConversionContent v) { setField(41, v); }
+  @$pb.TagNumber(41)
+  $core.bool hasStawiRoomConversion() => $_has(16);
+  @$pb.TagNumber(41)
+  void clearStawiRoomConversion() => clearField(41);
+  @$pb.TagNumber(41)
+  StawiRoomConversionContent ensureStawiRoomConversion() => $_ensure(16);
+
+  /// type = PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+  @$pb.TagNumber(42)
+  StawiGenesisSignatureContent get stawiGenesisSignature => $_getN(17);
+  @$pb.TagNumber(42)
+  set stawiGenesisSignature(StawiGenesisSignatureContent v) { setField(42, v); }
+  @$pb.TagNumber(42)
+  $core.bool hasStawiGenesisSignature() => $_has(17);
+  @$pb.TagNumber(42)
+  void clearStawiGenesisSignature() => clearField(42);
+  @$pb.TagNumber(42)
+  StawiGenesisSignatureContent ensureStawiGenesisSignature() => $_ensure(17);
+
+  /// type = PAYLOAD_TYPE_STAWI_SIGNED_CALL
+  @$pb.TagNumber(43)
+  StawiSignedCallContent get stawiSignedCall => $_getN(18);
+  @$pb.TagNumber(43)
+  set stawiSignedCall(StawiSignedCallContent v) { setField(43, v); }
+  @$pb.TagNumber(43)
+  $core.bool hasStawiSignedCall() => $_has(18);
+  @$pb.TagNumber(43)
+  void clearStawiSignedCall() => clearField(43);
+  @$pb.TagNumber(43)
+  StawiSignedCallContent ensureStawiSignedCall() => $_ensure(18);
+
+  /// type = PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+  @$pb.TagNumber(44)
+  StawiCallOutcomeContent get stawiCallOutcome => $_getN(19);
+  @$pb.TagNumber(44)
+  set stawiCallOutcome(StawiCallOutcomeContent v) { setField(44, v); }
+  @$pb.TagNumber(44)
+  $core.bool hasStawiCallOutcome() => $_has(19);
+  @$pb.TagNumber(44)
+  void clearStawiCallOutcome() => clearField(44);
+  @$pb.TagNumber(44)
+  StawiCallOutcomeContent ensureStawiCallOutcome() => $_ensure(19);
 }
 
 

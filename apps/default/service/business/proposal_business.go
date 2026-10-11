@@ -24,6 +24,16 @@ type roomProposalManagement struct {
 	roomBusiness    RoomBusiness
 	subscriptionSvc SubscriptionService
 	authzMiddleware authz.Middleware
+	stawiBindings   repository.StawiRoomRepository
+}
+
+// ProposalOption configures optional proposal behaviour.
+type ProposalOption func(*roomProposalManagement)
+
+// WithProposalStawiBindings refuses chat-native proposals on a Stawi room the
+// chain has: its proposals are governance calls on chain.
+func WithProposalStawiBindings(bindings repository.StawiRoomRepository) ProposalOption {
+	return func(rpm *roomProposalManagement) { rpm.stawiBindings = bindings }
 }
 
 // NewRoomProposalManagement creates a new room-scoped ProposalManagement instance.
@@ -32,13 +42,20 @@ func NewRoomProposalManagement(
 	roomBusiness RoomBusiness,
 	subscriptionSvc SubscriptionService,
 	authzMiddleware authz.Middleware,
+	opts ...ProposalOption,
 ) ProposalManagement {
-	return &roomProposalManagement{
+	rpm := &roomProposalManagement{
 		proposalRepo:    proposalRepo,
 		roomBusiness:    roomBusiness,
 		subscriptionSvc: subscriptionSvc,
 		authzMiddleware: authzMiddleware,
 	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(rpm)
+		}
+	}
+	return rpm
 }
 
 func (rpm *roomProposalManagement) Approve(
@@ -48,6 +65,10 @@ func (rpm *roomProposalManagement) Approve(
 	approvedBy *commonv1.ContactLink,
 ) error {
 	if err := chatutil.IsValidContactLink(approvedBy); err != nil {
+		return err
+	}
+
+	if err := refuseIfChainManaged(ctx, rpm.stawiBindings, scopeID); err != nil {
 		return err
 	}
 
@@ -100,6 +121,10 @@ func (rpm *roomProposalManagement) Reject(
 	rejectedBy *commonv1.ContactLink,
 ) error {
 	if err := chatutil.IsValidContactLink(rejectedBy); err != nil {
+		return err
+	}
+
+	if err := refuseIfChainManaged(ctx, rpm.stawiBindings, scopeID); err != nil {
 		return err
 	}
 

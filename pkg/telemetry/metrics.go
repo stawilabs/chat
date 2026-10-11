@@ -154,3 +154,33 @@ var (
 		"chat.replay",
 	)
 )
+
+// Stawi room metrics: alert on quarantined facts, refused activations and
+// pending Keto writes; drift repairs are expected to be rare.
+//
+//nolint:gochecknoglobals // OpenTelemetry metrics must be global for instrumentation
+var (
+	StawiFactsQuarantinedCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.stawi.facts.quarantined",
+		"Settlement facts set aside after repeated failures (operator re-drive needed)",
+	)
+
+	StawiActivationsRefusedCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.stawi.activations.refused",
+		"room.activated facts refused (unrequested binding or rebinding)",
+	)
+
+	StawiDriftRepairedCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.stawi.drift.repaired",
+		"Subscriptions or Keto tuples repaired by the reconciler",
+	)
+
+	StawiKetoWritesFailedCounter = telemetry.DimensionlessMeasure(
+		"",
+		"chat.stawi.keto.writes.failed",
+		"Keto writes for Stawi subscriptions that failed and will be retried",
+	)
+)

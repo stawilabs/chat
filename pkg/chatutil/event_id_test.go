@@ -16,3 +16,14 @@ func TestIsValidEventID(t *testing.T) {
 		}
 	}
 }
+
+func TestIsValidRoomID(t *testing.T) {
+	if !IsValidRoomID(util.IDString()) {
+		t.Fatal("a generated xid must be valid")
+	}
+	for _, bad := range []string{"", "not-an-xid", "zzzzzzzzzzzzzzzzzzzz", "room-1", "../etc/passwd"} {
+		if IsValidRoomID(bad) {
+			t.Fatalf("expected %q to be rejected", bad)
+		}
+	}
+}

@@ -396,3 +396,17 @@ func (s *RoomBusinessTestSuite) TestCreateRoomWithValidation_PopulatesProfileID(
 		s.WaitForMemberSubscription(ctx, svc, room.GetId(), resolvedProfileID, t)
 	})
 }
+
+func (m *mockProfileClient) GetContacts(
+	context.Context,
+	*connect.Request[profilev1.GetContactsRequest],
+) (*connect.Response[profilev1.GetContactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+func (m *mockProfileClient) ResolveAccounts(
+	context.Context,
+	*connect.Request[profilev1.ResolveAccountsRequest],
+) (*connect.Response[profilev1.ResolveAccountsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}

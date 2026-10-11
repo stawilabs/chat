@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +45,16 @@ type roomBusiness struct {
 	messageBusiness  MessageBusiness
 	profileCli       profilev1connect.ProfileServiceClient
 	authzMiddleware  authz.Middleware
+	stawiBindings    repository.StawiRoomRepository
+}
+
+// RoomBusinessOption configures optional room business behaviour.
+type RoomBusinessOption func(*roomBusiness)
+
+// WithStawiBindings makes the room business refuse the chat-native ways of
+// changing a Stawi room that is on chain.
+func WithStawiBindings(bindings repository.StawiRoomRepository) RoomBusinessOption {
+	return func(rb *roomBusiness) { rb.stawiBindings = bindings }
 }
 
 // NewRoomBusiness creates a new instance of RoomBusiness.
@@ -58,8 +69,9 @@ func NewRoomBusiness(
 	messageBusiness MessageBusiness,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
+	opts ...RoomBusinessOption,
 ) RoomBusiness {
-	return &roomBusiness{
+	rb := &roomBusiness{
 		service:          service,
 		roomRepo:         roomRepo,
 		eventRepo:        eventRepo,
@@ -71,6 +83,31 @@ func NewRoomBusiness(
 		profileCli:       profileCli,
 		authzMiddleware:  authzMiddleware,
 	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(rb)
+		}
+	}
+	return rb
+}
+
+// refuseIfChainManaged refuses a chat-native change to a room the chain has.
+func (rb *roomBusiness) refuseIfChainManaged(ctx context.Context, roomID string) error {
+	return refuseIfChainManaged(ctx, rb.stawiBindings, roomID)
+}
+
+func refuseIfChainManaged(ctx context.Context, bindings repository.StawiRoomRepository, roomID string) error {
+	if bindings == nil || roomID == "" {
+		return nil
+	}
+	bound, err := bindings.IsBound(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to check the room binding: %w", err)
+	}
+	if bound {
+		return service.ErrStawiRoomChainManaged
+	}
+	return nil
 }
 
 // CreateRoom named return required for deferred tracing.
@@ -93,6 +130,17 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, service.ErrRoomNameRequired
 	}
 
+	// A room is the entity, and its id is one value: the same identifier names
+	// the room in chat, in the finance service and on chain. Normally the caller
+	// creates the room here and hands finance the id; when the room was created
+	// in finance first the caller supplies that id instead, and chat adopts it.
+	// Chat accepts only ids it could itself have minted, so the three records
+	// stay joinable on the exact value.
+	suppliedID := req.GetId()
+	if suppliedID != "" && !chatutil.IsValidRoomID(suppliedID) {
+		return nil, service.ErrRoomIDInvalid
+	}
+
 	// Create the room
 	createdRoom := &models.Room{
 		RoomType:         defaultGroupType,
@@ -101,22 +149,22 @@ func (rb *roomBusiness) CreateRoom(
 		IsPublic:         !req.GetIsPrivate(),
 		RequiresApproval: req.GetRequiresApproval(),
 	}
-	if req.GetId() != "" {
-		createdRoom.ID = req.GetId()
+	// Room metadata is persisted so it survives the request: consumers of the
+	// durable room fact stream opt in through it (events.GroupMetadataKey).
+	if metadata := req.GetMetadata(); metadata != nil {
+		createdRoom.Properties = data.JSONMap(metadata.AsMap())
+	}
+	if suppliedID != "" {
+		createdRoom.ID = suppliedID
 	}
 
-	// Save the room
-	err = rb.roomRepo.Create(ctx, createdRoom)
+	var existingRoom *models.Room
+	existingRoom, err = rb.persistRoom(ctx, createdRoom)
 	if err != nil {
-		if data.ErrorIsDuplicateKey(err) {
-			existingRoom, getErr := rb.roomRepo.GetByID(ctx, createdRoom.GetID())
-			if getErr != nil {
-				return nil, fmt.Errorf("failed to load existing room after duplicate create: %w", getErr)
-			}
-
-			return existingRoom.ToAPI(), nil
-		}
-		return nil, fmt.Errorf("failed to save room: %w", err)
+		return nil, err
+	}
+	if existingRoom != nil {
+		return existingRoom.ToAPI(), nil
 	}
 
 	// Owner subscription
@@ -173,6 +221,34 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
+}
+
+// persistRoom inserts room and reports the room that already holds its id, if
+// any. Idempotence is enforced by the rooms primary key rather than by a
+// read-then-write check: two concurrent creates of the same id both INSERT, the
+// loser gets a unique violation, and both callers are answered with the one
+// room that exists.
+func (rb *roomBusiness) persistRoom(ctx context.Context, room *models.Room) (*models.Room, error) {
+	err := rb.roomRepo.Create(ctx, room)
+	if err == nil {
+		return nil, nil //nolint:nilnil // no pre-existing room; the insert won.
+	}
+	if !data.ErrorIsDuplicateKey(err) {
+		return nil, fmt.Errorf("failed to save room: %w", err)
+	}
+
+	existingRoom, getErr := rb.roomRepo.GetByID(ctx, room.GetID())
+	if getErr != nil {
+		if data.ErrorIsNoRows(getErr) {
+			// The id is held by a row that is no longer readable (a deleted
+			// room). Say so rather than reporting a lookup failure or silently
+			// reusing an identifier the rest of the platform still names.
+			return nil, service.ErrRoomIDTaken
+		}
+		return nil, fmt.Errorf("failed to load existing room after duplicate create: %w", getErr)
+	}
+
+	return existingRoom, nil
 }
 
 func (rb *roomBusiness) GetRoom(
@@ -258,6 +334,12 @@ func (rb *roomBusiness) UpdateRoom(
 	if req.GetDescription() != "" {
 		room.Description = req.GetDescription()
 	}
+	if metadata := req.GetMetadata(); metadata != nil {
+		if room.Properties == nil {
+			room.Properties = data.JSONMap{}
+		}
+		maps.Copy(room.Properties, metadata.AsMap())
+	}
 
 	// Save the updated room
 	_, err = rb.roomRepo.Update(ctx, room)
@@ -293,6 +375,10 @@ func (rb *roomBusiness) DeleteRoom(
 	}
 
 	roomID := req.GetRoomId()
+
+	if err = rb.refuseIfChainManaged(ctx, roomID); err != nil {
+		return err
+	}
 
 	// Check if the user is an owner of the room
 	admin, err := rb.subscriptionSvc.HasRole(ctx, deletedBy, roomID, roleOwnerLevel)
@@ -431,6 +517,10 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 		return err
 	}
 
+	if err := rb.refuseIfChainManaged(ctx, req.GetRoomId()); err != nil {
+		return err
+	}
+
 	// Check if the user has permission to add members
 	admin, err := rb.subscriptionSvc.CanMembersManage(ctx, addedBy, req.GetRoomId())
 	if err != nil {
@@ -489,6 +579,10 @@ func (rb *roomBusiness) RemoveRoomSubscriptions(
 		return err
 	}
 
+	if err := rb.refuseIfChainManaged(ctx, req.GetRoomId()); err != nil {
+		return err
+	}
+
 	// Check if the user has permission to remove members
 	admin, err := rb.subscriptionSvc.CanMembersManage(ctx, removedBy, req.GetRoomId())
 	if err != nil {
@@ -525,6 +619,10 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 	}
 
 	if err := chatutil.IsValidContactLink(actor); err != nil {
+		return err
+	}
+
+	if err := rb.refuseIfChainManaged(ctx, req.GetRoomId()); err != nil {
 		return err
 	}
 
@@ -1160,7 +1258,7 @@ func (rb *roomBusiness) sendRoomChangeEvent(
 		},
 	}
 
-	_, err := rb.messageBusiness.SendEvents(ctx, req, senderContact)
+	_, err := rb.messageBusiness.SendEvents(withServerOrigin(ctx), req, senderContact)
 	return err
 }
 
@@ -1186,6 +1284,10 @@ func (rb *roomBusiness) createProposal(
 	requestedBy string,
 	payload any,
 ) error {
+	if err := rb.refuseIfChainManaged(ctx, roomID); err != nil {
+		return err
+	}
+
 	if rb.proposalRepo == nil {
 		return errors.New("proposal repository not configured; cannot create approval requests")
 	}

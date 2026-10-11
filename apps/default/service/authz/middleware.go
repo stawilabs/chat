@@ -192,6 +192,30 @@ func (m *middleware) UpdateRoomMemberRole(ctx context.Context, roomID, subscript
 	})
 }
 
+// SetRoomMemberRole makes role the subscription's only relation to the room.
+func (m *middleware) SetRoomMemberRole(ctx context.Context, roomID, subscriptionID, role string) error {
+	keep := RoleToRelation(role)
+	if err := m.service.WriteTuple(ctx, security.RelationTuple{
+		Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
+		Relation: keep,
+		Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
+	}); err != nil {
+		return err
+	}
+	stale := make([]security.RelationTuple, 0, len(ValidRelations()))
+	for _, rel := range ValidRelations() {
+		if rel == keep {
+			continue
+		}
+		stale = append(stale, security.RelationTuple{
+			Object:   security.ObjectRef{Namespace: NamespaceRoom, ID: roomID},
+			Relation: rel,
+			Subject:  security.SubjectRef{Namespace: NamespaceSubscription, ID: subscriptionID},
+		})
+	}
+	return m.service.DeleteTuples(ctx, stale)
+}
+
 // SetMessageSender creates a sender relation for a message.
 func (m *middleware) SetMessageSender(ctx context.Context, messageID, senderProfileID, roomID string) error {
 	// Create sender relation

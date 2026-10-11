@@ -30,19 +30,23 @@ const (
 type OutboxRelay struct {
 	outboxRepo    repository.RoomOutboxRepository
 	eventsManager frevents.Manager
+	factPublisher *RoomEventFactPublisher
 	interval      time.Duration
 	grace         time.Duration
 	batch         int
 }
 
 // NewOutboxRelay creates an OutboxRelay with default polling parameters.
+// factPublisher may be nil, in which case no room facts are published.
 func NewOutboxRelay(
 	outboxRepo repository.RoomOutboxRepository,
 	eventsManager frevents.Manager,
+	factPublisher *RoomEventFactPublisher,
 ) *OutboxRelay {
 	return &OutboxRelay{
 		outboxRepo:    outboxRepo,
 		eventsManager: eventsManager,
+		factPublisher: factPublisher,
 		interval:      defaultRelayInterval,
 		grace:         defaultRelayGrace,
 		batch:         defaultRelayBatch,
@@ -95,7 +99,25 @@ func (r *OutboxRelay) Drain(ctx context.Context) error {
 				Warn("outbox relay emit failed; will retry")
 			continue
 		}
+		// The durable room fact is published after the delivery pipeline, and
+		// only once the row is about to be marked dispatched, so it inherits
+		// exactly the relay's guarantees: one fact per outbox row, in outbox
+		// order, at least once. Chat delivery is never held up by the fact
+		// sink; a failing sink only re-runs this row on the next tick.
+		if factErr := r.publishFact(ctx, link); factErr != nil {
+			util.Log(ctx).WithError(factErr).WithField("event_id", row.EventID).
+				Warn("outbox relay room fact publish failed; will retry")
+			continue
+		}
 		dispatched = append(dispatched, row.EventID)
 	}
 	return r.outboxRepo.MarkDispatched(ctx, dispatched)
+}
+
+// publishFact emits chat.room.event.published for rooms that opted in.
+func (r *OutboxRelay) publishFact(ctx context.Context, link *eventsv1.Link) error {
+	if r.factPublisher == nil {
+		return nil
+	}
+	return r.factPublisher.Publish(ctx, link)
 }

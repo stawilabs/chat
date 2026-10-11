@@ -52,7 +52,7 @@ Service Chat is a scalable, production-ready real-time messaging infrastructure 
 - **Room Management**: Create, update, delete, and search chat rooms
 - **Subscription Management**: Handle room memberships, roles, and permissions
 - **Event Processing**: Asynchronous message delivery pipeline using event-driven architecture
-- **Outbox Pattern**: Reliable message delivery to all room subscribers
+- **Outbox Pattern**: Event and outbox row written in one transaction, relayed asynchronously
 - **API Gateway**: Exposes gRPC/Connect API for all chat operations
 
 **Technology Stack**:
@@ -81,10 +81,13 @@ apps/default/
 │   │   ├── room_repository.go      # Room CRUD
 │   │   └── outbox_repository.go    # Outbox pattern
 │   ├── events/          # Event handlers (async processing)
-│   │   ├── outbox_logging.go       # Create outbox entries
-│   │   └── outbox_delivery.go      # Process outbox for delivery
+│   │   ├── outbox_relay.go         # Sole publisher draining room_outbox
+│   │   ├── room_event_published.go # Durable room fact for opted-in rooms
+│   │   ├── messages_distribution.go # Subscriber batching (outbox logging)
+│   │   └── messages_fanout.go      # Per-destination delivery fan-out
 │   ├── queues/          # Queue subscribers
-│   │   └── last_mile_delivery.go   # Device-level message routing
+│   │   ├── online_delivery.go      # Device-level message routing
+│   │   └── offline_delivery.go     # Offline device handling
 │   └── models/          # Domain models and DB entities
 │       └── models.go               # RoomEvent, Room, Subscription
 └── tests/               # Integration tests
@@ -95,8 +98,8 @@ apps/default/
 
 1. **Message Flow Pipeline**:
    ```
-   SendEvent → Save to DB → Emit Event → Create Outbox Entries →
-   Queue Publishing → Gateway Delivery → Device Streams
+   SendEvent → Save event + outbox row (one transaction) → Outbox relay →
+   Subscriber batching → Delivery fan-out → Gateway Delivery → Device Streams
    ```
 
 2. **Scalability**:
@@ -257,15 +260,17 @@ GRPC_PORT=50051
 ```
 1. Client sends message via Gateway or directly to Default Service
    ↓
-2. Default Service validates, saves to DB, emits "room.outbox.logging.event"
+2. Default Service validates and saves the event with its outbox row in one transaction
    ↓
-3. RoomOutboxLoggingQueue creates outbox entry for each room subscriber
+3. OutboxRelay drains room_outbox and emits "room.outbox.logging.event"
+   (and "chat.room.event.published" for rooms marked with stawi.group_id)
    ↓
-4. OutboxDeliveryEventHandler publishes EventDelivery to queue
+4. RoomOutboxLoggingQueue pages room subscribers and emits "room.message.fanout.event"
    ↓
-5. EventDeliveryQueueHandler queries devices for each recipient
+5. FanoutEventHandler publishes a Delivery per destination to "device.event.delivery"
    ↓
-6. Publishes to queue with headers (profile_id, device_id)
+6. HotPathDeliveryQueueHandler queries devices and publishes to the gateway
+   shard queue with headers (profile_id, device_id)
    ↓
 7. Gateway's filtered subscription receives message for its device
    ↓
@@ -346,12 +351,11 @@ message ContactLink {
 - `JoinedAt`: Membership start time
 - `LastActive`: Last activity timestamp
 
-**RoomOutbox** (Delivery Tracking):
-- `EventID`: Reference to RoomEvent
-- `ProfileID`: Recipient profile ID
-- `DeviceID`: Target device ID
-- `Status`: Delivery status (pending, delivered, failed)
-- `AttemptCount`: Retry counter
+**RoomOutbox** (Delivery Intent, one row per event):
+- `EventID`: Reference to RoomEvent (unique)
+- `RoomID`: Room identifier
+- `Payload`: protojson-encoded `events.v1.Link` emitted by the relay
+- `Dispatched`, `DispatchedAt`: Set once the relay has emitted the event
 - `CreatedAt`, `UpdatedAt`
 
 ## Deployment
