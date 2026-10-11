@@ -10,8 +10,8 @@ require (
 	buf.build/gen/go/antinvestor/notification/protocolbuffers/go v1.36.12-20260831182621-e7d71a2bcc5d.2
 	buf.build/gen/go/antinvestor/profile/connectrpc/go v1.21.0-20261010163034-301700166951.1
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.12-20261010163034-301700166951.2
-	buf.build/gen/go/stawi/chat/connectrpc/go v1.20.0-20260430172303-85050c8677bb.1
-	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.11-20260430172303-85050c8677bb.1
+	buf.build/gen/go/stawi/chat/connectrpc/go v1.21.0-20261011175708-653b7cfdd9b3.1
+	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.12-20261011175708-653b7cfdd9b3.2
 	buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-00000000000000-d05d809dce18.1
 	buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-00000000000000-d05d809dce18.2
 	buf.build/go/protovalidate v1.4.0
