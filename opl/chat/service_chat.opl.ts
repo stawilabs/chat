@@ -136,9 +136,3 @@ class service_chat implements Namespace {
       this.related.granted_stawi_card_post.includes(ctx.subject),
   }
 }
-
-// ---------------------------------------------------------------------------
-// Plane 3 -- Per-resource namespaces (chat_room, chat_message, etc.)
-// MOVED to proto/chat/v1/chat_resources.opl.ts so they are co-located with
-// the proto API definitions and reusable by other services.
-// ---------------------------------------------------------------------------

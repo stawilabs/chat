@@ -21,7 +21,7 @@
 // can discover and reuse these namespace definitions.
 //
 // The service-level namespace (service_chat) with functional role grants
-// is generated from proto annotations and lives in apps/default/.
+// mirrors ChatService's proto annotations and lives in service_chat.opl.ts.
 // ---------------------------------------------------------------------------
 
 import { Namespace, Context } from "@ory/keto-namespace-types"

@@ -31,6 +31,7 @@ import (
 	connectInterceptors "github.com/pitabwire/frame/v2/security/interceptors/connect"
 	"github.com/pitabwire/frame/v2/workerpool"
 	"github.com/pitabwire/util"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	aconfig "github.com/stawilabs/chat/apps/default/config"
 	"github.com/stawilabs/chat/apps/default/service/authz"
@@ -56,10 +57,14 @@ func runService(ctx context.Context) error {
 		return err
 	}
 
-	// Validate configuration (fail-fast on invalid config)
-	if err = cfg.Validate(); err != nil {
-		util.Log(ctx).WithError(err).Error("invalid configuration")
-		return err
+	// Validate the serving configuration (fail-fast on invalid config). The
+	// setup Job carries only what setup needs (database, tenancy), not the
+	// queues and upstreams the server validates, so setup skips it.
+	if !frame.ShouldRunSetup(&cfg) {
+		if err = cfg.Validate(); err != nil {
+			util.Log(ctx).WithError(err).Error("invalid configuration")
+			return err
+		}
 	}
 
 	if cfg.Name() == "" {
@@ -89,11 +94,13 @@ func runService(ctx context.Context) error {
 	// pulled from rotation instead of black-holing traffic.
 	svc.AddHealthCheck(health.DBChecker{Pool: dbPool})
 
-	// Migration mode runs SQL migrations (see handleDatabaseMigration) and
-	// exits. Skip outbound service clients: they require a resolved OIDC
-	// token endpoint and are unused by migrate.
-	if handleDatabaseMigration(ctx, dbManager, cfg) {
-		return nil
+	// Setup mode (argv "setup", DO_SETUP, or legacy argv "migrate" /
+	// DO_MIGRATION) runs the one-shot setup plan and exits: SQL migrations,
+	// then ChatService's permission manifest published to tenancy. It runs
+	// before the outbound service clients are built: they need a resolved
+	// OIDC token endpoint and setup uses none of them.
+	if frame.ShouldRunSetup(&cfg) {
+		return runSetup(ctx, svc, &cfg)
 	}
 
 	// Setup clients and services (runtime path only)
@@ -126,7 +133,6 @@ func runService(ctx context.Context) error {
 		// background consumer so its lifecycle is owned by the service.
 		outboxRelayOption(ctx, &cfg, dbPool, workMan, queueMan, eventsMan),
 		frame.WithHTTPHandler(connectHandler),
-		frame.WithPermissionRegistration(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")),
 		frame.WithRegisterPublisher(cfg.QueueDeadLetterName, cfg.QueueDeadLetterURI),
 		frame.WithRegisterPublisher(cfg.QueueRoomEventPublishedName, cfg.QueueRoomEventPublishedURI),
 		frame.WithRegisterSubscriber(
@@ -207,22 +213,44 @@ func outboxRelayOption(
 	return frame.WithBackgroundConsumer(events.NewOutboxRelay(outboxRepo, eventsMan, factPublisher).Run)
 }
 
-// handleDatabaseMigration performs database migration if configured to do so.
-func handleDatabaseMigration(
-	ctx context.Context,
-	dbManager datastore.Manager,
-	cfg aconfig.ChatConfig,
-) bool {
-	if !cfg.DoDatabaseMigrate() {
-		return false
-	}
+// chatServiceDescriptor is the service whose permission manifest chat owns
+// (namespace service_chat).
+func chatServiceDescriptor() protoreflect.ServiceDescriptor {
+	return chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")
+}
 
+// setupOptions registers chat's setup plan: the migrate step and, when
+// PERMISSIONS_REGISTRATION_URL is set, the permissions step that publishes
+// ChatService's manifest (namespace service_chat) to tenancy. Both steps are
+// idempotent: applied migrations are skipped and tenancy accepts an unchanged
+// manifest as a no-op.
+func setupOptions(cfg *aconfig.ChatConfig) []frame.Option {
+	return []frame.Option{
+		frame.WithSetupTask(frame.SetupTaskMigrate, func(ctx context.Context, s *frame.Service) error {
+			return migrate(ctx, s.DatastoreManager(), cfg.GetDatabaseMigrationPath())
+		}),
+		frame.WithPermissionRegistration(chatServiceDescriptor()),
+	}
+}
+
+// runSetup runs the setup plan for this process and exits; it never serves.
+func runSetup(ctx context.Context, svc *frame.Service, cfg *aconfig.ChatConfig) error {
+	svc.Init(ctx, setupOptions(cfg)...)
+	util.Log(ctx).WithField("steps", svc.SetupTaskNames()).Info("main -- running setup plan")
+	if err := svc.RunSetupForProcess(ctx, cfg); err != nil {
+		return fmt.Errorf("setup: %w", err)
+	}
+	util.Log(ctx).Info("main -- setup complete; exiting")
+	return nil
+}
+
+// migrate applies the SQL migrations under migrationPath.
+func migrate(ctx context.Context, dbManager datastore.Manager, migrationPath string) error {
 	// Frame's migration scanner stores basenames, then SaveMigrationString
 	// does os.Stat(basename). When WORKDIR is "/" (container default) the
 	// file is not found, so frame prefixes names with "string:" and treats
 	// every migration as new — re-applying SQL that already ran. Chdir into
 	// the migrations directory so basename lookups succeed.
-	migrationPath := cfg.GetDatabaseMigrationPath()
 	if abs, err := filepath.Abs(migrationPath); err == nil {
 		if chdirErr := os.Chdir(abs); chdirErr != nil {
 			util.Log(ctx).WithError(chdirErr).WithField("path", abs).
@@ -231,14 +259,7 @@ func handleDatabaseMigration(
 			migrationPath = "."
 		}
 	}
-
-	util.Log(ctx).Info("main -- starting database migration")
-	err := repository.Migrate(ctx, dbManager, migrationPath)
-	if err != nil {
-		util.Log(ctx).WithError(err).Fatal("main -- Could not migrate successfully")
-	}
-	util.Log(ctx).Info("main -- database migration complete; migrate job exiting")
-	return true
+	return repository.Migrate(ctx, dbManager, migrationPath)
 }
 
 // stawiOptions subscribes the chain consumer to settlement's facts, runs the
@@ -376,7 +397,7 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 
 	// Automatic tenant-level permission enforcement from proto annotations.
 	// This is complementary to the room-level checks in the authz middleware.
-	sd := chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService")
+	sd := chatServiceDescriptor()
 	procMap := permissions.BuildProcedureMap(sd)
 	svcPerms := permissions.ForService(sd)
 	functionChecker := authorizer.NewFunctionChecker(auth, svcPerms.Namespace)
