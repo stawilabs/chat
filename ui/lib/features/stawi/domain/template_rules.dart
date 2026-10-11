@@ -166,3 +166,23 @@ Map<String, String> ruleValuesFrom(Map<String, String> entered) {
   }
   return out;
 }
+
+/// Why the founding quorum cannot be met by [founders] founders, or null.
+/// [entered] is the founding_quorum rule as typed (empty keeps the template's
+/// [templateDefault]; 0 declares none, and then one signature suffices).
+/// Settlement refuses a genesis whose founding quorum is more than its
+/// founders, since they could never sign it.
+String? foundingQuorumProblem({
+  required String entered,
+  required int templateDefault,
+  required int founders,
+}) {
+  final typed = entered.trim();
+  final quorum = typed.isEmpty ? templateDefault : int.tryParse(typed);
+  if (quorum == null || quorum <= founders) return null;
+  return typed.isEmpty
+      ? 'This template needs $quorum founders to sign the genesis; choose '
+            'at least $quorum founders or set a lower founding quorum'
+      : 'A founding quorum of $quorum is more than the $founders founders; '
+            'choose more founders or lower it';
+}

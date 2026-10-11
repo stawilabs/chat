@@ -290,6 +290,39 @@ void main() {
     });
   });
 
+  group('founding quorum', () {
+    test('is met by as many founders or more', () {
+      for (final (entered, fallback, founders) in [
+        ('', 3, 3),
+        ('', 3, 5),
+        ('2', 3, 2),
+        ('', 0, 1),
+        ('1', 0, 1),
+      ]) {
+        expect(
+          foundingQuorumProblem(
+            entered: entered,
+            templateDefault: fallback,
+            founders: founders,
+          ),
+          isNull,
+          reason: '$entered/$fallback with $founders founders',
+        );
+      }
+    });
+
+    test('above the founders is refused, typed or the template\'s', () {
+      expect(
+        foundingQuorumProblem(entered: '', templateDefault: 3, founders: 2),
+        contains('needs 3 founders'),
+      );
+      expect(
+        foundingQuorumProblem(entered: '4', templateDefault: 0, founders: 3),
+        contains('more than the 3 founders'),
+      );
+    });
+  });
+
   group('template rules', () {
     test('keeps the values given and drops empty ones', () {
       expect(

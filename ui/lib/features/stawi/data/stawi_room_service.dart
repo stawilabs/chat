@@ -11,6 +11,7 @@ import '../domain/governance_requests.dart';
 import '../domain/secret_ballot.dart';
 import '../domain/signing_checks.dart';
 import '../domain/stawi_payloads.dart';
+import '../domain/template_rules.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
 import 'stawi_identity.dart';
@@ -63,6 +64,18 @@ class StawiRoomService {
         founderSubscriptionIds,
         'founderSubscriptionIds',
         'choose at least one founder',
+      );
+    }
+    final problem = foundingQuorumProblem(
+      entered: ruleValues['founding_quorum'] ?? '',
+      templateDefault: 0,
+      founders: founderSubscriptionIds.length,
+    );
+    if (problem != null) {
+      throw ArgumentError.value(
+        ruleValues['founding_quorum'],
+        'founding_quorum',
+        problem,
       );
     }
     return _send(

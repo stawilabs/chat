@@ -33,7 +33,19 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
   bool _sending = false;
 
   @override
+  void initState() {
+    super.initState();
+    // The founding quorum is checked against the founders as either changes.
+    _rules['founding_quorum']!.addListener(_quorumChanged);
+  }
+
+  void _quorumChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _rules['founding_quorum']!.removeListener(_quorumChanged);
     for (final controller in _rules.values) {
       controller.dispose();
     }
@@ -87,8 +99,21 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
       // The member converting the room is always one of its founders.
       _founders.add(mySubscription.id);
     }
+    final template = templates.asData?.value
+        .where((t) => t.templateId == _templateId)
+        .firstOrNull;
+    final quorumProblem = template == null
+        ? null
+        : foundingQuorumProblem(
+            entered: _rules['founding_quorum']!.text,
+            templateDefault: template.policy.governance.foundingQuorum,
+            founders: _founders.length,
+          );
     final canSubmit =
-        !_sending && _templateId != null && mySubscription != null;
+        !_sending &&
+        _templateId != null &&
+        mySubscription != null &&
+        quorumProblem == null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Make this a Stawi room')),
@@ -161,6 +186,17 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
               ],
             ),
           ),
+          if (quorumProblem != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                quorumProblem,
+                key: const Key('founding-quorum-problem'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
           Text('Who can join', style: theme.textTheme.titleMedium),
           SegmentedButton<StawiJoinPolicy>(

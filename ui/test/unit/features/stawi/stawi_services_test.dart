@@ -162,6 +162,20 @@ void main() {
       expect(view.genesis, isNull);
     });
 
+    test('conversion refuses a founding quorum above the founders', () {
+      expect(
+        () => roomService().convert(
+          roomId: roomId,
+          templateId: 'ug_savings_basic',
+          ruleValues: const {'founding_quorum': '3'},
+          founderSubscriptionIds: const ['sub-me', 'sub-2'],
+          joinPolicy: StawiJoinPolicy.private,
+        ),
+        throwsArgumentError,
+      );
+      expect(sender.sent, isEmpty);
+    });
+
     RoomEvent card({List<String> founders = const ['p1', 'p2']}) => RoomEvent(
       id: 'conv1',
       roomId: roomId,
