@@ -184,3 +184,14 @@ var (
 		"Keto writes for Stawi subscriptions that failed and will be retried",
 	)
 )
+
+// StawiRevocationsFailingCounter counts failed attempts to apply a fact that
+// removes or lowers a member's access past the attempt limit. A revocation is
+// never quarantined: it is retried until it lands, and this alerts.
+//
+//nolint:gochecknoglobals // OpenTelemetry metrics must be global for instrumentation
+var StawiRevocationsFailingCounter = telemetry.DimensionlessMeasure(
+	"",
+	"chat.stawi.revocations.failing",
+	"Revocation facts (exit, suspension, role or invitation revoked) still failing past the attempt limit",
+)

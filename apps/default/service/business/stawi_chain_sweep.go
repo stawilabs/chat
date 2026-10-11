@@ -122,10 +122,9 @@ func (c *StawiChain) reconcileRoom(ctx context.Context, roomID string) (StawiDri
 	if err != nil {
 		return drift, err
 	}
-	profiles, err := c.resolveUnownedMembers(ctx, roomID)
-	if err != nil {
-		return drift, err
-	}
+	// A profile outage must not hold back removals: reconcile with the
+	// profiles already known and report the outage afterwards.
+	profiles, lookupErr := c.resolveUnownedMembers(ctx, roomID)
 	var checks []ketoCheck
 	err = c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
 		var lockedErr error
@@ -134,6 +133,10 @@ func (c *StawiChain) reconcileRoom(ctx context.Context, roomID string) (StawiDri
 	})
 	if err != nil {
 		return drift, err
+	}
+	if lookupErr != nil {
+		util.Log(ctx).WithError(lookupErr).WithField(chatutil.KeyRoomID, roomID).
+			Warn("stawi reconciler: some members' profiles could not be resolved; reconciled the rest")
 	}
 	if c.afterReconcileLock != nil {
 		c.afterReconcileLock()

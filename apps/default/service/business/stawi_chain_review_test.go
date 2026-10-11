@@ -124,7 +124,7 @@ func (s *MessageBusinessTestSuite) TestOneProfileWithTwoAccountsKeepsOneSubscrip
 	})
 }
 
-// TestAFailingFactBacksOffThenIsQuarantined: a fact that keeps failing is
+// TestAFailingFactBacksOffThenIsQuarantined: an addition that keeps failing is
 // retried on a time-based backoff (redeliveries in between do not count),
 // quarantined at the limit while other members' facts keep applying, and
 // re-driven by an operator once the cause is fixed.
@@ -146,10 +146,10 @@ func (s *MessageBusinessTestSuite) TestAFailingFactBacksOffThenIsQuarantined() {
 			return stored
 		}
 
-		name, exit := cf.stateChanged(cf.roomID, carolAddr, active, exited, 91, 0)
-		require.Error(t, cf.chain.Receive(cf.ctx, name, exit))
+		name, grant := cf.roleChanged(carolAddr, true, 91, 0)
+		require.Error(t, cf.chain.Receive(cf.ctx, name, grant))
 		for range 3 { // redeliveries within the backoff do not count
-			_ = cf.chain.Receive(cf.ctx, name, exit)
+			_ = cf.chain.Receive(cf.ctx, name, grant)
 			require.NoError(t, cf.chain.ApplyRoom(cf.ctx, cf.roomID))
 		}
 		require.Equal(t, 1, fact().Attempts)
@@ -164,7 +164,7 @@ func (s *MessageBusinessTestSuite) TestAFailingFactBacksOffThenIsQuarantined() {
 		}
 		require.True(t, fact().Quarantined)
 		require.Equal(t, 3, fact().Attempts)
-		require.True(t, cf.live(t, cf.carol.GetProfileId()), "the member's exit has not applied")
+		require.Equal(t, "member", cf.subscription(t, cf.carol.GetProfileId()).Role, "the grant has not applied")
 
 		name, bobExit := cf.stateChanged(cf.roomID, bobAddr, active, exited, 92, 0)
 		require.NoError(t, cf.chain.Receive(cf.ctx, name, bobExit))
@@ -173,7 +173,7 @@ func (s *MessageBusinessTestSuite) TestAFailingFactBacksOffThenIsQuarantined() {
 		healFact()
 		require.NoError(t, cf.chain.Redrive(cf.ctx, cf.roomID))
 		require.True(t, fact().Applied)
-		require.False(t, cf.live(t, cf.carol.GetProfileId()))
+		require.Equal(t, "admin", cf.subscription(t, cf.carol.GetProfileId()).Role)
 	})
 }
 
@@ -281,7 +281,7 @@ func (s *MessageBusinessTestSuite) TestWaitingRoomsAndStaleCallsAreServedLeastRe
 		var fact models.StawiChainFact
 		require.NoError(t, cf.dbPool.DB(cf.ctx, false).Where("fact_key = ?", "wait:"+tried).First(&fact).Error)
 		require.NoError(t, cf.dbPool.DB(cf.ctx, false).Transaction(func(tx *gorm.DB) error {
-			_, recErr := cf.store.RecordFailure(tx, &fact, errors.New("boom"), 10, 0)
+			_, recErr := cf.store.RecordFailure(tx, &fact, errors.New("boom"), 10, 0, time.Hour)
 			return recErr
 		}))
 		rooms, err := cf.store.RoomsWithPending(cf.ctx, 10)

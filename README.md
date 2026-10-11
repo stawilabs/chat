@@ -186,10 +186,15 @@ bound only if chat prepared its genesis. A reconciler repairs drift between
 subscriptions/Keto and the chain's membership and emits
 `room.subscription_drift`.
 
-A member's facts apply in chain order; one that fails holds back that
-member's later facts (others' are independent), is retried on a doubling
-backoff and, after `MaxFactAttempts`, quarantined
-(`chat.stawi.facts.quarantined`). Re-driving quarantined facts is an internal
+A member's facts apply in chain order; an addition (invitation, join,
+admission, role grant) that fails holds back that member's later additions
+(other members are independent), is retried on a doubling backoff and, after
+`MaxFactAttempts`, quarantined (`chat.stawi.facts.quarantined`). Revocations
+fail closed: an exit, suspension, role revocation or revoked invitation
+applies as soon as it arrives, even behind a stuck fact, needs no profile
+lookup, is never quarantined (retried at least every minute; alert
+`chat.stawi.revocations.failing`), and cannot be undone by re-driving an
+older fact. Keto removals are drained before grants. Re-driving quarantined facts is an internal
 method (`StawiChain.Redrive`) with no RPC or HTTP route; an operator runs it
 from inside the service. Refused activations are acknowledged and kept with
 the dead letters (`chat.stawi.activations.refused`).
