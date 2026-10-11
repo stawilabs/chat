@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/pitabwire/frame/v2/frametests/definition"
@@ -38,111 +43,72 @@ namespaces:
   location: file:///home/ory/namespaces/chat.ts
 
 `
-
-	// oplNamespaces is the OPL namespace definition for the chat service.
-	// It is embedded here so that the test container can mount it without
-	// depending on the file system path of the source tree.
-	// NOTE: Class names are prefixed with "chat_" to avoid collisions with
-	// other services sharing the same Keto instance. Must match Go constants
-	// (e.g., NamespaceRoom = "chat_room"). Keto uses exact class names.
-	// Direct-grant relations are prefixed with "granted_" to avoid name
-	// conflicts with permit functions. Keto skips permit evaluation when a
-	// relation shares the same name as a permit function.
-	oplNamespaces = `import { Namespace, Context } from "@ory/keto-namespace-types"
-
-class profile_user implements Namespace {}
-
-class tenancy_access implements Namespace {
-  related: {
-    member: profile_user[]
-    service: profile_user[]
-  }
-}
-
-class service_chat implements Namespace {
-  related: {
-    service: profile_user[]
-    granted_stawi_card_post: profile_user[]
-  }
-
-  permits = {
-    stawi_card_post: (ctx: Context): boolean =>
-      this.related.service.includes(ctx.subject) ||
-      this.related.granted_stawi_card_post.includes(ctx.subject),
-  }
-}
-
-class chat_profile implements Namespace {
-  related: {
-    self: chat_profile[]
-  }
-}
-
-class chat_subscription implements Namespace {}
-
-class chat_room implements Namespace {
-  related: {
-    granted_owner: (chat_profile | chat_subscription)[]
-    granted_admin: (chat_profile | chat_subscription)[]
-    granted_member: (chat_profile | chat_subscription)[]
-    granted_viewer: (chat_profile | chat_subscription)[]
-  }
-
-  permits = {
-    view: (ctx: Context): boolean =>
-      this.related.granted_viewer.includes(ctx.subject) ||
-      this.related.granted_member.includes(ctx.subject) ||
-      this.related.granted_admin.includes(ctx.subject) ||
-      this.related.granted_owner.includes(ctx.subject),
-
-    message_send: (ctx: Context): boolean =>
-      this.related.granted_member.includes(ctx.subject) ||
-      this.related.granted_admin.includes(ctx.subject) ||
-      this.related.granted_owner.includes(ctx.subject),
-
-    message_delete_any: (ctx: Context): boolean =>
-      this.related.granted_admin.includes(ctx.subject) ||
-      this.related.granted_owner.includes(ctx.subject),
-
-    update: (ctx: Context): boolean =>
-      this.related.granted_admin.includes(ctx.subject) ||
-      this.related.granted_owner.includes(ctx.subject),
-
-    delete: (ctx: Context): boolean =>
-      this.related.granted_owner.includes(ctx.subject),
-
-    members_manage: (ctx: Context): boolean =>
-      this.related.granted_admin.includes(ctx.subject) ||
-      this.related.granted_owner.includes(ctx.subject),
-
-    roles_manage: (ctx: Context): boolean =>
-      this.related.granted_owner.includes(ctx.subject),
-  }
-}
-
-class chat_message implements Namespace {
-  related: {
-    granted_sender: chat_profile[]
-    room: chat_room[]
-  }
-
-  permits = {
-    view: (ctx: Context): boolean =>
-      this.related.room.traverse((r) => r.permits.view(ctx)),
-
-    delete: (ctx: Context): boolean =>
-      this.related.granted_sender.includes(ctx.subject) ||
-      this.related.room.traverse((r) => r.permits.message_delete_any(ctx)),
-
-    edit: (ctx: Context): boolean =>
-      this.related.granted_sender.includes(ctx.subject),
-
-    react: (ctx: Context): boolean =>
-      this.related.room.traverse((r) => r.permits.message_send(ctx)),
-  }
-}
-`
 )
+
+// oplHeader is the single import every merged OPL document starts with.
+const oplHeader = `import { Namespace, Context } from "@ory/keto-namespace-types"` + "\n"
+
+var oplClass = regexp.MustCompile(`(?m)^class\s+(\w+)\s+implements\s+Namespace\s*\{`)
+
+// oplDir is the repository's opl/ directory: the namespace definitions chat
+// publishes to the platform's Keto (opl-push in the release workflow).
+func oplDir() string {
+	_, thisFile, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "opl")
+}
+
+// NamespacesOPL merges every opl/**/*.opl.ts file into one Keto namespace
+// document, as opl-push merges them into the platform's namespaces.ts: one
+// import header, and each class once (the shared base classes profile_user
+// and tenancy_access are declared by more than one fragment). The test Keto
+// loads exactly what chat publishes, so a test cannot pass against an OPL
+// production does not run.
+func NamespacesOPL() (string, error) {
+	var files []string
+	err := filepath.WalkDir(oplDir(), func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(path, ".opl.ts") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("read opl directory: %w", err)
+	}
+	sort.Strings(files)
+
+	var b strings.Builder
+	b.WriteString(oplHeader)
+	seen := map[string]bool{}
+	for _, file := range files {
+		content, readErr := os.ReadFile(file)
+		if readErr != nil {
+			return "", readErr
+		}
+		text := string(content)
+		matches := oplClass.FindAllStringSubmatchIndex(text, -1)
+		for i, m := range matches {
+			name := text[m[2]:m[3]]
+			end := len(text)
+			if i+1 < len(matches) {
+				end = matches[i+1][0]
+			}
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			b.WriteString("\n")
+			b.WriteString(strings.TrimRight(text[m[0]:end], " \n"))
+			b.WriteString("\n")
+		}
+	}
+	if len(seen) == 0 {
+		return "", errors.New("no OPL classes found under " + oplDir())
+	}
+	return b.String(), nil
+}
 
 type dependancy struct {
 	*definition.DefaultImpl
@@ -169,6 +135,7 @@ func (d *dependancy) migrateContainer(
 	ctx context.Context,
 	ntwk *testcontainers.DockerNetwork,
 	databaseURL string,
+	opl string,
 ) error {
 	containerRequest := testcontainers.ContainerRequest{
 		Image: d.Name(),
@@ -184,7 +151,7 @@ func (d *dependancy) migrateContainer(
 				FileMode:          definition.ContainerFileMode,
 			},
 			{
-				Reader:            strings.NewReader(oplNamespaces),
+				Reader:            strings.NewReader(opl),
 				ContainerFilePath: "/home/ory/namespaces/chat.ts",
 				FileMode:          definition.ContainerFileMode,
 			},
@@ -220,7 +187,12 @@ func (d *dependancy) Setup(ctx context.Context, ntwk *testcontainers.DockerNetwo
 
 	databaseURL := ketoDB.String()
 
-	if err = d.migrateContainer(ctx, ntwk, databaseURL); err != nil {
+	opl, err := NamespacesOPL()
+	if err != nil {
+		return err
+	}
+
+	if err = d.migrateContainer(ctx, ntwk, databaseURL, opl); err != nil {
 		return err
 	}
 
@@ -239,7 +211,7 @@ func (d *dependancy) Setup(ctx context.Context, ntwk *testcontainers.DockerNetwo
 				FileMode:          definition.ContainerFileMode,
 			},
 			{
-				Reader:            strings.NewReader(oplNamespaces),
+				Reader:            strings.NewReader(opl),
 				ContainerFilePath: "/home/ory/namespaces/chat.ts",
 				FileMode:          definition.ContainerFileMode,
 			},

@@ -55,6 +55,11 @@ type BaseTestSuite struct {
 	ketoWriteURI    string
 }
 
+// MigrationPath returns the absolute path to the SQL migration directory.
+func MigrationPath() string {
+	return migrationPath()
+}
+
 // migrationPath returns the absolute path to the SQL migration directory.
 // Uses runtime.Caller to resolve relative to this source file, so it works
 // regardless of which test package's working directory is active.
