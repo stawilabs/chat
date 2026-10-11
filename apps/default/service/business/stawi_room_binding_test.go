@@ -4,8 +4,11 @@ import (
 	"testing"
 	"time"
 
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	"connectrpc.com/connect"
 	"github.com/pitabwire/frame/v2/frametests/definition"
+	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
@@ -81,6 +84,29 @@ func (s *MessageBusinessTestSuite) TestSearchRoomsCarriesStawiBindings() {
 		require.Equal(t, uint64(84532), bound.GetChainId())
 		require.Equal(t, "0xc0ffee", bound.GetCustodyAddress())
 		require.Nil(t, byID[plain.GetId()].GetStawi(), "a plain room in the same list has no binding")
+	})
+}
+
+// TestCreateRoomWithTakenIDRevealsNothingToNonMembers: creating a room with an
+// id that is already in use answers with that room only to a caller who can
+// already see it. A non-member learns that the id is taken, and nothing of the
+// room or its Stawi binding.
+func (s *MessageBusinessTestSuite) TestCreateRoomWithTakenIDRevealsNothingToNonMembers() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		f.bind(t)
+
+		outsider := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		room, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Id: f.roomID, Name: "Taken"}, outsider)
+		require.Error(t, err)
+		require.Equal(t, connect.CodeAlreadyExists, connect.CodeOf(err), err.Error())
+		require.Nil(t, room, "a non-member gets no room and no binding")
+
+		room, err = f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Id: f.roomID, Name: "Retry"}, f.bob)
+		require.NoError(t, err)
+		require.Equal(t, f.roomID, room.GetId())
+		require.Equal(t, "Savings group", room.GetName(), "a member gets the room that exists")
+		require.Equal(t, chatv1.StawiRoomState_STAWI_ROOM_STATE_BOUND, room.GetStawi().GetState())
 	})
 }
 

@@ -196,6 +196,9 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, err
 	}
 	if existingRoom != nil {
+		if !rb.mayAnswerExisting(ctx, existingRoom, createdBy) {
+			return nil, service.ErrRoomIDTaken
+		}
 		return rb.withStawiBinding(ctx, existingRoom.ToAPI())
 	}
 
@@ -281,6 +284,24 @@ func (rb *roomBusiness) persistRoom(ctx context.Context, room *models.Room) (*mo
 	}
 
 	return existingRoom, nil
+}
+
+// mayAnswerExisting reports whether a create that collided with an existing
+// room may be answered with that room: only a caller who already sees it, as
+// its creator or as an active member. Anyone else learns only that the id is
+// taken, never the room's fields or its Stawi binding.
+func (rb *roomBusiness) mayAnswerExisting(
+	ctx context.Context,
+	existing *models.Room,
+	caller *commonv1.ContactLink,
+) bool {
+	// The creator retrying before its owner subscription (written
+	// asynchronously) has landed.
+	if existing.CreatedBy != "" && existing.CreatedBy == caller.GetProfileId() {
+		return true
+	}
+	sub, err := rb.subscriptionSvc.GetSubscription(ctx, caller, existing.GetID())
+	return err == nil && sub != nil
 }
 
 func (rb *roomBusiness) GetRoom(
