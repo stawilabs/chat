@@ -34,6 +34,7 @@ jobs:
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
       IOS_GOOGLE_SERVICES_PLIST: ${{ secrets.IOS_GOOGLE_SERVICES_PLIST }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
   # Deploy Android to the Play Store internal track for auto-updates.
   # Fails loudly: a missing artifact, missing service account, or a rejected

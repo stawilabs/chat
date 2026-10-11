@@ -67,6 +67,8 @@ on:
         required: false
       IOS_GOOGLE_SERVICES_PLIST:
         required: false
+      SENTRY_DSN:
+        required: false
 
 env:
   JAVA_VERSION: '17'
@@ -205,11 +207,15 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
           GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APP_ENV_FILE: env/${{ inputs.environment }}.json
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release --shrink' || '--debug' }}"
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
           [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
+          [ -n "$SENTRY_DSN" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=SENTRY_DSN=$SENTRY_DSN"
+          BUILD_ARGS="$BUILD_ARGS --dart-define-from-file=$APP_ENV_FILE"
 
           flutter build apk $BUILD_ARGS
 
@@ -341,6 +347,8 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
           GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APP_ENV_FILE: env/${{ inputs.environment }}.json
         run: |
           if [ "${{ inputs.build_type }}" == "release" ] && [ "${{ inputs.environment }}" == "production" ]; then
             BUILD_ARGS="--release"
@@ -350,6 +358,8 @@ jobs:
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
           [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
+          [ -n "$SENTRY_DSN" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=SENTRY_DSN=$SENTRY_DSN"
+          BUILD_ARGS="$BUILD_ARGS --dart-define-from-file=$APP_ENV_FILE"
 
           flutter build ios $BUILD_ARGS
 
@@ -398,10 +408,14 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
           GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APP_ENV_FILE: env/${{ inputs.environment }}.json
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--profile' }} --base-href / --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
           [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
+          [ -n "$SENTRY_DSN" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=SENTRY_DSN=$SENTRY_DSN"
+          BUILD_ARGS="$BUILD_ARGS --dart-define-from-file=$APP_ENV_FILE"
           flutter build web $BUILD_ARGS
 
       - name: Upload Web
@@ -441,11 +455,15 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
           GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APP_ENV_FILE: env/${{ inputs.environment }}.json
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
           [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
+          [ -n "$SENTRY_DSN" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=SENTRY_DSN=$SENTRY_DSN"
+          BUILD_ARGS="$BUILD_ARGS --dart-define-from-file=$APP_ENV_FILE"
           flutter build linux $BUILD_ARGS
 
       - name: Package Linux bundle
@@ -484,11 +502,15 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
           GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APP_ENV_FILE: env/${{ inputs.environment }}.json
         run: |
           $buildArgs = "${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
           $buildArgs += " --build-name=$env:APP_VERSION --build-number=$env:BUILD_NUMBER"
           if ($env:OAUTH2_CLIENT_ID) { $buildArgs += " --dart-define=OAUTH2_CLIENT_ID=$env:OAUTH2_CLIENT_ID" }
           if ($env:GOOGLE_SERVER_CLIENT_ID) { $buildArgs += " --dart-define=GOOGLE_SERVER_CLIENT_ID=$env:GOOGLE_SERVER_CLIENT_ID" }
+          if ($env:SENTRY_DSN) { $buildArgs += " --dart-define=SENTRY_DSN=$env:SENTRY_DSN" }
+          $buildArgs += " --dart-define-from-file=$env:APP_ENV_FILE"
           flutter build windows $buildArgs
         shell: pwsh
 
@@ -540,11 +562,15 @@ jobs:
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           OAUTH2_CLIENT_ID: ${{ inputs.oauth2_client_id }}
           GOOGLE_SERVER_CLIENT_ID: ${{ inputs.google_server_client_id }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APP_ENV_FILE: env/${{ inputs.environment }}.json
         run: |
           BUILD_ARGS="${{ inputs.build_type == 'release' && '--release' || '--debug' }}"
           BUILD_ARGS="$BUILD_ARGS --build-name=$APP_VERSION --build-number=$BUILD_NUMBER"
           [ -n "$OAUTH2_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=OAUTH2_CLIENT_ID=$OAUTH2_CLIENT_ID"
           [ -n "$GOOGLE_SERVER_CLIENT_ID" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID"
+          [ -n "$SENTRY_DSN" ] && BUILD_ARGS="$BUILD_ARGS --dart-define=SENTRY_DSN=$SENTRY_DSN"
+          BUILD_ARGS="$BUILD_ARGS --dart-define-from-file=$APP_ENV_FILE"
           flutter build macos $BUILD_ARGS
 
       - name: Package macOS app

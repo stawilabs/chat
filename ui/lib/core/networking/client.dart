@@ -70,7 +70,7 @@ Future<ChatClient> newChatClient({
   String? endpoint,
 }) {
   return newClient<ChatServiceClient>(
-    defaultEndpoint: endpoint ?? 'https://chat.stawi.org',
+    defaultEndpoint: endpoint ?? ApiConfig.chatBaseUrl,
     createServiceClient: ChatServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
@@ -83,7 +83,7 @@ Future<GatewayClient> newGatewayClient({
   String? endpoint,
 }) {
   return newClient<GatewayServiceClient>(
-    defaultEndpoint: endpoint ?? 'https://gateway.stawi.org',
+    defaultEndpoint: endpoint ?? ApiConfig.gatewayBaseUrl,
     createServiceClient: GatewayServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
@@ -96,7 +96,7 @@ Future<FilesClient> newFilesClient({
   String? endpoint,
 }) {
   return newClient<FilesServiceClient>(
-    defaultEndpoint: endpoint ?? 'https://files.stawi.org',
+    defaultEndpoint: endpoint ?? ApiConfig.filesBaseUrl,
     createServiceClient: FilesServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,

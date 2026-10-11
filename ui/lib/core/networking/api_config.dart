@@ -1,34 +1,57 @@
-/// API endpoint configuration for AntInvestor services
+/// API endpoint configuration — the single source of endpoint truth.
 ///
-/// Each service has its own dedicated endpoint for optimal routing
-/// and load balancing. Endpoints can be overridden at build time via
+/// Every service URL the app calls is defined here and nowhere else. Builds
+/// set them per environment with `--dart-define-from-file=env/<env>.json`
+/// (see `ui/env/`), and any single value can still be overridden with
 /// `--dart-define`, e.g.:
 /// ```
-/// flutter build web --dart-define=CHAT_URL=https://chat.stawi.im
+/// flutter build apk --dart-define-from-file=env/production.json
+/// flutter run --dart-define=CHAT_URL=http://localhost:8080
 /// ```
+///
+/// Hosts (must match the platform's public exposure):
+///   * `api.stawi.org/<path>` — Cloud Run product APIs behind the Cloudflare
+///     path gateway (profile, devices, files, ...).
+///   * `chat.stawi.org`, `gateway.stawi.org` — the chat drone and the
+///     streaming gateway on the Kubernetes cluster (Gateway API routes).
+///
+/// `env/staging.json` points at the production backends: there is no
+/// separate staging backend for chat. Secrets (`SENTRY_DSN`,
+/// `OAUTH2_CLIENT_ID`, `GOOGLE_SERVER_CLIENT_ID`) are never put in the env
+/// files; CI passes them with `--dart-define`.
 class ApiConfig {
   const ApiConfig._();
+
+  /// Build environment label (`staging` or `production`), set by the env
+  /// file. Empty for local runs. Used for telemetry tagging only.
+  static const String environment = String.fromEnvironment('APP_ENVIRONMENT');
+
+  /// Unified product API origin (Cloudflare path gateway).
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.stawi.org',
+  );
 
   // Service endpoints (configurable via --dart-define)
   static const String chatBaseUrl = String.fromEnvironment(
     'CHAT_URL',
-    defaultValue: 'https://chat.stawi.im',
+    defaultValue: 'https://chat.stawi.org',
   );
   static const String gatewayBaseUrl = String.fromEnvironment(
     'GATEWAY_URL',
-    defaultValue: 'https://gateway.stawi.im',
+    defaultValue: 'https://gateway.stawi.org',
   );
   static const String devicesBaseUrl = String.fromEnvironment(
     'DEVICES_URL',
-    defaultValue: 'https://api.stawi.im/devices',
+    defaultValue: 'https://api.stawi.org/devices',
   );
   static const String filesBaseUrl = String.fromEnvironment(
     'FILES_URL',
-    defaultValue: 'https://api.stawi.im/files',
+    defaultValue: 'https://api.stawi.org/files',
   );
   static const String profileBaseUrl = String.fromEnvironment(
     'PROFILE_URL',
-    defaultValue: 'https://profile.stawi.org',
+    defaultValue: 'https://api.stawi.org/profile',
   );
 
   // OAuth2 configuration (configurable via --dart-define)

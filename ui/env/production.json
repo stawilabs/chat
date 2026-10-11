@@ -1,0 +1,10 @@
+{
+  "APP_ENVIRONMENT": "production",
+  "API_BASE_URL": "https://api.stawi.org",
+  "CHAT_URL": "https://chat.stawi.org",
+  "GATEWAY_URL": "https://gateway.stawi.org",
+  "PROFILE_URL": "https://api.stawi.org/profile",
+  "DEVICES_URL": "https://api.stawi.org/devices",
+  "FILES_URL": "https://api.stawi.org/files",
+  "OAUTH2_ISSUER_URL": "https://oauth2.stawi.org"
+}
