@@ -17,6 +17,7 @@ import '../data/stawi_room_engines.dart';
 import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
+import '../domain/payoff_top_up.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
@@ -465,6 +466,10 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   String? _error;
   PreparedEngineCall? _prepared;
 
+  /// For a payoff: what to pay in first, once read (null: it could not be).
+  PayoffTopUp? _topUp;
+  bool _toppedUp = false;
+
   @override
   void dispose() {
     _amount.dispose();
@@ -527,9 +532,67 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
           .prepareEngineCall(request, engines: engines),
     );
     if (!mounted) return;
+    final topUp =
+        prepared != null && widget.call == AccountEngineCall.loanPayoff
+        ? await _payoffTopUp(prepared)
+        : null;
+    if (!mounted) return;
     setState(() {
       _busy = false;
       _prepared = prepared;
+      _topUp = topUp;
+    });
+  }
+
+  /// What the member must pay in before [prepared] can pay the loan off, from
+  /// their live book and the room's dues; null when it cannot be read.
+  Future<PayoffTopUp?> _payoffTopUp(PreparedEngineCall prepared) async {
+    try {
+      final identity = await ref.read(stawiIdentityProvider.future);
+      final balances = await ref.read(
+        stawiMemberBalancesProvider(widget.roomId).future,
+      );
+      final products = await ref.read(
+        roomProductsProvider(widget.roomId).future,
+      );
+      return payoffTopUpFor(
+        payoff: prepared.call.amount,
+        balances: balances,
+        products: products,
+        myAccounts: identity.addresses,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  /// Pays the top-up into the room and waits for it to land, so the payoff
+  /// that follows finds the cycle's dues paid and the credit there.
+  Future<void> _payTopUp() async {
+    final prepared = _prepared!;
+    final topUp = _topUp!.topUp;
+    setState(() => _busy = true);
+    final service = ref.read(stawiAccountServiceProvider);
+    final landed = await runStawiAction(context, () async {
+      final submitted = await service.contribute(
+        custody: prepared.request.custody,
+        amount: topUp.toString(),
+      );
+      final last = await service.followAccountCall(submitted.callId).last;
+      if (last.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
+        throw StawiUnavailable(
+          last.failureReason.isNotEmpty
+              ? 'The top-up did not go through: ${last.failureReason}'
+              : 'The top-up did not go through; try again',
+        );
+      }
+      return last;
+    }, success: 'Topped up; you can sign the payoff now');
+    if (!mounted) return;
+    ref.invalidate(stawiMemberBalancesProvider(widget.roomId));
+    setState(() {
+      _busy = false;
+      if (landed != null) _toppedUp = true;
     });
   }
 
@@ -654,8 +717,15 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'Instalments'),
                 ),
-            ] else
+            ] else ...[
               _Review(call: prepared.call, request: prepared.request),
+              if (widget.call == AccountEngineCall.loanPayoff)
+                _TopUpNotice(
+                  topUp: _topUp,
+                  toppedUp: _toppedUp,
+                  request: prepared.request,
+                ),
+            ],
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -677,6 +747,16 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
             key: const Key('engine-review'),
             onPressed: _busy ? null : _review,
             child: Text(_busy ? 'Preparing…' : 'Review'),
+          )
+        else if (_topUp != null && _topUp!.needed && !_toppedUp)
+          FilledButton(
+            key: const Key('payoff-top-up'),
+            onPressed: _busy ? null : _payTopUp,
+            child: Text(
+              _busy
+                  ? 'Topping up…'
+                  : 'Top up ${_formatTopUp(prepared.request, _topUp!.topUp)}',
+            ),
           )
         else
           FilledButton(
@@ -727,6 +807,60 @@ class _Review extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
+    );
+  }
+}
+
+String _formatTopUp(AccountEngineRequest request, BigInt units) {
+  final asset = request.asset;
+  return asset == null ? '$units' : formatUnits(units, asset);
+}
+
+/// Before a payoff: whether the member must pay in first, and why.
+class _TopUpNotice extends StatelessWidget {
+  const _TopUpNotice({
+    required this.topUp,
+    required this.toppedUp,
+    required this.request,
+  });
+
+  final PayoffTopUp? topUp;
+  final bool toppedUp;
+  final AccountEngineRequest request;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = topUp;
+    final String text;
+    if (t == null) {
+      text =
+          'Your credit in the room could not be read. A payoff is paid from '
+          'your credit after the rest of this cycle\'s dues; if it is '
+          'refused, pay those dues in first.';
+    } else if (!t.needed) {
+      return const SizedBox.shrink();
+    } else if (toppedUp) {
+      text = 'Top-up received. Sign to pay the loan off.';
+    } else {
+      String money(BigInt units) => _formatTopUp(request, units);
+      text =
+          'Pay in ${money(t.topUp)} first. New money pays the rest of this '
+          'cycle\'s dues (${money(t.remainingDues)}) before the loan, and the '
+          'payoff takes up to ${money(t.payoff)}; your credit now is '
+          '${money(t.credit)}. Anything left over stays your credit.';
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Text(
+        text,
+        key: const Key('payoff-top-up-notice'),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: t != null && t.needed && !toppedUp
+              ? theme.colorScheme.error
+              : null,
+        ),
+      ),
     );
   }
 }

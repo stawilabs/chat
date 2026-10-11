@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -364,11 +366,14 @@ void main() {
     Future<void> pump(
       WidgetTester tester, {
       finance.ListMemberBalancesResponse? balances,
+      finance.ListRoomProductsResponse? products,
     }) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             ...overrides(),
+            if (products != null)
+              roomProductsProvider.overrideWith((ref, id) async => products),
             stawiObligationsProvider.overrideWith(
               (ref, id) async => [
                 finance.Obligation(
@@ -542,6 +547,117 @@ void main() {
           .single;
       expect(bytesToHex0x(submit.authorization), payoff.signature);
     });
+
+    testWidgets(
+      'a payoff in a share-out room asks for the cycle\'s dues first',
+      (tester) async {
+        transport
+          ..on(settlement.AccountService.prepareAccountCall, (req) {
+            if (req.kind !=
+                settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE) {
+              return payoff.prepared(req.kind);
+            }
+            return settlement.PrepareAccountCallResponse(
+              callId: 'acct00000000000000c1',
+              intentDigest: keccak256(Uint8List.fromList([7])),
+              financialIntent: finance.FinancialIntent(
+                type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
+                destination: finance.ValueLocation(
+                  kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+                  address: req.params.room,
+                ),
+                amount: req.params.amount,
+              ),
+              call: settlement.AccountCall(
+                callId: 'acct00000000000000c1',
+                address: req.address,
+                kind: req.kind,
+              ),
+            );
+          })
+          ..on(
+            settlement.AccountService.submitAccountCall,
+            (req) => settlement.SubmitAccountCallResponse(
+              call: settlement.AccountCall(callId: req.callId),
+            ),
+          )
+          ..on(
+            settlement.AccountService.getAccountCall,
+            (req) => settlement.GetAccountCallResponse(
+              call: settlement.AccountCall(
+                callId: req.callId,
+                state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+              ),
+            ),
+          );
+        await pump(
+          tester,
+          balances: finance.ListMemberBalancesResponse(
+            booksAvailable: true,
+            balances: [
+              finance.MemberBalance(
+                memberId: 'mem1',
+                profileId: 'p1',
+                account: payoff.account,
+                book: finance.MemberBook(
+                  credit: finance.Money(assetId: 'USDC.146', amount: '0'),
+                  duesOwed: finance.Money(assetId: 'USDC.146', amount: '0'),
+                ),
+              ),
+            ],
+          ),
+          // Two weekly dues of 5 USDC left in the 52-week cycle.
+          products: finance.ListRoomProductsResponse(
+            rulesConfigured: true,
+            calendar: finance.RoomCalendar(
+              periodsPerCycle: 52,
+              currentPeriod: 50,
+            ),
+            duesProducts: [
+              finance.RoomDuesProduct(
+                name: 'shares',
+                amount: finance.Money(assetId: 'USDC.146', amount: '5000000'),
+                everyPeriods: 1,
+                active: true,
+              ),
+            ],
+          ),
+        );
+        await tester.tap(find.text('Loans'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('loan-1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('loan-1-loanPayoff')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('engine-review')));
+        await tester.pumpAndSettle();
+
+        // The payoff's 520 USDC ceiling and the cycle's 10 USDC of dues.
+        expect(find.textContaining('Pay in 530.00 USDC first'), findsOneWidget);
+        expect(find.byKey(const Key('engine-sign')), findsNothing);
+        await tester.tap(find.byKey(const Key('payoff-top-up')));
+        await tester.pumpAndSettle();
+
+        final contribute = transport
+            .requestsTo(settlement.AccountService.prepareAccountCall)
+            .last;
+        expect(
+          contribute.kind,
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+        );
+        expect(contribute.params.room, custody);
+        expect(contribute.params.amount, '530000000');
+        expect(find.textContaining('Top-up received'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('engine-sign')));
+        await tester.pumpAndSettle();
+        final submits = transport.requestsTo(
+          settlement.AccountService.submitAccountCall,
+        );
+        expect(submits, hasLength(2));
+        expect(bytesToHex0x(submits.last.authorization), payoff.signature);
+      },
+    );
 
     testWidgets('a refused check stops before signing', (tester) async {
       final pledge = GoEngineCallVector.load().firstWhere(
