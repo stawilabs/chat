@@ -38,6 +38,7 @@ type messageBusiness struct {
 	authzMiddleware authz.Middleware
 	callPolicy      *callPolicy
 	stawi           *stawiRelay
+	cardChecker     FunctionPermissionChecker
 
 	payloadConverter *models.PayloadConverter
 }

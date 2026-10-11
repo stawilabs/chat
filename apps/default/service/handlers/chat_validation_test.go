@@ -159,10 +159,21 @@ func (m *mockRoomBusiness) UpdateSubscriptionSettings(
 // mockMessageBusiness implements business.MessageBusiness for controlled test results.
 type mockMessageBusiness struct {
 	sendEventsFn    func(ctx context.Context, req *chatv1.SendEventRequest, sentBy *commonv1.ContactLink) ([]*chatv1.AckEvent, error)
+	serviceSendFn   func(ctx context.Context, req *chatv1.SendEventRequest) ([]*chatv1.AckEvent, error)
 	getMessageFn    func(ctx context.Context, messageID string, gottenBy *commonv1.ContactLink) (*models.RoomEvent, error)
 	getHistoryFn    func(ctx context.Context, req *chatv1.GetHistoryRequest, gottenBy *commonv1.ContactLink) ([]*chatv1.RoomEvent, error)
 	deleteMessageFn func(ctx context.Context, messageID string, deletedBy *commonv1.ContactLink) error
 	markReadFn      func(ctx context.Context, roomID string, eventID string, markedBy *commonv1.ContactLink) error
+}
+
+func (m *mockMessageBusiness) SendServiceEvents(
+	ctx context.Context,
+	req *chatv1.SendEventRequest,
+) ([]*chatv1.AckEvent, error) {
+	if m.serviceSendFn != nil {
+		return m.serviceSendFn(ctx, req)
+	}
+	return nil, errors.New("not implemented")
 }
 
 func (m *mockMessageBusiness) SendEvents(
@@ -1634,4 +1645,42 @@ func TestLive_NilClientStateInBatch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.GetError())
 	assert.Contains(t, resp.Msg.GetError().GetMessage(), "partial batch failure")
+}
+
+// TestSendEvent_ServicePrincipalTakesTheCardPath: a service principal (no
+// contact) is routed to the service card path, which does its own checks; a
+// user is never routed there.
+func TestSendEvent_ServicePrincipalTakesTheCardPath(t *testing.T) {
+	var serviceCalls, userCalls int
+	chatServer := &handlers.ChatServer{
+		MessageBusiness: &mockMessageBusiness{
+			serviceSendFn: func(_ context.Context, _ *chatv1.SendEventRequest) ([]*chatv1.AckEvent, error) {
+				serviceCalls++
+				return []*chatv1.AckEvent{{}}, nil
+			},
+			sendEventsFn: func(_ context.Context, _ *chatv1.SendEventRequest, _ *commonv1.ContactLink) ([]*chatv1.AckEvent, error) {
+				userCalls++
+				return []*chatv1.AckEvent{{}}, nil
+			},
+		},
+	}
+	req := connect.NewRequest(&chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{RoomId: util.IDString()}}})
+
+	claims := &security.AuthenticationClaims{TenantID: "t", PartitionID: "p",
+		Roles: []string{security.ConstantSystemInternalRole}}
+	claims.Subject = util.IDString()
+	_, err := chatServer.SendEvent(claims.ClaimsToContext(context.Background()), req)
+	require.NoError(t, err)
+	require.Equal(t, 1, serviceCalls)
+
+	_, err = chatServer.SendEvent(lightweightAuthCtx(), req)
+	require.NoError(t, err)
+	require.Equal(t, 1, userCalls)
+	require.Equal(t, 1, serviceCalls)
+
+	person := &security.AuthenticationClaims{TenantID: "t", PartitionID: "p"}
+	person.Subject = util.IDString()
+	_, err = chatServer.SendEvent(person.ClaimsToContext(context.Background()), req)
+	require.Error(t, err, "a person without a contact is not a service")
+	require.Equal(t, 1, serviceCalls)
 }

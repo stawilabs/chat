@@ -87,7 +87,10 @@ service ChatService {
       "subscription_view",
       "subscription_manage",
       "proposal_view",
-      "proposal_manage"
+      "proposal_manage",
+      // Post display-only cards (FINANCE_CARD, TEXT) into a Stawi room the
+      // chain has, without being a member. Service principals only.
+      "stawi_card_post"
     ]
     role_bindings: [
       {
@@ -159,7 +162,8 @@ service ChatService {
           "subscription_view",
           "subscription_manage",
           "proposal_view",
-          "proposal_manage"
+          "proposal_manage",
+          "stawi_card_post"
         ]
       }
     ]

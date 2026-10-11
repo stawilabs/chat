@@ -17,6 +17,8 @@ import (
 	"github.com/pitabwire/frame/v2/cache"
 	"github.com/pitabwire/frame/v2/data"
 	"github.com/pitabwire/frame/v2/datastore"
+	"github.com/pitabwire/frame/v2/security"
+	"github.com/pitabwire/frame/v2/security/authorizer"
 	"github.com/pitabwire/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -144,6 +146,8 @@ func NewChatServer(
 			Bindings: stawiBindings,
 			CallRepo: repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
 		}),
+		business.WithServiceCards(authorizer.NewFunctionChecker( // stawi_card_post gate
+			service.SecurityManager().GetAuthorizer(ctx), business.ServiceNamespace)),
 	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
@@ -221,7 +225,13 @@ func (ps *ChatServer) SendEvent(
 	ctx context.Context,
 	req *connect.Request[chatv1.SendEventRequest],
 ) (*connect.Response[chatv1.SendEventResponse], error) {
-	// Validate authentication
+	// A service principal (no contact) posts display-only cards through its
+	// own, separately authorized path; everyone else must be a contact.
+	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetContactID() == "" &&
+		claims.IsInternalSystem() {
+		return ps.sendServiceEvents(ctx, req)
+	}
+
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
@@ -255,6 +265,24 @@ func (ps *ChatServer) SendEvent(
 	return connect.NewResponse(&chatv1.SendEventResponse{
 		Ack: acks,
 	}), nil
+}
+
+// sendServiceEvents is SendEvent for a service principal posting cards.
+func (ps *ChatServer) sendServiceEvents(
+	ctx context.Context,
+	req *connect.Request[chatv1.SendEventRequest],
+) (*connect.Response[chatv1.SendEventResponse], error) {
+	if len(req.Msg.GetEvent()) > MaxBatchSize {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("too many events: max %d allowed", MaxBatchSize))
+	}
+	timeoutCtx, cancel := ps.withTimeout(ctx, sendEventsTimeout)
+	defer cancel()
+	acks, err := ps.MessageBusiness.SendServiceEvents(timeoutCtx, req.Msg)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+	return connect.NewResponse(&chatv1.SendEventResponse{Ack: acks}), nil
 }
 
 func (ps *ChatServer) GetHistory(

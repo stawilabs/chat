@@ -22,6 +22,7 @@ x-service-permissions:
   - subscription_manage
   - proposal_view
   - proposal_manage
+  - stawi_card_post
 paths:
   /chat.v1.GatewayService/Stream: {}
 components:

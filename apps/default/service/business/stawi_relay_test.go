@@ -11,6 +11,8 @@ import (
 	"github.com/pitabwire/frame/v2/datastore"
 	"github.com/pitabwire/frame/v2/datastore/pool"
 	"github.com/pitabwire/frame/v2/frametests/definition"
+	"github.com/pitabwire/frame/v2/security"
+	"github.com/pitabwire/frame/v2/security/authorizer"
 	"github.com/pitabwire/frame/v2/workerpool"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
@@ -37,6 +39,7 @@ type stawiFixture struct {
 	dbPool   pool.Pool
 	workMan  workerpool.Manager
 	authz    authz.Middleware
+	keto     security.Authorizer
 	roomID   string
 	alice    *commonv1.ContactLink
 	bob      *commonv1.ContactLink
@@ -77,6 +80,7 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 	evtsMan := svc.EventsManager()
 	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
 	f.dbPool, f.workMan, f.authz = dbPool, workMan, s.AuthzMiddleware
+	f.keto = svc.SecurityManager().GetAuthorizer(ctx)
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
@@ -89,7 +93,8 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 	mb := business.NewMessageBusiness(evtsMan, eventRepo, outboxRepo, f.subRepo, subscriptionSvc, s.AuthzMiddleware,
 		business.WithStawiRooms(business.StawiDeps{
 			Rooms: f.rooms, Accounts: f.accounts, RoomRepo: roomRepo, Bindings: f.bindings, CallRepo: f.calls,
-		}))
+		}),
+		business.WithServiceCards(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
 		s.AuthzMiddleware, business.WithStawiBindings(f.bindings))
 	return mb, rb
