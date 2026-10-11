@@ -65,6 +65,18 @@ void main() {
       expect(keys.map((k) => k.keyId).toSet(), hasLength(1));
     });
 
+    test('signatures carry v as 27 or 28, never a raw recovery id', () async {
+      final key = await DeviceKeyStore(vaultWith('p1', anvilKey)).load('p1');
+      final vs = <int>{};
+      for (var i = 0; i < 32; i++) {
+        final signature = key!.sign(keccak256(Uint8List.fromList([i])));
+        expect(signature, hasLength(65));
+        vs.add(signature[64]);
+      }
+      // Both recovery ids occur over these digests, each sent as 27 + id.
+      expect(vs, {27, 28});
+    });
+
     test('a signature recovers to the device key', () async {
       final key = await DeviceKeyStore(
         MemoryDeviceKeyVault(),

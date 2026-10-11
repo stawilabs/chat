@@ -182,6 +182,11 @@ void main() {
       },
     );
 
+    // Another founder's account and its own wrapping of the genesis hash:
+    // every founder signs their own digest, never a shared one.
+    final otherAccount = Uint8List.fromList(List.filled(20, 0xbb));
+    final otherDigest = keccak256(Uint8List.fromList([9, 9, 9]));
+
     void genesisOnSettlement() {
       transport.on(
         settlement.RoomService.getRoomGenesis,
@@ -193,6 +198,11 @@ void main() {
             chainId: Int64(146),
             genesisHash: typedHash,
             founders: [
+              settlement.RoomFounder(
+                profileId: 'p2',
+                account: otherAccount,
+                signingDigest: otherDigest,
+              ),
               settlement.RoomFounder(
                 profileId: 'p1',
                 account: account,
@@ -215,6 +225,18 @@ void main() {
       expect(act.content['signerKeyId'], key.keyId);
       final signature = base64Decode(act.content['signature'] as String);
       expect(recoverDeviceAddress(digest, signature), key.address);
+      expect(signature, isNot(key.sign(otherDigest)));
+    });
+
+    test('a founder signs their own digest, not another founder\'s', () async {
+      genesisOnSettlement();
+      await roomService().signGenesis(card());
+
+      final signature = base64Decode(
+        sender.sent.single.content['signature'] as String,
+      );
+      expect(signature, key.sign(digest));
+      expect(recoverDeviceAddress(otherDigest, signature), isNot(key.address));
     });
 
     test('a member who is not a founder cannot sign', () async {
