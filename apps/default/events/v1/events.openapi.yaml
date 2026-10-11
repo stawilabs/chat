@@ -1125,6 +1125,38 @@ components:
           title: room_change
         - type: object
           properties:
+            stawiCallOutcome:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiCallOutcomeContent'
+              title: stawi_call_outcome
+              description: type = PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+          title: stawi_call_outcome
+        - type: object
+          properties:
+            stawiGenesisSignature:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiGenesisSignatureContent'
+              title: stawi_genesis_signature
+              description: type = PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+          title: stawi_genesis_signature
+        - type: object
+          properties:
+            stawiRoomConversion:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiRoomConversionContent'
+              title: stawi_room_conversion
+              description: type = PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+          title: stawi_room_conversion
+        - type: object
+          properties:
+            stawiSignedCall:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiSignedCallContent'
+              title: stawi_signed_call
+              description: type = PAYLOAD_TYPE_STAWI_SIGNED_CALL
+          title: stawi_signed_call
+        - type: object
+          properties:
             text:
               allOf:
                 - $ref: '#/components/schemas/chat.v1.TextContent'
@@ -1176,6 +1208,14 @@ components:
               - required:
                   - roomChange
               - required:
+                  - stawiCallOutcome
+              - required:
+                  - stawiGenesisSignature
+              - required:
+                  - stawiRoomConversion
+              - required:
+                  - stawiSignedCall
+              - required:
                   - text
               - required:
                   - vote
@@ -1207,6 +1247,14 @@ components:
                     - reaction
                 - required:
                     - roomChange
+                - required:
+                    - stawiCallOutcome
+                - required:
+                    - stawiGenesisSignature
+                - required:
+                    - stawiRoomConversion
+                - required:
+                    - stawiSignedCall
                 - required:
                     - text
                 - required:
@@ -1241,6 +1289,10 @@ components:
         - PAYLOAD_TYPE_FORM_REQUEST
         - PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
         - PAYLOAD_TYPE_FINANCE_CARD
+        - PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+        - PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+        - PAYLOAD_TYPE_STAWI_SIGNED_CALL
+        - PAYLOAD_TYPE_STAWI_CALL_OUTCOME
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
     chat.v1.ReactionContent:
       type: object
@@ -1319,6 +1371,233 @@ components:
         - ROOM_EVENT_TYPE_FORM_REQUEST
         - ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
+    chat.v1.StawiCallOutcomeContent:
+      type: object
+      properties:
+        callId:
+          type: string
+          title: call_id
+          maxLength: 64
+        genesisId:
+          type: string
+          title: genesis_id
+          maxLength: 64
+        state:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.StawiCallOutcomeState'
+          title: state
+          description: |
+            enum.defined_only = true
+        reason:
+          type: string
+          title: reason
+          maxLength: 1024
+          description: Why a FAILED outcome failed.
+        sourceEventId:
+          type: string
+          title: source_event_id
+          maxLength: 40
+          description: The chat event that carried the act, when the act came through chat.
+        kind:
+          type: string
+          title: kind
+          maxLength: 64
+          description: The call kind, or the chain event an OBSERVED outcome reports.
+        chainId:
+          type: string
+          title: chain_id
+          format: int64
+          description: Where an OBSERVED outcome was seen on chain.
+        txHash:
+          type: string
+          title: tx_hash
+          maxLength: 32
+          format: byte
+        blockNumber:
+          type: string
+          title: block_number
+          format: int64
+        logIndex:
+          type: string
+          title: log_index
+          format: int64
+      title: StawiCallOutcomeContent
+      additionalProperties: false
+      description: |-
+        StawiCallOutcomeContent is server-generated: what became of a conversion,
+         a genesis signature or a signed call. Clients cannot send it.
+    chat.v1.StawiCallOutcomeState:
+      type: string
+      title: StawiCallOutcomeState
+      enum:
+        - STAWI_CALL_OUTCOME_STATE_UNSPECIFIED
+        - STAWI_CALL_OUTCOME_STATE_ACCEPTED
+        - STAWI_CALL_OUTCOME_STATE_FAILED
+        - STAWI_CALL_OUTCOME_STATE_OBSERVED
+    chat.v1.StawiGenesis:
+      type: object
+      properties:
+        genesisId:
+          type: string
+          title: genesis_id
+          maxLength: 64
+        genesisHash:
+          type: string
+          title: genesis_hash
+          maxLength: 32
+          format: byte
+          description: The digest each founder's device signs (account-wrapped by the app).
+        constitutionHash:
+          type: string
+          title: constitution_hash
+          maxLength: 32
+          format: byte
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expires_at
+        founderProfileIds:
+          type: array
+          items:
+            type: string
+          title: founder_profile_ids
+          maxItems: 64
+      title: StawiGenesis
+      additionalProperties: false
+      description: StawiGenesis is a prepared room genesis awaiting founder signatures.
+    chat.v1.StawiGenesisSignatureContent:
+      type: object
+      properties:
+        genesisId:
+          type: string
+          title: genesis_id
+          maxLength: 64
+          minLength: 1
+        signature:
+          type: string
+          title: signature
+          maxLength: 4096
+          minLength: 1
+          format: byte
+        signerKeyId:
+          type: string
+          title: signer_key_id
+          maxLength: 128
+          minLength: 1
+          description: The device key that produced the signature.
+      title: StawiGenesisSignatureContent
+      additionalProperties: false
+      description: |-
+        StawiGenesisSignatureContent is a founder's signature over a prepared
+         genesis. Chat checks the sender is one of the genesis founders and hands
+         the signature to settlement; at founding quorum settlement creates the
+         room on chain.
+    chat.v1.StawiJoinPolicy:
+      type: string
+      title: StawiJoinPolicy
+      enum:
+        - STAWI_JOIN_POLICY_UNSPECIFIED
+        - STAWI_JOIN_POLICY_PRIVATE
+        - STAWI_JOIN_POLICY_PUBLIC
+      description: StawiJoinPolicy is how someone may enter a Stawi room once it is on chain.
+    chat.v1.StawiRoomConversionContent:
+      type: object
+      properties:
+        templateId:
+          type: string
+          title: template_id
+          maxLength: 64
+          minLength: 1
+          description: Constitution template the rules are applied to.
+        ruleValues:
+          type: object
+          title: rule_values
+          maxProperties: 64
+          additionalProperties:
+            type: string
+            title: value
+            maxLength: 256
+          description: |-
+            Rule values for the template, keyed by rule name. Values are strings
+             (decimal numbers, durations, enum names); settlement parses and checks
+             them against the template when it compiles the constitution.
+        founderSubscriptionIds:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+            minLength: 3
+            pattern: ^[0-9a-z_-]{3,40}$
+          title: founder_subscription_ids
+          maxItems: 64
+          minItems: 1
+          uniqueItems: true
+          description: |-
+            Subscriptions of this room whose holders found the Stawi room. Each must
+             be an active subscription of the room.
+        joinPolicy:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.StawiJoinPolicy'
+          not:
+            enum:
+              - STAWI_JOIN_POLICY_UNSPECIFIED
+          title: join_policy
+          description: |
+            enum.defined_only = true
+        genesis:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.StawiGenesis'
+          title: genesis
+          description: |-
+            Output only: the genesis settlement prepared. Set by the server on the
+             stored event; a client that sets it is refused.
+      title: StawiRoomConversionContent
+      additionalProperties: false
+      description: |-
+        StawiRoomConversionContent asks for this room to become a Stawi room: the
+         chain creates custody for the room under the room's own id once the
+         founders have signed the genesis. Chat relays the request to settlement,
+         which compiles the constitution and prepares the genesis; chat then fills
+         in `genesis` on the stored event, so the event itself is the genesis card.
+    chat.v1.StawiSignedCallContent:
+      type: object
+      properties:
+        callId:
+          type: string
+          title: call_id
+          maxLength: 64
+          minLength: 1
+          description: The call id settlement returned when the call was prepared.
+        kind:
+          type: string
+          title: kind
+          maxLength: 64
+          minLength: 1
+          description: The call kind, as settlement names it (e.g. "INVITE", "CAST_VOTE").
+        signature:
+          type: string
+          title: signature
+          maxLength: 4096
+          minLength: 1
+          format: byte
+        signerKeyId:
+          type: string
+          title: signer_key_id
+          maxLength: 128
+          description: The device key that produced the signature.
+        summary:
+          type: string
+          title: summary
+          maxLength: 512
+          description: Human-readable description of the act, for display.
+      title: StawiSignedCallContent
+      additionalProperties: false
+      description: |-
+        StawiSignedCallContent carries a room governance call (invite, accept,
+         join, admit, leave, suspend, roles, propose, vote, delegate, freeze) that
+         the app prepared through settlement and signed with the device key. Chat
+         checks the sender's subscription is the call's signer and relays it; the
+         room changes only when the chain reports the call.
     chat.v1.TextAnnotation:
       type: object
       properties:
@@ -1706,15 +1985,10 @@ components:
       enum:
         - NULL_VALUE
       description: |-
-        Represents a JSON `null`.
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
 
-         `NullValue` is a sentinel, using an enum with only one value to represent
-         the null value for the `Value` type union.
-
-         A field of type `NullValue` with any value other than `0` is considered
-         invalid. Most ProtoJSON serializers will emit a Value with a `null_value` set
-         as a JSON `null` regardless of the integer value, and so will round trip to
-         a `0` value.
+         The JSON representation for `NullValue` is JSON `null`.
     google.protobuf.Struct:
       type: object
       additionalProperties:

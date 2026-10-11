@@ -347,6 +347,10 @@ func (mb *messageBusiness) prepareEventForInsert(
 		return nil, ackEventError(reqEvt.GetId(), cardErr)
 	}
 
+	if stawiErr := validateStawiPayload(reqEvt); stawiErr != nil {
+		return nil, ackEventError(reqEvt.GetId(), stawiErr)
+	}
+
 	content, convertErr := mb.payloadConverter.FromProto(reqEvt.GetPayload())
 	if convertErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), connect.NewError(

@@ -8,6 +8,7 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"github.com/pitabwire/frame/v2/data"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -189,6 +190,11 @@ func (c *PayloadConverter) FromProto(protoEvent *chatv1.Payload) (data.JSONMap, 
 		payload = protoEvent.GetFormSubmissionResult()
 	case chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD:
 		payload = protoEvent.GetFinanceCard()
+	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		payload = StawiContent(protoEvent)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		payload = protoEvent.GetDefault()
 	default: // Covers unknown types
@@ -250,6 +256,14 @@ func inferPayloadType(protoEvent *chatv1.Payload) chatv1.PayloadType {
 		return chatv1.PayloadType_PAYLOAD_TYPE_FORM_SUBMISSION_RESULT
 	case *chatv1.Payload_FinanceCard:
 		return chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD
+	case *chatv1.Payload_StawiRoomConversion:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+	case *chatv1.Payload_StawiGenesisSignature:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+	case *chatv1.Payload_StawiSignedCall:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL
+	case *chatv1.Payload_StawiCallOutcome:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME
 	case *chatv1.Payload_Default:
 		return chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED
 	default:
@@ -370,6 +384,11 @@ func (c *PayloadConverter) setTypedContent(
 		}
 		protoEvent.Data = &chatv1.Payload_FinanceCard{FinanceCard: &payload}
 		return nil
+	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		return setStawiContent(protoEvent, payloadType, content)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		var payload structpb.Struct
 		if err := json.Unmarshal(content, &payload); err != nil {
@@ -385,4 +404,71 @@ func (c *PayloadConverter) setTypedContent(
 		protoEvent.Data = &chatv1.Payload_Default{Default: &payload}
 		return nil
 	}
+}
+
+// stawiContentTypes names the content message of each Stawi payload type.
+//
+//nolint:gochecknoglobals,exhaustive // immutable lookup table over the Stawi types only
+var stawiContentTypes = map[chatv1.PayloadType]func() proto.Message{
+	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION:   func() proto.Message { return &chatv1.StawiRoomConversionContent{} },
+	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE: func() proto.Message { return &chatv1.StawiGenesisSignatureContent{} },
+	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL:       func() proto.Message { return &chatv1.StawiSignedCallContent{} },
+	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:      func() proto.Message { return &chatv1.StawiCallOutcomeContent{} },
+}
+
+// IsStawiPayload reports whether a payload type is one of the Stawi room acts
+// or their server-generated outcome.
+func IsStawiPayload(payloadType chatv1.PayloadType) bool {
+	_, ok := stawiContentTypes[payloadType]
+	return ok
+}
+
+// StawiContent returns the populated content of a Stawi payload, or nil when
+// the populated member is not the one the declared type names.
+func StawiContent(payload *chatv1.Payload) proto.Message {
+	var content proto.Message
+	switch data := payload.GetData().(type) {
+	case *chatv1.Payload_StawiRoomConversion:
+		content = data.StawiRoomConversion
+	case *chatv1.Payload_StawiGenesisSignature:
+		content = data.StawiGenesisSignature
+	case *chatv1.Payload_StawiSignedCall:
+		content = data.StawiSignedCall
+	case *chatv1.Payload_StawiCallOutcome:
+		content = data.StawiCallOutcome
+	default:
+		return nil
+	}
+	if content == nil || !content.ProtoReflect().IsValid() {
+		return nil
+	}
+	newContent, ok := stawiContentTypes[payload.GetType()]
+	if !ok || newContent().ProtoReflect().Descriptor() != content.ProtoReflect().Descriptor() {
+		return nil
+	}
+	return content
+}
+
+// setStawiContent decodes the Stawi payloads. They are kept apart from the
+// general switch only to hold its size down; the encoding is the same.
+func setStawiContent(protoEvent *chatv1.Payload, payloadType chatv1.PayloadType, content []byte) error {
+	newContent, ok := stawiContentTypes[payloadType]
+	if !ok {
+		return fmt.Errorf("not a Stawi payload type: %v", payloadType)
+	}
+	payload := newContent()
+	if err := json.Unmarshal(content, payload); err != nil {
+		return err
+	}
+	switch typed := payload.(type) {
+	case *chatv1.StawiRoomConversionContent:
+		protoEvent.Data = &chatv1.Payload_StawiRoomConversion{StawiRoomConversion: typed}
+	case *chatv1.StawiGenesisSignatureContent:
+		protoEvent.Data = &chatv1.Payload_StawiGenesisSignature{StawiGenesisSignature: typed}
+	case *chatv1.StawiSignedCallContent:
+		protoEvent.Data = &chatv1.Payload_StawiSignedCall{StawiSignedCall: typed}
+	case *chatv1.StawiCallOutcomeContent:
+		protoEvent.Data = &chatv1.Payload_StawiCallOutcome{StawiCallOutcome: typed}
+	}
+	return nil
 }

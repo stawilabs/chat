@@ -41,6 +41,14 @@ enum PayloadType {
   PAYLOAD_TYPE_FORM_REQUEST = 30;
   PAYLOAD_TYPE_FORM_SUBMISSION_RESULT = 31;
   PAYLOAD_TYPE_FINANCE_CARD = 40;
+  // A member asks for the room to become a Stawi room (custody on chain).
+  PAYLOAD_TYPE_STAWI_ROOM_CONVERSION = 41;
+  // A founder's device signature over a prepared room genesis.
+  PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE = 42;
+  // A device-signed room governance call prepared through settlement.
+  PAYLOAD_TYPE_STAWI_SIGNED_CALL = 43;
+  // Server-generated: what became of a genesis or a signed call.
+  PAYLOAD_TYPE_STAWI_CALL_OUTCOME = 44;
 }
 
 enum RoomChangeAction {
@@ -606,6 +614,164 @@ message FinanceCardContent {
   ];
 }
 
+// StawiJoinPolicy is how someone may enter a Stawi room once it is on chain.
+enum StawiJoinPolicy {
+  STAWI_JOIN_POLICY_UNSPECIFIED = 0;
+  // Entry only by an invitation the invitee accepts.
+  STAWI_JOIN_POLICY_PRIVATE = 1;
+  // Anyone may join by their own signature and is admitted later.
+  STAWI_JOIN_POLICY_PUBLIC = 2;
+}
+
+// StawiRoomConversionContent asks for this room to become a Stawi room: the
+// chain creates custody for the room under the room's own id once the
+// founders have signed the genesis. Chat relays the request to settlement,
+// which compiles the constitution and prepares the genesis; chat then fills
+// in `genesis` on the stored event, so the event itself is the genesis card.
+message StawiRoomConversionContent {
+  // Constitution template the rules are applied to.
+  string template_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Rule values for the template, keyed by rule name. Values are strings
+  // (decimal numbers, durations, enum names); settlement parses and checks
+  // them against the template when it compiles the constitution.
+  map<string, string> rule_values = 2 [
+    (buf.validate.field).map.max_pairs = 64,
+    (buf.validate.field).map.keys = {
+      string: {
+        min_len: 1
+        max_len: 64
+      }
+    },
+    (buf.validate.field).map.values = {
+      string: {max_len: 256}
+    }
+  ];
+
+  // Subscriptions of this room whose holders found the Stawi room. Each must
+  // be an active subscription of the room.
+  repeated string founder_subscription_ids = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      string: {
+        min_len: 3
+        max_len: 40
+        pattern: "^[0-9a-z_-]{3,40}$"
+      }
+    }
+  ];
+
+  StawiJoinPolicy join_policy = 4 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).enum.not_in = 0
+  ];
+
+  // Output only: the genesis settlement prepared. Set by the server on the
+  // stored event; a client that sets it is refused.
+  StawiGenesis genesis = 5;
+}
+
+// StawiGenesis is a prepared room genesis awaiting founder signatures.
+message StawiGenesis {
+  string genesis_id = 1 [(buf.validate.field).string.max_len = 64];
+  // The digest each founder's device signs (account-wrapped by the app).
+  bytes genesis_hash = 2 [(buf.validate.field).bytes.max_len = 32];
+  bytes constitution_hash = 3 [(buf.validate.field).bytes.max_len = 32];
+  google.protobuf.Timestamp expires_at = 4;
+  repeated string founder_profile_ids = 5 [(buf.validate.field).repeated.max_items = 64];
+}
+
+// StawiGenesisSignatureContent is a founder's signature over a prepared
+// genesis. Chat checks the sender is one of the genesis founders and hands
+// the signature to settlement; at founding quorum settlement creates the
+// room on chain.
+message StawiGenesisSignatureContent {
+  string genesis_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  bytes signature = 2 [
+    (buf.validate.field).bytes.min_len = 1,
+    (buf.validate.field).bytes.max_len = 4096
+  ];
+
+  // The device key that produced the signature.
+  string signer_key_id = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+}
+
+// StawiSignedCallContent carries a room governance call (invite, accept,
+// join, admit, leave, suspend, roles, propose, vote, delegate, freeze) that
+// the app prepared through settlement and signed with the device key. Chat
+// checks the sender's subscription is the call's signer and relays it; the
+// room changes only when the chain reports the call.
+message StawiSignedCallContent {
+  // The call id settlement returned when the call was prepared.
+  string call_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // The call kind, as settlement names it (e.g. "INVITE", "CAST_VOTE").
+  string kind = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  bytes signature = 3 [
+    (buf.validate.field).bytes.min_len = 1,
+    (buf.validate.field).bytes.max_len = 4096
+  ];
+
+  // The device key that produced the signature.
+  string signer_key_id = 4 [(buf.validate.field).string.max_len = 128];
+
+  // Human-readable description of the act, for display.
+  string summary = 5 [(buf.validate.field).string.max_len = 512];
+}
+
+enum StawiCallOutcomeState {
+  STAWI_CALL_OUTCOME_STATE_UNSPECIFIED = 0;
+  // Settlement accepted the call or signature for relay.
+  STAWI_CALL_OUTCOME_STATE_ACCEPTED = 1;
+  // Settlement or the chain refused it; `reason` says why. Nothing changed.
+  STAWI_CALL_OUTCOME_STATE_FAILED = 2;
+  // The chain reports the call's effect in a final block.
+  STAWI_CALL_OUTCOME_STATE_OBSERVED = 3;
+}
+
+// StawiCallOutcomeContent is server-generated: what became of a conversion,
+// a genesis signature or a signed call. Clients cannot send it.
+message StawiCallOutcomeContent {
+  string call_id = 1 [(buf.validate.field).string.max_len = 64];
+  string genesis_id = 2 [(buf.validate.field).string.max_len = 64];
+
+  StawiCallOutcomeState state = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Why a FAILED outcome failed.
+  string reason = 4 [(buf.validate.field).string.max_len = 1024];
+
+  // The chat event that carried the act, when the act came through chat.
+  string source_event_id = 5 [(buf.validate.field).string.max_len = 40];
+
+  // The call kind, or the chain event an OBSERVED outcome reports.
+  string kind = 6 [(buf.validate.field).string.max_len = 64];
+
+  // Where an OBSERVED outcome was seen on chain.
+  uint64 chain_id = 7;
+  bytes tx_hash = 8 [(buf.validate.field).bytes.max_len = 32];
+  uint64 block_number = 9;
+  uint64 log_index = 10;
+}
+
 message Payload {
   // The `type` MUST correspond to the populated payload.
   // Servers MUST reject mismatches.
@@ -655,5 +821,17 @@ message Payload {
 
     // type = PAYLOAD_TYPE_FINANCE_CARD
     FinanceCardContent finance_card = 40;
+
+    // type = PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+    StawiRoomConversionContent stawi_room_conversion = 41;
+
+    // type = PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+    StawiGenesisSignatureContent stawi_genesis_signature = 42;
+
+    // type = PAYLOAD_TYPE_STAWI_SIGNED_CALL
+    StawiSignedCallContent stawi_signed_call = 43;
+
+    // type = PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+    StawiCallOutcomeContent stawi_call_outcome = 44;
   }
 }

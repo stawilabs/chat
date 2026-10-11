@@ -158,6 +158,12 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> GatewaySer
   '.chat.v1.FormSubmissionResultContent': $7.FormSubmissionResultContent$json,
   '.chat.v1.FinanceCardContent': $7.FinanceCardContent$json,
   '.chat.v1.FinanceCardContent.DataEntry': $7.FinanceCardContent_DataEntry$json,
+  '.chat.v1.StawiRoomConversionContent': $7.StawiRoomConversionContent$json,
+  '.chat.v1.StawiRoomConversionContent.RuleValuesEntry': $7.StawiRoomConversionContent_RuleValuesEntry$json,
+  '.chat.v1.StawiGenesis': $7.StawiGenesis$json,
+  '.chat.v1.StawiGenesisSignatureContent': $7.StawiGenesisSignatureContent$json,
+  '.chat.v1.StawiSignedCallContent': $7.StawiSignedCallContent$json,
+  '.chat.v1.StawiCallOutcomeContent': $7.StawiCallOutcomeContent$json,
   '.chat.v1.StreamResponse': StreamResponse$json,
 };
 

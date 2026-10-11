@@ -58,6 +58,14 @@ const (
 	PayloadType_PAYLOAD_TYPE_FORM_REQUEST           PayloadType = 30
 	PayloadType_PAYLOAD_TYPE_FORM_SUBMISSION_RESULT PayloadType = 31
 	PayloadType_PAYLOAD_TYPE_FINANCE_CARD           PayloadType = 40
+	// A member asks for the room to become a Stawi room (custody on chain).
+	PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION PayloadType = 41
+	// A founder's device signature over a prepared room genesis.
+	PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE PayloadType = 42
+	// A device-signed room governance call prepared through settlement.
+	PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL PayloadType = 43
+	// Server-generated: what became of a genesis or a signed call.
+	PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME PayloadType = 44
 )
 
 // Enum value maps for PayloadType.
@@ -78,23 +86,31 @@ var (
 		30: "PAYLOAD_TYPE_FORM_REQUEST",
 		31: "PAYLOAD_TYPE_FORM_SUBMISSION_RESULT",
 		40: "PAYLOAD_TYPE_FINANCE_CARD",
+		41: "PAYLOAD_TYPE_STAWI_ROOM_CONVERSION",
+		42: "PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE",
+		43: "PAYLOAD_TYPE_STAWI_SIGNED_CALL",
+		44: "PAYLOAD_TYPE_STAWI_CALL_OUTCOME",
 	}
 	PayloadType_value = map[string]int32{
-		"PAYLOAD_TYPE_UNSPECIFIED":            0,
-		"PAYLOAD_TYPE_ROOM_CHANGE":            1,
-		"PAYLOAD_TYPE_TEXT":                   2,
-		"PAYLOAD_TYPE_ATTACHMENT":             3,
-		"PAYLOAD_TYPE_REACTION":               7,
-		"PAYLOAD_TYPE_ENCRYPTED":              6,
-		"PAYLOAD_TYPE_CALL":                   20,
-		"PAYLOAD_TYPE_MODERATION":             21,
-		"PAYLOAD_TYPE_MOTION":                 22,
-		"PAYLOAD_TYPE_VOTE":                   23,
-		"PAYLOAD_TYPE_MOTION_TALLY":           24,
-		"PAYLOAD_TYPE_VOTE_TALLY":             25,
-		"PAYLOAD_TYPE_FORM_REQUEST":           30,
-		"PAYLOAD_TYPE_FORM_SUBMISSION_RESULT": 31,
-		"PAYLOAD_TYPE_FINANCE_CARD":           40,
+		"PAYLOAD_TYPE_UNSPECIFIED":             0,
+		"PAYLOAD_TYPE_ROOM_CHANGE":             1,
+		"PAYLOAD_TYPE_TEXT":                    2,
+		"PAYLOAD_TYPE_ATTACHMENT":              3,
+		"PAYLOAD_TYPE_REACTION":                7,
+		"PAYLOAD_TYPE_ENCRYPTED":               6,
+		"PAYLOAD_TYPE_CALL":                    20,
+		"PAYLOAD_TYPE_MODERATION":              21,
+		"PAYLOAD_TYPE_MOTION":                  22,
+		"PAYLOAD_TYPE_VOTE":                    23,
+		"PAYLOAD_TYPE_MOTION_TALLY":            24,
+		"PAYLOAD_TYPE_VOTE_TALLY":              25,
+		"PAYLOAD_TYPE_FORM_REQUEST":            30,
+		"PAYLOAD_TYPE_FORM_SUBMISSION_RESULT":  31,
+		"PAYLOAD_TYPE_FINANCE_CARD":            40,
+		"PAYLOAD_TYPE_STAWI_ROOM_CONVERSION":   41,
+		"PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE": 42,
+		"PAYLOAD_TYPE_STAWI_SIGNED_CALL":       43,
+		"PAYLOAD_TYPE_STAWI_CALL_OUTCOME":      44,
 	}
 )
 
@@ -438,6 +454,113 @@ func (FormConditionOperator) EnumDescriptor() ([]byte, []int) {
 	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{4}
 }
 
+// StawiJoinPolicy is how someone may enter a Stawi room once it is on chain.
+type StawiJoinPolicy int32
+
+const (
+	StawiJoinPolicy_STAWI_JOIN_POLICY_UNSPECIFIED StawiJoinPolicy = 0
+	// Entry only by an invitation the invitee accepts.
+	StawiJoinPolicy_STAWI_JOIN_POLICY_PRIVATE StawiJoinPolicy = 1
+	// Anyone may join by their own signature and is admitted later.
+	StawiJoinPolicy_STAWI_JOIN_POLICY_PUBLIC StawiJoinPolicy = 2
+)
+
+// Enum value maps for StawiJoinPolicy.
+var (
+	StawiJoinPolicy_name = map[int32]string{
+		0: "STAWI_JOIN_POLICY_UNSPECIFIED",
+		1: "STAWI_JOIN_POLICY_PRIVATE",
+		2: "STAWI_JOIN_POLICY_PUBLIC",
+	}
+	StawiJoinPolicy_value = map[string]int32{
+		"STAWI_JOIN_POLICY_UNSPECIFIED": 0,
+		"STAWI_JOIN_POLICY_PRIVATE":     1,
+		"STAWI_JOIN_POLICY_PUBLIC":      2,
+	}
+)
+
+func (x StawiJoinPolicy) Enum() *StawiJoinPolicy {
+	p := new(StawiJoinPolicy)
+	*p = x
+	return p
+}
+
+func (x StawiJoinPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StawiJoinPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_chat_v1_payload_type_proto_enumTypes[5].Descriptor()
+}
+
+func (StawiJoinPolicy) Type() protoreflect.EnumType {
+	return &file_chat_v1_payload_type_proto_enumTypes[5]
+}
+
+func (x StawiJoinPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StawiJoinPolicy.Descriptor instead.
+func (StawiJoinPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{5}
+}
+
+type StawiCallOutcomeState int32
+
+const (
+	StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_UNSPECIFIED StawiCallOutcomeState = 0
+	// Settlement accepted the call or signature for relay.
+	StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED StawiCallOutcomeState = 1
+	// Settlement or the chain refused it; `reason` says why. Nothing changed.
+	StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED StawiCallOutcomeState = 2
+	// The chain reports the call's effect in a final block.
+	StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED StawiCallOutcomeState = 3
+)
+
+// Enum value maps for StawiCallOutcomeState.
+var (
+	StawiCallOutcomeState_name = map[int32]string{
+		0: "STAWI_CALL_OUTCOME_STATE_UNSPECIFIED",
+		1: "STAWI_CALL_OUTCOME_STATE_ACCEPTED",
+		2: "STAWI_CALL_OUTCOME_STATE_FAILED",
+		3: "STAWI_CALL_OUTCOME_STATE_OBSERVED",
+	}
+	StawiCallOutcomeState_value = map[string]int32{
+		"STAWI_CALL_OUTCOME_STATE_UNSPECIFIED": 0,
+		"STAWI_CALL_OUTCOME_STATE_ACCEPTED":    1,
+		"STAWI_CALL_OUTCOME_STATE_FAILED":      2,
+		"STAWI_CALL_OUTCOME_STATE_OBSERVED":    3,
+	}
+)
+
+func (x StawiCallOutcomeState) Enum() *StawiCallOutcomeState {
+	p := new(StawiCallOutcomeState)
+	*p = x
+	return p
+}
+
+func (x StawiCallOutcomeState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StawiCallOutcomeState) Descriptor() protoreflect.EnumDescriptor {
+	return file_chat_v1_payload_type_proto_enumTypes[6].Descriptor()
+}
+
+func (StawiCallOutcomeState) Type() protoreflect.EnumType {
+	return &file_chat_v1_payload_type_proto_enumTypes[6]
+}
+
+func (x StawiCallOutcomeState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StawiCallOutcomeState.Descriptor instead.
+func (StawiCallOutcomeState) EnumDescriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{6}
+}
+
 type TextAnnotation_Type int32
 
 const (
@@ -480,11 +603,11 @@ func (x TextAnnotation_Type) String() string {
 }
 
 func (TextAnnotation_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_payload_type_proto_enumTypes[5].Descriptor()
+	return file_chat_v1_payload_type_proto_enumTypes[7].Descriptor()
 }
 
 func (TextAnnotation_Type) Type() protoreflect.EnumType {
-	return &file_chat_v1_payload_type_proto_enumTypes[5]
+	return &file_chat_v1_payload_type_proto_enumTypes[7]
 }
 
 func (x TextAnnotation_Type) Number() protoreflect.EnumNumber {
@@ -532,11 +655,11 @@ func (x CallContent_CallType) String() string {
 }
 
 func (CallContent_CallType) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_payload_type_proto_enumTypes[6].Descriptor()
+	return file_chat_v1_payload_type_proto_enumTypes[8].Descriptor()
 }
 
 func (CallContent_CallType) Type() protoreflect.EnumType {
-	return &file_chat_v1_payload_type_proto_enumTypes[6]
+	return &file_chat_v1_payload_type_proto_enumTypes[8]
 }
 
 func (x CallContent_CallType) Number() protoreflect.EnumNumber {
@@ -587,11 +710,11 @@ func (x CallContent_CallAction) String() string {
 }
 
 func (CallContent_CallAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_payload_type_proto_enumTypes[7].Descriptor()
+	return file_chat_v1_payload_type_proto_enumTypes[9].Descriptor()
 }
 
 func (CallContent_CallAction) Type() protoreflect.EnumType {
-	return &file_chat_v1_payload_type_proto_enumTypes[7]
+	return &file_chat_v1_payload_type_proto_enumTypes[9]
 }
 
 func (x CallContent_CallAction) Number() protoreflect.EnumNumber {
@@ -3534,6 +3657,445 @@ func (x *FinanceCardContent) GetData() map[string]string {
 	return nil
 }
 
+// StawiRoomConversionContent asks for this room to become a Stawi room: the
+// chain creates custody for the room under the room's own id once the
+// founders have signed the genesis. Chat relays the request to settlement,
+// which compiles the constitution and prepares the genesis; chat then fills
+// in `genesis` on the stored event, so the event itself is the genesis card.
+type StawiRoomConversionContent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Constitution template the rules are applied to.
+	TemplateId string `protobuf:"bytes,1,opt,name=template_id,json=templateId,proto3" json:"template_id,omitempty"`
+	// Rule values for the template, keyed by rule name. Values are strings
+	// (decimal numbers, durations, enum names); settlement parses and checks
+	// them against the template when it compiles the constitution.
+	RuleValues map[string]string `protobuf:"bytes,2,rep,name=rule_values,json=ruleValues,proto3" json:"rule_values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Subscriptions of this room whose holders found the Stawi room. Each must
+	// be an active subscription of the room.
+	FounderSubscriptionIds []string        `protobuf:"bytes,3,rep,name=founder_subscription_ids,json=founderSubscriptionIds,proto3" json:"founder_subscription_ids,omitempty"`
+	JoinPolicy             StawiJoinPolicy `protobuf:"varint,4,opt,name=join_policy,json=joinPolicy,proto3,enum=chat.v1.StawiJoinPolicy" json:"join_policy,omitempty"`
+	// Output only: the genesis settlement prepared. Set by the server on the
+	// stored event; a client that sets it is refused.
+	Genesis       *StawiGenesis `protobuf:"bytes,5,opt,name=genesis,proto3" json:"genesis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StawiRoomConversionContent) Reset() {
+	*x = StawiRoomConversionContent{}
+	mi := &file_chat_v1_payload_type_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StawiRoomConversionContent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StawiRoomConversionContent) ProtoMessage() {}
+
+func (x *StawiRoomConversionContent) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_payload_type_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StawiRoomConversionContent.ProtoReflect.Descriptor instead.
+func (*StawiRoomConversionContent) Descriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *StawiRoomConversionContent) GetTemplateId() string {
+	if x != nil {
+		return x.TemplateId
+	}
+	return ""
+}
+
+func (x *StawiRoomConversionContent) GetRuleValues() map[string]string {
+	if x != nil {
+		return x.RuleValues
+	}
+	return nil
+}
+
+func (x *StawiRoomConversionContent) GetFounderSubscriptionIds() []string {
+	if x != nil {
+		return x.FounderSubscriptionIds
+	}
+	return nil
+}
+
+func (x *StawiRoomConversionContent) GetJoinPolicy() StawiJoinPolicy {
+	if x != nil {
+		return x.JoinPolicy
+	}
+	return StawiJoinPolicy_STAWI_JOIN_POLICY_UNSPECIFIED
+}
+
+func (x *StawiRoomConversionContent) GetGenesis() *StawiGenesis {
+	if x != nil {
+		return x.Genesis
+	}
+	return nil
+}
+
+// StawiGenesis is a prepared room genesis awaiting founder signatures.
+type StawiGenesis struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	GenesisId string                 `protobuf:"bytes,1,opt,name=genesis_id,json=genesisId,proto3" json:"genesis_id,omitempty"`
+	// The digest each founder's device signs (account-wrapped by the app).
+	GenesisHash       []byte                 `protobuf:"bytes,2,opt,name=genesis_hash,json=genesisHash,proto3" json:"genesis_hash,omitempty"`
+	ConstitutionHash  []byte                 `protobuf:"bytes,3,opt,name=constitution_hash,json=constitutionHash,proto3" json:"constitution_hash,omitempty"`
+	ExpiresAt         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	FounderProfileIds []string               `protobuf:"bytes,5,rep,name=founder_profile_ids,json=founderProfileIds,proto3" json:"founder_profile_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *StawiGenesis) Reset() {
+	*x = StawiGenesis{}
+	mi := &file_chat_v1_payload_type_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StawiGenesis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StawiGenesis) ProtoMessage() {}
+
+func (x *StawiGenesis) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_payload_type_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StawiGenesis.ProtoReflect.Descriptor instead.
+func (*StawiGenesis) Descriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *StawiGenesis) GetGenesisId() string {
+	if x != nil {
+		return x.GenesisId
+	}
+	return ""
+}
+
+func (x *StawiGenesis) GetGenesisHash() []byte {
+	if x != nil {
+		return x.GenesisHash
+	}
+	return nil
+}
+
+func (x *StawiGenesis) GetConstitutionHash() []byte {
+	if x != nil {
+		return x.ConstitutionHash
+	}
+	return nil
+}
+
+func (x *StawiGenesis) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *StawiGenesis) GetFounderProfileIds() []string {
+	if x != nil {
+		return x.FounderProfileIds
+	}
+	return nil
+}
+
+// StawiGenesisSignatureContent is a founder's signature over a prepared
+// genesis. Chat checks the sender is one of the genesis founders and hands
+// the signature to settlement; at founding quorum settlement creates the
+// room on chain.
+type StawiGenesisSignatureContent struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	GenesisId string                 `protobuf:"bytes,1,opt,name=genesis_id,json=genesisId,proto3" json:"genesis_id,omitempty"`
+	Signature []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	// The device key that produced the signature.
+	SignerKeyId   string `protobuf:"bytes,3,opt,name=signer_key_id,json=signerKeyId,proto3" json:"signer_key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StawiGenesisSignatureContent) Reset() {
+	*x = StawiGenesisSignatureContent{}
+	mi := &file_chat_v1_payload_type_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StawiGenesisSignatureContent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StawiGenesisSignatureContent) ProtoMessage() {}
+
+func (x *StawiGenesisSignatureContent) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_payload_type_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StawiGenesisSignatureContent.ProtoReflect.Descriptor instead.
+func (*StawiGenesisSignatureContent) Descriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *StawiGenesisSignatureContent) GetGenesisId() string {
+	if x != nil {
+		return x.GenesisId
+	}
+	return ""
+}
+
+func (x *StawiGenesisSignatureContent) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+func (x *StawiGenesisSignatureContent) GetSignerKeyId() string {
+	if x != nil {
+		return x.SignerKeyId
+	}
+	return ""
+}
+
+// StawiSignedCallContent carries a room governance call (invite, accept,
+// join, admit, leave, suspend, roles, propose, vote, delegate, freeze) that
+// the app prepared through settlement and signed with the device key. Chat
+// checks the sender's subscription is the call's signer and relays it; the
+// room changes only when the chain reports the call.
+type StawiSignedCallContent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The call id settlement returned when the call was prepared.
+	CallId string `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	// The call kind, as settlement names it (e.g. "INVITE", "CAST_VOTE").
+	Kind      string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	Signature []byte `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	// The device key that produced the signature.
+	SignerKeyId string `protobuf:"bytes,4,opt,name=signer_key_id,json=signerKeyId,proto3" json:"signer_key_id,omitempty"`
+	// Human-readable description of the act, for display.
+	Summary       string `protobuf:"bytes,5,opt,name=summary,proto3" json:"summary,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StawiSignedCallContent) Reset() {
+	*x = StawiSignedCallContent{}
+	mi := &file_chat_v1_payload_type_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StawiSignedCallContent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StawiSignedCallContent) ProtoMessage() {}
+
+func (x *StawiSignedCallContent) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_payload_type_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StawiSignedCallContent.ProtoReflect.Descriptor instead.
+func (*StawiSignedCallContent) Descriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *StawiSignedCallContent) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *StawiSignedCallContent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *StawiSignedCallContent) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+func (x *StawiSignedCallContent) GetSignerKeyId() string {
+	if x != nil {
+		return x.SignerKeyId
+	}
+	return ""
+}
+
+func (x *StawiSignedCallContent) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+// StawiCallOutcomeContent is server-generated: what became of a conversion,
+// a genesis signature or a signed call. Clients cannot send it.
+type StawiCallOutcomeContent struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	CallId    string                 `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	GenesisId string                 `protobuf:"bytes,2,opt,name=genesis_id,json=genesisId,proto3" json:"genesis_id,omitempty"`
+	State     StawiCallOutcomeState  `protobuf:"varint,3,opt,name=state,proto3,enum=chat.v1.StawiCallOutcomeState" json:"state,omitempty"`
+	// Why a FAILED outcome failed.
+	Reason string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The chat event that carried the act, when the act came through chat.
+	SourceEventId string `protobuf:"bytes,5,opt,name=source_event_id,json=sourceEventId,proto3" json:"source_event_id,omitempty"`
+	// The call kind, or the chain event an OBSERVED outcome reports.
+	Kind string `protobuf:"bytes,6,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Where an OBSERVED outcome was seen on chain.
+	ChainId       uint64 `protobuf:"varint,7,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	TxHash        []byte `protobuf:"bytes,8,opt,name=tx_hash,json=txHash,proto3" json:"tx_hash,omitempty"`
+	BlockNumber   uint64 `protobuf:"varint,9,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
+	LogIndex      uint64 `protobuf:"varint,10,opt,name=log_index,json=logIndex,proto3" json:"log_index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StawiCallOutcomeContent) Reset() {
+	*x = StawiCallOutcomeContent{}
+	mi := &file_chat_v1_payload_type_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StawiCallOutcomeContent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StawiCallOutcomeContent) ProtoMessage() {}
+
+func (x *StawiCallOutcomeContent) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_payload_type_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StawiCallOutcomeContent.ProtoReflect.Descriptor instead.
+func (*StawiCallOutcomeContent) Descriptor() ([]byte, []int) {
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *StawiCallOutcomeContent) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *StawiCallOutcomeContent) GetGenesisId() string {
+	if x != nil {
+		return x.GenesisId
+	}
+	return ""
+}
+
+func (x *StawiCallOutcomeContent) GetState() StawiCallOutcomeState {
+	if x != nil {
+		return x.State
+	}
+	return StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_UNSPECIFIED
+}
+
+func (x *StawiCallOutcomeContent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *StawiCallOutcomeContent) GetSourceEventId() string {
+	if x != nil {
+		return x.SourceEventId
+	}
+	return ""
+}
+
+func (x *StawiCallOutcomeContent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *StawiCallOutcomeContent) GetChainId() uint64 {
+	if x != nil {
+		return x.ChainId
+	}
+	return 0
+}
+
+func (x *StawiCallOutcomeContent) GetTxHash() []byte {
+	if x != nil {
+		return x.TxHash
+	}
+	return nil
+}
+
+func (x *StawiCallOutcomeContent) GetBlockNumber() uint64 {
+	if x != nil {
+		return x.BlockNumber
+	}
+	return 0
+}
+
+func (x *StawiCallOutcomeContent) GetLogIndex() uint64 {
+	if x != nil {
+		return x.LogIndex
+	}
+	return 0
+}
+
 type Payload struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The `type` MUST correspond to the populated payload.
@@ -3556,6 +4118,10 @@ type Payload struct {
 	//	*Payload_FormRequest
 	//	*Payload_FormSubmissionResult
 	//	*Payload_FinanceCard
+	//	*Payload_StawiRoomConversion
+	//	*Payload_StawiGenesisSignature
+	//	*Payload_StawiSignedCall
+	//	*Payload_StawiCallOutcome
 	Data          isPayload_Data `protobuf_oneof:"data"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3563,7 +4129,7 @@ type Payload struct {
 
 func (x *Payload) Reset() {
 	*x = Payload{}
-	mi := &file_chat_v1_payload_type_proto_msgTypes[32]
+	mi := &file_chat_v1_payload_type_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3575,7 +4141,7 @@ func (x *Payload) String() string {
 func (*Payload) ProtoMessage() {}
 
 func (x *Payload) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_payload_type_proto_msgTypes[32]
+	mi := &file_chat_v1_payload_type_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3588,7 +4154,7 @@ func (x *Payload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Payload.ProtoReflect.Descriptor instead.
 func (*Payload) Descriptor() ([]byte, []int) {
-	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{32}
+	return file_chat_v1_payload_type_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *Payload) GetType() PayloadType {
@@ -3740,6 +4306,42 @@ func (x *Payload) GetFinanceCard() *FinanceCardContent {
 	return nil
 }
 
+func (x *Payload) GetStawiRoomConversion() *StawiRoomConversionContent {
+	if x != nil {
+		if x, ok := x.Data.(*Payload_StawiRoomConversion); ok {
+			return x.StawiRoomConversion
+		}
+	}
+	return nil
+}
+
+func (x *Payload) GetStawiGenesisSignature() *StawiGenesisSignatureContent {
+	if x != nil {
+		if x, ok := x.Data.(*Payload_StawiGenesisSignature); ok {
+			return x.StawiGenesisSignature
+		}
+	}
+	return nil
+}
+
+func (x *Payload) GetStawiSignedCall() *StawiSignedCallContent {
+	if x != nil {
+		if x, ok := x.Data.(*Payload_StawiSignedCall); ok {
+			return x.StawiSignedCall
+		}
+	}
+	return nil
+}
+
+func (x *Payload) GetStawiCallOutcome() *StawiCallOutcomeContent {
+	if x != nil {
+		if x, ok := x.Data.(*Payload_StawiCallOutcome); ok {
+			return x.StawiCallOutcome
+		}
+	}
+	return nil
+}
+
 type isPayload_Data interface {
 	isPayload_Data()
 }
@@ -3819,6 +4421,26 @@ type Payload_FinanceCard struct {
 	FinanceCard *FinanceCardContent `protobuf:"bytes,40,opt,name=finance_card,json=financeCard,proto3,oneof"`
 }
 
+type Payload_StawiRoomConversion struct {
+	// type = PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+	StawiRoomConversion *StawiRoomConversionContent `protobuf:"bytes,41,opt,name=stawi_room_conversion,json=stawiRoomConversion,proto3,oneof"`
+}
+
+type Payload_StawiGenesisSignature struct {
+	// type = PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+	StawiGenesisSignature *StawiGenesisSignatureContent `protobuf:"bytes,42,opt,name=stawi_genesis_signature,json=stawiGenesisSignature,proto3,oneof"`
+}
+
+type Payload_StawiSignedCall struct {
+	// type = PAYLOAD_TYPE_STAWI_SIGNED_CALL
+	StawiSignedCall *StawiSignedCallContent `protobuf:"bytes,43,opt,name=stawi_signed_call,json=stawiSignedCall,proto3,oneof"`
+}
+
+type Payload_StawiCallOutcome struct {
+	// type = PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+	StawiCallOutcome *StawiCallOutcomeContent `protobuf:"bytes,44,opt,name=stawi_call_outcome,json=stawiCallOutcome,proto3,oneof"`
+}
+
 func (*Payload_Default) isPayload_Data() {}
 
 func (*Payload_RoomChange) isPayload_Data() {}
@@ -3848,6 +4470,14 @@ func (*Payload_FormRequest) isPayload_Data() {}
 func (*Payload_FormSubmissionResult) isPayload_Data() {}
 
 func (*Payload_FinanceCard) isPayload_Data() {}
+
+func (*Payload_StawiRoomConversion) isPayload_Data() {}
+
+func (*Payload_StawiGenesisSignature) isPayload_Data() {}
+
+func (*Payload_StawiSignedCall) isPayload_Data() {}
+
+func (*Payload_StawiCallOutcome) isPayload_Data() {}
 
 var File_chat_v1_payload_type_proto protoreflect.FileDescriptor
 
@@ -4155,7 +4785,56 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x04data\x18\x06 \x03(\v2%.chat.v1.FinanceCardContent.DataEntryB\x17\xbaH\x14\x9a\x01\x11\x10 \"\x06r\x04\x10\x01\x18@*\x05r\x03\x18\x80\x04R\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa3\a\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd2\x03\n" +
+	"\x1aStawiRoomConversionContent\x12*\n" +
+	"\vtemplate_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\n" +
+	"templateId\x12m\n" +
+	"\vrule_values\x18\x02 \x03(\v23.chat.v1.StawiRoomConversionContent.RuleValuesEntryB\x17\xbaH\x14\x9a\x01\x11\x10@\"\x06r\x04\x10\x01\x18@*\x05r\x03\x18\x80\x02R\n" +
+	"ruleValues\x12b\n" +
+	"\x18founder_subscription_ids\x18\x03 \x03(\tB(\xbaH%\x92\x01\"\b\x01\x10@\x18\x01\"\x1ar\x18\x10\x03\x18(2\x12^[0-9a-z_-]{3,40}$R\x16founderSubscriptionIds\x12E\n" +
+	"\vjoin_policy\x18\x04 \x01(\x0e2\x18.chat.v1.StawiJoinPolicyB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\n" +
+	"joinPolicy\x12/\n" +
+	"\agenesis\x18\x05 \x01(\v2\x15.chat.v1.StawiGenesisR\agenesis\x1a=\n" +
+	"\x0fRuleValuesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8d\x02\n" +
+	"\fStawiGenesis\x12&\n" +
+	"\n" +
+	"genesis_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\tgenesisId\x12*\n" +
+	"\fgenesis_hash\x18\x02 \x01(\fB\a\xbaH\x04z\x02\x18 R\vgenesisHash\x124\n" +
+	"\x11constitution_hash\x18\x03 \x01(\fB\a\xbaH\x04z\x02\x18 R\x10constitutionHash\x129\n" +
+	"\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x128\n" +
+	"\x13founder_profile_ids\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10@R\x11founderProfileIds\"\xa2\x01\n" +
+	"\x1cStawiGenesisSignatureContent\x12(\n" +
+	"\n" +
+	"genesis_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\tgenesisId\x12(\n" +
+	"\tsignature\x18\x02 \x01(\fB\n" +
+	"\xbaH\az\x05\x10\x01\x18\x80 R\tsignature\x12.\n" +
+	"\rsigner_key_id\x18\x03 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\vsignerKeyId\"\xd7\x01\n" +
+	"\x16StawiSignedCallContent\x12\"\n" +
+	"\acall_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x06callId\x12\x1d\n" +
+	"\x04kind\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04kind\x12(\n" +
+	"\tsignature\x18\x03 \x01(\fB\n" +
+	"\xbaH\az\x05\x10\x01\x18\x80 R\tsignature\x12,\n" +
+	"\rsigner_key_id\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vsignerKeyId\x12\"\n" +
+	"\asummary\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\asummary\"\x90\x03\n" +
+	"\x17StawiCallOutcomeContent\x12 \n" +
+	"\acall_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\x06callId\x12&\n" +
+	"\n" +
+	"genesis_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18@R\tgenesisId\x12>\n" +
+	"\x05state\x18\x03 \x01(\x0e2\x1e.chat.v1.StawiCallOutcomeStateB\b\xbaH\x05\x82\x01\x02\x10\x01R\x05state\x12 \n" +
+	"\x06reason\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x06reason\x12/\n" +
+	"\x0fsource_event_id\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18(R\rsourceEventId\x12\x1b\n" +
+	"\x04kind\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18@R\x04kind\x12\x19\n" +
+	"\bchain_id\x18\a \x01(\x04R\achainId\x12 \n" +
+	"\atx_hash\x18\b \x01(\fB\a\xbaH\x04z\x02\x18 R\x06txHash\x12!\n" +
+	"\fblock_number\x18\t \x01(\x04R\vblockNumber\x12\x1b\n" +
+	"\tlog_index\x18\n" +
+	" \x01(\x04R\blogIndex\"\x80\n" +
+	"\n" +
 	"\aPayload\x12(\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x14.chat.v1.PayloadTypeR\x04type\x123\n" +
 	"\adefault\x18\a \x01(\v2\x17.google.protobuf.StructH\x00R\adefault\x12=\n" +
@@ -4179,8 +4858,12 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"vote_tally\x18\x1d \x01(\v2\x12.chat.v1.VoteTallyH\x00R\tvoteTally\x12@\n" +
 	"\fform_request\x18\x1e \x01(\v2\x1b.chat.v1.FormRequestContentH\x00R\vformRequest\x12\\\n" +
 	"\x16form_submission_result\x18\x1f \x01(\v2$.chat.v1.FormSubmissionResultContentH\x00R\x14formSubmissionResult\x12@\n" +
-	"\ffinance_card\x18( \x01(\v2\x1b.chat.v1.FinanceCardContentH\x00R\vfinanceCardB\x06\n" +
-	"\x04data*\xbb\x03\n" +
+	"\ffinance_card\x18( \x01(\v2\x1b.chat.v1.FinanceCardContentH\x00R\vfinanceCard\x12Y\n" +
+	"\x15stawi_room_conversion\x18) \x01(\v2#.chat.v1.StawiRoomConversionContentH\x00R\x13stawiRoomConversion\x12_\n" +
+	"\x17stawi_genesis_signature\x18* \x01(\v2%.chat.v1.StawiGenesisSignatureContentH\x00R\x15stawiGenesisSignature\x12M\n" +
+	"\x11stawi_signed_call\x18+ \x01(\v2\x1f.chat.v1.StawiSignedCallContentH\x00R\x0fstawiSignedCall\x12P\n" +
+	"\x12stawi_call_outcome\x18, \x01(\v2 .chat.v1.StawiCallOutcomeContentH\x00R\x10stawiCallOutcomeB\x06\n" +
+	"\x04data*\xd6\x04\n" +
 	"\vPayloadType\x12\x1c\n" +
 	"\x18PAYLOAD_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18PAYLOAD_TYPE_ROOM_CHANGE\x10\x01\x12\x15\n" +
@@ -4196,7 +4879,11 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x17PAYLOAD_TYPE_VOTE_TALLY\x10\x19\x12\x1d\n" +
 	"\x19PAYLOAD_TYPE_FORM_REQUEST\x10\x1e\x12'\n" +
 	"#PAYLOAD_TYPE_FORM_SUBMISSION_RESULT\x10\x1f\x12\x1d\n" +
-	"\x19PAYLOAD_TYPE_FINANCE_CARD\x10(*\x87\x02\n" +
+	"\x19PAYLOAD_TYPE_FINANCE_CARD\x10(\x12&\n" +
+	"\"PAYLOAD_TYPE_STAWI_ROOM_CONVERSION\x10)\x12(\n" +
+	"$PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE\x10*\x12\"\n" +
+	"\x1ePAYLOAD_TYPE_STAWI_SIGNED_CALL\x10+\x12#\n" +
+	"\x1fPAYLOAD_TYPE_STAWI_CALL_OUTCOME\x10,*\x87\x02\n" +
 	"\x10RoomChangeAction\x12\"\n" +
 	"\x1eROOM_CHANGE_ACTION_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aROOM_CHANGE_ACTION_CREATED\x10\x01\x12\x1e\n" +
@@ -4253,8 +4940,17 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x1fFORM_CONDITION_OPERATOR_IS_TRUE\x10\v\x12$\n" +
 	" FORM_CONDITION_OPERATOR_IS_FALSE\x10\f\x12\"\n" +
 	"\x1eFORM_CONDITION_OPERATOR_EXISTS\x10\r\x12&\n" +
-	"\"FORM_CONDITION_OPERATOR_NOT_EXISTS\x10\x0eB9\n" +
-	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
+	"\"FORM_CONDITION_OPERATOR_NOT_EXISTS\x10\x0e*q\n" +
+	"\x0fStawiJoinPolicy\x12!\n" +
+	"\x1dSTAWI_JOIN_POLICY_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19STAWI_JOIN_POLICY_PRIVATE\x10\x01\x12\x1c\n" +
+	"\x18STAWI_JOIN_POLICY_PUBLIC\x10\x02*\xb4\x01\n" +
+	"\x15StawiCallOutcomeState\x12(\n" +
+	"$STAWI_CALL_OUTCOME_STATE_UNSPECIFIED\x10\x00\x12%\n" +
+	"!STAWI_CALL_OUTCOME_STATE_ACCEPTED\x10\x01\x12#\n" +
+	"\x1fSTAWI_CALL_OUTCOME_STATE_FAILED\x10\x02\x12%\n" +
+	"!STAWI_CALL_OUTCOME_STATE_OBSERVED\x10\x03B\x9b\x01\n" +
+	"\vcom.chat.v1B\x10PayloadTypeProtoP\x01Z=buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
 
 var (
 	file_chat_v1_payload_type_proto_rawDescOnce sync.Once
@@ -4268,133 +4964,150 @@ func file_chat_v1_payload_type_proto_rawDescGZIP() []byte {
 	return file_chat_v1_payload_type_proto_rawDescData
 }
 
-var file_chat_v1_payload_type_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_chat_v1_payload_type_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_chat_v1_payload_type_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_chat_v1_payload_type_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_chat_v1_payload_type_proto_goTypes = []any{
-	(PayloadType)(0),                    // 0: chat.v1.PayloadType
-	(RoomChangeAction)(0),               // 1: chat.v1.RoomChangeAction
-	(FormMessageState)(0),               // 2: chat.v1.FormMessageState
-	(FormFieldType)(0),                  // 3: chat.v1.FormFieldType
-	(FormConditionOperator)(0),          // 4: chat.v1.FormConditionOperator
-	(TextAnnotation_Type)(0),            // 5: chat.v1.TextAnnotation.Type
-	(CallContent_CallType)(0),           // 6: chat.v1.CallContent.CallType
-	(CallContent_CallAction)(0),         // 7: chat.v1.CallContent.CallAction
-	(*RoomChangeContent)(nil),           // 8: chat.v1.RoomChangeContent
-	(*ModerationContent)(nil),           // 9: chat.v1.ModerationContent
-	(*TextContent)(nil),                 // 10: chat.v1.TextContent
-	(*TextAnnotation)(nil),              // 11: chat.v1.TextAnnotation
-	(*AttachmentContent)(nil),           // 12: chat.v1.AttachmentContent
-	(*AttachmentPreview)(nil),           // 13: chat.v1.AttachmentPreview
-	(*ReactionContent)(nil),             // 14: chat.v1.ReactionContent
-	(*EncryptedContent)(nil),            // 15: chat.v1.EncryptedContent
-	(*CallContent)(nil),                 // 16: chat.v1.CallContent
-	(*MotionContent)(nil),               // 17: chat.v1.MotionContent
-	(*VoteChoice)(nil),                  // 18: chat.v1.VoteChoice
-	(*PassingRule)(nil),                 // 19: chat.v1.PassingRule
-	(*VoteCast)(nil),                    // 20: chat.v1.VoteCast
-	(*VoteTally)(nil),                   // 21: chat.v1.VoteTally
-	(*MotionTally)(nil),                 // 22: chat.v1.MotionTally
-	(*FormValidationRule)(nil),          // 23: chat.v1.FormValidationRule
-	(*FormConditionClause)(nil),         // 24: chat.v1.FormConditionClause
-	(*FormConditionGroup)(nil),          // 25: chat.v1.FormConditionGroup
-	(*FormOption)(nil),                  // 26: chat.v1.FormOption
-	(*FormFormattingHint)(nil),          // 27: chat.v1.FormFormattingHint
-	(*FormReviewHint)(nil),              // 28: chat.v1.FormReviewHint
-	(*FormField)(nil),                   // 29: chat.v1.FormField
-	(*FormSection)(nil),                 // 30: chat.v1.FormSection
-	(*FormStep)(nil),                    // 31: chat.v1.FormStep
-	(*FormSchema)(nil),                  // 32: chat.v1.FormSchema
-	(*FormPermissions)(nil),             // 33: chat.v1.FormPermissions
-	(*FormReviewItem)(nil),              // 34: chat.v1.FormReviewItem
-	(*FormReviewSection)(nil),           // 35: chat.v1.FormReviewSection
-	(*FormSubmissionSnapshot)(nil),      // 36: chat.v1.FormSubmissionSnapshot
-	(*FormRequestContent)(nil),          // 37: chat.v1.FormRequestContent
-	(*FormSubmissionResultContent)(nil), // 38: chat.v1.FormSubmissionResultContent
-	(*FinanceCardContent)(nil),          // 39: chat.v1.FinanceCardContent
-	(*Payload)(nil),                     // 40: chat.v1.Payload
-	nil,                                 // 41: chat.v1.FinanceCardContent.DataEntry
-	(*structpb.Struct)(nil),             // 42: google.protobuf.Struct
-	(*structpb.Value)(nil),              // 43: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),       // 44: google.protobuf.Timestamp
+	(PayloadType)(0),                     // 0: chat.v1.PayloadType
+	(RoomChangeAction)(0),                // 1: chat.v1.RoomChangeAction
+	(FormMessageState)(0),                // 2: chat.v1.FormMessageState
+	(FormFieldType)(0),                   // 3: chat.v1.FormFieldType
+	(FormConditionOperator)(0),           // 4: chat.v1.FormConditionOperator
+	(StawiJoinPolicy)(0),                 // 5: chat.v1.StawiJoinPolicy
+	(StawiCallOutcomeState)(0),           // 6: chat.v1.StawiCallOutcomeState
+	(TextAnnotation_Type)(0),             // 7: chat.v1.TextAnnotation.Type
+	(CallContent_CallType)(0),            // 8: chat.v1.CallContent.CallType
+	(CallContent_CallAction)(0),          // 9: chat.v1.CallContent.CallAction
+	(*RoomChangeContent)(nil),            // 10: chat.v1.RoomChangeContent
+	(*ModerationContent)(nil),            // 11: chat.v1.ModerationContent
+	(*TextContent)(nil),                  // 12: chat.v1.TextContent
+	(*TextAnnotation)(nil),               // 13: chat.v1.TextAnnotation
+	(*AttachmentContent)(nil),            // 14: chat.v1.AttachmentContent
+	(*AttachmentPreview)(nil),            // 15: chat.v1.AttachmentPreview
+	(*ReactionContent)(nil),              // 16: chat.v1.ReactionContent
+	(*EncryptedContent)(nil),             // 17: chat.v1.EncryptedContent
+	(*CallContent)(nil),                  // 18: chat.v1.CallContent
+	(*MotionContent)(nil),                // 19: chat.v1.MotionContent
+	(*VoteChoice)(nil),                   // 20: chat.v1.VoteChoice
+	(*PassingRule)(nil),                  // 21: chat.v1.PassingRule
+	(*VoteCast)(nil),                     // 22: chat.v1.VoteCast
+	(*VoteTally)(nil),                    // 23: chat.v1.VoteTally
+	(*MotionTally)(nil),                  // 24: chat.v1.MotionTally
+	(*FormValidationRule)(nil),           // 25: chat.v1.FormValidationRule
+	(*FormConditionClause)(nil),          // 26: chat.v1.FormConditionClause
+	(*FormConditionGroup)(nil),           // 27: chat.v1.FormConditionGroup
+	(*FormOption)(nil),                   // 28: chat.v1.FormOption
+	(*FormFormattingHint)(nil),           // 29: chat.v1.FormFormattingHint
+	(*FormReviewHint)(nil),               // 30: chat.v1.FormReviewHint
+	(*FormField)(nil),                    // 31: chat.v1.FormField
+	(*FormSection)(nil),                  // 32: chat.v1.FormSection
+	(*FormStep)(nil),                     // 33: chat.v1.FormStep
+	(*FormSchema)(nil),                   // 34: chat.v1.FormSchema
+	(*FormPermissions)(nil),              // 35: chat.v1.FormPermissions
+	(*FormReviewItem)(nil),               // 36: chat.v1.FormReviewItem
+	(*FormReviewSection)(nil),            // 37: chat.v1.FormReviewSection
+	(*FormSubmissionSnapshot)(nil),       // 38: chat.v1.FormSubmissionSnapshot
+	(*FormRequestContent)(nil),           // 39: chat.v1.FormRequestContent
+	(*FormSubmissionResultContent)(nil),  // 40: chat.v1.FormSubmissionResultContent
+	(*FinanceCardContent)(nil),           // 41: chat.v1.FinanceCardContent
+	(*StawiRoomConversionContent)(nil),   // 42: chat.v1.StawiRoomConversionContent
+	(*StawiGenesis)(nil),                 // 43: chat.v1.StawiGenesis
+	(*StawiGenesisSignatureContent)(nil), // 44: chat.v1.StawiGenesisSignatureContent
+	(*StawiSignedCallContent)(nil),       // 45: chat.v1.StawiSignedCallContent
+	(*StawiCallOutcomeContent)(nil),      // 46: chat.v1.StawiCallOutcomeContent
+	(*Payload)(nil),                      // 47: chat.v1.Payload
+	nil,                                  // 48: chat.v1.FinanceCardContent.DataEntry
+	nil,                                  // 49: chat.v1.StawiRoomConversionContent.RuleValuesEntry
+	(*structpb.Struct)(nil),              // 50: google.protobuf.Struct
+	(*structpb.Value)(nil),               // 51: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),        // 52: google.protobuf.Timestamp
 }
 var file_chat_v1_payload_type_proto_depIdxs = []int32{
 	1,  // 0: chat.v1.RoomChangeContent.action:type_name -> chat.v1.RoomChangeAction
-	42, // 1: chat.v1.RoomChangeContent.details:type_name -> google.protobuf.Struct
-	42, // 2: chat.v1.ModerationContent.metadata:type_name -> google.protobuf.Struct
-	11, // 3: chat.v1.TextContent.annotations:type_name -> chat.v1.TextAnnotation
-	5,  // 4: chat.v1.TextAnnotation.type:type_name -> chat.v1.TextAnnotation.Type
-	13, // 5: chat.v1.AttachmentContent.previews:type_name -> chat.v1.AttachmentPreview
-	10, // 6: chat.v1.AttachmentContent.caption:type_name -> chat.v1.TextContent
-	6,  // 7: chat.v1.CallContent.type:type_name -> chat.v1.CallContent.CallType
-	7,  // 8: chat.v1.CallContent.action:type_name -> chat.v1.CallContent.CallAction
-	42, // 9: chat.v1.CallContent.metadata:type_name -> google.protobuf.Struct
-	19, // 10: chat.v1.MotionContent.passing_rule:type_name -> chat.v1.PassingRule
-	18, // 11: chat.v1.MotionContent.choices:type_name -> chat.v1.VoteChoice
-	21, // 12: chat.v1.MotionTally.tallies:type_name -> chat.v1.VoteTally
+	50, // 1: chat.v1.RoomChangeContent.details:type_name -> google.protobuf.Struct
+	50, // 2: chat.v1.ModerationContent.metadata:type_name -> google.protobuf.Struct
+	13, // 3: chat.v1.TextContent.annotations:type_name -> chat.v1.TextAnnotation
+	7,  // 4: chat.v1.TextAnnotation.type:type_name -> chat.v1.TextAnnotation.Type
+	15, // 5: chat.v1.AttachmentContent.previews:type_name -> chat.v1.AttachmentPreview
+	12, // 6: chat.v1.AttachmentContent.caption:type_name -> chat.v1.TextContent
+	8,  // 7: chat.v1.CallContent.type:type_name -> chat.v1.CallContent.CallType
+	9,  // 8: chat.v1.CallContent.action:type_name -> chat.v1.CallContent.CallAction
+	50, // 9: chat.v1.CallContent.metadata:type_name -> google.protobuf.Struct
+	21, // 10: chat.v1.MotionContent.passing_rule:type_name -> chat.v1.PassingRule
+	20, // 11: chat.v1.MotionContent.choices:type_name -> chat.v1.VoteChoice
+	23, // 12: chat.v1.MotionTally.tallies:type_name -> chat.v1.VoteTally
 	4,  // 13: chat.v1.FormConditionClause.operator:type_name -> chat.v1.FormConditionOperator
-	43, // 14: chat.v1.FormConditionClause.value:type_name -> google.protobuf.Value
-	43, // 15: chat.v1.FormConditionClause.values:type_name -> google.protobuf.Value
-	24, // 16: chat.v1.FormConditionGroup.all:type_name -> chat.v1.FormConditionClause
-	24, // 17: chat.v1.FormConditionGroup.any:type_name -> chat.v1.FormConditionClause
-	42, // 18: chat.v1.FormOption.metadata:type_name -> google.protobuf.Struct
+	51, // 14: chat.v1.FormConditionClause.value:type_name -> google.protobuf.Value
+	51, // 15: chat.v1.FormConditionClause.values:type_name -> google.protobuf.Value
+	26, // 16: chat.v1.FormConditionGroup.all:type_name -> chat.v1.FormConditionClause
+	26, // 17: chat.v1.FormConditionGroup.any:type_name -> chat.v1.FormConditionClause
+	50, // 18: chat.v1.FormOption.metadata:type_name -> google.protobuf.Struct
 	3,  // 19: chat.v1.FormField.type:type_name -> chat.v1.FormFieldType
-	43, // 20: chat.v1.FormField.default_value:type_name -> google.protobuf.Value
-	23, // 21: chat.v1.FormField.validation_rules:type_name -> chat.v1.FormValidationRule
-	25, // 22: chat.v1.FormField.visibility_condition:type_name -> chat.v1.FormConditionGroup
-	25, // 23: chat.v1.FormField.editability_condition:type_name -> chat.v1.FormConditionGroup
-	26, // 24: chat.v1.FormField.options:type_name -> chat.v1.FormOption
-	29, // 25: chat.v1.FormField.nested_fields:type_name -> chat.v1.FormField
-	30, // 26: chat.v1.FormField.nested_sections:type_name -> chat.v1.FormSection
-	27, // 27: chat.v1.FormField.formatting:type_name -> chat.v1.FormFormattingHint
-	42, // 28: chat.v1.FormField.ui_hints:type_name -> google.protobuf.Struct
-	28, // 29: chat.v1.FormField.review:type_name -> chat.v1.FormReviewHint
-	29, // 30: chat.v1.FormSection.fields:type_name -> chat.v1.FormField
-	42, // 31: chat.v1.FormSection.ui_hints:type_name -> google.protobuf.Struct
-	30, // 32: chat.v1.FormStep.sections:type_name -> chat.v1.FormSection
-	42, // 33: chat.v1.FormStep.ui_hints:type_name -> google.protobuf.Struct
-	25, // 34: chat.v1.FormStep.visibility_condition:type_name -> chat.v1.FormConditionGroup
-	31, // 35: chat.v1.FormSchema.steps:type_name -> chat.v1.FormStep
-	42, // 36: chat.v1.FormSchema.workflow_metadata:type_name -> google.protobuf.Struct
-	42, // 37: chat.v1.FormSchema.ui_hints:type_name -> google.protobuf.Struct
-	34, // 38: chat.v1.FormReviewSection.items:type_name -> chat.v1.FormReviewItem
-	44, // 39: chat.v1.FormSubmissionSnapshot.submitted_at:type_name -> google.protobuf.Timestamp
-	42, // 40: chat.v1.FormSubmissionSnapshot.answers:type_name -> google.protobuf.Struct
-	35, // 41: chat.v1.FormSubmissionSnapshot.formatted_sections:type_name -> chat.v1.FormReviewSection
+	51, // 20: chat.v1.FormField.default_value:type_name -> google.protobuf.Value
+	25, // 21: chat.v1.FormField.validation_rules:type_name -> chat.v1.FormValidationRule
+	27, // 22: chat.v1.FormField.visibility_condition:type_name -> chat.v1.FormConditionGroup
+	27, // 23: chat.v1.FormField.editability_condition:type_name -> chat.v1.FormConditionGroup
+	28, // 24: chat.v1.FormField.options:type_name -> chat.v1.FormOption
+	31, // 25: chat.v1.FormField.nested_fields:type_name -> chat.v1.FormField
+	32, // 26: chat.v1.FormField.nested_sections:type_name -> chat.v1.FormSection
+	29, // 27: chat.v1.FormField.formatting:type_name -> chat.v1.FormFormattingHint
+	50, // 28: chat.v1.FormField.ui_hints:type_name -> google.protobuf.Struct
+	30, // 29: chat.v1.FormField.review:type_name -> chat.v1.FormReviewHint
+	31, // 30: chat.v1.FormSection.fields:type_name -> chat.v1.FormField
+	50, // 31: chat.v1.FormSection.ui_hints:type_name -> google.protobuf.Struct
+	32, // 32: chat.v1.FormStep.sections:type_name -> chat.v1.FormSection
+	50, // 33: chat.v1.FormStep.ui_hints:type_name -> google.protobuf.Struct
+	27, // 34: chat.v1.FormStep.visibility_condition:type_name -> chat.v1.FormConditionGroup
+	33, // 35: chat.v1.FormSchema.steps:type_name -> chat.v1.FormStep
+	50, // 36: chat.v1.FormSchema.workflow_metadata:type_name -> google.protobuf.Struct
+	50, // 37: chat.v1.FormSchema.ui_hints:type_name -> google.protobuf.Struct
+	36, // 38: chat.v1.FormReviewSection.items:type_name -> chat.v1.FormReviewItem
+	52, // 39: chat.v1.FormSubmissionSnapshot.submitted_at:type_name -> google.protobuf.Timestamp
+	50, // 40: chat.v1.FormSubmissionSnapshot.answers:type_name -> google.protobuf.Struct
+	37, // 41: chat.v1.FormSubmissionSnapshot.formatted_sections:type_name -> chat.v1.FormReviewSection
 	2,  // 42: chat.v1.FormSubmissionSnapshot.status:type_name -> chat.v1.FormMessageState
-	42, // 43: chat.v1.FormSubmissionSnapshot.metadata:type_name -> google.protobuf.Struct
+	50, // 43: chat.v1.FormSubmissionSnapshot.metadata:type_name -> google.protobuf.Struct
 	2,  // 44: chat.v1.FormRequestContent.state:type_name -> chat.v1.FormMessageState
-	32, // 45: chat.v1.FormRequestContent.schema:type_name -> chat.v1.FormSchema
-	42, // 46: chat.v1.FormRequestContent.initial_values:type_name -> google.protobuf.Struct
-	42, // 47: chat.v1.FormRequestContent.server_draft_values:type_name -> google.protobuf.Struct
-	36, // 48: chat.v1.FormRequestContent.final_submission_snapshot:type_name -> chat.v1.FormSubmissionSnapshot
-	33, // 49: chat.v1.FormRequestContent.permissions:type_name -> chat.v1.FormPermissions
-	44, // 50: chat.v1.FormRequestContent.expires_at:type_name -> google.protobuf.Timestamp
-	42, // 51: chat.v1.FormRequestContent.workflow_context:type_name -> google.protobuf.Struct
+	34, // 45: chat.v1.FormRequestContent.schema:type_name -> chat.v1.FormSchema
+	50, // 46: chat.v1.FormRequestContent.initial_values:type_name -> google.protobuf.Struct
+	50, // 47: chat.v1.FormRequestContent.server_draft_values:type_name -> google.protobuf.Struct
+	38, // 48: chat.v1.FormRequestContent.final_submission_snapshot:type_name -> chat.v1.FormSubmissionSnapshot
+	35, // 49: chat.v1.FormRequestContent.permissions:type_name -> chat.v1.FormPermissions
+	52, // 50: chat.v1.FormRequestContent.expires_at:type_name -> google.protobuf.Timestamp
+	50, // 51: chat.v1.FormRequestContent.workflow_context:type_name -> google.protobuf.Struct
 	2,  // 52: chat.v1.FormSubmissionResultContent.state:type_name -> chat.v1.FormMessageState
-	36, // 53: chat.v1.FormSubmissionResultContent.submission_snapshot:type_name -> chat.v1.FormSubmissionSnapshot
-	42, // 54: chat.v1.FormSubmissionResultContent.metadata:type_name -> google.protobuf.Struct
-	41, // 55: chat.v1.FinanceCardContent.data:type_name -> chat.v1.FinanceCardContent.DataEntry
-	0,  // 56: chat.v1.Payload.type:type_name -> chat.v1.PayloadType
-	42, // 57: chat.v1.Payload.default:type_name -> google.protobuf.Struct
-	8,  // 58: chat.v1.Payload.room_change:type_name -> chat.v1.RoomChangeContent
-	9,  // 59: chat.v1.Payload.moderation:type_name -> chat.v1.ModerationContent
-	10, // 60: chat.v1.Payload.text:type_name -> chat.v1.TextContent
-	12, // 61: chat.v1.Payload.attachment:type_name -> chat.v1.AttachmentContent
-	14, // 62: chat.v1.Payload.reaction:type_name -> chat.v1.ReactionContent
-	15, // 63: chat.v1.Payload.encrypted:type_name -> chat.v1.EncryptedContent
-	16, // 64: chat.v1.Payload.call:type_name -> chat.v1.CallContent
-	17, // 65: chat.v1.Payload.motion:type_name -> chat.v1.MotionContent
-	22, // 66: chat.v1.Payload.motion_tally:type_name -> chat.v1.MotionTally
-	20, // 67: chat.v1.Payload.vote:type_name -> chat.v1.VoteCast
-	21, // 68: chat.v1.Payload.vote_tally:type_name -> chat.v1.VoteTally
-	37, // 69: chat.v1.Payload.form_request:type_name -> chat.v1.FormRequestContent
-	38, // 70: chat.v1.Payload.form_submission_result:type_name -> chat.v1.FormSubmissionResultContent
-	39, // 71: chat.v1.Payload.finance_card:type_name -> chat.v1.FinanceCardContent
-	72, // [72:72] is the sub-list for method output_type
-	72, // [72:72] is the sub-list for method input_type
-	72, // [72:72] is the sub-list for extension type_name
-	72, // [72:72] is the sub-list for extension extendee
-	0,  // [0:72] is the sub-list for field type_name
+	38, // 53: chat.v1.FormSubmissionResultContent.submission_snapshot:type_name -> chat.v1.FormSubmissionSnapshot
+	50, // 54: chat.v1.FormSubmissionResultContent.metadata:type_name -> google.protobuf.Struct
+	48, // 55: chat.v1.FinanceCardContent.data:type_name -> chat.v1.FinanceCardContent.DataEntry
+	49, // 56: chat.v1.StawiRoomConversionContent.rule_values:type_name -> chat.v1.StawiRoomConversionContent.RuleValuesEntry
+	5,  // 57: chat.v1.StawiRoomConversionContent.join_policy:type_name -> chat.v1.StawiJoinPolicy
+	43, // 58: chat.v1.StawiRoomConversionContent.genesis:type_name -> chat.v1.StawiGenesis
+	52, // 59: chat.v1.StawiGenesis.expires_at:type_name -> google.protobuf.Timestamp
+	6,  // 60: chat.v1.StawiCallOutcomeContent.state:type_name -> chat.v1.StawiCallOutcomeState
+	0,  // 61: chat.v1.Payload.type:type_name -> chat.v1.PayloadType
+	50, // 62: chat.v1.Payload.default:type_name -> google.protobuf.Struct
+	10, // 63: chat.v1.Payload.room_change:type_name -> chat.v1.RoomChangeContent
+	11, // 64: chat.v1.Payload.moderation:type_name -> chat.v1.ModerationContent
+	12, // 65: chat.v1.Payload.text:type_name -> chat.v1.TextContent
+	14, // 66: chat.v1.Payload.attachment:type_name -> chat.v1.AttachmentContent
+	16, // 67: chat.v1.Payload.reaction:type_name -> chat.v1.ReactionContent
+	17, // 68: chat.v1.Payload.encrypted:type_name -> chat.v1.EncryptedContent
+	18, // 69: chat.v1.Payload.call:type_name -> chat.v1.CallContent
+	19, // 70: chat.v1.Payload.motion:type_name -> chat.v1.MotionContent
+	24, // 71: chat.v1.Payload.motion_tally:type_name -> chat.v1.MotionTally
+	22, // 72: chat.v1.Payload.vote:type_name -> chat.v1.VoteCast
+	23, // 73: chat.v1.Payload.vote_tally:type_name -> chat.v1.VoteTally
+	39, // 74: chat.v1.Payload.form_request:type_name -> chat.v1.FormRequestContent
+	40, // 75: chat.v1.Payload.form_submission_result:type_name -> chat.v1.FormSubmissionResultContent
+	41, // 76: chat.v1.Payload.finance_card:type_name -> chat.v1.FinanceCardContent
+	42, // 77: chat.v1.Payload.stawi_room_conversion:type_name -> chat.v1.StawiRoomConversionContent
+	44, // 78: chat.v1.Payload.stawi_genesis_signature:type_name -> chat.v1.StawiGenesisSignatureContent
+	45, // 79: chat.v1.Payload.stawi_signed_call:type_name -> chat.v1.StawiSignedCallContent
+	46, // 80: chat.v1.Payload.stawi_call_outcome:type_name -> chat.v1.StawiCallOutcomeContent
+	81, // [81:81] is the sub-list for method output_type
+	81, // [81:81] is the sub-list for method input_type
+	81, // [81:81] is the sub-list for extension type_name
+	81, // [81:81] is the sub-list for extension extendee
+	0,  // [0:81] is the sub-list for field type_name
 }
 
 func init() { file_chat_v1_payload_type_proto_init() }
@@ -4423,7 +5136,7 @@ func file_chat_v1_payload_type_proto_init() {
 		(*FormValidationRule_MinItems)(nil),
 		(*FormValidationRule_MaxItems)(nil),
 	}
-	file_chat_v1_payload_type_proto_msgTypes[32].OneofWrappers = []any{
+	file_chat_v1_payload_type_proto_msgTypes[37].OneofWrappers = []any{
 		(*Payload_Default)(nil),
 		(*Payload_RoomChange)(nil),
 		(*Payload_Moderation)(nil),
@@ -4439,14 +5152,18 @@ func file_chat_v1_payload_type_proto_init() {
 		(*Payload_FormRequest)(nil),
 		(*Payload_FormSubmissionResult)(nil),
 		(*Payload_FinanceCard)(nil),
+		(*Payload_StawiRoomConversion)(nil),
+		(*Payload_StawiGenesisSignature)(nil),
+		(*Payload_StawiSignedCall)(nil),
+		(*Payload_StawiCallOutcome)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chat_v1_payload_type_proto_rawDesc), len(file_chat_v1_payload_type_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   34,
+			NumEnums:      10,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

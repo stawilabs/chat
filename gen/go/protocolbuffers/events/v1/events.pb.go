@@ -601,8 +601,9 @@ const file_events_v1_events_proto_rawDesc = "" +
 	" \x01(\bR\fisCompressed\x12\x1f\n" +
 	"\vretry_count\x18\v \x01(\x05R\n" +
 	"retryCount\x128\n" +
-	"\tdevice_id\x18\f \x01(\tB\x1b\xbaH\x18r\x16\x10\x03\x18(2\x10[0-9a-z_-]{3,40}R\bdeviceIdB?\n" +
-	"\beventsv1P\x01Z1github.com/antinvestor/apis/go/events/v1;eventsv1b\x06proto3"
+	"\tdevice_id\x18\f \x01(\tB\x1b\xbaH\x18r\x16\x10\x03\x18(2\x10[0-9a-z_-]{3,40}R\bdeviceIdB\xa4\x01\n" +
+	"\rcom.events.v1B\vEventsProtoP\x01ZAbuf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1;eventsv1\xa2\x02\x03EXX\xaa\x02\tEvents.V1\xca\x02\tEvents\\V1\xe2\x02\x15Events\\V1\\GPBMetadata\xea\x02\n" +
+	"Events::V1b\x06proto3"
 
 var (
 	file_events_v1_events_proto_rawDescOnce sync.Once

@@ -164,9 +164,40 @@ func financeCardBody(card *chatv1.FinanceCardContent) string {
 	return "Shared a finance update"
 }
 
+// stawiBody is the notification copy for the Stawi room acts.
+func stawiBody(eventPayload *chatv1.Payload) string {
+	switch {
+	case eventPayload.GetStawiRoomConversion() != nil:
+		return "Proposed making this a Stawi room"
+	case eventPayload.GetStawiGenesisSignature() != nil:
+		return "Signed the room genesis"
+	case eventPayload.GetStawiSignedCall() != nil:
+		if summary := eventPayload.GetStawiSignedCall().GetSummary(); summary != "" {
+			return summary
+		}
+		return "Signed a room action"
+	case eventPayload.GetStawiCallOutcome() != nil:
+		return stawiOutcomeBody(eventPayload.GetStawiCallOutcome())
+	default:
+		return ""
+	}
+}
+
+func stawiOutcomeBody(outcome *chatv1.StawiCallOutcomeContent) string {
+	switch outcome.GetState() {
+	case chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED:
+		return "A room action failed"
+	case chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED:
+		return "A room action took effect"
+	case chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED,
+		chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_UNSPECIFIED:
+	}
+	return ""
+}
+
 // bodyFromPayload extracts a human-readable body string from a typed payload.
 //
-//nolint:cyclop,gocognit,gocyclo,nestif // Notification copy is intentionally dispatched by payload shape.
+//nolint:cyclop,funlen,gocognit,gocyclo,nestif // Notification copy is intentionally dispatched by payload shape.
 func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payload) string {
 	switch eventPayload.GetType() {
 	case chatv1.PayloadType_PAYLOAD_TYPE_MODERATION:
@@ -230,6 +261,11 @@ func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payl
 		return "Submitted a form"
 	case chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD:
 		return financeCardBody(eventPayload.GetFinanceCard())
+	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		return stawiBody(eventPayload)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		// No body for unspecified type
 	}

@@ -267,8 +267,8 @@ const CreateRoomRequest$json = {
 
 /// Descriptor for `CreateRoomRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List createRoomRequestDescriptor = $convert.base64Decode(
-    'ChFDcmVhdGVSb29tUmVxdWVzdBIrCgJpZBgDIAEoCUIbukgYchYQAxgoMhBbMC05YS16Xy1dez'
-    'MsNDB9UgJpZBIeCgRuYW1lGAQgASgJQgq6SAdyBRACGMgBUgRuYW1lEiAKC2Rlc2NyaXB0aW9u'
+    'ChFDcmVhdGVSb29tUmVxdWVzdBIrCgJpZBgDIAEoCUIbukgY2AEBchMyDl5bMC05YS12XXsyMH'
+    '0kmAEUUgJpZBIeCgRuYW1lGAQgASgJQgq6SAdyBRACGMgBUgRuYW1lEiAKC2Rlc2NyaXB0aW9u'
     'GAUgASgJUgtkZXNjcmlwdGlvbhIlCgR0eXBlGAogASgOMhEuY2hhdC52MS5Sb29tVHlwZVIEdH'
     'lwZRIdCgppc19wcml2YXRlGAYgASgIUglpc1ByaXZhdGUSMAoHbWVtYmVycxgHIAMoCzIWLmNv'
     'bW1vbi52MS5Db250YWN0TGlua1IHbWVtYmVycxIzCghtZXRhZGF0YRgIIAEoCzIXLmdvb2dsZS'
@@ -988,6 +988,12 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> ChatServic
   '.chat.v1.FormSubmissionResultContent': $7.FormSubmissionResultContent$json,
   '.chat.v1.FinanceCardContent': $7.FinanceCardContent$json,
   '.chat.v1.FinanceCardContent.DataEntry': $7.FinanceCardContent_DataEntry$json,
+  '.chat.v1.StawiRoomConversionContent': $7.StawiRoomConversionContent$json,
+  '.chat.v1.StawiRoomConversionContent.RuleValuesEntry': $7.StawiRoomConversionContent_RuleValuesEntry$json,
+  '.chat.v1.StawiGenesis': $7.StawiGenesis$json,
+  '.chat.v1.StawiGenesisSignatureContent': $7.StawiGenesisSignatureContent$json,
+  '.chat.v1.StawiSignedCallContent': $7.StawiSignedCallContent$json,
+  '.chat.v1.StawiCallOutcomeContent': $7.StawiCallOutcomeContent$json,
   '.chat.v1.SendEventResponse': SendEventResponse$json,
   '.chat.v1.AckEvent': $9.AckEvent$json,
   '.common.v1.ErrorDetail': $8.ErrorDetail$json,

@@ -847,8 +847,8 @@ const file_chat_v1_definitions_proto_rawDesc = "" +
 	"\x0ePresenceStatus\x12\x1f\n" +
 	"\x1bPRESENCE_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17PRESENCE_STATUS_OFFLINE\x10\x01\x12\x1a\n" +
-	"\x16PRESENCE_STATUS_ONLINE\x10\x02B9\n" +
-	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
+	"\x16PRESENCE_STATUS_ONLINE\x10\x02B\x9b\x01\n" +
+	"\vcom.chat.v1B\x10DefinitionsProtoP\x01Z=buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
 
 var (
 	file_chat_v1_definitions_proto_rawDescOnce sync.Once

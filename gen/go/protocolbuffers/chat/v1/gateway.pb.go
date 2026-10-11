@@ -395,16 +395,17 @@ const file_chat_v1_gateway_proto_rawDesc = "" +
 	"\x06Stream\x12\x16.chat.v1.StreamRequest\x1a\x17.chat.v1.StreamResponse\"\xc3\x02\xbaG\xaa\x02\n" +
 	"\tReal-time\x12-Establish bi-directional streaming connection\x1a\xe5\x01Opens a persistent bi-directional stream for real-time chat events. Clients send StreamRequest messages (auth, acks, commands) and receive ServerEvent messages in chronological order. Supports session resumption via resume_token.*\x06stream\x82\xb5\x18\x11\n" +
 	"\x0fgateway_connect(\x010\x01\x1a\xa5\x01\x82\xb5\x18\xa0\x01\n" +
-	"\x0fservice_gateway\x12\x0fgateway_connect\x1a\x13\b\x01\x12\x0fgateway_connect\x1a\x13\b\x02\x12\x0fgateway_connect\x1a\x13\b\x03\x12\x0fgateway_connect\x1a\x13\b\x04\x12\x0fgateway_connect\x1a\x13\b\x05\x12\x0fgateway_connect\x1a\x13\b\x06\x12\x0fgateway_connectB\x8c\x06\xbaG\xcf\x05\x12\xa3\x05\n" +
-	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"U\n" +
-	"\x10Ant Investor Ltd\x12+https://github.com/antinvestor/service-chat\x1a\x14info@antinvestor.com*I\n" +
+	"\x0fservice_gateway\x12\x0fgateway_connect\x1a\x13\b\x01\x12\x0fgateway_connect\x1a\x13\b\x02\x12\x0fgateway_connect\x1a\x13\b\x03\x12\x0fgateway_connect\x1a\x13\b\x04\x12\x0fgateway_connect\x1a\x13\b\x05\x12\x0fgateway_connect\x1a\x13\b\x06\x12\x0fgateway_connectB\xd4\x06\xbaG\xb9\x05\x12\x8d\x05\n" +
+	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"?\n" +
+	"\n" +
+	"Stawi Labs\x12!https://github.com/stawilabs/chat\x1a\x0einfo@stawi.org*I\n" +
 	"\x0eApache License\x127https://github.com/antinvestor/apis/blob/master/LICENSE2\x06v1.0.0*':%\n" +
 	"#\n" +
 	"\n" +
 	"BearerAuth\x12\x15\n" +
 	"\x13\n" +
 	"\x04http*\x06bearer2\x03JWT\n" +
-	"\x06chatv1P\x01Z-github.com/antinvestor/apis/go/chat/v1;chatv1b\x06proto3"
+	"\vcom.chat.v1B\fGatewayProtoP\x01Z=buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1;chatv1\xa2\x02\x03CXX\xaa\x02\aChat.V1\xca\x02\aChat\\V1\xe2\x02\x13Chat\\V1\\GPBMetadata\xea\x02\bChat::V1b\x06proto3"
 
 var (
 	file_chat_v1_gateway_proto_rawDescOnce sync.Once

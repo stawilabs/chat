@@ -32,6 +32,10 @@ const PayloadType$json = {
     {'1': 'PAYLOAD_TYPE_FORM_REQUEST', '2': 30},
     {'1': 'PAYLOAD_TYPE_FORM_SUBMISSION_RESULT', '2': 31},
     {'1': 'PAYLOAD_TYPE_FINANCE_CARD', '2': 40},
+    {'1': 'PAYLOAD_TYPE_STAWI_ROOM_CONVERSION', '2': 41},
+    {'1': 'PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE', '2': 42},
+    {'1': 'PAYLOAD_TYPE_STAWI_SIGNED_CALL', '2': 43},
+    {'1': 'PAYLOAD_TYPE_STAWI_CALL_OUTCOME', '2': 44},
   ],
 };
 
@@ -44,7 +48,10 @@ final $typed_data.Uint8List payloadTypeDescriptor = $convert.base64Decode(
     'REVSQVRJT04QFRIXChNQQVlMT0FEX1RZUEVfTU9USU9OEBYSFQoRUEFZTE9BRF9UWVBFX1ZPVE'
     'UQFxIdChlQQVlMT0FEX1RZUEVfTU9USU9OX1RBTExZEBgSGwoXUEFZTE9BRF9UWVBFX1ZPVEVf'
     'VEFMTFkQGRIdChlQQVlMT0FEX1RZUEVfRk9STV9SRVFVRVNUEB4SJwojUEFZTE9BRF9UWVBFX0'
-    'ZPUk1fU1VCTUlTU0lPTl9SRVNVTFQQHxIdChlQQVlMT0FEX1RZUEVfRklOQU5DRV9DQVJEECg=');
+    'ZPUk1fU1VCTUlTU0lPTl9SRVNVTFQQHxIdChlQQVlMT0FEX1RZUEVfRklOQU5DRV9DQVJEECgS'
+    'JgoiUEFZTE9BRF9UWVBFX1NUQVdJX1JPT01fQ09OVkVSU0lPThApEigKJFBBWUxPQURfVFlQRV'
+    '9TVEFXSV9HRU5FU0lTX1NJR05BVFVSRRAqEiIKHlBBWUxPQURfVFlQRV9TVEFXSV9TSUdORURf'
+    'Q0FMTBArEiMKH1BBWUxPQURfVFlQRV9TVEFXSV9DQUxMX09VVENPTUUQLA==');
 
 @$core.Deprecated('Use roomChangeActionDescriptor instead')
 const RoomChangeAction$json = {
@@ -171,6 +178,40 @@ final $typed_data.Uint8List formConditionOperatorDescriptor = $convert.base64Dec
     'RSVUUQCxIkCiBGT1JNX0NPTkRJVElPTl9PUEVSQVRPUl9JU19GQUxTRRAMEiIKHkZPUk1fQ09O'
     'RElUSU9OX09QRVJBVE9SX0VYSVNUUxANEiYKIkZPUk1fQ09ORElUSU9OX09QRVJBVE9SX05PVF'
     '9FWElTVFMQDg==');
+
+@$core.Deprecated('Use stawiJoinPolicyDescriptor instead')
+const StawiJoinPolicy$json = {
+  '1': 'StawiJoinPolicy',
+  '2': [
+    {'1': 'STAWI_JOIN_POLICY_UNSPECIFIED', '2': 0},
+    {'1': 'STAWI_JOIN_POLICY_PRIVATE', '2': 1},
+    {'1': 'STAWI_JOIN_POLICY_PUBLIC', '2': 2},
+  ],
+};
+
+/// Descriptor for `StawiJoinPolicy`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List stawiJoinPolicyDescriptor = $convert.base64Decode(
+    'Cg9TdGF3aUpvaW5Qb2xpY3kSIQodU1RBV0lfSk9JTl9QT0xJQ1lfVU5TUEVDSUZJRUQQABIdCh'
+    'lTVEFXSV9KT0lOX1BPTElDWV9QUklWQVRFEAESHAoYU1RBV0lfSk9JTl9QT0xJQ1lfUFVCTElD'
+    'EAI=');
+
+@$core.Deprecated('Use stawiCallOutcomeStateDescriptor instead')
+const StawiCallOutcomeState$json = {
+  '1': 'StawiCallOutcomeState',
+  '2': [
+    {'1': 'STAWI_CALL_OUTCOME_STATE_UNSPECIFIED', '2': 0},
+    {'1': 'STAWI_CALL_OUTCOME_STATE_ACCEPTED', '2': 1},
+    {'1': 'STAWI_CALL_OUTCOME_STATE_FAILED', '2': 2},
+    {'1': 'STAWI_CALL_OUTCOME_STATE_OBSERVED', '2': 3},
+  ],
+};
+
+/// Descriptor for `StawiCallOutcomeState`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List stawiCallOutcomeStateDescriptor = $convert.base64Decode(
+    'ChVTdGF3aUNhbGxPdXRjb21lU3RhdGUSKAokU1RBV0lfQ0FMTF9PVVRDT01FX1NUQVRFX1VOU1'
+    'BFQ0lGSUVEEAASJQohU1RBV0lfQ0FMTF9PVVRDT01FX1NUQVRFX0FDQ0VQVEVEEAESIwofU1RB'
+    'V0lfQ0FMTF9PVVRDT01FX1NUQVRFX0ZBSUxFRBACEiUKIVNUQVdJX0NBTExfT1VUQ09NRV9TVE'
+    'FURV9PQlNFUlZFRBAD');
 
 @$core.Deprecated('Use roomChangeContentDescriptor instead')
 const RoomChangeContent$json = {
@@ -955,6 +996,124 @@ final $typed_data.Uint8List financeCardContentDescriptor = $convert.base64Decode
     'YXJkQ29udGVudC5EYXRhRW50cnlCF7pIFJoBERAgIgZyBBABGEAqBXIDGIAEUgRkYXRhGjcKCU'
     'RhdGFFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
 
+@$core.Deprecated('Use stawiRoomConversionContentDescriptor instead')
+const StawiRoomConversionContent$json = {
+  '1': 'StawiRoomConversionContent',
+  '2': [
+    {'1': 'template_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'templateId'},
+    {'1': 'rule_values', '3': 2, '4': 3, '5': 11, '6': '.chat.v1.StawiRoomConversionContent.RuleValuesEntry', '8': {}, '10': 'ruleValues'},
+    {'1': 'founder_subscription_ids', '3': 3, '4': 3, '5': 9, '8': {}, '10': 'founderSubscriptionIds'},
+    {'1': 'join_policy', '3': 4, '4': 1, '5': 14, '6': '.chat.v1.StawiJoinPolicy', '8': {}, '10': 'joinPolicy'},
+    {'1': 'genesis', '3': 5, '4': 1, '5': 11, '6': '.chat.v1.StawiGenesis', '10': 'genesis'},
+  ],
+  '3': [StawiRoomConversionContent_RuleValuesEntry$json],
+};
+
+@$core.Deprecated('Use stawiRoomConversionContentDescriptor instead')
+const StawiRoomConversionContent_RuleValuesEntry$json = {
+  '1': 'RuleValuesEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `StawiRoomConversionContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiRoomConversionContentDescriptor = $convert.base64Decode(
+    'ChpTdGF3aVJvb21Db252ZXJzaW9uQ29udGVudBIqCgt0ZW1wbGF0ZV9pZBgBIAEoCUIJukgGcg'
+    'QQARhAUgp0ZW1wbGF0ZUlkEm0KC3J1bGVfdmFsdWVzGAIgAygLMjMuY2hhdC52MS5TdGF3aVJv'
+    'b21Db252ZXJzaW9uQ29udGVudC5SdWxlVmFsdWVzRW50cnlCF7pIFJoBERBAIgZyBBABGEAqBX'
+    'IDGIACUgpydWxlVmFsdWVzEmIKGGZvdW5kZXJfc3Vic2NyaXB0aW9uX2lkcxgDIAMoCUIoukgl'
+    'kgEiCAEQQBgBIhpyGBADGCgyEl5bMC05YS16Xy1dezMsNDB9JFIWZm91bmRlclN1YnNjcmlwdG'
+    'lvbklkcxJFCgtqb2luX3BvbGljeRgEIAEoDjIYLmNoYXQudjEuU3Rhd2lKb2luUG9saWN5Qgq6'
+    'SAeCAQQQASAAUgpqb2luUG9saWN5Ei8KB2dlbmVzaXMYBSABKAsyFS5jaGF0LnYxLlN0YXdpR2'
+    'VuZXNpc1IHZ2VuZXNpcxo9Cg9SdWxlVmFsdWVzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoF'
+    'dmFsdWUYAiABKAlSBXZhbHVlOgI4AQ==');
+
+@$core.Deprecated('Use stawiGenesisDescriptor instead')
+const StawiGenesis$json = {
+  '1': 'StawiGenesis',
+  '2': [
+    {'1': 'genesis_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
+    {'1': 'genesis_hash', '3': 2, '4': 1, '5': 12, '8': {}, '10': 'genesisHash'},
+    {'1': 'constitution_hash', '3': 3, '4': 1, '5': 12, '8': {}, '10': 'constitutionHash'},
+    {'1': 'expires_at', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'expiresAt'},
+    {'1': 'founder_profile_ids', '3': 5, '4': 3, '5': 9, '8': {}, '10': 'founderProfileIds'},
+  ],
+};
+
+/// Descriptor for `StawiGenesis`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiGenesisDescriptor = $convert.base64Decode(
+    'CgxTdGF3aUdlbmVzaXMSJgoKZ2VuZXNpc19pZBgBIAEoCUIHukgEcgIYQFIJZ2VuZXNpc0lkEi'
+    'oKDGdlbmVzaXNfaGFzaBgCIAEoDEIHukgEegIYIFILZ2VuZXNpc0hhc2gSNAoRY29uc3RpdHV0'
+    'aW9uX2hhc2gYAyABKAxCB7pIBHoCGCBSEGNvbnN0aXR1dGlvbkhhc2gSOQoKZXhwaXJlc19hdB'
+    'gEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWV4cGlyZXNBdBI4ChNmb3VuZGVy'
+    'X3Byb2ZpbGVfaWRzGAUgAygJQgi6SAWSAQIQQFIRZm91bmRlclByb2ZpbGVJZHM=');
+
+@$core.Deprecated('Use stawiGenesisSignatureContentDescriptor instead')
+const StawiGenesisSignatureContent$json = {
+  '1': 'StawiGenesisSignatureContent',
+  '2': [
+    {'1': 'genesis_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
+    {'1': 'signature', '3': 2, '4': 1, '5': 12, '8': {}, '10': 'signature'},
+    {'1': 'signer_key_id', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'signerKeyId'},
+  ],
+};
+
+/// Descriptor for `StawiGenesisSignatureContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiGenesisSignatureContentDescriptor = $convert.base64Decode(
+    'ChxTdGF3aUdlbmVzaXNTaWduYXR1cmVDb250ZW50EigKCmdlbmVzaXNfaWQYASABKAlCCbpIBn'
+    'IEEAEYQFIJZ2VuZXNpc0lkEigKCXNpZ25hdHVyZRgCIAEoDEIKukgHegUQARiAIFIJc2lnbmF0'
+    'dXJlEi4KDXNpZ25lcl9rZXlfaWQYAyABKAlCCrpIB3IFEAEYgAFSC3NpZ25lcktleUlk');
+
+@$core.Deprecated('Use stawiSignedCallContentDescriptor instead')
+const StawiSignedCallContent$json = {
+  '1': 'StawiSignedCallContent',
+  '2': [
+    {'1': 'call_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'callId'},
+    {'1': 'kind', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'kind'},
+    {'1': 'signature', '3': 3, '4': 1, '5': 12, '8': {}, '10': 'signature'},
+    {'1': 'signer_key_id', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'signerKeyId'},
+    {'1': 'summary', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'summary'},
+  ],
+};
+
+/// Descriptor for `StawiSignedCallContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiSignedCallContentDescriptor = $convert.base64Decode(
+    'ChZTdGF3aVNpZ25lZENhbGxDb250ZW50EiIKB2NhbGxfaWQYASABKAlCCbpIBnIEEAEYQFIGY2'
+    'FsbElkEh0KBGtpbmQYAiABKAlCCbpIBnIEEAEYQFIEa2luZBIoCglzaWduYXR1cmUYAyABKAxC'
+    'CrpIB3oFEAEYgCBSCXNpZ25hdHVyZRIsCg1zaWduZXJfa2V5X2lkGAQgASgJQgi6SAVyAxiAAV'
+    'ILc2lnbmVyS2V5SWQSIgoHc3VtbWFyeRgFIAEoCUIIukgFcgMYgARSB3N1bW1hcnk=');
+
+@$core.Deprecated('Use stawiCallOutcomeContentDescriptor instead')
+const StawiCallOutcomeContent$json = {
+  '1': 'StawiCallOutcomeContent',
+  '2': [
+    {'1': 'call_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'callId'},
+    {'1': 'genesis_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
+    {'1': 'state', '3': 3, '4': 1, '5': 14, '6': '.chat.v1.StawiCallOutcomeState', '8': {}, '10': 'state'},
+    {'1': 'reason', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'reason'},
+    {'1': 'source_event_id', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'sourceEventId'},
+    {'1': 'kind', '3': 6, '4': 1, '5': 9, '8': {}, '10': 'kind'},
+    {'1': 'chain_id', '3': 7, '4': 1, '5': 4, '10': 'chainId'},
+    {'1': 'tx_hash', '3': 8, '4': 1, '5': 12, '8': {}, '10': 'txHash'},
+    {'1': 'block_number', '3': 9, '4': 1, '5': 4, '10': 'blockNumber'},
+    {'1': 'log_index', '3': 10, '4': 1, '5': 4, '10': 'logIndex'},
+  ],
+};
+
+/// Descriptor for `StawiCallOutcomeContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiCallOutcomeContentDescriptor = $convert.base64Decode(
+    'ChdTdGF3aUNhbGxPdXRjb21lQ29udGVudBIgCgdjYWxsX2lkGAEgASgJQge6SARyAhhAUgZjYW'
+    'xsSWQSJgoKZ2VuZXNpc19pZBgCIAEoCUIHukgEcgIYQFIJZ2VuZXNpc0lkEj4KBXN0YXRlGAMg'
+    'ASgOMh4uY2hhdC52MS5TdGF3aUNhbGxPdXRjb21lU3RhdGVCCLpIBYIBAhABUgVzdGF0ZRIgCg'
+    'ZyZWFzb24YBCABKAlCCLpIBXIDGIAIUgZyZWFzb24SLwoPc291cmNlX2V2ZW50X2lkGAUgASgJ'
+    'Qge6SARyAhgoUg1zb3VyY2VFdmVudElkEhsKBGtpbmQYBiABKAlCB7pIBHICGEBSBGtpbmQSGQ'
+    'oIY2hhaW5faWQYByABKARSB2NoYWluSWQSIAoHdHhfaGFzaBgIIAEoDEIHukgEegIYIFIGdHhI'
+    'YXNoEiEKDGJsb2NrX251bWJlchgJIAEoBFILYmxvY2tOdW1iZXISGwoJbG9nX2luZGV4GAogAS'
+    'gEUghsb2dJbmRleA==');
+
 @$core.Deprecated('Use payloadDescriptor instead')
 const Payload$json = {
   '1': 'Payload',
@@ -975,6 +1134,10 @@ const Payload$json = {
     {'1': 'form_request', '3': 30, '4': 1, '5': 11, '6': '.chat.v1.FormRequestContent', '9': 0, '10': 'formRequest'},
     {'1': 'form_submission_result', '3': 31, '4': 1, '5': 11, '6': '.chat.v1.FormSubmissionResultContent', '9': 0, '10': 'formSubmissionResult'},
     {'1': 'finance_card', '3': 40, '4': 1, '5': 11, '6': '.chat.v1.FinanceCardContent', '9': 0, '10': 'financeCard'},
+    {'1': 'stawi_room_conversion', '3': 41, '4': 1, '5': 11, '6': '.chat.v1.StawiRoomConversionContent', '9': 0, '10': 'stawiRoomConversion'},
+    {'1': 'stawi_genesis_signature', '3': 42, '4': 1, '5': 11, '6': '.chat.v1.StawiGenesisSignatureContent', '9': 0, '10': 'stawiGenesisSignature'},
+    {'1': 'stawi_signed_call', '3': 43, '4': 1, '5': 11, '6': '.chat.v1.StawiSignedCallContent', '9': 0, '10': 'stawiSignedCall'},
+    {'1': 'stawi_call_outcome', '3': 44, '4': 1, '5': 11, '6': '.chat.v1.StawiCallOutcomeContent', '9': 0, '10': 'stawiCallOutcome'},
   ],
   '8': [
     {'1': 'data'},
@@ -999,5 +1162,12 @@ final $typed_data.Uint8List payloadDescriptor = $convert.base64Decode(
     '5jaGF0LnYxLkZvcm1SZXF1ZXN0Q29udGVudEgAUgtmb3JtUmVxdWVzdBJcChZmb3JtX3N1Ym1p'
     'c3Npb25fcmVzdWx0GB8gASgLMiQuY2hhdC52MS5Gb3JtU3VibWlzc2lvblJlc3VsdENvbnRlbn'
     'RIAFIUZm9ybVN1Ym1pc3Npb25SZXN1bHQSQAoMZmluYW5jZV9jYXJkGCggASgLMhsuY2hhdC52'
-    'MS5GaW5hbmNlQ2FyZENvbnRlbnRIAFILZmluYW5jZUNhcmRCBgoEZGF0YQ==');
+    'MS5GaW5hbmNlQ2FyZENvbnRlbnRIAFILZmluYW5jZUNhcmQSWQoVc3Rhd2lfcm9vbV9jb252ZX'
+    'JzaW9uGCkgASgLMiMuY2hhdC52MS5TdGF3aVJvb21Db252ZXJzaW9uQ29udGVudEgAUhNzdGF3'
+    'aVJvb21Db252ZXJzaW9uEl8KF3N0YXdpX2dlbmVzaXNfc2lnbmF0dXJlGCogASgLMiUuY2hhdC'
+    '52MS5TdGF3aUdlbmVzaXNTaWduYXR1cmVDb250ZW50SABSFXN0YXdpR2VuZXNpc1NpZ25hdHVy'
+    'ZRJNChFzdGF3aV9zaWduZWRfY2FsbBgrIAEoCzIfLmNoYXQudjEuU3Rhd2lTaWduZWRDYWxsQ2'
+    '9udGVudEgAUg9zdGF3aVNpZ25lZENhbGwSUAoSc3Rhd2lfY2FsbF9vdXRjb21lGCwgASgLMiAu'
+    'Y2hhdC52MS5TdGF3aUNhbGxPdXRjb21lQ29udGVudEgAUhBzdGF3aUNhbGxPdXRjb21lQgYKBG'
+    'RhdGE=');
 

@@ -774,6 +774,16 @@ class CreateRoomRequest extends $pb.GeneratedMessage {
   static CreateRoomRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CreateRoomRequest>(create);
   static CreateRoomRequest? _defaultInstance;
 
+  ///  Optional caller-supplied room identifier.
+  ///
+  ///  A room is the entity: its id in chat, in the finance service and on chain
+  ///  is one value. When a room is created in finance first, the caller hands
+  ///  chat that id here; when it is omitted chat mints one as before. Creating
+  ///  the same id twice returns the room that already exists, so a caller may
+  ///  safely retry.
+  ///
+  ///  The identifier format is the platform's own (an xid, as util.IDString
+  ///  mints): 20 characters over [0-9a-v]. Anything else is refused.
   @$pb.TagNumber(3)
   $core.String get id => $_getSZ(0);
   @$pb.TagNumber(3)
