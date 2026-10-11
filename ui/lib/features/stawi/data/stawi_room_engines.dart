@@ -57,11 +57,12 @@ String productLabel(String name, List<int> productId) {
   return head.isEmpty ? 'Product' : 'Product ${bytesToHex0x(head)}';
 }
 
-/// The key terms of a loan form, for its picker entry.
-String loanProductTerms(finance.RoomLoanProduct p) {
+/// The key terms of a loan form, for its picker entry, its amounts in the
+/// [assets] they name.
+String loanProductTerms(finance.RoomLoanProduct p, StawiAssets assets) {
   final parts = <String>[
     if (p.hasMaxAmount() && p.maxAmount.amount.isNotEmpty)
-      'up to ${formatMoney(p.maxAmount)}',
+      'up to ${formatMoney(p.maxAmount, assets)}',
     if (p.rateBps > 0) formatRate(p.rateBps, p.rateBasis),
     if (p.rateBps == 0) 'no interest',
     if (p.maxInstalments > 0)
@@ -74,14 +75,16 @@ String loanProductTerms(finance.RoomLoanProduct p) {
   return parts.join(' · ');
 }
 
-/// The key terms of a dues product, for its picker entry.
-String duesProductTerms(finance.RoomDuesProduct p) {
+/// The key terms of a dues product, for its picker entry, its amounts in the
+/// [assets] they name.
+String duesProductTerms(finance.RoomDuesProduct p, StawiAssets assets) {
   final parts = <String>[
-    if (p.hasAmount() && p.amount.amount.isNotEmpty) formatMoney(p.amount),
+    if (p.hasAmount() && p.amount.amount.isNotEmpty)
+      formatMoney(p.amount, assets),
     if (p.everyPeriods > 1) 'every ${p.everyPeriods} periods',
     if (p.everyPeriods == 1) 'every period',
     if (p.memberChoice)
-      'you choose ${formatMoney(p.minAmount)}–${formatMoney(p.maxAmount)}'
+      'you choose ${formatMoney(p.minAmount, assets)}–${formatMoney(p.maxAmount, assets)}'
     else
       'fixed by the room',
     if (!p.active) 'inactive',

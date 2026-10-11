@@ -15,31 +15,53 @@ void main() {
   setUpAll(initializeDateFormatting);
 
   group('amounts from minor units', () {
-    final usdc = StawiAsset.fromId('USDC.146');
-
     test('USDC has 6 decimals and shows its symbol', () {
       expect(usdc.symbol, 'USDC');
       expect(usdc.decimals, 6);
-      expect(formatMoney(usdcMoney('900000000')), '900.00 USDC');
-      expect(formatMoney(usdcMoney('1234560000')), '1,234.56 USDC');
-      expect(formatMoney(usdcMoney('1234567')), '1.234567 USDC');
-      expect(formatMoney(usdcMoney('500000')), '0.50 USDC');
-      expect(formatMoney(usdcMoney('1')), '0.000001 USDC');
-      expect(formatMoney(usdcMoney('')), '0.00 USDC');
+      expect(formatMoney(usdcMoney('900000000'), usdcAssets), '900.00 USDC');
+      expect(formatMoney(usdcMoney('1234560000'), usdcAssets), '1,234.56 USDC');
+      expect(formatMoney(usdcMoney('1234567'), usdcAssets), '1.234567 USDC');
+      expect(formatMoney(usdcMoney('500000'), usdcAssets), '0.50 USDC');
+      expect(formatMoney(usdcMoney('1'), usdcAssets), '0.000001 USDC');
+      expect(formatMoney(usdcMoney(''), usdcAssets), '0.00 USDC');
       expect(formatUnits(BigInt.from(-2500000), usdc), '-2.50 USDC');
     });
 
     test('is localized', () {
       expect(
-        formatMoney(usdcMoney('1234560000'), locale: 'de'),
+        formatMoney(usdcMoney('1234560000'), usdcAssets, locale: 'de'),
         '1.234,56 USDC',
       );
     });
 
-    test('an asset whose decimals are unknown shows whole minor units', () {
+    test('an asset finance does not describe shows whole minor units', () {
       expect(
-        formatMoney(finance.Money(assetId: 'XYZ.146', amount: '1234567')),
+        formatMoney(
+          finance.Money(assetId: 'XYZ.146', amount: '1234567'),
+          usdcAssets,
+        ),
         '1,234,567 XYZ.146',
+      );
+      expect(
+        formatMoney(usdcMoney('1234567'), StawiAssets.empty),
+        '1,234,567 USDC.146',
+      );
+    });
+
+    test('takes symbol and decimals from the asset details', () {
+      final assets = usdcAssets.withAll([
+        finance.AssetInfo(assetId: 'KES.1', symbol: 'KES', decimals: 2),
+      ]);
+      expect(
+        formatMoney(finance.Money(assetId: 'KES.1', amount: '12345'), assets),
+        '123.45 KES',
+      );
+      expect(formatMoney(usdcMoney('500000'), assets), '0.50 USDC');
+      expect(
+        StawiAsset.fromInfo(
+          finance.AssetInfo(assetId: 'ODD.1', symbol: 'ODD', decimals: 300),
+        ).known,
+        isFalse,
       );
     });
 
@@ -84,6 +106,7 @@ void main() {
           maxInstalments: 6,
           feeBps: 50,
         ),
+        usdcAssets,
       ),
       'up to 900.00 USDC · 3% per period · 1–6 instalments · fee 0.5%',
     );
@@ -108,6 +131,12 @@ void main() {
             ),
           ),
         ),
+      )
+      ..on(
+        finance.RoomService.getRoom,
+        (req) => finance.GetRoomResponse(
+          room: finance.Room(roomId: req.roomId, assets: [usdcInfo]),
+        ),
       );
     final asset = await StawiFinanceService(
       rooms: finance.RoomServiceClient(transport),
@@ -116,6 +145,7 @@ void main() {
       identity: () async => const StawiIdentity(profileId: 'p1', accounts: []),
     ).roomAsset('room00000000000000aa');
     expect(asset!.id, 'USDC.146');
+    expect(asset.symbol, 'USDC');
     expect(asset.decimals, 6);
   });
 }

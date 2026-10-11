@@ -152,6 +152,11 @@ void main() {
     setUp(() async {
       transport = FakeConnectTransport()
         ..on(
+          settlement.AccountService.getAsset,
+          (_) =>
+              settlement.GetAssetResponse(asset: usdcInfo, faucetEnabled: true),
+        )
+        ..on(
           settlement.AccountService.fundTestAccount,
           (req) => settlement.FundTestAccountResponse(
             amount: req.amount,
@@ -276,6 +281,7 @@ void main() {
         overrides: [
           roomCustodyProvider.overrideWith((ref, id) async => custody),
           stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
+          stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
               accounts: settlement.AccountServiceClient(transport),

@@ -75,6 +75,7 @@ void main() {
   List<Override> overrides() => [
     currentProfileIdProvider.overrideWith((ref) async => 'p1'),
     stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
+    stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
     roomMembersProvider.overrideWith(
       (ref, roomId) async => [
         RoomSubscriptionInfo(

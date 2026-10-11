@@ -3,23 +3,28 @@ import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
 /// An asset as the app shows it: its id (`SYMBOL.chainId`, e.g. "USDC.146"),
-/// the symbol people read and the number of minor-unit digits.
-///
-/// No API serves the protocol manifest's asset registry to the app yet
-/// (protocol.v1 Asset carries symbol and decimals), so the decimals of the
-/// settlement assets Stawi rooms use are kept here, keyed by symbol.
+/// the symbol people read and the number of minor-unit digits, from finance's
+/// AssetInfo.
 class StawiAsset {
   const StawiAsset._(this.id, this.symbol, this.decimals, this.known);
 
-  /// The asset an id names. An unknown symbol shows its amounts as whole
-  /// minor units under its id.
-  factory StawiAsset.fromId(String id) {
-    final symbol = id.split('.').first.toUpperCase();
-    final decimals = knownAssetDecimals[symbol];
-    return decimals == null
-        ? StawiAsset._(id, id, 0, false)
-        : StawiAsset._(id, symbol, decimals, true);
-  }
+  /// The asset finance describes. A description without usable decimals is
+  /// taken as unknown.
+  factory StawiAsset.fromInfo(finance.AssetInfo info) =>
+      info.decimals > _maxDecimals
+      ? StawiAsset.unknown(info.assetId)
+      : StawiAsset._(
+          info.assetId,
+          info.symbol.isEmpty ? info.assetId : info.symbol,
+          info.decimals,
+          true,
+        );
+
+  /// An asset nothing describes: its amounts show as whole minor units under
+  /// its id.
+  const StawiAsset.unknown(String id) : this._(id, id, 0, false);
+
+  static const _maxDecimals = 77;
 
   final String id;
   final String symbol;
@@ -31,8 +36,29 @@ class StawiAsset {
   sdk.Asset get sdkAsset => sdk.Asset(id, decimals);
 }
 
-/// Minor-unit digits of the settlement assets rooms hold (ERC-20 decimals).
-const Map<String, int> knownAssetDecimals = {'USDC': 6, 'USDT': 6, 'EURC': 6};
+/// The assets amounts name, by asset id (Money.asset_id), as finance lists
+/// them with a room (Room.assets) and its products and balances.
+class StawiAssets {
+  StawiAssets([Iterable<finance.AssetInfo> infos = const []])
+    : _byId = {
+        for (final info in infos)
+          if (info.assetId.isNotEmpty) info.assetId: StawiAsset.fromInfo(info),
+      };
+
+  StawiAssets._(this._byId);
+
+  static final StawiAssets empty = StawiAssets();
+
+  final Map<String, StawiAsset> _byId;
+
+  /// The asset [id] names; unknown (raw minor units under the id) when none
+  /// of the lists describes it.
+  StawiAsset of(String id) => _byId[id] ?? StawiAsset.unknown(id);
+
+  /// These assets and [infos], [infos] taking precedence.
+  StawiAssets withAll(Iterable<finance.AssetInfo> infos) =>
+      StawiAssets._({..._byId, ...StawiAssets(infos)._byId});
+}
 
 /// [units] minor units of [asset], localized: "900.00 USDC",
 /// "1,234.567891 USDC". At least two fraction digits for a known asset, and
@@ -64,12 +90,13 @@ String formatUnits(BigInt units, StawiAsset asset, {String? locale}) {
   return '$number ${asset.symbol}';
 }
 
-/// A finance.v1 Money, formatted from its minor units ("0" when empty).
-String formatMoney(finance.Money money, {String? locale}) {
+/// A finance.v1 Money, formatted from its minor units ("0" when empty) in the
+/// asset [assets] describes for its asset id.
+String formatMoney(finance.Money money, StawiAssets assets, {String? locale}) {
   final units = BigInt.tryParse(money.amount.isEmpty ? '0' : money.amount);
   if (units == null) return money.amount;
   if (money.assetId.isEmpty) return units.toString();
-  return formatUnits(units, StawiAsset.fromId(money.assetId), locale: locale);
+  return formatUnits(units, assets.of(money.assetId), locale: locale);
 }
 
 /// Parses an amount a person typed ("12.5", "900") into minor units of

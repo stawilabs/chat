@@ -188,6 +188,7 @@ void main() {
             ),
             roomCustodyProvider.overrideWith((ref, id) async => request.room),
             stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
+            stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
                 accounts: settlement.AccountServiceClient(transport),

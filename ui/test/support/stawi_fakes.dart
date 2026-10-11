@@ -369,5 +369,16 @@ class GoEngineCallVector {
   );
 }
 
-/// The rooms' savings asset in tests: USDC with 6 decimals.
-final StawiAsset usdc = StawiAsset.fromId('USDC.146');
+/// The rooms' savings asset in tests, as finance describes it: USDC with 6
+/// decimals.
+final finance.AssetInfo usdcInfo = finance.AssetInfo(
+  assetId: 'USDC.146',
+  symbol: 'USDC',
+  decimals: 6,
+  chainId: Int64(146),
+);
+
+final StawiAsset usdc = StawiAsset.fromInfo(usdcInfo);
+
+/// A room's assets in tests: its USDC.
+final StawiAssets usdcAssets = StawiAssets([usdcInfo]);

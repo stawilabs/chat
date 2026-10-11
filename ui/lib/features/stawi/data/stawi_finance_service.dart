@@ -113,8 +113,14 @@ class StawiFinanceService {
         finance.ListLoansRequest(roomId: roomId),
       )).loans;
 
+  /// The assets the room's amounts name (Room.assets).
+  Future<StawiAssets> roomAssets(String roomId) async => StawiAssets(
+    (await _rooms.getRoom(finance.GetRoomRequest(roomId: roomId))).room.assets,
+  );
+
   /// The asset the room saves in: its savings bucket's (else the first
-  /// bucket's) settlement asset in the constitution; null when it has none.
+  /// bucket's) settlement asset in the constitution, as Room.assets describes
+  /// it; null when it has none.
   Future<StawiAsset?> roomAsset(String roomId) async {
     final buckets = (await _rooms.getPolicy(
       finance.GetPolicyRequest(roomId: roomId),
@@ -124,7 +130,8 @@ class StawiFinanceService {
             .where((b) => b.name == 'savings' && b.assetIds.isNotEmpty)
             .firstOrNull ??
         buckets.where((b) => b.assetIds.isNotEmpty).firstOrNull;
-    return bucket == null ? null : StawiAsset.fromId(bucket.assetIds.first);
+    if (bucket == null) return null;
+    return (await roomAssets(roomId)).of(bucket.assetIds.first);
   }
 
   /// The constitution's roles.
@@ -235,3 +242,16 @@ final stawiRoomAssetProvider = FutureProvider.autoDispose
     .family<StawiAsset?, String>(
       (ref, roomId) => ref.watch(stawiFinanceServiceProvider).roomAsset(roomId),
     );
+
+/// The assets a room's amounts name, from GetRoom.
+final stawiRoomAssetsProvider = FutureProvider.autoDispose
+    .family<StawiAssets, String>(
+      (ref, roomId) =>
+          ref.watch(stawiFinanceServiceProvider).roomAssets(roomId),
+    );
+
+/// The room's assets as far as they are known now: none while they load or
+/// when finance cannot describe them, and amounts then show in minor units.
+StawiAssets watchRoomAssets(WidgetRef ref, String roomId) =>
+    ref.watch(stawiRoomAssetsProvider(roomId)).asData?.value ??
+    StawiAssets.empty;

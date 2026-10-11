@@ -39,7 +39,10 @@ class StatementScreen extends ConsumerWidget {
               ),
             ],
           ),
-          data: (s) => _StatementView(statement: s),
+          data: (s) => _StatementView(
+            statement: s,
+            assets: watchRoomAssets(ref, roomId),
+          ),
         ),
       ),
     );
@@ -47,9 +50,10 @@ class StatementScreen extends ConsumerWidget {
 }
 
 class _StatementView extends StatelessWidget {
-  const _StatementView({required this.statement});
+  const _StatementView({required this.statement, required this.assets});
 
   final finance.Statement statement;
+  final StawiAssets assets;
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +70,13 @@ class _StatementView extends StatelessWidget {
               children: [
                 Text('Balance', style: theme.textTheme.labelLarge),
                 Text(
-                  formatMoney(statement.closingBalance),
+                  formatMoney(statement.closingBalance, assets),
                   key: const Key('statement-closing'),
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Opening ${formatMoney(statement.openingBalance)}',
+                  'Opening ${formatMoney(statement.openingBalance, assets)}',
                   style: theme.textTheme.bodySmall,
                 ),
                 if (statement.hasFrom() || statement.hasTo())
@@ -106,11 +110,11 @@ class _StatementView extends StatelessWidget {
               children: [
                 Text(
                   _isZero(line.credit)
-                      ? '−${formatMoney(line.debit)}'
-                      : '+${formatMoney(line.credit)}',
+                      ? '−${formatMoney(line.debit, assets)}'
+                      : '+${formatMoney(line.credit, assets)}',
                 ),
                 Text(
-                  formatMoney(line.runningBalance),
+                  formatMoney(line.runningBalance, assets),
                   style: theme.textTheme.bodySmall,
                 ),
               ],

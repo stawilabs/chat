@@ -259,7 +259,7 @@ void main() {
         minInstalments: 1,
         maxInstalments: 6,
       );
-      final terms = loanProductTerms(loan);
+      final terms = loanProductTerms(loan, usdcAssets);
       expect(terms, contains('up to 50,000.00 USDC'));
       expect(terms, contains('2.5% per period'));
       expect(terms, contains('1–6 instalments'));
@@ -273,7 +273,7 @@ void main() {
         active: true,
       );
       expect(
-        duesProductTerms(dues),
+        duesProductTerms(dues, usdcAssets),
         '1.00 USDC · every period · you choose 0.50 USDC–5.00 USDC',
       );
     });

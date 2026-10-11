@@ -10,6 +10,7 @@ import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/room_subscription_service.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
 import 'package:stawi/features/stawi/ui/stawi_timeline.dart';
@@ -142,8 +143,12 @@ void main() {
           ),
           isMe: false,
         ),
+        overrides: [
+          stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
+        ],
       ),
     );
+    await tester.pumpAndSettle();
     expect(find.text('New proposal: buy a tent'), findsOneWidget);
     expect(find.text('Voting happens in Stawi.'), findsOneWidget);
     expect(find.text('prop0000000000000001'), findsOneWidget);

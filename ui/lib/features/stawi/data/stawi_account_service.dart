@@ -308,6 +308,10 @@ class StawiAccountService {
     }
   }
 
+  /// The deployment's asset and whether its testnet faucet is on.
+  Future<settlement.GetAssetResponse> testAsset() =>
+      _accounts.getAsset(settlement.GetAssetRequest());
+
   /// Testnet faucet: mints [amount] of the test [asset] (as a person types
   /// it, "1000" or "12.5") to the member's primary account. Settlement
   /// refuses it unless the deployment enables it.
@@ -374,6 +378,12 @@ final stawiAccountServiceProvider = Provider<StawiAccountService>((ref) {
     identity: () => ref.read(stawiIdentityProvider.future),
   );
 });
+
+/// The deployment's asset and whether the testnet faucet mints it.
+final stawiTestAssetProvider =
+    FutureProvider.autoDispose<settlement.GetAssetResponse>(
+      (ref) => ref.watch(stawiAccountServiceProvider).testAsset(),
+    );
 
 final stawiAccountStatusProvider =
     FutureProvider.autoDispose<StawiAccountStatus>(

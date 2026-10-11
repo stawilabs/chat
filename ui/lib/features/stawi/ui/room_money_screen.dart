@@ -131,73 +131,77 @@ class _SavingsTab extends ConsumerWidget {
   final String roomId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ListView(
-    children: [
-      const _Heading('My dues'),
-      _AsyncList<finance.Obligation>(
-        value: ref.watch(stawiObligationsProvider(roomId)),
-        empty: 'Nothing due',
-        item: (o) => ListTile(
-          title: Text('${formatMoney(o.settled)} of ${formatMoney(o.amount)}'),
-          subtitle: Text(
-            '${_stateName(o.state.name, 'OBLIGATION_STATE_')}'
-            '${o.hasDueAt() ? ' · due ${_dates.format(o.dueAt.toDateTime())}' : ''}',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assets = watchRoomAssets(ref, roomId);
+    String money(finance.Money m) => formatMoney(m, assets);
+    return ListView(
+      children: [
+        const _Heading('My dues'),
+        _AsyncList<finance.Obligation>(
+          value: ref.watch(stawiObligationsProvider(roomId)),
+          empty: 'Nothing due',
+          item: (o) => ListTile(
+            title: Text('${money(o.settled)} of ${money(o.amount)}'),
+            subtitle: Text(
+              '${_stateName(o.state.name, 'OBLIGATION_STATE_')}'
+              '${o.hasDueAt() ? ' · due ${_dates.format(o.dueAt.toDateTime())}' : ''}',
+            ),
           ),
         ),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: OutlinedButton.icon(
-          key: const Key('money-settle'),
-          icon: const Icon(Icons.task_alt),
-          label: const Text('Settle my dues now'),
-          onPressed: () => _pushForMe(
-            context,
-            ref,
-            roomId,
-            settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
-            'Settlement requested; your payments are credited on chain',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: OutlinedButton.icon(
+            key: const Key('money-settle'),
+            icon: const Icon(Icons.task_alt),
+            label: const Text('Settle my dues now'),
+            onPressed: () => _pushForMe(
+              context,
+              ref,
+              roomId,
+              settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
+              'Settlement requested; your payments are credited on chain',
+            ),
           ),
         ),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final call in [
-              AccountEngineCall.chooseAmount,
-              AccountEngineCall.withdrawCredit,
-              AccountEngineCall.withdrawEquity,
-            ])
-              OutlinedButton(
-                key: Key('engine-${call.name}'),
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) =>
-                      AccountEngineDialog(roomId: roomId, call: call),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final call in [
+                AccountEngineCall.chooseAmount,
+                AccountEngineCall.withdrawCredit,
+                AccountEngineCall.withdrawEquity,
+              ])
+                OutlinedButton(
+                  key: Key('engine-${call.name}'),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) =>
+                        AccountEngineDialog(roomId: roomId, call: call),
+                  ),
+                  child: Text(call.label),
                 ),
-                child: Text(call.label),
-              ),
-          ],
-        ),
-      ),
-      const _Heading('Periods'),
-      _AsyncList<finance.Period>(
-        value: ref.watch(stawiPeriodsProvider(roomId)),
-        empty: 'No periods yet',
-        item: (p) => ListTile(
-          title: Text('Period ${p.periodIndex}'),
-          subtitle: Text(
-            '${formatMoney(p.settledTotal)} of ${formatMoney(p.expectedTotal)}'
-            ' · ${p.obligationsSettled}/${p.obligationsSettled + p.obligationsOpen} paid',
+            ],
           ),
-          trailing: Text(_stateName(p.state.name, 'PERIOD_STATE_')),
         ),
-      ),
-    ],
-  );
+        const _Heading('Periods'),
+        _AsyncList<finance.Period>(
+          value: ref.watch(stawiPeriodsProvider(roomId)),
+          empty: 'No periods yet',
+          item: (p) => ListTile(
+            title: Text('Period ${p.periodIndex}'),
+            subtitle: Text(
+              '${money(p.settledTotal)} of ${money(p.expectedTotal)}'
+              ' · ${p.obligationsSettled}/${p.obligationsSettled + p.obligationsOpen} paid',
+            ),
+            trailing: Text(_stateName(p.state.name, 'PERIOD_STATE_')),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ShareOutsTab extends ConsumerWidget {
@@ -206,48 +210,51 @@ class _ShareOutsTab extends ConsumerWidget {
   final String roomId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ListView(
-    children: [
-      const _Heading('My share-outs'),
-      _AsyncList<finance.Entitlement>(
-        value: ref.watch(stawiEntitlementsProvider(roomId)),
-        empty: 'No share-outs for you yet',
-        item: (e) => ListTile(
-          title: Text(formatMoney(e.amount)),
-          subtitle: Text(_stateName(e.state.name, 'INTENT_STATE_')),
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: OutlinedButton.icon(
-          key: const Key('money-collect'),
-          icon: const Icon(Icons.download_outlined),
-          label: const Text('Collect my share-outs'),
-          onPressed: () => _pushForMe(
-            context,
-            ref,
-            roomId,
-            settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
-            'Collection requested; your share-outs are paid on chain',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assets = watchRoomAssets(ref, roomId);
+    return ListView(
+      children: [
+        const _Heading('My share-outs'),
+        _AsyncList<finance.Entitlement>(
+          value: ref.watch(stawiEntitlementsProvider(roomId)),
+          empty: 'No share-outs for you yet',
+          item: (e) => ListTile(
+            title: Text(formatMoney(e.amount, assets)),
+            subtitle: Text(_stateName(e.state.name, 'INTENT_STATE_')),
           ),
         ),
-      ),
-      const _Heading('Share-outs'),
-      _AsyncList<finance.DistributionRecord>(
-        value: ref.watch(stawiDistributionsProvider(roomId)),
-        empty: 'No share-outs yet',
-        item: (d) => ListTile(
-          title: Text(formatMoney(d.total)),
-          subtitle: Text(
-            '${_stateName(d.method.name, 'METHOD_')} · '
-            '${d.entitlementCount} members'
-            '${d.hasCreatedAt() ? ' · ${_dates.format(d.createdAt.toDateTime())}' : ''}',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: OutlinedButton.icon(
+            key: const Key('money-collect'),
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Collect my share-outs'),
+            onPressed: () => _pushForMe(
+              context,
+              ref,
+              roomId,
+              settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
+              'Collection requested; your share-outs are paid on chain',
+            ),
           ),
-          trailing: Text(_stateName(d.state.name, 'DISTRIBUTION_STATE_')),
         ),
-      ),
-    ],
-  );
+        const _Heading('Share-outs'),
+        _AsyncList<finance.DistributionRecord>(
+          value: ref.watch(stawiDistributionsProvider(roomId)),
+          empty: 'No share-outs yet',
+          item: (d) => ListTile(
+            title: Text(formatMoney(d.total, assets)),
+            subtitle: Text(
+              '${_stateName(d.method.name, 'METHOD_')} · '
+              '${d.entitlementCount} members'
+              '${d.hasCreatedAt() ? ' · ${_dates.format(d.createdAt.toDateTime())}' : ''}',
+            ),
+            trailing: Text(_stateName(d.state.name, 'DISTRIBUTION_STATE_')),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _LoansTab extends ConsumerWidget {
@@ -260,6 +267,7 @@ class _LoansTab extends ConsumerWidget {
     final mine =
         ref.watch(stawiIdentityProvider).asData?.value.addresses ??
         const <Uint8List>[];
+    final assets = watchRoomAssets(ref, roomId);
     void open(AccountEngineCall call, {finance.Loan? loan}) => showDialog<void>(
       context: context,
       builder: (_) =>
@@ -285,23 +293,28 @@ class _LoansTab extends ConsumerWidget {
             return ExpansionTile(
               key: Key('loan-${loan.onchainLoanId}'),
               title: Text(
-                'Loan #${loan.onchainLoanId} · ${formatMoney(loan.requested)}'
+                'Loan #${loan.onchainLoanId} · ${formatMoney(loan.requested, assets)}'
                 '${isMine ? ' (mine)' : ''}',
               ),
               subtitle: Text(
                 '${_stateName(loan.state.name, 'LOAN_STATE_')}'
-                ' · outstanding ${formatMoney(loan.outstandingPrincipal)}',
+                ' · outstanding '
+                '${formatMoney(loan.outstandingPrincipal, assets)}',
               ),
               children: [
-                _Breakdown({
-                  'Paid out': loan.paidOut,
-                  'Pledged': loan.pledged,
-                  'Repaid principal': loan.repaidPrincipal,
-                  'Repaid interest': loan.repaidInterest,
-                  'Repaid fees': loan.repaidFees,
-                  'Repaid penalties': loan.repaidPenalties,
-                  'Recovered': loan.recovered,
-                }, instalments: loan.instalments),
+                _Breakdown(
+                  {
+                    'Paid out': loan.paidOut,
+                    'Pledged': loan.pledged,
+                    'Repaid principal': loan.repaidPrincipal,
+                    'Repaid interest': loan.repaidInterest,
+                    'Repaid fees': loan.repaidFees,
+                    'Repaid penalties': loan.repaidPenalties,
+                    'Recovered': loan.recovered,
+                  },
+                  assets: assets,
+                  instalments: loan.instalments,
+                ),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -333,9 +346,14 @@ class _LoansTab extends ConsumerWidget {
 }
 
 class _Breakdown extends StatelessWidget {
-  const _Breakdown(this.amounts, {required this.instalments});
+  const _Breakdown(
+    this.amounts, {
+    required this.assets,
+    required this.instalments,
+  });
 
   final Map<String, finance.Money> amounts;
+  final StawiAssets assets;
   final int instalments;
 
   @override
@@ -348,7 +366,7 @@ class _Breakdown extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: Text(e.key)),
-                Text(formatMoney(e.value)),
+                Text(formatMoney(e.value, assets)),
               ],
             ),
         if (instalments > 0)
@@ -377,46 +395,54 @@ class _MembersTab extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Text(stawiErrorMessage(error)),
         ),
-        data: (response) => ListView(
-          children: [
-            if (!response.booksAvailable)
-              const Padding(
-                key: Key('books-unavailable'),
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Live credit and equity are unavailable right now; totals '
-                  'below are from the index.',
+        data: (response) {
+          final assets = watchRoomAssets(ref, roomId).withAll(response.assets);
+          return ListView(
+            children: [
+              if (!response.booksAvailable)
+                const Padding(
+                  key: Key('books-unavailable'),
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Live credit and equity are unavailable right now; totals '
+                    'below are from the index.',
+                  ),
                 ),
-              ),
-            if (response.balances.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No members on chain yet'),
-              ),
-            for (final m in response.balances)
-              ExpansionTile(
-                key: Key('member-${m.memberId}'),
-                title: _MemberName(roomId: roomId, profileId: m.profileId),
-                subtitle: Text(
-                  '${m.membershipState.toLowerCase()}'
-                  ' · contributed ${formatMoney(m.contributed)}'
-                  '${m.hasBook() ? ' · ${_stateName(m.book.standing.name, 'MEMBER_DUES_STANDING_')}' : ''}',
+              if (response.balances.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No members on chain yet'),
                 ),
-                children: [
-                  _Breakdown({
-                    if (m.hasBook()) 'Credit': m.book.credit,
-                    if (m.hasBook()) 'Equity': m.book.equity,
-                    if (m.hasBook()) 'Dues owed': m.book.duesOwed,
-                    if (m.hasBook()) 'Share-outs to collect': m.book.payoutOwed,
-                    'Dues paid': m.duesPaid,
-                    'Collected': m.collected,
-                    'Withdrawn': m.withdrawn,
-                    'Loans outstanding': m.loansOutstanding,
-                  }, instalments: 0),
-                ],
-              ),
-          ],
-        ),
+              for (final m in response.balances)
+                ExpansionTile(
+                  key: Key('member-${m.memberId}'),
+                  title: _MemberName(roomId: roomId, profileId: m.profileId),
+                  subtitle: Text(
+                    '${m.membershipState.toLowerCase()}'
+                    ' · contributed ${formatMoney(m.contributed, assets)}'
+                    '${m.hasBook() ? ' · ${_stateName(m.book.standing.name, 'MEMBER_DUES_STANDING_')}' : ''}',
+                  ),
+                  children: [
+                    _Breakdown(
+                      {
+                        if (m.hasBook()) 'Credit': m.book.credit,
+                        if (m.hasBook()) 'Equity': m.book.equity,
+                        if (m.hasBook()) 'Dues owed': m.book.duesOwed,
+                        if (m.hasBook())
+                          'Share-outs to collect': m.book.payoutOwed,
+                        'Dues paid': m.duesPaid,
+                        'Collected': m.collected,
+                        'Withdrawn': m.withdrawn,
+                        'Loans outstanding': m.loansOutstanding,
+                      },
+                      assets: assets,
+                      instalments: 0,
+                    ),
+                  ],
+                ),
+            ],
+          );
+        },
       );
 }
 
@@ -622,13 +648,17 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
           loading: () => const LinearProgressIndicator(),
           error: (error, _) => Text(stawiErrorMessage(error)),
           data: (products) {
+            final assets = watchRoomAssets(
+              ref,
+              widget.roomId,
+            ).withAll(products.assets);
             final entries = loans
                 ? [
                     for (final p in products.loanProducts)
                       (
                         id: Uint8List.fromList(p.productId),
                         label: productLabel(p.name, p.productId),
-                        terms: loanProductTerms(p),
+                        terms: loanProductTerms(p, assets),
                       ),
                   ]
                 : [
@@ -638,7 +668,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                       (
                         id: Uint8List.fromList(p.productId),
                         label: productLabel(p.name, p.productId),
-                        terms: duesProductTerms(p),
+                        terms: duesProductTerms(p, assets),
                       ),
                   ];
             if (!products.rulesConfigured || entries.isEmpty) {

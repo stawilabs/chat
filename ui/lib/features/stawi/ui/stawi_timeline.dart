@@ -383,10 +383,15 @@ class FinanceCardBubble extends ConsumerWidget {
   static const _hidden = {'action', 'payload_hash', 'asset_id'};
 
   /// A data value as shown: an amount in its asset when the card names one.
-  static String _shown(FinanceCardView card, String key, String value) {
+  static String _shown(
+    FinanceCardView card,
+    String key,
+    String value,
+    StawiAssets assets,
+  ) {
     final asset = card.data['asset_id'] ?? '';
     return key == 'amount' && asset.isNotEmpty
-        ? formatMoney(finance.Money(assetId: asset, amount: value))
+        ? formatMoney(finance.Money(assetId: asset, amount: value), assets)
         : value;
   }
 
@@ -397,6 +402,9 @@ class FinanceCardBubble extends ConsumerWidget {
     final proposalId = card.data['proposal_id'] ?? '';
     final offersVote =
         card.data['action'] == 'open_signing_flow' && proposalId.isNotEmpty;
+    final assets = (card.data['asset_id'] ?? '').isEmpty
+        ? StawiAssets.empty
+        : watchRoomAssets(ref, event.roomId);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
@@ -429,7 +437,7 @@ class FinanceCardBubble extends ConsumerWidget {
                 ))
                   _Line(
                     entry.key.replaceAll('_', ' '),
-                    _shown(card, entry.key, entry.value),
+                    _shown(card, entry.key, entry.value, assets),
                   ),
                 if (offersVote) ...[
                   const SizedBox(height: 8),

@@ -71,7 +71,20 @@ class _AccountViewState extends ConsumerState<_AccountView> {
   }
 
   Future<void> _getTestFunds() async {
-    final asset = StawiAsset.fromId(ApiConfig.testAssetId);
+    final StawiAsset asset;
+    try {
+      asset = StawiAsset.fromInfo(
+        (await ref.read(stawiTestAssetProvider.future)).asset,
+      );
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(stawiErrorMessage(error))));
+      }
+      return;
+    }
+    if (!mounted) return;
     final amount = await showDialog<String>(
       context: context,
       builder: (context) => _TestFundsDialog(asset: asset),
