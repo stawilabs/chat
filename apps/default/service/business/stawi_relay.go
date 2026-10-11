@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -156,6 +157,12 @@ func (sr *stawiRelay) relayConversion(
 		founderProfiles = append(founderProfiles, profileID)
 	}
 
+	// Settlement takes the converting admin as one of the founders.
+	if !slices.Contains(founderProfiles, act.sender.ProfileID) {
+		return stawiRelayResult{ack: invalidStawiPayload(
+			errors.New("the member converting the room must be one of its founders"))}
+	}
+
 	genesis, err := sr.rooms.PrepareRoomGenesis(ctx, stawi.PrepareGenesisRequest{
 		ChatRoomID:        act.event.RoomID,
 		TemplateID:        content.GetTemplateId(),
@@ -231,8 +238,13 @@ func (sr *stawiRelay) relayGenesisSignature(
 	_, err = sr.rooms.SubmitRoomGenesisSignature(ctx, stawi.GenesisSignature{
 		GenesisID:       binding.GenesisID,
 		SignerProfileID: act.sender.ProfileID,
-		SignerKeyID:     content.GetSignerKeyId(),
-		Signature:       content.GetSignature(),
+		Signature: stawi.DeviceSignature{
+			KeyID:             content.GetSignerKeyId(),
+			Algorithm:         content.GetAlgorithm(),
+			Signature:         content.GetSignature(),
+			AuthenticatorData: content.GetWebauthnAuthenticatorData(),
+			ClientDataJSON:    content.GetWebauthnClientDataJson(),
+		},
 	})
 	outcome := &chatv1.StawiCallOutcomeContent{GenesisId: binding.GenesisID, Kind: "GENESIS_SIGNATURE"}
 	if err != nil {
@@ -273,9 +285,14 @@ func (sr *stawiRelay) relaySignedCall(
 	}
 
 	submitted, err := sr.rooms.SubmitRoomCall(ctx, stawi.CallSubmission{
-		CallID:          call.CallID,
-		Signature:       content.GetSignature(),
-		SignerKeyID:     content.GetSignerKeyId(),
+		CallID: call.CallID,
+		Signature: stawi.DeviceSignature{
+			KeyID:             content.GetSignerKeyId(),
+			Algorithm:         content.GetAlgorithm(),
+			Signature:         content.GetSignature(),
+			AuthenticatorData: content.GetWebauthnAuthenticatorData(),
+			ClientDataJSON:    content.GetWebauthnClientDataJson(),
+		},
 		SignerProfileID: act.sender.ProfileID,
 	})
 	outcome := &chatv1.StawiCallOutcomeContent{CallId: call.CallID, Kind: call.Kind}
@@ -307,10 +324,15 @@ func (sr *stawiRelay) relaySignedCall(
 	return sr.withOutcome(ctx, act, outcome)
 }
 
-// checkSigner requires the sender's subscription to be the call's signer: the
-// account settlement names as the signer must belong to the sender's profile,
-// as the profile service says.
+// checkSigner requires the sender's subscription to be the call's signer:
+// settlement must have prepared the call for the sender's profile, and the
+// account it names as the signer must belong to that profile, as the profile
+// service says.
 func (sr *stawiRelay) checkSigner(ctx context.Context, act *stawiAct, call *stawi.RoomCall) error {
+	if call.ProfileID != "" && call.ProfileID != act.sender.ProfileID {
+		return connect.NewError(connect.CodePermissionDenied,
+			errors.New("the call was prepared for another member"))
+	}
 	if sr.accounts == nil {
 		return errStawiNotConfigured
 	}

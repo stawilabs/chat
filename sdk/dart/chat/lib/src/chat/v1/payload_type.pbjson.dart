@@ -1058,14 +1058,21 @@ const StawiGenesisSignatureContent$json = {
     {'1': 'genesis_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
     {'1': 'signature', '3': 2, '4': 1, '5': 12, '8': {}, '10': 'signature'},
     {'1': 'signer_key_id', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'signerKeyId'},
+    {'1': 'algorithm', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'algorithm'},
+    {'1': 'webauthn_authenticator_data', '3': 5, '4': 1, '5': 12, '8': {}, '10': 'webauthnAuthenticatorData'},
+    {'1': 'webauthn_client_data_json', '3': 6, '4': 1, '5': 12, '8': {}, '10': 'webauthnClientDataJson'},
   ],
 };
 
 /// Descriptor for `StawiGenesisSignatureContent`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List stawiGenesisSignatureContentDescriptor = $convert.base64Decode(
     'ChxTdGF3aUdlbmVzaXNTaWduYXR1cmVDb250ZW50EigKCmdlbmVzaXNfaWQYASABKAlCCbpIBn'
-    'IEEAEYQFIJZ2VuZXNpc0lkEigKCXNpZ25hdHVyZRgCIAEoDEIKukgHegUQARiAIFIJc2lnbmF0'
-    'dXJlEi4KDXNpZ25lcl9rZXlfaWQYAyABKAlCCrpIB3IFEAEYgAFSC3NpZ25lcktleUlk');
+    'IEEAEYQFIJZ2VuZXNpc0lkEigKCXNpZ25hdHVyZRgCIAEoDEIKukgHegUQQBiEAVIJc2lnbmF0'
+    'dXJlEi4KDXNpZ25lcl9rZXlfaWQYAyABKAlCCrpIB3IFEAEYgAFSC3NpZ25lcktleUlkEj0KCW'
+    'FsZ29yaXRobRgEIAEoCUIfukgcchpSCXNlY3AyNTZrMVINcDI1Ni13ZWJhdXRoblIJYWxnb3Jp'
+    'dGhtEkgKG3dlYmF1dGhuX2F1dGhlbnRpY2F0b3JfZGF0YRgFIAEoDEIIukgFegMYgCBSGXdlYm'
+    'F1dGhuQXV0aGVudGljYXRvckRhdGESQwoZd2ViYXV0aG5fY2xpZW50X2RhdGFfanNvbhgGIAEo'
+    'DEIIukgFegMYgCBSFndlYmF1dGhuQ2xpZW50RGF0YUpzb24=');
 
 @$core.Deprecated('Use stawiSignedCallContentDescriptor instead')
 const StawiSignedCallContent$json = {
@@ -1076,6 +1083,9 @@ const StawiSignedCallContent$json = {
     {'1': 'signature', '3': 3, '4': 1, '5': 12, '8': {}, '10': 'signature'},
     {'1': 'signer_key_id', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'signerKeyId'},
     {'1': 'summary', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'summary'},
+    {'1': 'algorithm', '3': 6, '4': 1, '5': 9, '8': {}, '10': 'algorithm'},
+    {'1': 'webauthn_authenticator_data', '3': 7, '4': 1, '5': 12, '8': {}, '10': 'webauthnAuthenticatorData'},
+    {'1': 'webauthn_client_data_json', '3': 8, '4': 1, '5': 12, '8': {}, '10': 'webauthnClientDataJson'},
   ],
 };
 
@@ -1083,8 +1093,12 @@ const StawiSignedCallContent$json = {
 final $typed_data.Uint8List stawiSignedCallContentDescriptor = $convert.base64Decode(
     'ChZTdGF3aVNpZ25lZENhbGxDb250ZW50EiIKB2NhbGxfaWQYASABKAlCCbpIBnIEEAEYQFIGY2'
     'FsbElkEh0KBGtpbmQYAiABKAlCCbpIBnIEEAEYQFIEa2luZBIoCglzaWduYXR1cmUYAyABKAxC'
-    'CrpIB3oFEAEYgCBSCXNpZ25hdHVyZRIsCg1zaWduZXJfa2V5X2lkGAQgASgJQgi6SAVyAxiAAV'
-    'ILc2lnbmVyS2V5SWQSIgoHc3VtbWFyeRgFIAEoCUIIukgFcgMYgARSB3N1bW1hcnk=');
+    'CrpIB3oFEEAYhAFSCXNpZ25hdHVyZRIuCg1zaWduZXJfa2V5X2lkGAQgASgJQgq6SAdyBRABGI'
+    'ABUgtzaWduZXJLZXlJZBIiCgdzdW1tYXJ5GAUgASgJQgi6SAVyAxiABFIHc3VtbWFyeRI9Cglh'
+    'bGdvcml0aG0YBiABKAlCH7pIHHIaUglzZWNwMjU2azFSDXAyNTYtd2ViYXV0aG5SCWFsZ29yaX'
+    'RobRJICht3ZWJhdXRobl9hdXRoZW50aWNhdG9yX2RhdGEYByABKAxCCLpIBXoDGIAgUhl3ZWJh'
+    'dXRobkF1dGhlbnRpY2F0b3JEYXRhEkMKGXdlYmF1dGhuX2NsaWVudF9kYXRhX2pzb24YCCABKA'
+    'xCCLpIBXoDGIAgUhZ3ZWJhdXRobkNsaWVudERhdGFKc29u');
 
 @$core.Deprecated('Use stawiCallOutcomeContentDescriptor instead')
 const StawiCallOutcomeContent$json = {

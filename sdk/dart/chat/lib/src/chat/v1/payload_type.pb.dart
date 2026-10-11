@@ -4229,6 +4229,9 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
     $core.String? genesisId,
     $core.List<$core.int>? signature,
     $core.String? signerKeyId,
+    $core.String? algorithm,
+    $core.List<$core.int>? webauthnAuthenticatorData,
+    $core.List<$core.int>? webauthnClientDataJson,
   }) {
     final $result = create();
     if (genesisId != null) {
@@ -4240,6 +4243,15 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
     if (signerKeyId != null) {
       $result.signerKeyId = signerKeyId;
     }
+    if (algorithm != null) {
+      $result.algorithm = algorithm;
+    }
+    if (webauthnAuthenticatorData != null) {
+      $result.webauthnAuthenticatorData = webauthnAuthenticatorData;
+    }
+    if (webauthnClientDataJson != null) {
+      $result.webauthnClientDataJson = webauthnClientDataJson;
+    }
     return $result;
   }
   StawiGenesisSignatureContent._() : super();
@@ -4250,6 +4262,9 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'genesisId')
     ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'signature', $pb.PbFieldType.OY)
     ..aOS(3, _omitFieldNames ? '' : 'signerKeyId')
+    ..aOS(4, _omitFieldNames ? '' : 'algorithm')
+    ..a<$core.List<$core.int>>(5, _omitFieldNames ? '' : 'webauthnAuthenticatorData', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(6, _omitFieldNames ? '' : 'webauthnClientDataJson', $pb.PbFieldType.OY)
     ..hasRequiredFields = false
   ;
 
@@ -4283,6 +4298,8 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearGenesisId() => clearField(1);
 
+  /// The device signature over the founder's signing digest: secp256k1
+  /// (65 bytes) or P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
   @$pb.TagNumber(2)
   $core.List<$core.int> get signature => $_getN(1);
   @$pb.TagNumber(2)
@@ -4301,6 +4318,35 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
   $core.bool hasSignerKeyId() => $_has(2);
   @$pb.TagNumber(3)
   void clearSignerKeyId() => clearField(3);
+
+  /// "secp256k1" or "p256-webauthn".
+  @$pb.TagNumber(4)
+  $core.String get algorithm => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set algorithm($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasAlgorithm() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAlgorithm() => clearField(4);
+
+  /// WebAuthn assertion material; empty for secp256k1.
+  @$pb.TagNumber(5)
+  $core.List<$core.int> get webauthnAuthenticatorData => $_getN(4);
+  @$pb.TagNumber(5)
+  set webauthnAuthenticatorData($core.List<$core.int> v) { $_setBytes(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasWebauthnAuthenticatorData() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearWebauthnAuthenticatorData() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.List<$core.int> get webauthnClientDataJson => $_getN(5);
+  @$pb.TagNumber(6)
+  set webauthnClientDataJson($core.List<$core.int> v) { $_setBytes(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasWebauthnClientDataJson() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearWebauthnClientDataJson() => clearField(6);
 }
 
 /// StawiSignedCallContent carries a room governance call (invite, accept,
@@ -4315,6 +4361,9 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
     $core.List<$core.int>? signature,
     $core.String? signerKeyId,
     $core.String? summary,
+    $core.String? algorithm,
+    $core.List<$core.int>? webauthnAuthenticatorData,
+    $core.List<$core.int>? webauthnClientDataJson,
   }) {
     final $result = create();
     if (callId != null) {
@@ -4332,6 +4381,15 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
     if (summary != null) {
       $result.summary = summary;
     }
+    if (algorithm != null) {
+      $result.algorithm = algorithm;
+    }
+    if (webauthnAuthenticatorData != null) {
+      $result.webauthnAuthenticatorData = webauthnAuthenticatorData;
+    }
+    if (webauthnClientDataJson != null) {
+      $result.webauthnClientDataJson = webauthnClientDataJson;
+    }
     return $result;
   }
   StawiSignedCallContent._() : super();
@@ -4344,6 +4402,9 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
     ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'signature', $pb.PbFieldType.OY)
     ..aOS(4, _omitFieldNames ? '' : 'signerKeyId')
     ..aOS(5, _omitFieldNames ? '' : 'summary')
+    ..aOS(6, _omitFieldNames ? '' : 'algorithm')
+    ..a<$core.List<$core.int>>(7, _omitFieldNames ? '' : 'webauthnAuthenticatorData', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(8, _omitFieldNames ? '' : 'webauthnClientDataJson', $pb.PbFieldType.OY)
     ..hasRequiredFields = false
   ;
 
@@ -4388,6 +4449,8 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearKind() => clearField(2);
 
+  /// The device signature over the call's digest: secp256k1 (65 bytes) or
+  /// P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
   @$pb.TagNumber(3)
   $core.List<$core.int> get signature => $_getN(2);
   @$pb.TagNumber(3)
@@ -4416,6 +4479,35 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
   $core.bool hasSummary() => $_has(4);
   @$pb.TagNumber(5)
   void clearSummary() => clearField(5);
+
+  /// "secp256k1" or "p256-webauthn".
+  @$pb.TagNumber(6)
+  $core.String get algorithm => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set algorithm($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasAlgorithm() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAlgorithm() => clearField(6);
+
+  /// WebAuthn assertion material; empty for secp256k1.
+  @$pb.TagNumber(7)
+  $core.List<$core.int> get webauthnAuthenticatorData => $_getN(6);
+  @$pb.TagNumber(7)
+  set webauthnAuthenticatorData($core.List<$core.int> v) { $_setBytes(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasWebauthnAuthenticatorData() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearWebauthnAuthenticatorData() => clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.List<$core.int> get webauthnClientDataJson => $_getN(7);
+  @$pb.TagNumber(8)
+  set webauthnClientDataJson($core.List<$core.int> v) { $_setBytes(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasWebauthnClientDataJson() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearWebauthnClientDataJson() => clearField(8);
 }
 
 /// StawiCallOutcomeContent is server-generated: what became of a conversion,

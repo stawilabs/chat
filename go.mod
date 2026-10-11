@@ -12,10 +12,13 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.12-20261010163034-301700166951.2
 	buf.build/gen/go/stawi/chat/connectrpc/go v1.20.0-20260430172303-85050c8677bb.1
 	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.11-20260430172303-85050c8677bb.1
+	buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-00000000000000-d3b9b865ddae.1
+	buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-00000000000000-d3b9b865ddae.2
 	buf.build/go/protovalidate v1.4.0
 	connectrpc.com/connect v1.21.0
 	connectrpc.com/otelconnect v0.10.0
 	github.com/antinvestor/common/v2 v2.0.8
+	github.com/antinvestor/service-profile v1.55.0
 	github.com/pitabwire/frame/v2 v2.1.8
 	github.com/pitabwire/util v0.9.1
 	github.com/rs/xid v1.6.0
@@ -29,7 +32,7 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 // indirect
 	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.12-20230414000709-087bc8072ce4.2 // indirect
-	buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-00000000000000-6da4596a9db1.2 // indirect
+	cel.dev/cel-go v0.32.0 // indirect
 	cel.dev/expr v0.25.3 // indirect
 	cloud.google.com/go/auth v0.24.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.3.0 // indirect
@@ -41,7 +44,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/antinvestor/service-profile v1.55.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/caarlos0/env/v11 v11.4.1 // indirect
@@ -64,7 +66,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	github.com/google/cel-go v0.30.0 // indirect
 	github.com/google/s2a-go v0.1.11 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/google/wire v0.7.0 // indirect

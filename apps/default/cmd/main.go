@@ -14,6 +14,7 @@ import (
 	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
 	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
 	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
 	"connectrpc.com/connect"
 	"github.com/antinvestor/common/v2"
 	"github.com/antinvestor/common/v2/connection"
@@ -40,6 +41,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/queues"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
+	"github.com/stawilabs/chat/apps/default/service/stawi/settlement"
 )
 
 //go:embed spec/chat.openapi.yaml
@@ -258,24 +260,24 @@ func stawiOptions(cfg aconfig.ChatConfig, chain *business.StawiChain) []frame.Op
 	return opts
 }
 
-// setupSettlementRooms returns settlement's RoomService as chat uses it.
-//
-// The adapter over the generated settlement.v1 RoomService client is added
-// once that service is published on buf.build/stawi/finance; it will be built
-// with connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{Endpoint:
-// cfg.SettlementServiceURI, WorkloadAPITargetPath:
-// cfg.SettlementServiceWorkloadAPITargetPath, ServiceID:
-// servicecatalog.ServiceStawiSettlement}, ...). Until then Stawi room acts are
-// refused as unavailable; bound rooms are still guarded and settlement's facts
-// still applied.
-//
-//nolint:unparam // returns the adapter once settlement's RoomService is published
-func setupSettlementRooms(ctx context.Context, cfg aconfig.ChatConfig) stawi.Rooms {
-	if cfg.SettlementServiceURI != "" {
-		util.Log(ctx).WithField("endpoint", cfg.SettlementServiceURI).
-			Warn("main -- settlement RoomService adapter not available yet; Stawi room acts are refused")
+// setupSettlementRooms connects to settlement's RoomService as chat's
+// service principal (workload identity, OAuth2 and retries from cfg). An empty
+// endpoint is a development posture: Stawi room acts are then refused as
+// unavailable, while bound rooms stay guarded and facts are applied.
+func setupSettlementRooms(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, error) {
+	if cfg.SettlementServiceURI == "" {
+		util.Log(ctx).Warn("main -- no settlement endpoint; Stawi room acts are refused")
+		return nil, nil //nolint:nilnil // no endpoint is a development posture, not an error
 	}
-	return nil
+	cli, err := connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
+		Endpoint:              cfg.SettlementServiceURI,
+		WorkloadAPITargetPath: cfg.SettlementServiceWorkloadAPITargetPath,
+		ServiceID:             servicecatalog.ServiceStawiSettlement,
+	}, settlementv1connect.NewRoomServiceClient)
+	if err != nil {
+		return nil, err
+	}
+	return settlement.NewRooms(cli), nil
 }
 
 // setupStawi wires Stawi rooms: settlement relays room acts, profile maps
@@ -290,7 +292,11 @@ func setupStawi(
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
 ) (*business.StawiChain, handlers.ServerOption) {
-	rooms, accountResolver := setupSettlementRooms(ctx, *cfg), accounts.New(profileCli)
+	rooms, err := setupSettlementRooms(ctx, *cfg)
+	if err != nil {
+		util.Log(ctx).WithError(err).Fatal("main -- could not set up the settlement client")
+	}
+	accountResolver := accounts.New(profileCli)
 	chain := newStawiChain(ctx, dbPool, workMan, queueMan, cfg, rooms, accountResolver, authzMiddleware)
 	return chain, handlers.WithStawi(rooms, accountResolver)
 }

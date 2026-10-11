@@ -41,7 +41,11 @@ func TestRelayRefusesASenderWithoutAnActiveSubscription(t *testing.T) {
 				payload: &chatv1.Payload{
 					Type: chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
 					Data: &chatv1.Payload_StawiSignedCall{StawiSignedCall: &chatv1.StawiSignedCallContent{
-						CallId: "call-1", Kind: "INVITE", Signature: []byte{1},
+						CallId:      "call-1",
+						Kind:        "INVITE",
+						Signature:   make([]byte, 65),
+						SignerKeyId: "k",
+						Algorithm:   "secp256k1",
 					}},
 				},
 				sender: sender,

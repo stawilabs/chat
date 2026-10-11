@@ -696,9 +696,11 @@ message StawiGenesisSignatureContent {
     (buf.validate.field).string.max_len = 64
   ];
 
+  // The device signature over the founder's signing digest: secp256k1
+  // (65 bytes) or P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
   bytes signature = 2 [
-    (buf.validate.field).bytes.min_len = 1,
-    (buf.validate.field).bytes.max_len = 4096
+    (buf.validate.field).bytes.min_len = 64,
+    (buf.validate.field).bytes.max_len = 132
   ];
 
   // The device key that produced the signature.
@@ -706,6 +708,18 @@ message StawiGenesisSignatureContent {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128
   ];
+
+  // "secp256k1" or "p256-webauthn".
+  string algorithm = 4 [(buf.validate.field).string = {
+    in: [
+      "secp256k1",
+      "p256-webauthn"
+    ]
+  }];
+
+  // WebAuthn assertion material; empty for secp256k1.
+  bytes webauthn_authenticator_data = 5 [(buf.validate.field).bytes.max_len = 4096];
+  bytes webauthn_client_data_json = 6 [(buf.validate.field).bytes.max_len = 4096];
 }
 
 // StawiSignedCallContent carries a room governance call (invite, accept,
@@ -726,16 +740,33 @@ message StawiSignedCallContent {
     (buf.validate.field).string.max_len = 64
   ];
 
+  // The device signature over the call's digest: secp256k1 (65 bytes) or
+  // P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
   bytes signature = 3 [
-    (buf.validate.field).bytes.min_len = 1,
-    (buf.validate.field).bytes.max_len = 4096
+    (buf.validate.field).bytes.min_len = 64,
+    (buf.validate.field).bytes.max_len = 132
   ];
 
   // The device key that produced the signature.
-  string signer_key_id = 4 [(buf.validate.field).string.max_len = 128];
+  string signer_key_id = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
 
   // Human-readable description of the act, for display.
   string summary = 5 [(buf.validate.field).string.max_len = 512];
+
+  // "secp256k1" or "p256-webauthn".
+  string algorithm = 6 [(buf.validate.field).string = {
+    in: [
+      "secp256k1",
+      "p256-webauthn"
+    ]
+  }];
+
+  // WebAuthn assertion material; empty for secp256k1.
+  bytes webauthn_authenticator_data = 7 [(buf.validate.field).bytes.max_len = 4096];
+  bytes webauthn_client_data_json = 8 [(buf.validate.field).bytes.max_len = 4096];
 }
 
 enum StawiCallOutcomeState {

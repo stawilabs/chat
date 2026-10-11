@@ -179,7 +179,7 @@ func genesisSignature(genesisID string) *chatv1.Payload {
 	return &chatv1.Payload{
 		Type: chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
 		Data: &chatv1.Payload_StawiGenesisSignature{StawiGenesisSignature: &chatv1.StawiGenesisSignatureContent{
-			GenesisId: genesisID, Signature: []byte{0x30, 0x45}, SignerKeyId: "device-key-1",
+			GenesisId: genesisID, Signature: deviceSig(), SignerKeyId: "device-key-1", Algorithm: "secp256k1",
 		}},
 	}
 }
@@ -188,9 +188,16 @@ func signedCall(callID, kind string) *chatv1.Payload {
 	return &chatv1.Payload{
 		Type: chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
 		Data: &chatv1.Payload_StawiSignedCall{StawiSignedCall: &chatv1.StawiSignedCallContent{
-			CallId: callID, Kind: kind, Signature: []byte{0x30, 0x44}, SignerKeyId: "device-key-1",
+			CallId: callID, Kind: kind, Signature: deviceSig(), SignerKeyId: "device-key-1", Algorithm: "secp256k1",
 		}},
 	}
+}
+
+// deviceSig is a well-formed secp256k1 device signature (r ‖ s ‖ v).
+func deviceSig() []byte {
+	sig := make([]byte, 65)
+	sig[64] = 27
+	return sig
 }
 
 func requireAckOK(t *testing.T, ack *chatv1.AckEvent) string {
@@ -360,5 +367,39 @@ func (s *MessageBusinessTestSuite) TestStawiActRetryIsRelayedOnce() {
 			require.Nil(t, acks[0].GetError())
 		}
 		require.Len(t, f.rooms.Prepared, 1)
+	})
+}
+
+// TestStawiRelayFollowsSettlementsRoomServiceRules: the converting admin must
+// be a founder; a call settlement prepared for another member's profile is
+// refused even when the signer account resolves to the sender; the device
+// signature reaches settlement whole.
+func (s *MessageBusinessTestSuite) TestStawiRelayFollowsSettlementsRoomServiceRules() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+
+		requireAckRefused(t, f.send(t, f.alice, conversion(f.bobSub)), connect.CodeInvalidArgument)
+		require.Empty(t, f.rooms.Prepared, "settlement would refuse an admin who is not a founder")
+
+		f.bind(t)
+		f.accounts.Own("0xa11ce", f.alice.GetProfileId())
+		f.rooms.AddCall(stawi.RoomCall{CallID: "call-for-bob", RoomID: f.roomID, Kind: "LEAVE",
+			SignerAddress: "0xa11ce", Nonce: 1, ProfileID: f.bob.GetProfileId()})
+		requireAckRefused(t, f.send(t, f.alice, signedCall("call-for-bob", "LEAVE")), connect.CodePermissionDenied)
+
+		f.rooms.AddCall(stawi.RoomCall{CallID: "call-for-alice", RoomID: f.roomID, Kind: "LEAVE",
+			SignerAddress: "0xa11ce", Nonce: 2, ProfileID: f.alice.GetProfileId()})
+		webauthn := signedCall("call-for-alice", "LEAVE")
+		content := webauthn.GetStawiSignedCall()
+		content.Algorithm, content.Signature = "p256-webauthn", make([]byte, 128)
+		content.WebauthnAuthenticatorData, content.WebauthnClientDataJson = []byte("auth"), []byte("{}")
+		requireAckOK(t, f.send(t, f.alice, webauthn))
+		require.Len(t, f.rooms.Submitted, 1)
+		sig := f.rooms.Submitted[0].Signature
+		require.Equal(t, "p256-webauthn", sig.Algorithm)
+		require.Equal(t, "device-key-1", sig.KeyID)
+		require.Len(t, sig.Signature, 128)
+		require.Equal(t, []byte("auth"), sig.AuthenticatorData)
+		require.Equal(t, []byte("{}"), sig.ClientDataJSON)
 	})
 }

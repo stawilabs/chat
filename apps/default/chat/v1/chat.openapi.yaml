@@ -3887,15 +3887,36 @@ components:
         signature:
           type: string
           title: signature
-          maxLength: 4096
-          minLength: 1
+          maxLength: 132
+          minLength: 64
           format: byte
+          description: |-
+            The device signature over the founder's signing digest: secp256k1
+             (65 bytes) or P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
         signerKeyId:
           type: string
           title: signer_key_id
           maxLength: 128
           minLength: 1
           description: The device key that produced the signature.
+        algorithm:
+          type: string
+          title: algorithm
+          enum:
+            - secp256k1
+            - p256-webauthn
+          description: '"secp256k1" or "p256-webauthn".'
+        webauthnAuthenticatorData:
+          type: string
+          title: webauthn_authenticator_data
+          maxLength: 4096
+          format: byte
+          description: WebAuthn assertion material; empty for secp256k1.
+        webauthnClientDataJson:
+          type: string
+          title: webauthn_client_data_json
+          maxLength: 4096
+          format: byte
       title: StawiGenesisSignatureContent
       additionalProperties: false
       description: |-
@@ -3988,19 +4009,41 @@ components:
         signature:
           type: string
           title: signature
-          maxLength: 4096
-          minLength: 1
+          maxLength: 132
+          minLength: 64
           format: byte
+          description: |-
+            The device signature over the call's digest: secp256k1 (65 bytes) or
+             P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
         signerKeyId:
           type: string
           title: signer_key_id
           maxLength: 128
+          minLength: 1
           description: The device key that produced the signature.
         summary:
           type: string
           title: summary
           maxLength: 512
           description: Human-readable description of the act, for display.
+        algorithm:
+          type: string
+          title: algorithm
+          enum:
+            - secp256k1
+            - p256-webauthn
+          description: '"secp256k1" or "p256-webauthn".'
+        webauthnAuthenticatorData:
+          type: string
+          title: webauthn_authenticator_data
+          maxLength: 4096
+          format: byte
+          description: WebAuthn assertion material; empty for secp256k1.
+        webauthnClientDataJson:
+          type: string
+          title: webauthn_client_data_json
+          maxLength: 4096
+          format: byte
       title: StawiSignedCallContent
       additionalProperties: false
       description: |-

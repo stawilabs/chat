@@ -3831,11 +3831,18 @@ func (x *StawiGenesis) GetFounderProfileIds() []string {
 type StawiGenesisSignatureContent struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	GenesisId string                 `protobuf:"bytes,1,opt,name=genesis_id,json=genesisId,proto3" json:"genesis_id,omitempty"`
-	Signature []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	// The device signature over the founder's signing digest: secp256k1
+	// (65 bytes) or P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
+	Signature []byte `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
 	// The device key that produced the signature.
-	SignerKeyId   string `protobuf:"bytes,3,opt,name=signer_key_id,json=signerKeyId,proto3" json:"signer_key_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SignerKeyId string `protobuf:"bytes,3,opt,name=signer_key_id,json=signerKeyId,proto3" json:"signer_key_id,omitempty"`
+	// "secp256k1" or "p256-webauthn".
+	Algorithm string `protobuf:"bytes,4,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// WebAuthn assertion material; empty for secp256k1.
+	WebauthnAuthenticatorData []byte `protobuf:"bytes,5,opt,name=webauthn_authenticator_data,json=webauthnAuthenticatorData,proto3" json:"webauthn_authenticator_data,omitempty"`
+	WebauthnClientDataJson    []byte `protobuf:"bytes,6,opt,name=webauthn_client_data_json,json=webauthnClientDataJson,proto3" json:"webauthn_client_data_json,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *StawiGenesisSignatureContent) Reset() {
@@ -3889,6 +3896,27 @@ func (x *StawiGenesisSignatureContent) GetSignerKeyId() string {
 	return ""
 }
 
+func (x *StawiGenesisSignatureContent) GetAlgorithm() string {
+	if x != nil {
+		return x.Algorithm
+	}
+	return ""
+}
+
+func (x *StawiGenesisSignatureContent) GetWebauthnAuthenticatorData() []byte {
+	if x != nil {
+		return x.WebauthnAuthenticatorData
+	}
+	return nil
+}
+
+func (x *StawiGenesisSignatureContent) GetWebauthnClientDataJson() []byte {
+	if x != nil {
+		return x.WebauthnClientDataJson
+	}
+	return nil
+}
+
 // StawiSignedCallContent carries a room governance call (invite, accept,
 // join, admit, leave, suspend, roles, propose, vote, delegate, freeze) that
 // the app prepared through settlement and signed with the device key. Chat
@@ -3899,14 +3927,21 @@ type StawiSignedCallContent struct {
 	// The call id settlement returned when the call was prepared.
 	CallId string `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
 	// The call kind, as settlement names it (e.g. "INVITE", "CAST_VOTE").
-	Kind      string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	// The device signature over the call's digest: secp256k1 (65 bytes) or
+	// P-256 (x ‖ y ‖ r ‖ s) for WebAuthn.
 	Signature []byte `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
 	// The device key that produced the signature.
 	SignerKeyId string `protobuf:"bytes,4,opt,name=signer_key_id,json=signerKeyId,proto3" json:"signer_key_id,omitempty"`
 	// Human-readable description of the act, for display.
-	Summary       string `protobuf:"bytes,5,opt,name=summary,proto3" json:"summary,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Summary string `protobuf:"bytes,5,opt,name=summary,proto3" json:"summary,omitempty"`
+	// "secp256k1" or "p256-webauthn".
+	Algorithm string `protobuf:"bytes,6,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// WebAuthn assertion material; empty for secp256k1.
+	WebauthnAuthenticatorData []byte `protobuf:"bytes,7,opt,name=webauthn_authenticator_data,json=webauthnAuthenticatorData,proto3" json:"webauthn_authenticator_data,omitempty"`
+	WebauthnClientDataJson    []byte `protobuf:"bytes,8,opt,name=webauthn_client_data_json,json=webauthnClientDataJson,proto3" json:"webauthn_client_data_json,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *StawiSignedCallContent) Reset() {
@@ -3972,6 +4007,27 @@ func (x *StawiSignedCallContent) GetSummary() string {
 		return x.Summary
 	}
 	return ""
+}
+
+func (x *StawiSignedCallContent) GetAlgorithm() string {
+	if x != nil {
+		return x.Algorithm
+	}
+	return ""
+}
+
+func (x *StawiSignedCallContent) GetWebauthnAuthenticatorData() []byte {
+	if x != nil {
+		return x.WebauthnAuthenticatorData
+	}
+	return nil
+}
+
+func (x *StawiSignedCallContent) GetWebauthnClientDataJson() []byte {
+	if x != nil {
+		return x.WebauthnClientDataJson
+	}
+	return nil
 }
 
 // StawiCallOutcomeContent is server-generated: what became of a conversion,
@@ -4806,21 +4862,28 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x11constitution_hash\x18\x03 \x01(\fB\a\xbaH\x04z\x02\x18 R\x10constitutionHash\x129\n" +
 	"\n" +
 	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x128\n" +
-	"\x13founder_profile_ids\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10@R\x11founderProfileIds\"\xa2\x01\n" +
+	"\x13founder_profile_ids\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10@R\x11founderProfileIds\"\xf0\x02\n" +
 	"\x1cStawiGenesisSignatureContent\x12(\n" +
 	"\n" +
 	"genesis_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\tgenesisId\x12(\n" +
 	"\tsignature\x18\x02 \x01(\fB\n" +
-	"\xbaH\az\x05\x10\x01\x18\x80 R\tsignature\x12.\n" +
+	"\xbaH\az\x05\x10@\x18\x84\x01R\tsignature\x12.\n" +
 	"\rsigner_key_id\x18\x03 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\vsignerKeyId\"\xd7\x01\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\vsignerKeyId\x12=\n" +
+	"\talgorithm\x18\x04 \x01(\tB\x1f\xbaH\x1cr\x1aR\tsecp256k1R\rp256-webauthnR\talgorithm\x12H\n" +
+	"\x1bwebauthn_authenticator_data\x18\x05 \x01(\fB\b\xbaH\x05z\x03\x18\x80 R\x19webauthnAuthenticatorData\x12C\n" +
+	"\x19webauthn_client_data_json\x18\x06 \x01(\fB\b\xbaH\x05z\x03\x18\x80 R\x16webauthnClientDataJson\"\xa7\x03\n" +
 	"\x16StawiSignedCallContent\x12\"\n" +
 	"\acall_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x06callId\x12\x1d\n" +
 	"\x04kind\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04kind\x12(\n" +
 	"\tsignature\x18\x03 \x01(\fB\n" +
-	"\xbaH\az\x05\x10\x01\x18\x80 R\tsignature\x12,\n" +
-	"\rsigner_key_id\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vsignerKeyId\x12\"\n" +
-	"\asummary\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\asummary\"\x90\x03\n" +
+	"\xbaH\az\x05\x10@\x18\x84\x01R\tsignature\x12.\n" +
+	"\rsigner_key_id\x18\x04 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\vsignerKeyId\x12\"\n" +
+	"\asummary\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\asummary\x12=\n" +
+	"\talgorithm\x18\x06 \x01(\tB\x1f\xbaH\x1cr\x1aR\tsecp256k1R\rp256-webauthnR\talgorithm\x12H\n" +
+	"\x1bwebauthn_authenticator_data\x18\a \x01(\fB\b\xbaH\x05z\x03\x18\x80 R\x19webauthnAuthenticatorData\x12C\n" +
+	"\x19webauthn_client_data_json\x18\b \x01(\fB\b\xbaH\x05z\x03\x18\x80 R\x16webauthnClientDataJson\"\x90\x03\n" +
 	"\x17StawiCallOutcomeContent\x12 \n" +
 	"\acall_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\x06callId\x12&\n" +
 	"\n" +

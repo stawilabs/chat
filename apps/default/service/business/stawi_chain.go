@@ -2,7 +2,6 @@ package business
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -122,12 +121,7 @@ func NewStawiChain(deps StawiChainDeps) *StawiChain {
 }
 
 // HexAddress renders a chain address the way chat stores it: lowercase 0x hex.
-func HexAddress(b []byte) string {
-	if len(b) == 0 {
-		return ""
-	}
-	return "0x" + hex.EncodeToString(b)
-}
+func HexAddress(b []byte) string { return stawi.HexAddress(b) }
 
 // ReceiveDelivery takes one delivery from settlement's stream: the fact is
 // applied only if the event id the relay put in the header is the fact's

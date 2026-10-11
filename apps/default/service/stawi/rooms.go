@@ -11,6 +11,7 @@ package stawi
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -49,12 +50,22 @@ type Genesis struct {
 	FounderProfileIDs []string
 }
 
+// DeviceSignature is a device's signature over a digest settlement built.
+type DeviceSignature struct {
+	KeyID string
+	// Algorithm is "secp256k1" or "p256-webauthn".
+	Algorithm string
+	Signature []byte
+	// WebAuthn assertion material; empty for secp256k1.
+	AuthenticatorData []byte
+	ClientDataJSON    []byte
+}
+
 // GenesisSignature is one founder's device signature over a genesis.
 type GenesisSignature struct {
 	GenesisID       string
 	SignerProfileID string
-	SignerKeyID     string
-	Signature       []byte
+	Signature       DeviceSignature
 }
 
 // GenesisSignatureResult says how far the genesis is from founding quorum.
@@ -90,17 +101,21 @@ type RoomCall struct {
 	SignerAddress string
 	// Nonce is the signer's call nonce; with SignerAddress it names the call
 	// in settlement's governance facts.
-	Nonce  uint64
-	State  CallState
-	Reason string
-	TxHash []byte
+	Nonce uint64
+	// ProfileID is the profile settlement prepared the call for; only that
+	// profile may submit it.
+	ProfileID string
+	// Custody is the room's RoomCustody (0x hex).
+	Custody string
+	State   CallState
+	Reason  string
+	TxHash  []byte
 }
 
 // CallSubmission is a signed call handed to settlement for relay.
 type CallSubmission struct {
 	CallID          string
-	Signature       []byte
-	SignerKeyID     string
+	Signature       DeviceSignature
 	SignerProfileID string
 }
 
@@ -158,4 +173,12 @@ func RefusalReason(err error) string {
 		}
 	}
 	return err.Error()
+}
+
+// HexAddress renders a chain address the way chat stores it: lowercase 0x hex.
+func HexAddress(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return "0x" + hex.EncodeToString(b)
 }

@@ -54,10 +54,10 @@ func TestValidateStawiPayload_AcceptsWellFormedActs(t *testing.T) {
 	for name, payload := range map[string]*chatv1.Payload{
 		"conversion": conversionPayload(validConversion()),
 		"genesis signature": signaturePayload(&chatv1.StawiGenesisSignatureContent{
-			GenesisId: "gen-1", Signature: []byte{1, 2, 3}, SignerKeyId: "key-1",
+			GenesisId: "gen-1", Signature: sig65(), SignerKeyId: "key-1", Algorithm: "secp256k1",
 		}),
 		"signed call": signedCallPayload(&chatv1.StawiSignedCallContent{
-			CallId: "call-1", Kind: "INVITE", Signature: []byte{1},
+			CallId: "call-1", Kind: "INVITE", Signature: sig65(), SignerKeyId: "key-1", Algorithm: "secp256k1",
 		}),
 		"not a stawi payload": {
 			Type: chatv1.PayloadType_PAYLOAD_TYPE_TEXT,
@@ -94,7 +94,9 @@ func TestValidateStawiPayload_RefusesMalformedActs(t *testing.T) {
 		"wrong event type":   wrongEventType,
 		"missing content":    stawiEvent(&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL}),
 		"signature without key": stawiEvent(
-			signaturePayload(&chatv1.StawiGenesisSignatureContent{GenesisId: "g", Signature: []byte{1}}),
+			signaturePayload(
+				&chatv1.StawiGenesisSignatureContent{GenesisId: "g", Signature: sig65(), Algorithm: "secp256k1"},
+			),
 		),
 		"call without signature": stawiEvent(signedCallPayload(&chatv1.StawiSignedCallContent{
 			CallId: "call-1", Kind: "INVITE",
@@ -102,7 +104,7 @@ func TestValidateStawiPayload_RefusesMalformedActs(t *testing.T) {
 		"type and content disagree": stawiEvent(&chatv1.Payload{
 			Type: chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
 			Data: &chatv1.Payload_StawiGenesisSignature{StawiGenesisSignature: &chatv1.StawiGenesisSignatureContent{
-				GenesisId: "g", Signature: []byte{1}, SignerKeyId: "k",
+				GenesisId: "g", Signature: sig65(), SignerKeyId: "k", Algorithm: "secp256k1",
 			}},
 		}),
 		"client-sent outcome": stawiEvent(&chatv1.Payload{
@@ -134,7 +136,7 @@ func TestValidateStawiPayload_TypeMustMatchPopulatedContent(t *testing.T) {
 		CallId: "call-1", State: chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED,
 	}}
 	call := &chatv1.Payload_StawiSignedCall{StawiSignedCall: &chatv1.StawiSignedCallContent{
-		CallId: "call-1", Kind: "INVITE", Signature: []byte{1},
+		CallId: "call-1", Kind: "INVITE", Signature: sig65(), SignerKeyId: "k", Algorithm: "secp256k1",
 	}}
 	cases := map[string]*chatv1.Payload{
 		"outcome under UNSPECIFIED": {Type: chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED, Data: outcome},
@@ -173,12 +175,23 @@ func TestValidateStawiPayload_ShapeVerdictIsProtovalidate(t *testing.T) {
 		return conversionPayload(c)
 	}
 	gsig := func(mut func(*chatv1.StawiGenesisSignatureContent)) *chatv1.Payload {
-		c := &chatv1.StawiGenesisSignatureContent{GenesisId: "gen-1", Signature: sig(64), SignerKeyId: "key-1"}
+		c := &chatv1.StawiGenesisSignatureContent{
+			GenesisId:   "gen-1",
+			Signature:   sig(65),
+			SignerKeyId: "key-1",
+			Algorithm:   "secp256k1",
+		}
 		mut(c)
 		return signaturePayload(c)
 	}
 	scall := func(mut func(*chatv1.StawiSignedCallContent)) *chatv1.Payload {
-		c := &chatv1.StawiSignedCallContent{CallId: "call-1", Kind: "INVITE", Signature: sig(64)}
+		c := &chatv1.StawiSignedCallContent{
+			CallId:      "call-1",
+			Kind:        "INVITE",
+			Signature:   sig(65),
+			SignerKeyId: "key-1",
+			Algorithm:   "secp256k1",
+		}
 		mut(c)
 		return signedCallPayload(c)
 	}
@@ -249,6 +262,8 @@ func TestValidateStawiPayload_ShapeVerdictIsProtovalidate(t *testing.T) {
 		})
 	}
 }
+
+func sig65() []byte { return make([]byte, 65) }
 
 func manyIDs(n int) []string {
 	out := make([]string, n)
