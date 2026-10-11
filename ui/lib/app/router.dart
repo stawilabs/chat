@@ -198,7 +198,7 @@ GoRouter router(Ref ref) {
       ),
       GoRoute(
         path: '/settings/stawi',
-        builder: (context, state) => const StawiAccountScreen(),
+        builder: (context, state) => StawiAccountScreen(),
       ),
       GoRoute(
         path: '/chat/:roomId',

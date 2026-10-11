@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/stawi_timeline_providers.dart';
+import 'contribute_screen.dart';
 import 'convert_room_screen.dart';
 import 'governance_sheet.dart';
 import 'statement_screen.dart';
@@ -40,9 +41,7 @@ class StawiRoomScreen extends ConsumerWidget {
               title: const Text('My Stawi account'),
               subtitle: const Text('Device key and account deployment'),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const StawiAccountScreen(),
-                ),
+                MaterialPageRoute<void>(builder: (_) => StawiAccountScreen()),
               ),
             ),
           ],
@@ -86,6 +85,18 @@ class StawiRoomScreen extends ConsumerWidget {
             icon: const Icon(Icons.gavel_outlined),
             label: const Text('Sign a room act'),
             onPressed: () => showGovernanceSheet(context, roomId: roomId),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const Key('stawi-contribute'),
+            icon: const Icon(Icons.savings_outlined),
+            label: const Text('Contribute'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    ContributeScreen(roomId: roomId, roomName: roomName),
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(

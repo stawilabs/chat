@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
+
 /// API endpoint configuration — the single source of endpoint truth.
 ///
 /// Every service URL the app calls is defined here and nowhere else. Builds
@@ -28,6 +30,11 @@ class ApiConfig {
   /// Build environment label (`staging` or `production`), set by the env
   /// file. Empty for local runs. Used for telemetry tagging only.
   static const String environment = String.fromEnvironment('APP_ENVIRONMENT');
+
+  /// Whether the app offers the testnet faucet: staging builds, and local
+  /// debug runs. Never production (settlement refuses it there anyway).
+  static bool get testFundsEnabled =>
+      environment == 'staging' || (environment.isEmpty && kDebugMode);
 
   /// Unified product API origin (Cloudflare path gateway).
   static const String apiBaseUrl = String.fromEnvironment(

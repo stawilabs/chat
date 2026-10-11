@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
@@ -130,6 +131,104 @@ Uint8List checkedAccountCallDigest({
   return digest;
 }
 
+/// The genesis digest to sign for a deployment. It is rebuilt here from the
+/// policy settlement showed, this device's key, the identity salt hash profile
+/// lists for the account and the account address
+/// (stawi_finance_sdk deployAccountDigest), and signed only if it matches.
+Uint8List checkedDeployDigest({
+  required settlement.PrepareDeployAccountResponse prepared,
+  required Uint8List account,
+  required Uint8List? identitySaltHash,
+  required Uint8List device,
+}) {
+  if (identitySaltHash == null || identitySaltHash.length != 32) {
+    throw const SigningRefused(
+      'your profile does not list the identity salt hash for this account',
+    );
+  }
+  if (!bytesEqual(prepared.device, device)) {
+    throw const SigningRefused(
+      'settlement prepared the genesis for another device key',
+    );
+  }
+  final policy = accountPolicyFrom(prepared.initialPolicy);
+  if (!bytesEqual(policy.hash, prepared.initialPolicyHash)) {
+    throw const SigningRefused(
+      'the initial policy hash does not match the policy shown',
+    );
+  }
+  final expected = deployAccountDigest(
+    identitySaltHash: identitySaltHash,
+    device: device,
+    chainId: _chainId(prepared.chainId),
+    account: account,
+    policy: policy,
+  );
+  if (prepared.genesisDigest.length != 32 ||
+      !bytesEqual(expected, prepared.genesisDigest)) {
+    throw const SigningRefused(
+      'the genesis digest is not the one your account, key and policy give',
+    );
+  }
+  return expected;
+}
+
+/// The SDK's [AccountPolicy] for settlement's initial_policy. A field the
+/// policy cannot hold is refused rather than signed over.
+AccountPolicy accountPolicyFrom(finance.AccountPolicyParams p) {
+  final limit = BigInt.tryParse(p.periodLimit.isEmpty ? '0' : p.periodLimit);
+  final addresses = [p.asset, ...p.allowlist, ...p.guardians];
+  if (limit == null ||
+      limit.isNegative ||
+      limit.bitLength > 256 ||
+      addresses.any((a) => a.length != 20) ||
+      p.guardianThreshold > 255 ||
+      p.allowlistMode.value > 255) {
+    throw const SigningRefused('the initial policy is malformed');
+  }
+  return AccountPolicy(
+    asset: p.asset,
+    periodLimit: limit,
+    periodSeconds: _u64(p.periodSeconds),
+    epochStart: _u64(p.epochStart),
+    allowlist: p.allowlist,
+    guardians: p.guardians,
+    guardianThreshold: p.guardianThreshold,
+    allowlistMode: p.allowlistMode.value,
+  );
+}
+
+/// The digest to sign for a prepared contribution: the call must be a
+/// CONTRIBUTE from [account] of exactly [amount] into [custody].
+Uint8List checkedContributionDigest({
+  required settlement.PrepareAccountCallResponse prepared,
+  required Uint8List account,
+  required Uint8List custody,
+  required String amount,
+}) {
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+    account: account,
+  );
+  final intent = prepared.financialIntent;
+  if (intent.type != finance.IntentType.INTENT_TYPE_CONTRIBUTION ||
+      intent.destination.kind !=
+          finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY ||
+      !bytesEqual(intent.destination.address, custody)) {
+    throw const SigningRefused('the call does not pay this room');
+  }
+  if (intent.account.isNotEmpty && !bytesEqual(intent.account, account)) {
+    throw const SigningRefused('the call pays from another account');
+  }
+  if (intent.amount != amount) {
+    throw SigningRefused(
+      'the call pays ${intent.amount}, not the $amount you asked for',
+    );
+  }
+  return digest;
+}
+
 /// Settlement's name for a room call kind, as STAWI_SIGNED_CALL carries it.
 String roomCallKindName(settlement.RoomCallKind kind) =>
     kind.name.replaceFirst('ROOM_CALL_KIND_', '');
@@ -138,6 +237,8 @@ String _genesisStateName(settlement.RoomGenesisState state) =>
     state.name.replaceFirst('ROOM_GENESIS_STATE_', '').toLowerCase();
 
 BigInt _chainId(Int64 id) => BigInt.parse(id.toStringUnsigned());
+
+BigInt _u64(Int64 v) => BigInt.parse(v.toStringUnsigned());
 
 /// Constant-length byte comparison.
 bool bytesEqual(List<int> a, List<int> b) {

@@ -117,15 +117,13 @@ class StawiAccountService {
         deviceKey: deviceKey,
       ),
     );
-    if (!bytesEqual(prepared.device, key.address)) {
-      throw const SigningRefused(
-        'settlement prepared the genesis for another device key',
-      );
-    }
-    if (prepared.genesisDigest.length != 32) {
-      throw const SigningRefused('the genesis digest is malformed');
-    }
-    final signature = key.sign(prepared.genesisDigest);
+    final digest = checkedDeployDigest(
+      prepared: prepared,
+      account: account.address,
+      identitySaltHash: account.identitySaltHash,
+      device: key.address,
+    );
+    final signature = key.sign(digest);
     final proof = await _proofs(deviceAddress: key.address);
     return _accounts.deployAccount(
       settlement.DeployAccountRequest(
@@ -179,7 +177,95 @@ class StawiAccountService {
       (await _accounts.getAccountCall(
         settlement.GetAccountCallRequest(callId: callId),
       )).call;
+
+  /// Pays [amount] (integer minor units of the account's policy asset) from
+  /// the member's primary account into the room whose custody is [custody].
+  /// Straight to the chain through settlement; chat is not involved. The
+  /// payment lands in the room's SAVINGS bucket and the room's rules engine
+  /// applies it.
+  Future<settlement.AccountCall> contribute({
+    required Uint8List custody,
+    required String amount,
+  }) async {
+    if (custody.length != 20) {
+      throw const FormatException('A room custody is a 20-byte address');
+    }
+    if (!_positiveDecimal.hasMatch(amount)) {
+      throw const FormatException('Enter a whole amount greater than zero');
+    }
+    final me = await _identity();
+    final account = me.primary;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    final key = await _keys.loadOrCreate(me.profileId);
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+        params: settlement.AccountCallParams(room: custody, amount: amount),
+      ),
+    );
+    final digest = checkedContributionDigest(
+      prepared: prepared,
+      account: account.address,
+      custody: custody,
+      amount: amount,
+    );
+    final submitted = await _accounts.submitAccountCall(
+      settlement.SubmitAccountCallRequest(
+        callId: prepared.callId,
+        authorization: key.sign(digest),
+      ),
+    );
+    return submitted.call;
+  }
+
+  /// Follows a submitted account call until it is final, failed or expired,
+  /// reading it every [every]. Stops after [attempts] reads.
+  Stream<settlement.AccountCall> followAccountCall(
+    String callId, {
+    Duration every = const Duration(seconds: 3),
+    int attempts = 100,
+  }) async* {
+    for (var i = 0; i < attempts; i++) {
+      final call = await accountCall(callId);
+      yield call;
+      if (accountCallSettled(call.state)) return;
+      await Future<void>.delayed(every);
+    }
+  }
+
+  /// Testnet faucet: mints [amount] of the test asset to the member's
+  /// primary account. Settlement refuses it unless the deployment enables it.
+  Future<settlement.FundTestAccountResponse> fundTestAccount(
+    String amount,
+  ) async {
+    if (!_positiveDecimal.hasMatch(amount)) {
+      throw const FormatException('Enter a whole amount greater than zero');
+    }
+    final account = (await _identity()).primary;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    return _accounts.fundTestAccount(
+      settlement.FundTestAccountRequest(
+        address: account.address,
+        amount: amount,
+      ),
+    );
+  }
 }
+
+final RegExp _positiveDecimal = RegExp(r'^[1-9][0-9]{0,77}$');
+
+/// Whether an account call has reached a state it will not leave.
+bool accountCallSettled(settlement.AccountCallState state) => switch (state) {
+  settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL ||
+  settlement.AccountCallState.ACCOUNT_CALL_STATE_FAILED ||
+  settlement.AccountCallState.ACCOUNT_CALL_STATE_EXPIRED => true,
+  _ => false,
+};
 
 /// Parses a device key id typed or pasted by the member.
 Uint8List parseKeyAddress(String text) {

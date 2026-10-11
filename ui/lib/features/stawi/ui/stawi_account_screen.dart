@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
+import '../../../core/networking/api_config.dart';
 import '../data/stawi_account_service.dart';
 import 'stawi_feedback.dart';
 
@@ -10,7 +11,11 @@ import 'stawi_feedback.dart';
 /// and this device's key. Deploying signs the genesis with this device's key;
 /// a deployed account can add another device's key from here.
 class StawiAccountScreen extends ConsumerWidget {
-  const StawiAccountScreen({super.key});
+  StawiAccountScreen({bool? showTestFunds, super.key})
+    : showTestFunds = showTestFunds ?? ApiConfig.testFundsEnabled;
+
+  /// Offer the testnet faucet; never in production builds.
+  final bool showTestFunds;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,16 +37,18 @@ class StawiAccountScreen extends ConsumerWidget {
           message: stawiErrorMessage(error),
           onRetry: () => ref.invalidate(stawiAccountStatusProvider),
         ),
-        data: (status) => _AccountView(status: status),
+        data: (status) =>
+            _AccountView(status: status, showTestFunds: showTestFunds),
       ),
     );
   }
 }
 
 class _AccountView extends ConsumerStatefulWidget {
-  const _AccountView({required this.status});
+  const _AccountView({required this.status, required this.showTestFunds});
 
   final StawiAccountStatus status;
+  final bool showTestFunds;
 
   @override
   ConsumerState<_AccountView> createState() => _AccountViewState();
@@ -60,6 +67,31 @@ class _AccountViewState extends ConsumerState<_AccountView> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (result != null) ref.invalidate(stawiAccountStatusProvider);
+  }
+
+  Future<void> _getTestFunds() async {
+    final amount = await showDialog<String>(
+      context: context,
+      builder: (context) => const _TestFundsDialog(),
+    );
+    if (amount == null || !mounted) return;
+    setState(() => _busy = true);
+    final funded = await runStawiAction(
+      context,
+      () => ref.read(stawiAccountServiceProvider).fundTestAccount(amount),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (funded != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Minting ${funded.amount} test units '
+            '(${funded.mintedToday} of ${funded.dailyLimit} today)',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _addKey() async {
@@ -174,6 +206,15 @@ class _AccountViewState extends ConsumerState<_AccountView> {
             'already registered with your account.',
             style: theme.textTheme.bodyMedium,
           ),
+        if (widget.showTestFunds && account != null) ...[
+          const SizedBox(height: 24),
+          TextButton.icon(
+            key: const Key('stawi-test-funds'),
+            onPressed: _busy ? null : _getTestFunds,
+            icon: const Icon(Icons.science_outlined),
+            label: const Text('Get test funds (testnet)'),
+          ),
+        ],
       ],
     );
   }
@@ -259,5 +300,47 @@ class _ErrorView extends StatelessWidget {
         ],
       ),
     ),
+  );
+}
+
+class _TestFundsDialog extends StatefulWidget {
+  const _TestFundsDialog();
+
+  @override
+  State<_TestFundsDialog> createState() => _TestFundsDialogState();
+}
+
+class _TestFundsDialogState extends State<_TestFundsDialog> {
+  final _controller = TextEditingController(text: '1000000000');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Get test funds'),
+    content: TextField(
+      key: const Key('stawi-test-funds-amount'),
+      controller: _controller,
+      keyboardType: TextInputType.number,
+      decoration: const InputDecoration(
+        labelText: 'Amount',
+        helperText: 'Test asset, smallest unit',
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        key: const Key('stawi-test-funds-confirm'),
+        onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+        child: const Text('Mint'),
+      ),
+    ],
   );
 }

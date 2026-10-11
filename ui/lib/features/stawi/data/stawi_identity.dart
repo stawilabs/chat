@@ -21,10 +21,18 @@ final class StawiUnavailable implements Exception {
 
 /// One chain account the profile owns (profile.v1 ProfileAccount).
 class StawiAccountRef {
-  const StawiAccountRef({required this.address, required this.primary});
+  const StawiAccountRef({
+    required this.address,
+    required this.primary,
+    this.identitySaltHash,
+  });
 
   final Uint8List address;
   final bool primary;
+
+  /// keccak256(identity salt): what the account address and its genesis
+  /// digest commit to. Null when profile did not list it.
+  final Uint8List? identitySaltHash;
 
   String get hex => bytesToHex0x(address).toLowerCase();
 }
@@ -59,7 +67,13 @@ final stawiIdentityProvider = FutureProvider<StawiIdentity>((ref) async {
       final address = hexToBytes(account.address);
       if (address.length == 20) {
         accounts.add(
-          StawiAccountRef(address: address, primary: account.primary),
+          StawiAccountRef(
+            address: address,
+            primary: account.primary,
+            identitySaltHash: account.identitySaltHash.length == 32
+                ? Uint8List.fromList(account.identitySaltHash)
+                : null,
+          ),
         );
       }
     } on FormatException {

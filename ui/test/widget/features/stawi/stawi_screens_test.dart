@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,12 +8,16 @@ import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
+import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
+import 'package:stawi/features/stawi/ui/contribute_screen.dart';
 import 'package:stawi/features/stawi/ui/convert_room_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_account_screen.dart';
+import 'package:stawi/features/stawi/ui/stawi_room_screen.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
@@ -24,8 +27,11 @@ import '../../../support/stawi_fakes.dart';
 const roomId = 'room00000000000000aa';
 
 void main() {
-  final account = Uint8List.fromList(List.generate(20, (i) => i + 1));
-  final digest = keccak256(Uint8List.fromList([9]));
+  // settlement_default: the anvil-0 device key deploying account 0x…acc7.
+  final genesis = GoGenesisVector.load().firstWhere(
+    (v) => v.name == 'settlement_default',
+  );
+  final account = genesis.account;
 
   group('StawiAccountScreen', () {
     late FakeConnectTransport transport;
@@ -42,12 +48,13 @@ void main() {
       WidgetTester tester, {
       required settlement.AccountState state,
       GenesisSessionProofs? proofs,
+      bool showTestFunds = false,
     }) => tester.pumpWidget(
       ProviderScope(
         overrides: [
           stawiAccountStatusProvider.overrideWith(
             (ref) async => StawiAccountStatus(
-              account: StawiAccountRef(address: account, primary: true),
+              account: genesis.identity('p1').primary,
               state: state,
               deviceKey: key,
             ),
@@ -60,11 +67,13 @@ void main() {
                   proofs ??
                   ({required Uint8List deviceAddress}) async =>
                       Uint8List.fromList([1, 2, 3]),
-              identity: () async => identityWith('p1', account),
+              identity: () async => genesis.identity('p1'),
             ),
           ),
         ],
-        child: const MaterialApp(home: StawiAccountScreen()),
+        child: MaterialApp(
+          home: StawiAccountScreen(showTestFunds: showTestFunds),
+        ),
       ),
     );
 
@@ -72,11 +81,7 @@ void main() {
       transport
         ..on(
           settlement.AccountService.prepareDeployAccount,
-          (req) => settlement.PrepareDeployAccountResponse(
-            genesisDigest: digest,
-            device: key.address,
-            chainId: Int64(146),
-          ),
+          (req) => genesis.prepared,
         )
         ..on(
           settlement.AccountService.deployAccount,
@@ -101,7 +106,7 @@ void main() {
       final deploy = transport
           .requestsTo(settlement.AccountService.deployAccount)
           .single;
-      expect(recoverDeviceAddress(digest, deploy.deviceSignature), key.address);
+      expect(bytesToHex0x(deploy.deviceSignature), genesis.signature);
       expect(find.text('Deployment requested'), findsOneWidget);
     });
 
@@ -135,6 +140,172 @@ void main() {
       expect(find.byKey(const Key('stawi-deploy-account')), findsNothing);
       expect(find.byKey(const Key('stawi-add-device-key')), findsOneWidget);
     });
+  });
+
+  group('test funds', () {
+    late FakeConnectTransport transport;
+    late DeviceKeyHandle key;
+
+    setUp(() async {
+      transport = FakeConnectTransport()
+        ..on(
+          settlement.AccountService.fundTestAccount,
+          (req) => settlement.FundTestAccountResponse(
+            amount: req.amount,
+            mintedToday: req.amount,
+            dailyLimit: '5000000000',
+          ),
+        );
+      key = (await DeviceKeyStore(vaultWith('p1', anvilKey)).load('p1'))!;
+    });
+
+    Widget screen({required bool showTestFunds}) => ProviderScope(
+      overrides: [
+        stawiAccountStatusProvider.overrideWith(
+          (ref) async => StawiAccountStatus(
+            account: StawiAccountRef(address: account, primary: true),
+            state: settlement.AccountState(deployed: true),
+            deviceKey: key,
+          ),
+        ),
+        stawiAccountServiceProvider.overrideWithValue(
+          StawiAccountService(
+            accounts: settlement.AccountServiceClient(transport),
+            keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+            proofs: unavailableGenesisSessionProof,
+            identity: () async => identityWith('p1', account),
+          ),
+        ),
+      ],
+      child: MaterialApp(
+        home: StawiAccountScreen(showTestFunds: showTestFunds),
+      ),
+    );
+
+    testWidgets('are hidden where the faucet is off', (tester) async {
+      await tester.pumpWidget(screen(showTestFunds: false));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('stawi-test-funds')), findsNothing);
+    });
+
+    testWidgets('mint to the account on testnet builds', (tester) async {
+      await tester.pumpWidget(screen(showTestFunds: true));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stawi-test-funds')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('stawi-test-funds-amount')),
+        '2000000',
+      );
+      await tester.tap(find.byKey(const Key('stawi-test-funds-confirm')));
+      await tester.pumpAndSettle();
+
+      final request = transport
+          .requestsTo(settlement.AccountService.fundTestAccount)
+          .single;
+      expect(request.address, account);
+      expect(request.amount, '2000000');
+      expect(find.textContaining('Minting 2000000'), findsOneWidget);
+    });
+  });
+
+  testWidgets('ContributeScreen signs a contribution to the room custody', (
+    tester,
+  ) async {
+    final custody = Uint8List.fromList(List.filled(20, 0xc0));
+    final digest = keccak256(Uint8List.fromList([7]));
+    final transport = FakeConnectTransport()
+      ..on(
+        settlement.AccountService.prepareAccountCall,
+        (req) => settlement.PrepareAccountCallResponse(
+          callId: 'acct000000000000000c',
+          intentDigest: digest,
+          financialIntent: finance.FinancialIntent(
+            type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
+            destination: finance.ValueLocation(
+              kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+              address: req.params.room,
+            ),
+            amount: req.params.amount,
+          ),
+          call: settlement.AccountCall(
+            callId: 'acct000000000000000c',
+            address: req.address,
+            kind: req.kind,
+          ),
+        ),
+      )
+      ..on(
+        settlement.AccountService.submitAccountCall,
+        (req) => settlement.SubmitAccountCallResponse(
+          call: settlement.AccountCall(callId: req.callId),
+        ),
+      )
+      ..on(
+        settlement.AccountService.getAccountCall,
+        (req) => settlement.GetAccountCallResponse(
+          call: settlement.AccountCall(
+            callId: req.callId,
+            state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+          ),
+        ),
+      );
+    final keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          roomCustodyProvider.overrideWith((ref, id) async => custody),
+          stawiAccountServiceProvider.overrideWithValue(
+            StawiAccountService(
+              accounts: settlement.AccountServiceClient(transport),
+              keys: keys,
+              proofs: unavailableGenesisSessionProof,
+              identity: () async => identityWith('p1', account),
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: ContributeScreen(roomId: roomId, roomName: 'Chama'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('contribute-amount')), '500');
+    await tester.tap(find.byKey(const Key('contribute-submit')));
+    await tester.pumpAndSettle();
+
+    final prepare = transport
+        .requestsTo(settlement.AccountService.prepareAccountCall)
+        .single;
+    expect(prepare.params.room, custody);
+    expect(prepare.params.amount, '500');
+    final submit = transport
+        .requestsTo(settlement.AccountService.submitAccountCall)
+        .single;
+    expect(
+      recoverDeviceAddress(digest, submit.authorization),
+      (await keys.load('p1'))!.address,
+    );
+    expect(find.text('Confirmed on chain'), findsOneWidget);
+  });
+
+  testWidgets('an active Stawi room offers contributing', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiRoomPhaseProvider.overrideWith(
+            (ref, id) => const AsyncValue.data(StawiRoomPhase.active),
+          ),
+        ],
+        child: const MaterialApp(
+          home: StawiRoomScreen(roomId: roomId, roomName: 'Chama'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('stawi-contribute')), findsOneWidget);
+    expect(find.byKey(const Key('stawi-statement')), findsOneWidget);
   });
 
   testWidgets('ConvertRoomScreen sends the chosen template and founders', (
