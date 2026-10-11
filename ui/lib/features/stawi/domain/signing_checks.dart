@@ -225,7 +225,7 @@ Uint8List checkedContributionDigest({
   }
   if (intent.amount != amount) {
     throw SigningRefused(
-      'the call pays ${intent.amount}, not the $amount you asked for',
+      'the call pays ${intent.amount}, not the $amount you asked for (minor units)',
     );
   }
   return digest;
@@ -286,7 +286,7 @@ Uint8List checkedContributionDigest({
   if (request.amount.isNotEmpty &&
       call.amount != BigInt.parse(request.amount)) {
     throw SigningRefused(
-      'the call moves ${call.amount}, not the ${request.amount} you asked for',
+      'the call moves ${call.amount}, not the ${request.amount} you asked for (minor units)',
     );
   }
   if (request.call.takesProduct &&
@@ -324,7 +324,7 @@ void checkPrincipalExit(
   }
   if (intent.amount != BigInt.parse(amount)) {
     throw SigningRefused(
-      'the exit moves ${intent.amount}, not the $amount proposed',
+      'the exit moves ${intent.amount}, not the $amount proposed (minor units)',
     );
   }
 }

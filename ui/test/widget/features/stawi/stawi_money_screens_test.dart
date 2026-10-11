@@ -68,6 +68,7 @@ void main() {
 
   List<Override> overrides() => [
     currentProfileIdProvider.overrideWith((ref) async => 'p1'),
+    stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
     roomMembersProvider.overrideWith(
       (ref, roomId) async => [
         RoomSubscriptionInfo(
@@ -248,7 +249,7 @@ void main() {
       await tester.pumpAndSettle();
       final spend = prepared().params.principalExit.spend;
       expect(spend.sourceBucket, 'savings');
-      expect(spend.amount, '5000');
+      expect(spend.amount, '5000000000');
       expect(spend.bucket, 'reserve');
       expect(sender.sent.single.content['kind'], 'PROPOSE_PRINCIPAL_EXIT');
     });
@@ -295,8 +296,14 @@ void main() {
             stawiObligationsProvider.overrideWith(
               (ref, id) async => [
                 finance.Obligation(
-                  amount: finance.Money(assetId: 'USDC.146', amount: '500'),
-                  settled: finance.Money(assetId: 'USDC.146', amount: '200'),
+                  amount: finance.Money(
+                    assetId: 'USDC.146',
+                    amount: '500000000',
+                  ),
+                  settled: finance.Money(
+                    assetId: 'USDC.146',
+                    amount: '200000000',
+                  ),
                 ),
               ],
             ),
@@ -306,7 +313,10 @@ void main() {
             stawiEntitlementsProvider.overrideWith(
               (ref, id) async => [
                 finance.Entitlement(
-                  amount: finance.Money(assetId: 'USDC.146', amount: '75'),
+                  amount: finance.Money(
+                    assetId: 'USDC.146',
+                    amount: '75000000',
+                  ),
                 ),
               ],
             ),
@@ -317,10 +327,13 @@ void main() {
                   loanId: 'loan1',
                   onchainLoanId: Int64(1),
                   borrowerAccount: payoff.account,
-                  requested: finance.Money(assetId: 'USDC.146', amount: '900'),
+                  requested: finance.Money(
+                    assetId: 'USDC.146',
+                    amount: '900000000',
+                  ),
                   repaidInterest: finance.Money(
                     assetId: 'USDC.146',
-                    amount: '12',
+                    amount: '12500000',
                   ),
                   instalments: 4,
                 ),
@@ -338,12 +351,12 @@ void main() {
                         membershipState: 'ACTIVE',
                         contributed: finance.Money(
                           assetId: 'USDC.146',
-                          amount: '1234',
+                          amount: '1234560000',
                         ),
                         book: finance.MemberBook(
                           credit: finance.Money(
                             assetId: 'USDC.146',
-                            amount: '300',
+                            amount: '300000000',
                           ),
                           standing: finance
                               .MemberDuesStanding
@@ -351,7 +364,7 @@ void main() {
                         ),
                         loansOutstanding: finance.Money(
                           assetId: 'USDC.146',
-                          amount: '450',
+                          amount: '450000000',
                         ),
                       ),
                     ],
@@ -385,7 +398,7 @@ void main() {
       tester,
     ) async {
       await pump(tester);
-      expect(find.text('200 USDC.146 of 500 USDC.146'), findsOneWidget);
+      expect(find.text('200.00 USDC of 500.00 USDC'), findsOneWidget);
       expect(find.text('Period 3'), findsOneWidget);
       await tester.tap(find.byKey(const Key('money-settle')));
       await tester.pumpAndSettle();
@@ -401,7 +414,7 @@ void main() {
       await pump(tester);
       await tester.tap(find.text('Share-outs'));
       await tester.pumpAndSettle();
-      expect(find.text('75 USDC.146'), findsOneWidget);
+      expect(find.text('75.00 USDC'), findsOneWidget);
       await tester.tap(find.byKey(const Key('money-collect')));
       await tester.pumpAndSettle();
       expect(prepared().kind, settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT);
@@ -427,7 +440,7 @@ void main() {
       expect(find.textContaining('Loan #1'), findsOneWidget);
       await tester.tap(find.byKey(const Key('loan-1')));
       await tester.pumpAndSettle();
-      expect(find.text('12 USDC.146'), findsOneWidget);
+      expect(find.text('12.50 USDC'), findsOneWidget);
       await tester.tap(find.byKey(const Key('loan-1-loanPayoff')));
       await tester.pumpAndSettle();
 
@@ -440,7 +453,7 @@ void main() {
           .single;
       expect(prepare.params.loanId, Int64(1));
       expect(prepare.params.hasAmount(), isFalse);
-      expect(find.textContaining('Pays at most 520000000'), findsOneWidget);
+      expect(find.textContaining('Pays at most 520.00 USDC'), findsOneWidget);
       expect(
         transport.requestsTo(settlement.AccountService.submitAccountCall),
         isEmpty,
@@ -481,12 +494,12 @@ void main() {
       // The room's member list names p2; no raw profile id is shown.
       expect(find.text('Amina'), findsOneWidget);
       expect(find.text('p2'), findsNothing);
-      expect(find.textContaining('contributed 1234 USDC.146'), findsOneWidget);
+      expect(find.textContaining('contributed 1,234.56 USDC'), findsOneWidget);
       expect(find.textContaining('in arrears'), findsOneWidget);
       await tester.tap(find.byKey(const Key('member-mem1')));
       await tester.pumpAndSettle();
-      expect(find.text('300 USDC.146'), findsOneWidget);
-      expect(find.text('450 USDC.146'), findsOneWidget);
+      expect(find.text('300.00 USDC'), findsOneWidget);
+      expect(find.text('450.00 USDC'), findsOneWidget);
       expect(find.byKey(const Key('books-unavailable')), findsNothing);
     });
 

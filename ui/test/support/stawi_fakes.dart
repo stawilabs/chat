@@ -8,6 +8,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
@@ -367,3 +368,6 @@ class GoEngineCallVector {
     ),
   );
 }
+
+/// The rooms' savings asset in tests: USDC with 6 decimals.
+final StawiAsset usdc = StawiAsset.fromId('USDC.146');

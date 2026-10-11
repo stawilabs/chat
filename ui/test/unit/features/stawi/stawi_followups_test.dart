@@ -253,28 +253,28 @@ void main() {
 
     test('summarise loan and dues terms', () {
       final loan = finance.RoomLoanProduct(
-        maxAmount: finance.Money(assetId: 'USDC.146', amount: '50000'),
+        maxAmount: finance.Money(assetId: 'USDC.146', amount: '50000000000'),
         rateBps: 250,
         rateBasis: finance.LoanRateBasis.valueOf(1),
         minInstalments: 1,
         maxInstalments: 6,
       );
       final terms = loanProductTerms(loan);
-      expect(terms, contains('up to 50000 USDC.146'));
-      expect(terms, contains('2.50%'));
+      expect(terms, contains('up to 50,000.00 USDC'));
+      expect(terms, contains('2.5% per period'));
       expect(terms, contains('1–6 instalments'));
 
       final dues = finance.RoomDuesProduct(
-        amount: finance.Money(assetId: 'USDC.146', amount: '1000'),
+        amount: finance.Money(assetId: 'USDC.146', amount: '1000000'),
         everyPeriods: 1,
         memberChoice: true,
-        minAmount: finance.Money(assetId: 'USDC.146', amount: '500'),
-        maxAmount: finance.Money(assetId: 'USDC.146', amount: '5000'),
+        minAmount: finance.Money(assetId: 'USDC.146', amount: '500000'),
+        maxAmount: finance.Money(assetId: 'USDC.146', amount: '5000000'),
         active: true,
       );
       expect(
         duesProductTerms(dues),
-        '1000 USDC.146 · every period · you choose 500 USDC.146–5000 USDC.146',
+        '1.00 USDC · every period · you choose 0.50 USDC–5.00 USDC',
       );
     });
   });

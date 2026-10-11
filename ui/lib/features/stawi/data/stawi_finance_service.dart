@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
+import '../domain/stawi_money.dart';
 import 'stawi_clients.dart';
 import 'stawi_identity.dart';
 
@@ -112,6 +113,20 @@ class StawiFinanceService {
         finance.ListLoansRequest(roomId: roomId),
       )).loans;
 
+  /// The asset the room saves in: its savings bucket's (else the first
+  /// bucket's) settlement asset in the constitution; null when it has none.
+  Future<StawiAsset?> roomAsset(String roomId) async {
+    final buckets = (await _rooms.getPolicy(
+      finance.GetPolicyRequest(roomId: roomId),
+    )).policyVersion.constitution.treasury.buckets;
+    final bucket =
+        buckets
+            .where((b) => b.name == 'savings' && b.assetIds.isNotEmpty)
+            .firstOrNull ??
+        buckets.where((b) => b.assetIds.isNotEmpty).firstOrNull;
+    return bucket == null ? null : StawiAsset.fromId(bucket.assetIds.first);
+  }
+
   /// The constitution's roles.
   Future<List<finance.RoleCapabilities>> roles(String roomId) async =>
       (await _rooms.getPolicy(
@@ -204,4 +219,11 @@ final stawiMemberBalancesProvider = FutureProvider.autoDispose
 final stawiRolesProvider = FutureProvider.autoDispose
     .family<List<finance.RoleCapabilities>, String>(
       (ref, roomId) => ref.watch(stawiFinanceServiceProvider).roles(roomId),
+    );
+
+/// The room's savings asset (symbol and decimals for amounts typed in and
+/// shown without one).
+final stawiRoomAssetProvider = FutureProvider.autoDispose
+    .family<StawiAsset?, String>(
+      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).roomAsset(roomId),
     );

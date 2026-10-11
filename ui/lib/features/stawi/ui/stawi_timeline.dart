@@ -10,6 +10,7 @@ import '../../rooms/data/room_subscription_service.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
+import '../domain/stawi_money.dart';
 import '../domain/stawi_payloads.dart';
 import 'governance_sheet.dart';
 import 'stawi_feedback.dart';
@@ -379,7 +380,15 @@ class FinanceCardBubble extends ConsumerWidget {
 
   final RoomEvent event;
 
-  static const _hidden = {'action', 'payload_hash'};
+  static const _hidden = {'action', 'payload_hash', 'asset_id'};
+
+  /// A data value as shown: an amount in its asset when the card names one.
+  static String _shown(FinanceCardView card, String key, String value) {
+    final asset = card.data['asset_id'] ?? '';
+    return key == 'amount' && asset.isNotEmpty
+        ? formatMoney(finance.Money(assetId: asset, amount: value))
+        : value;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -418,7 +427,10 @@ class FinanceCardBubble extends ConsumerWidget {
                 for (final entry in card.data.entries.where(
                   (e) => !_hidden.contains(e.key),
                 ))
-                  _Line(entry.key.replaceAll('_', ' '), entry.value),
+                  _Line(
+                    entry.key.replaceAll('_', ' '),
+                    _shown(card, entry.key, entry.value),
+                  ),
                 if (offersVote) ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(

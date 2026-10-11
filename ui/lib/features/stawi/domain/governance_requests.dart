@@ -199,6 +199,7 @@ GovernanceRequest proposePrincipalExitRequest({
   String memberName = '',
   Uint8List? externalAccount,
   String? bucket,
+  String? amountLabel,
 }) {
   final destinations = [
     memberProfileId,
@@ -232,7 +233,9 @@ GovernanceRequest proposePrincipalExitRequest({
         ),
       ),
     ),
-    summary: 'Propose a principal exit of $amount from $sourceBucket to $to',
+    summary:
+        'Propose a principal exit of ${amountLabel ?? amount} from '
+        '$sourceBucket to $to',
   );
 }
 

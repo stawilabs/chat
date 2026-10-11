@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
 import '../data/stawi_finance_service.dart';
+import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
 
 /// The member's statement in a Stawi room, from finance's read model.
@@ -121,10 +122,4 @@ class _StatementView extends StatelessWidget {
 
   static bool _isZero(finance.Money money) =>
       money.amount.isEmpty || money.amount == '0';
-}
-
-/// Integer minor units and the asset id, e.g. "1500000 USDC.146".
-String formatMoney(finance.Money money) {
-  final amount = money.amount.isEmpty ? '0' : money.amount;
-  return money.assetId.isEmpty ? amount : '$amount ${money.assetId}';
 }

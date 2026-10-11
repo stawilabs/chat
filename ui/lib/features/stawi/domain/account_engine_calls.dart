@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
+import 'stawi_money.dart';
+
 /// The calls a member's own account makes on a room's engines: loans
 /// (LoanEngine) and withdrawals and amount choices (RulesEngine). Each is a
 /// device-signed AccountService call settlement prepares as an ENGINE_CALL
@@ -101,6 +103,7 @@ class AccountEngineRequest {
     this.productId,
     this.instalments = 0,
     this.replaces = 0,
+    this.asset,
   }) {
     if (custody.length != 20) {
       throw const FormatException('A room custody is a 20-byte address');
@@ -136,11 +139,18 @@ class AccountEngineRequest {
   /// LOAN_REQUEST: the loan this one tops up (0 for none).
   final int replaces;
 
+  /// The room's asset, to show [amount] in; null shows minor units.
+  final StawiAsset? asset;
+
+  String get _shown => asset == null || amount.isEmpty
+      ? amount
+      : formatUnits(BigInt.parse(amount), asset!);
+
   String get summary => switch (call) {
-    AccountEngineCall.loanRequest => 'Request a loan of $amount',
-    AccountEngineCall.withdrawCredit => 'Withdraw $amount of credit',
-    AccountEngineCall.withdrawEquity => 'Withdraw $amount of equity',
-    AccountEngineCall.loanPledge => 'Pledge $amount to loan #$loanId',
+    AccountEngineCall.loanRequest => 'Request a loan of $_shown',
+    AccountEngineCall.withdrawCredit => 'Withdraw $_shown of credit',
+    AccountEngineCall.withdrawEquity => 'Withdraw $_shown of equity',
+    AccountEngineCall.loanPledge => 'Pledge $_shown to loan #$loanId',
     AccountEngineCall.loanPayoff => 'Pay off loan #$loanId',
     _ when call.takesLoan => '${call.label} #$loanId',
     _ => call.label,

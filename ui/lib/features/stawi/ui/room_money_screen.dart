@@ -18,7 +18,7 @@ import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
-import 'statement_screen.dart' show formatMoney;
+import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
 
 /// A Stawi room's money, from finance's read model: savings periods and dues,
@@ -477,6 +477,16 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
 
   Uint8List? _productId() => widget.call.takesProduct ? _picked : null;
 
+  Future<StawiAsset> _asset() async {
+    final asset = await ref
+        .read(stawiRoomAssetProvider(widget.roomId).future)
+        .catchError((Object _) => null);
+    if (asset == null) {
+      throw const FormatException('The room’s asset could not be read');
+    }
+    return asset;
+  }
+
   Future<void> _review() async {
     setState(() {
       _busy = true;
@@ -488,10 +498,13 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
       if (custody == null) {
         throw const FormatException('This room is not on chain yet');
       }
+      final asset = await _asset();
+      final typed = _amount.text.trim();
       request = AccountEngineRequest(
         call: widget.call,
         custody: custody,
-        amount: _amount.text.trim(),
+        amount: typed.isEmpty ? '' : parseAmountInput(typed, asset),
+        asset: asset,
         loanId: widget.loan?.onchainLoanId.toInt() ?? 0,
         productId: _productId(),
         instalments: int.tryParse(_instalments.text.trim()) ?? 0,
@@ -597,6 +610,9 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
         );
   }
 
+  String? _symbol() =>
+      ref.watch(stawiRoomAssetProvider(widget.roomId)).asData?.value?.symbol;
+
   @override
   Widget build(BuildContext context) {
     final prepared = _prepared;
@@ -618,14 +634,17 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                 TextField(
                   key: const Key('engine-amount'),
                   controller: _amount,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: InputDecoration(
                     labelText: widget.call == AccountEngineCall.loanPayoff
                         ? 'Most to pay (optional)'
                         : 'Amount',
+                    suffixText: _symbol(),
                     helperText: widget.call == AccountEngineCall.loanPayoff
                         ? 'Leave empty and settlement quotes what it takes now'
-                        : 'In the asset’s smallest unit',
+                        : null,
                   ),
                 ),
               if (widget.call == AccountEngineCall.loanRequest)
@@ -682,6 +701,10 @@ class _Review extends StatelessWidget {
   Widget build(BuildContext context) {
     final quoted =
         request.call == AccountEngineCall.loanPayoff && request.amount.isEmpty;
+    final asset = request.asset;
+    final shown = asset == null
+        ? '${call.amount}'
+        : formatUnits(call.amount, asset);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -691,9 +714,9 @@ class _Review extends StatelessWidget {
         if (call.amount > BigInt.zero)
           Text(
             quoted
-                ? 'Pays at most ${call.amount} (settlement’s quote, with '
-                      'headroom; only what the loan takes is paid)'
-                : 'Amount ${call.amount}',
+                ? 'Pays at most $shown (settlement’s quote, with headroom; '
+                      'only what the loan takes is paid)'
+                : 'Amount $shown',
             key: const Key('engine-review-amount'),
           ),
         if (call.instalments > 0) Text('${call.instalments} instalments'),

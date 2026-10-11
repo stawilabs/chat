@@ -5,6 +5,8 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../data/stawi_account_service.dart';
 import '../data/stawi_custody.dart';
+import '../data/stawi_finance_service.dart';
+import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
 
 /// Pays into a Stawi room's savings straight from the member's account. The
@@ -39,10 +41,18 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
     if (custody == null) return;
     setState(() => _sending = true);
     final service = ref.read(stawiAccountServiceProvider);
-    final call = await runStawiAction(
-      context,
-      () => service.contribute(custody: custody, amount: _amount.text.trim()),
-    );
+    final call = await runStawiAction(context, () async {
+      final asset = await ref.read(
+        stawiRoomAssetProvider(widget.roomId).future,
+      );
+      if (asset == null) {
+        throw const FormatException('The room’s asset could not be read');
+      }
+      return service.contribute(
+        custody: custody,
+        amount: parseAmountInput(_amount.text, asset),
+      );
+    });
     if (!mounted) return;
     setState(() {
       _sending = false;
@@ -82,10 +92,14 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
             key: const Key('contribute-amount'),
             controller: _amount,
             enabled: _progress == null,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
               labelText: 'Amount',
-              helperText: 'In the asset’s smallest unit',
+              suffixText: ref
+                  .watch(stawiRoomAssetProvider(widget.roomId))
+                  .asData
+                  ?.value
+                  ?.symbol,
             ),
           ),
           const SizedBox(height: 24),

@@ -259,6 +259,7 @@ void main() {
       ProviderScope(
         overrides: [
           roomCustodyProvider.overrideWith((ref, id) async => custody),
+          stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
               accounts: settlement.AccountServiceClient(transport),
@@ -282,7 +283,7 @@ void main() {
         .requestsTo(settlement.AccountService.prepareAccountCall)
         .single;
     expect(prepare.params.room, custody);
-    expect(prepare.params.amount, '500');
+    expect(prepare.params.amount, '500000000');
     final submit = transport
         .requestsTo(settlement.AccountService.submitAccountCall)
         .single;

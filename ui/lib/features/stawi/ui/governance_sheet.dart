@@ -12,6 +12,7 @@ import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/governance_requests.dart';
 import '../domain/signing_checks.dart';
+import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
 
 /// Signs [request] on this device and sends it into [roomId]. The act shows in
@@ -163,6 +164,9 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
   final _amount = TextEditingController();
   final _sourceBucket = TextEditingController(text: 'savings');
   _ExitTo _exitTo = _ExitTo.member;
+
+  /// The proposed exit amount in minor units, checked against the exit intent.
+  String _exitUnits = '';
   finance.VoteChoice _choice = finance.VoteChoice.VOTE_CHOICE_APPROVE;
   bool _approve = true;
   int _days = 30;
@@ -279,12 +283,15 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
   }
 
   GovernanceRequest _exitRequest() {
-    final amount = _amount.text.trim();
     final source = _sourceBucket.text.trim();
     if (source.isEmpty) throw const FormatException('Name the source bucket');
-    if (!RegExp(r'^[1-9][0-9]{0,77}$').hasMatch(amount)) {
-      throw const FormatException('Enter a whole amount greater than zero');
+    final asset = ref.read(stawiRoomAssetProvider(widget.roomId)).asData?.value;
+    if (asset == null) {
+      throw const FormatException('The room’s asset could not be read');
     }
+    final amount = parseAmountInput(_amount.text, asset);
+    _exitUnits = amount;
+    final amountLabel = formatUnits(BigInt.parse(amount), asset);
     switch (_exitTo) {
       case _ExitTo.member:
         if (_memberProfileId == null) {
@@ -293,6 +300,7 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         return proposePrincipalExitRequest(
           sourceBucket: source,
           amount: amount,
+          amountLabel: amountLabel,
           memberProfileId: _memberProfileId,
           memberName: _memberName,
         );
@@ -302,6 +310,7 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         return proposePrincipalExitRequest(
           sourceBucket: source,
           amount: amount,
+          amountLabel: amountLabel,
           bucket: bucket,
         );
       case _ExitTo.external:
@@ -317,6 +326,7 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         return proposePrincipalExitRequest(
           sourceBucket: source,
           amount: amount,
+          amountLabel: amountLabel,
           externalAccount: to,
         );
     }
@@ -377,8 +387,7 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         roomId: widget.roomId,
         request: request!,
         check: _action == GovernanceAction.proposeExit
-            ? (prepared) =>
-                  checkPrincipalExit(prepared, amount: _amount.text.trim())
+            ? (prepared) => checkPrincipalExit(prepared, amount: _exitUnits)
             : null,
       ),
     };
@@ -536,10 +545,14 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     TextField(
       key: const Key('exit-amount'),
       controller: _amount,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
         labelText: 'Amount',
-        helperText: 'In the asset’s smallest unit',
+        suffixText: ref
+            .watch(stawiRoomAssetProvider(widget.roomId))
+            .asData
+            ?.value
+            ?.symbol,
       ),
     ),
     Padding(

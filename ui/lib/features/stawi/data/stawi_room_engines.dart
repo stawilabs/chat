@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import '../domain/stawi_money.dart';
 import 'stawi_clients.dart';
 
 /// The room's bound engines as stawi_finance_sdk checks an engine call
@@ -56,34 +57,18 @@ String productLabel(String name, List<int> productId) {
   return head.isEmpty ? 'Product' : 'Product ${bytesToHex0x(head)}';
 }
 
-String _money(finance.Money m) => m.amount.isEmpty
-    ? '0'
-    : '${m.amount}${m.assetId.isEmpty ? '' : ' ${m.assetId}'}';
-
-String _bps(int bps) {
-  final whole = bps ~/ 100;
-  final frac = bps % 100;
-  return frac == 0 ? '$whole%' : '$whole.${frac.toString().padLeft(2, '0')}%';
-}
-
-String _basis(finance.LoanRateBasis b) => switch (b) {
-  finance.LoanRateBasis.LOAN_RATE_BASIS_PER_PERIOD => ' per period',
-  finance.LoanRateBasis.LOAN_RATE_BASIS_PER_YEAR => ' a year',
-  _ => '',
-};
-
 /// The key terms of a loan form, for its picker entry.
 String loanProductTerms(finance.RoomLoanProduct p) {
   final parts = <String>[
     if (p.hasMaxAmount() && p.maxAmount.amount.isNotEmpty)
-      'up to ${_money(p.maxAmount)}',
-    if (p.rateBps > 0) '${_bps(p.rateBps)}${_basis(p.rateBasis)}',
+      'up to ${formatMoney(p.maxAmount)}',
+    if (p.rateBps > 0) formatRate(p.rateBps, p.rateBasis),
     if (p.rateBps == 0) 'no interest',
     if (p.maxInstalments > 0)
       p.minInstalments == p.maxInstalments
           ? '${p.maxInstalments} instalments'
           : '${p.minInstalments}–${p.maxInstalments} instalments',
-    if (p.feeBps > 0) 'fee ${_bps(p.feeBps)}',
+    if (p.feeBps > 0) 'fee ${formatBps(p.feeBps)}',
     if (p.minGuarantors > 0) '${p.minGuarantors} guarantors',
   ];
   return parts.join(' · ');
@@ -92,11 +77,11 @@ String loanProductTerms(finance.RoomLoanProduct p) {
 /// The key terms of a dues product, for its picker entry.
 String duesProductTerms(finance.RoomDuesProduct p) {
   final parts = <String>[
-    if (p.hasAmount() && p.amount.amount.isNotEmpty) _money(p.amount),
+    if (p.hasAmount() && p.amount.amount.isNotEmpty) formatMoney(p.amount),
     if (p.everyPeriods > 1) 'every ${p.everyPeriods} periods',
     if (p.everyPeriods == 1) 'every period',
     if (p.memberChoice)
-      'you choose ${_money(p.minAmount)}–${_money(p.maxAmount)}'
+      'you choose ${formatMoney(p.minAmount)}–${formatMoney(p.maxAmount)}'
     else
       'fixed by the room',
     if (!p.active) 'inactive',

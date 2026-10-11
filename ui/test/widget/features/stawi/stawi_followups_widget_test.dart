@@ -9,6 +9,7 @@ import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
+import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
@@ -186,6 +187,7 @@ void main() {
                   enginesKnown ? (engines ?? request.engines()) : null,
             ),
             roomCustodyProvider.overrideWith((ref, id) async => request.room),
+            stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
                 accounts: settlement.AccountServiceClient(transport),
@@ -232,11 +234,11 @@ void main() {
         finance.RoomDuesProduct(
           name: 'Monthly dues',
           productId: Uint8List(32),
-          amount: finance.Money(assetId: 'USDC.146', amount: '1000'),
+          amount: finance.Money(assetId: 'USDC.146', amount: '10000000'),
           everyPeriods: 1,
           memberChoice: true,
-          minAmount: finance.Money(assetId: 'USDC.146', amount: '500'),
-          maxAmount: finance.Money(assetId: 'USDC.146', amount: '5000'),
+          minAmount: finance.Money(assetId: 'USDC.146', amount: '5000000'),
+          maxAmount: finance.Money(assetId: 'USDC.146', amount: '50000000'),
           active: true,
         ),
         finance.RoomDuesProduct(
@@ -253,7 +255,7 @@ void main() {
       final transport = await pump(tester, products);
       expect(find.text('Emergency loan'), findsOneWidget);
       expect(
-        find.text('up to 900000000 USDC.146 · 3% per period · 1–6 instalments'),
+        find.text('up to 900.00 USDC · 3% per period · 1–6 instalments'),
         findsOneWidget,
       );
       expect(find.text('Product 0xabcdef01'), findsOneWidget);
@@ -261,10 +263,7 @@ void main() {
 
       await tester.tap(find.text('Emergency loan'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('engine-amount')),
-        request.json['amount'] as String,
-      );
+      await tester.enterText(find.byKey(const Key('engine-amount')), '500');
       await tester.enterText(find.byKey(const Key('engine-instalments')), '4');
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
@@ -281,7 +280,9 @@ void main() {
       await pump(tester, products, call: AccountEngineCall.chooseAmount);
       expect(find.text('Monthly dues'), findsOneWidget);
       expect(
-        find.textContaining('you choose 500 USDC.146–5000 USDC.146'),
+        find.text(
+          '10.00 USDC · every period · you choose 5.00 USDC–50.00 USDC',
+        ),
         findsOneWidget,
       );
       expect(find.text('Joining fee'), findsNothing);
@@ -302,10 +303,7 @@ void main() {
       final transport = await pump(tester, products, enginesKnown: false);
       await tester.tap(find.text('Emergency loan'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('engine-amount')),
-        request.json['amount'] as String,
-      );
+      await tester.enterText(find.byKey(const Key('engine-amount')), '500');
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
       expect(find.textContaining('engines could not be read'), findsOneWidget);

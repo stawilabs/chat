@@ -135,6 +135,8 @@ void main() {
                 'proposal_id': 'prop0000000000000001',
                 'action': 'open_signing_flow',
                 'payload_hash': '0x01',
+                'amount': '2500000000',
+                'asset_id': 'USDC.146',
               },
             },
           ),
@@ -146,6 +148,8 @@ void main() {
     expect(find.text('Voting happens in Stawi.'), findsOneWidget);
     expect(find.text('prop0000000000000001'), findsOneWidget);
     expect(find.text('0x01'), findsNothing);
+    expect(find.text('2,500.00 USDC'), findsOneWidget);
+    expect(find.text('USDC.146'), findsNothing);
     expect(find.byKey(const Key('finance-card-vote')), findsOneWidget);
   });
 

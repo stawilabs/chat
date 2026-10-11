@@ -86,7 +86,7 @@ class _AccountViewState extends ConsumerState<_AccountView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Minting ${funded.amount} test units '
+            'Minting ${funded.amount} minor units of the test asset '
             '(${funded.mintedToday} of ${funded.dailyLimit} today)',
           ),
         ),
