@@ -133,11 +133,15 @@ class GovernanceDialog extends ConsumerStatefulWidget {
     required this.roomId,
     required this.action,
     this.onchainProposalId,
+    this.revealClosesAt,
     super.key,
   });
 
   final String roomId;
   final GovernanceAction action;
+
+  /// When the secret ballot's reveal window closes, when the caller knows.
+  final DateTime? revealClosesAt;
 
   /// Prefills the proposal for a vote.
   final int? onchainProposalId;
@@ -259,6 +263,21 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     return reason;
   }
 
+  /// The reveal deadline finance indexed for the proposal; null when it is
+  /// not known (the reminder then shows no date).
+  Future<DateTime?> _revealDeadline(int onchainProposalId) async {
+    try {
+      final p = await ref
+          .read(stawiFinanceServiceProvider)
+          .proposalByOnchainId(widget.roomId, onchainProposalId);
+      return p != null && p.hasRevealClosesAt()
+          ? p.revealClosesAt.toDateTime()
+          : null;
+    } on Object {
+      return null;
+    }
+  }
+
   GovernanceRequest _exitRequest() {
     final amount = _amount.text.trim();
     final source = _sourceBucket.text.trim();
@@ -321,21 +340,23 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     final send = switch (_action) {
       GovernanceAction.secretVote => () => _send(
         context,
-        () => service.commitSecretVote(
+        () async => service.commitSecretVote(
           roomId: widget.roomId,
           onchainProposalId: proposal!,
           choice: _choice,
+          revealClosesAt:
+              widget.revealClosesAt ?? await _revealDeadline(proposal),
         ),
         'Secret vote cast; reveal it when voting closes',
       ),
-      GovernanceAction.revealVote => () => _send(
-        context,
-        () => service.revealSecretVote(
+      GovernanceAction.revealVote => () => _send(context, () async {
+        final event = await service.revealSecretVote(
           roomId: widget.roomId,
           onchainProposalId: proposal!,
-        ),
-        'Vote revealed',
-      ),
+        );
+        ref.invalidate(stawiPendingRevealsProvider(widget.roomId));
+        return event;
+      }, 'Vote revealed'),
       GovernanceAction.executeExit ||
       GovernanceAction.executeExitCancel => () => _send(
         context,
@@ -422,7 +443,18 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
                   'Only a sealed commitment is sent now. Your choice stays on '
-                  'this device until you reveal it after voting closes.',
+                  'this device, and only this device can reveal it: reveal '
+                  'from here after voting closes, before the reveal deadline.',
+                  key: Key('secret-vote-device-note'),
+                ),
+              ),
+            if (_action == GovernanceAction.revealVote)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'A secret vote can only be revealed from the device that '
+                  'cast it.',
+                  key: Key('reveal-device-note'),
                 ),
               ),
             if (_action == GovernanceAction.voteExit)

@@ -12,7 +12,9 @@ import '../data/stawi_account_service.dart';
 import '../data/stawi_custody.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_identity.dart';
+import '../data/stawi_room_engines.dart';
 import '../data/stawi_room_service.dart';
+import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import 'statement_screen.dart' show formatMoney;
@@ -392,7 +394,7 @@ class _MembersTab extends ConsumerWidget {
             for (final m in response.balances)
               ExpansionTile(
                 key: Key('member-${m.memberId}'),
-                title: Text(m.profileId.isEmpty ? m.memberId : m.profileId),
+                title: _MemberName(roomId: roomId, profileId: m.profileId),
                 subtitle: Text(
                   '${m.membershipState.toLowerCase()}'
                   ' · contributed ${formatMoney(m.contributed)}'
@@ -414,6 +416,24 @@ class _MembersTab extends ConsumerWidget {
           ],
         ),
       );
+}
+
+class _MemberName extends ConsumerWidget {
+  const _MemberName({required this.roomId, required this.profileId});
+
+  final String roomId;
+  final String profileId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Text(
+    ref
+            .watch(
+              stawiMemberNameProvider((roomId: roomId, profileId: profileId)),
+            )
+            .asData
+            ?.value ??
+        'Member',
+  );
 }
 
 /// The form for one loan or withdrawal call on the member's account: fill it
@@ -453,6 +473,15 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     super.dispose();
   }
 
+  RoomProduct? _picked;
+
+  Uint8List? _productId() {
+    if (!widget.call.takesProduct) return null;
+    if (_picked != null) return _picked!.id;
+    final name = _product.text.trim();
+    return name.isEmpty ? null : productIdOf(name);
+  }
+
   Future<void> _review() async {
     setState(() {
       _busy = true;
@@ -469,9 +498,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
         custody: custody,
         amount: _amount.text.trim(),
         loanId: widget.loan?.onchainLoanId.toInt() ?? 0,
-        productId: widget.call.takesProduct && _product.text.trim().isNotEmpty
-            ? productIdOf(_product.text)
-            : null,
+        productId: _productId(),
         instalments: int.tryParse(_instalments.text.trim()) ?? 0,
       );
     } on FormatException catch (e) {
@@ -481,10 +508,15 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
       });
       return;
     }
+    final engines = await ref
+        .read(roomEnginesProvider(widget.roomId).future)
+        .catchError((Object _) => null);
     if (!mounted) return;
     final prepared = await runStawiAction(
       context,
-      () => ref.read(stawiAccountServiceProvider).prepareEngineCall(request),
+      () => ref
+          .read(stawiAccountServiceProvider)
+          .prepareEngineCall(request, engines: engines),
     );
     if (!mounted) return;
     setState(() {
@@ -509,6 +541,40 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     }
   }
 
+  /// A picker over the room's products when they can be listed; until then
+  /// the member names the product as the room's rules do.
+  Widget _productField() {
+    final kind = widget.call == AccountEngineCall.loanRequest
+        ? RoomProductKind.loan
+        : RoomProductKind.dues;
+    final products = ref
+        .watch(roomProductsProvider(widget.roomId))
+        .asData
+        ?.value
+        ?.where((p) => p.kind == kind)
+        .toList();
+    final label = kind == RoomProductKind.loan ? 'Loan form' : 'Dues product';
+    if (products != null) {
+      return DropdownButtonFormField<RoomProduct>(
+        key: const Key('engine-product-picker'),
+        initialValue: _picked,
+        decoration: InputDecoration(labelText: label),
+        items: [
+          for (final p in products)
+            DropdownMenuItem(value: p, child: Text(p.name)),
+        ],
+        onChanged: (p) => setState(() => _picked = p),
+      );
+    }
+    return TextField(
+      key: const Key('engine-product'),
+      controller: _product,
+      decoration: InputDecoration(
+        labelText: '$label (as the room’s rules name it)',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final prepared = _prepared;
@@ -525,16 +591,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (prepared == null) ...[
-              if (widget.call.takesProduct)
-                TextField(
-                  key: const Key('engine-product'),
-                  controller: _product,
-                  decoration: InputDecoration(
-                    labelText: widget.call == AccountEngineCall.loanRequest
-                        ? 'Loan form (as the room’s rules name it)'
-                        : 'Dues product (as the room’s rules name it)',
-                  ),
-                ),
+              if (widget.call.takesProduct) _productField(),
               if (widget.call.takesAmount)
                 TextField(
                   key: const Key('engine-amount'),
@@ -557,7 +614,11 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                   decoration: const InputDecoration(labelText: 'Instalments'),
                 ),
             ] else
-              _Review(call: prepared.call, request: prepared.request),
+              _Review(
+                call: prepared.call,
+                request: prepared.request,
+                engineConfirmed: prepared.engineConfirmed,
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -594,10 +655,15 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
 /// What the account will do, decoded from the call settlement prepared and
 /// checked on this device.
 class _Review extends StatelessWidget {
-  const _Review({required this.call, required this.request});
+  const _Review({
+    required this.call,
+    required this.request,
+    required this.engineConfirmed,
+  });
 
   final EngineCall call;
   final AccountEngineRequest request;
+  final bool engineConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -621,7 +687,8 @@ class _Review extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Checked on this device: this is the call you asked for, on this '
-          'room, from your account.',
+          'room, from your account'
+          '${engineConfirmed ? ', on the room’s own engine.' : '.'}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

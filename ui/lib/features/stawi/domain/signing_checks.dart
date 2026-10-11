@@ -236,10 +236,14 @@ Uint8List checkedContributionDigest({
 /// digest is the intent's own, the intent binds exactly the engine call
 /// settlement returned (verifyEngineCallIntent), and that call is the action,
 /// room, loan, product and amount the member asked for.
+/// With [loanEngine] and [rulesEngine] (the room's bound engines), the
+/// prepared target must be the engine the action runs on.
 ({Uint8List digest, EngineCall call}) checkedEngineCall({
   required settlement.PrepareAccountCallResponse prepared,
   required AccountEngineRequest request,
   required Uint8List account,
+  Uint8List? loanEngine,
+  Uint8List? rulesEngine,
 }) {
   final digest = checkedAccountCallDigest(
     prepared: prepared,
@@ -267,6 +271,12 @@ Uint8List checkedContributionDigest({
   }
   if (call.action != request.call.action) {
     throw SigningRefused('settlement prepared ${call.action.functionName}');
+  }
+  final engine = call.action.onLoanEngine ? loanEngine : rulesEngine;
+  if (engine != null && !bytesEqual(prepared.call.engineTarget, engine)) {
+    throw const SigningRefused(
+      'the call targets another engine than the room’s',
+    );
   }
   if (!bytesEqual(call.room, request.custody)) {
     throw const SigningRefused('the call is for another room');

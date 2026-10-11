@@ -118,6 +118,20 @@ class StawiFinanceService {
         finance.GetPolicyRequest(roomId: roomId),
       )).policyVersion.constitution.governance.roles;
 
+  /// The room's proposal with on-chain number [onchainProposalId], if
+  /// finance has indexed it.
+  Future<finance.Proposal?> proposalByOnchainId(
+    String roomId,
+    int onchainProposalId,
+  ) async {
+    final proposals = (await _governance.listProposals(
+      finance.ListProposalsRequest(roomId: roomId),
+    )).proposals;
+    return proposals
+        .where((p) => p.onchainProposalId.toInt() == onchainProposalId)
+        .firstOrNull;
+  }
+
   Future<finance.Proposal> proposal(String proposalId) async =>
       (await _governance.getProposal(
         finance.GetProposalRequest(proposalId: proposalId),

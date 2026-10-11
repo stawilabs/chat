@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../messages/data/message_providers.dart';
 import '../../messages/domain/room_event.dart';
+import '../../profile/data/profile_providers.dart';
+import '../../rooms/data/detail_panel_providers.dart';
 import '../domain/stawi_payloads.dart';
 import 'stawi_binding.dart';
 
@@ -83,3 +85,22 @@ final stawiRoomPhaseProvider = Provider.autoDispose
       (ref, roomId) =>
           ref.watch(stawiBindingProvider(roomId)).whenData(phaseOfBinding),
     );
+
+/// A member's display name in a room: the room's own member list (profile or
+/// contact name), then the local profile cache. Never the raw profile id
+/// unless nothing else is known.
+final stawiMemberNameProvider = FutureProvider.autoDispose
+    .family<String, ({String roomId, String profileId})>((ref, key) async {
+      if (key.profileId.isEmpty) return 'Member';
+      final members = await ref.watch(roomMembersProvider(key.roomId).future);
+      for (final m in members) {
+        if (m.profileId == key.profileId && m.name.trim().isNotEmpty) {
+          return m.name;
+        }
+      }
+      final profile = await ref.watch(
+        profileByIdProvider(key.profileId).future,
+      );
+      final name = profile?.name?.trim() ?? '';
+      return name.isNotEmpty ? name : 'Member ${key.profileId.substring(0, 6)}';
+    });

@@ -471,6 +471,9 @@ class FinanceCardBubble extends ConsumerWidget {
             ? GovernanceAction.secretVote
             : GovernanceAction.vote,
         onchainProposalId: proposal.onchainProposalId.toInt(),
+        revealClosesAt: proposal.hasRevealClosesAt()
+            ? proposal.revealClosesAt.toDateTime()
+            : null,
       ),
     );
   }

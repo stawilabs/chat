@@ -5,6 +5,7 @@ import '../data/stawi_timeline_providers.dart';
 import 'contribute_screen.dart';
 import 'convert_room_screen.dart';
 import 'governance_sheet.dart';
+import 'pending_reveals_card.dart';
 import 'room_money_screen.dart';
 import 'statement_screen.dart';
 import 'stawi_account_screen.dart';
@@ -81,6 +82,7 @@ class StawiRoomScreen extends ConsumerWidget {
         ];
       case StawiRoomPhase.active:
         return [
+          PendingRevealsCard(roomId: roomId),
           FilledButton.icon(
             key: const Key('stawi-governance'),
             icon: const Icon(Icons.gavel_outlined),

@@ -474,7 +474,9 @@ void main() {
       await pump(tester);
       await tester.tap(find.text('Members'));
       await tester.pumpAndSettle();
-      expect(find.text('p2'), findsOneWidget);
+      // The room's member list names p2; no raw profile id is shown.
+      expect(find.text('Amina'), findsOneWidget);
+      expect(find.text('p2'), findsNothing);
       expect(find.textContaining('contributed 1234 USDC.146'), findsOneWidget);
       expect(find.textContaining('in arrears'), findsOneWidget);
       await tester.tap(find.byKey(const Key('member-mem1')));
@@ -504,6 +506,7 @@ void main() {
         ProviderScope(
           overrides: [
             stawiBindingProvider.overrideWith((ref, id) async => binding),
+            stawiPendingRevealsProvider.overrideWith((ref, id) async => []),
           ],
           child: const MaterialApp(
             home: StawiRoomScreen(roomId: roomId, roomName: 'Chama'),

@@ -166,6 +166,7 @@ extension StawiSecretBallot on StawiRoomService {
     required String roomId,
     required int onchainProposalId,
     required finance.VoteChoice choice,
+    DateTime? revealClosesAt,
   }) async {
     final account = (await _identity()).primary;
     if (account == null) {
@@ -176,6 +177,7 @@ extension StawiSecretBallot on StawiRoomService {
       proposalId: onchainProposalId,
       choice: choice,
       member: account.address,
+      revealClosesAt: revealClosesAt,
     );
     final request = commitVoteRequest(
       onchainProposalId: onchainProposalId,
@@ -197,24 +199,41 @@ extension StawiSecretBallot on StawiRoomService {
   }) async {
     final sealed = await _store.load(roomId, onchainProposalId);
     if (sealed == null) {
-      throw const StawiUnavailable(
-        'This device holds no sealed vote for that proposal',
-      );
+      throw const StawiUnavailable(revealElsewhereMessage);
     }
     final request = revealVoteRequest(
       onchainProposalId: onchainProposalId,
       choice: sealed.choice,
       salt: sealed.salt,
     );
-    return signedCall(
+    final event = await signedCall(
       roomId: roomId,
       kind: request.kind,
       params: request.params,
       summary: request.summary,
       account: sealed.member,
     );
+    await _store.markRevealed(roomId, onchainProposalId);
+    return event;
   }
+
+  /// This device's sealed votes in [roomId] still to reveal.
+  Future<List<PendingReveal>> pendingReveals(String roomId) =>
+      _store.pending(roomId);
 }
+
+/// Why a vote cannot be revealed from this device.
+const String revealElsewhereMessage =
+    'This vote was not cast on this device. A secret vote is sealed on the '
+    'device that cast it and its choice never leaves it, so reveal it from '
+    'that device.';
+
+/// This device's sealed votes in a room still to reveal.
+final stawiPendingRevealsProvider = FutureProvider.autoDispose
+    .family<List<PendingReveal>, String>(
+      (ref, roomId) =>
+          ref.watch(stawiRoomServiceProvider).pendingReveals(roomId),
+    );
 
 /// The permissionless room calls: nobody signs them (the engines recompute
 /// every amount; custody checks a passed exit ballot itself), so the app hands
