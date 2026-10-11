@@ -9,10 +9,13 @@ import (
 	"connectrpc.com/connect"
 	"github.com/pitabwire/frame/v2"
 	"github.com/pitabwire/frame/v2/datastore"
+	"github.com/pitabwire/frame/v2/datastore/pool"
 	"github.com/pitabwire/frame/v2/frametests/definition"
+	"github.com/pitabwire/frame/v2/workerpool"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/business"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
@@ -31,6 +34,9 @@ type stawiFixture struct {
 	bindings repository.StawiRoomRepository
 	calls    repository.StawiRoomCallRepository
 	subRepo  repository.RoomSubscriptionRepository
+	dbPool   pool.Pool
+	workMan  workerpool.Manager
+	authz    authz.Middleware
 	roomID   string
 	alice    *commonv1.ContactLink
 	bob      *commonv1.ContactLink
@@ -70,6 +76,7 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 	workMan := svc.WorkManager()
 	evtsMan := svc.EventsManager()
 	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	f.dbPool, f.workMan, f.authz = dbPool, workMan, s.AuthzMiddleware
 
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)

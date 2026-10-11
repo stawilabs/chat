@@ -215,7 +215,7 @@ func (r *stawiRoomCallRepository) FindBySigner(
 }
 
 func (r *stawiRoomCallRepository) SetState(ctx context.Context, callID, state string) (bool, error) {
-	res := r.Pool().DB(ctx, false).Model(&models.StawiRoomCall{}).
+	res := r.Pool().DB(ctx, false).Table("stawi_room_calls").
 		Where("id = ? AND state = ?", callID, models.StawiCallStateSubmitted).
 		Updates(map[string]any{colState: state, "modified_at": time.Now()})
 	return res.RowsAffected > 0, res.Error
@@ -275,14 +275,14 @@ func (s *stawiChainStore) Record(ctx context.Context, fact *models.StawiChainFac
 }
 
 func (s *stawiChainStore) AssignRoom(ctx context.Context, custody, roomID string) error {
-	return s.pool.DB(ctx, false).Model(&models.StawiChainFact{}).
+	return s.pool.DB(ctx, false).Table("stawi_chain_facts").
 		Where("room_id = '' AND custody_address = ?", strings.ToLower(custody)).
 		Update("room_id", roomID).Error
 }
 
 func (s *stawiChainStore) RoomsWithPending(ctx context.Context, limit int) ([]string, error) {
 	var rooms []string
-	err := s.pool.DB(ctx, false).Model(&models.StawiChainFact{}).
+	err := s.pool.DB(ctx, false).Table("stawi_chain_facts").
 		Where("applied = ? AND room_id <> ''", false).
 		Distinct("room_id").Limit(limit).Pluck("room_id", &rooms).Error
 	return rooms, err
@@ -307,7 +307,7 @@ func (s *stawiChainStore) Pending(tx *gorm.DB, roomID string) ([]*models.StawiCh
 func (s *stawiChainStore) MarkApplied(tx *gorm.DB, fact *models.StawiChainFact) error {
 	now := time.Now()
 	fact.Applied, fact.AppliedAt = true, &now
-	return tx.Model(&models.StawiChainFact{}).Where("id = ?", fact.GetID()).
+	return tx.Table("stawi_chain_facts").Where("id = ?", fact.GetID()).
 		Updates(map[string]any{"applied": true, "applied_at": now, "outcome_event_id": fact.OutcomeEventID}).Error
 }
 

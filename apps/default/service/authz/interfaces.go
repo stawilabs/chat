@@ -37,6 +37,10 @@ type Middleware interface {
 	AddRoomMember(ctx context.Context, roomID string, subscriptionID string, role string) error
 	RemoveRoomMember(ctx context.Context, roomID string, subscriptionID string) error
 	UpdateRoomMemberRole(ctx context.Context, roomID string, subscriptionID string, oldRole, newRole string) error
+	// SetRoomMemberRole makes role the subscription's only relation to the
+	// room: the role's relation is written first, then every other one is
+	// deleted, so the member is never without access mid-change.
+	SetRoomMemberRole(ctx context.Context, roomID string, subscriptionID string, role string) error
 
 	// SetMessageSender Message tuple management
 	SetMessageSender(ctx context.Context, messageID string, senderProfileID string, roomID string) error
