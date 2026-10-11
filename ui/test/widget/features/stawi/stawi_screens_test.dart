@@ -196,9 +196,22 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('stawi-test-funds')));
       await tester.pumpAndSettle();
+      expect(find.text('USDC'), findsOneWidget);
       await tester.enterText(
         find.byKey(const Key('stawi-test-funds-amount')),
-        '2000000',
+        '2.5555555',
+      );
+      await tester.tap(find.byKey(const Key('stawi-test-funds-confirm')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('at most 6 decimals'), findsOneWidget);
+      expect(
+        transport.requestsTo(settlement.AccountService.fundTestAccount),
+        isEmpty,
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('stawi-test-funds-amount')),
+        '2.5',
       );
       await tester.tap(find.byKey(const Key('stawi-test-funds-confirm')));
       await tester.pumpAndSettle();
@@ -207,8 +220,11 @@ void main() {
           .requestsTo(settlement.AccountService.fundTestAccount)
           .single;
       expect(request.address, account);
-      expect(request.amount, '2000000');
-      expect(find.textContaining('Minting 2000000'), findsOneWidget);
+      expect(request.amount, '2500000');
+      expect(
+        find.textContaining('Minting 2.50 USDC (2.50 USDC of 5,000.00 USDC'),
+        findsOneWidget,
+      );
     });
   });
 

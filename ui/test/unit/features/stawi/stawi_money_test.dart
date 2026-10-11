@@ -8,6 +8,7 @@ import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
+import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
@@ -345,13 +346,32 @@ void main() {
     final funded = await service(
       DeviceKeyStore(MemoryDeviceKeyVault()),
       identityWith('p1', account),
-    ).fundTestAccount('1000000000');
+    ).fundTestAccount('1,000', StawiAsset.fromId('USDC.146'));
     expect(funded.amount, '1000000000');
     final request = transport
         .requestsTo(settlement.AccountService.fundTestAccount)
         .single;
     expect(request.address, account);
     expect(request.amount, '1000000000');
+  });
+
+  test('the faucet refuses an amount the asset cannot hold', () async {
+    final faucet = service(
+      DeviceKeyStore(MemoryDeviceKeyVault()),
+      identityWith('p1', Uint8List(20)),
+    );
+    final usdc = StawiAsset.fromId('USDC.146');
+    for (final bad in ['0', '-1', '1.0000001', 'ten']) {
+      await expectLater(
+        faucet.fundTestAccount(bad, usdc),
+        throwsFormatException,
+        reason: bad,
+      );
+    }
+    expect(
+      transport.requestsTo(settlement.AccountService.fundTestAccount),
+      isEmpty,
+    );
   });
 
   group('room custody', () {

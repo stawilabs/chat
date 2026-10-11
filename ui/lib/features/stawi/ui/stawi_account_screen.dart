@@ -5,6 +5,7 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../../core/networking/api_config.dart';
 import '../data/stawi_account_service.dart';
+import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
 
 /// The profile's Stawi account: its address, whether it is deployed on chain,
@@ -70,24 +71,32 @@ class _AccountViewState extends ConsumerState<_AccountView> {
   }
 
   Future<void> _getTestFunds() async {
+    final asset = StawiAsset.fromId(ApiConfig.testAssetId);
     final amount = await showDialog<String>(
       context: context,
-      builder: (context) => const _TestFundsDialog(),
+      builder: (context) => _TestFundsDialog(asset: asset),
     );
     if (amount == null || !mounted) return;
     setState(() => _busy = true);
     final funded = await runStawiAction(
       context,
-      () => ref.read(stawiAccountServiceProvider).fundTestAccount(amount),
+      () =>
+          ref.read(stawiAccountServiceProvider).fundTestAccount(amount, asset),
     );
     if (!mounted) return;
     setState(() => _busy = false);
     if (funded != null) {
+      String shown(String units) {
+        final n = BigInt.tryParse(units);
+        return n == null ? units : formatUnits(n, asset);
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Minting ${funded.amount} minor units of the test asset '
-            '(${funded.mintedToday} of ${funded.dailyLimit} today)',
+            'Minting ${shown(funded.amount)} '
+            '(${shown(funded.mintedToday)} of ${shown(funded.dailyLimit)} '
+            'today)',
           ),
         ),
       );
@@ -304,14 +313,17 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _TestFundsDialog extends StatefulWidget {
-  const _TestFundsDialog();
+  const _TestFundsDialog({required this.asset});
+
+  final StawiAsset asset;
 
   @override
   State<_TestFundsDialog> createState() => _TestFundsDialogState();
 }
 
 class _TestFundsDialogState extends State<_TestFundsDialog> {
-  final _controller = TextEditingController(text: '1000000000');
+  final _controller = TextEditingController(text: '1000');
+  String? _error;
 
   @override
   void dispose() {
@@ -325,10 +337,12 @@ class _TestFundsDialogState extends State<_TestFundsDialog> {
     content: TextField(
       key: const Key('stawi-test-funds-amount'),
       controller: _controller,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
         labelText: 'Amount',
-        helperText: 'Test asset, smallest unit',
+        suffixText: widget.asset.symbol,
+        helperText: 'Test ${widget.asset.symbol}, minted to your account',
+        errorText: _error,
       ),
     ),
     actions: [
@@ -338,7 +352,16 @@ class _TestFundsDialogState extends State<_TestFundsDialog> {
       ),
       FilledButton(
         key: const Key('stawi-test-funds-confirm'),
-        onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+        onPressed: () {
+          final amount = _controller.text.trim();
+          try {
+            parseAmountInput(amount, widget.asset);
+          } on FormatException catch (e) {
+            setState(() => _error = e.message);
+            return;
+          }
+          Navigator.of(context).pop(amount);
+        },
         child: const Text('Mint'),
       ),
     ],

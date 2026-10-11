@@ -36,6 +36,13 @@ class ApiConfig {
   static bool get testFundsEnabled =>
       environment == 'staging' || (environment.isEmpty && kDebugMode);
 
+  /// The testnet faucet's asset (`SYMBOL.chainId`): the amount a member asks
+  /// the faucet for is read and shown in it.
+  static const String testAssetId = String.fromEnvironment(
+    'TEST_ASSET_ID',
+    defaultValue: 'USDC.146',
+  );
+
   /// Unified product API origin (Cloudflare path gateway).
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',

@@ -10,6 +10,7 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
 import '../domain/account_engine_calls.dart';
 import '../domain/signing_checks.dart';
+import '../domain/stawi_money.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
 import 'stawi_identity.dart';
@@ -307,14 +308,14 @@ class StawiAccountService {
     }
   }
 
-  /// Testnet faucet: mints [amount] of the test asset to the member's
-  /// primary account. Settlement refuses it unless the deployment enables it.
+  /// Testnet faucet: mints [amount] of the test [asset] (as a person types
+  /// it, "1000" or "12.5") to the member's primary account. Settlement
+  /// refuses it unless the deployment enables it.
   Future<settlement.FundTestAccountResponse> fundTestAccount(
     String amount,
+    StawiAsset asset,
   ) async {
-    if (!_positiveDecimal.hasMatch(amount)) {
-      throw const FormatException('Enter a whole amount greater than zero');
-    }
+    final units = parseAmountInput(amount, asset);
     final account = (await _identity()).primary;
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
@@ -322,7 +323,7 @@ class StawiAccountService {
     return _accounts.fundTestAccount(
       settlement.FundTestAccountRequest(
         address: account.address,
-        amount: amount,
+        amount: units,
       ),
     );
   }
