@@ -152,6 +152,69 @@ it is a signal a consumer may render or draft from, never an authorization.
 Configure the stream with `QUEUE_ROOM_EVENT_PUBLISHED_NAME` /
 `QUEUE_ROOM_EVENT_PUBLISHED_URI`; an empty name disables it.
 
+### Stawi rooms
+
+A Stawi room is a chat room whose money and governance live on chain
+(spec: stawi `docs/superpowers/specs/2026-10-11-chat-stawi-rooms-design.md`).
+Settlement is the one chain writer; chat relays acts and follows the chain.
+
+**Acts are payloads** (`proto/chat/v1/payload_type.proto`):
+
+| Payload | Sent by | Chat checks, then |
+|---|---|---|
+| `STAWI_ROOM_CONVERSION` (41) | the room's owner or an admin | founders are active subscriptions; calls `PrepareRoomGenesis`; stores the event with the genesis filled in (the genesis card) |
+| `STAWI_GENESIS_SIGNATURE` (42) | a founder of the room's current genesis | calls `SubmitRoomGenesisSignature` with the sender's profile |
+| `STAWI_SIGNED_CALL` (43) | the call's signer (settlement's record, resolved through profile) | room is bound; call is for this room and kind; calls `SubmitRoomCall` |
+| `STAWI_CALL_OUTCOME` (44) | server only | ACCEPTED / FAILED(reason) after relay; OBSERVED from chain facts |
+
+An act refused by these checks, or that cannot reach settlement, is refused to
+the sender and not stored. An act settlement refuses is stored with a FAILED
+outcome. Nothing about subscriptions changes on send.
+
+**Chain facts** drive a bound room's subscriptions, roles and outcomes. Chat
+subscribes to settlement's facts — finance.v1 event protos on
+`svc.stawi.settlement.events` (stream `svc_stawi_facts`), headers `event_name`
+and `event_id` — and applies `room.activated`, `room.membership_observed`,
+`governance.call_observed` and `governance.call_failed`, idempotent by
+`(chain_id, tx_hash, log_index)`, per room in `(block, log_index)` order. A
+fact acts on the room bound to the contract that emitted the log. A room is
+bound only if chat prepared its genesis. A reconciler repairs drift between
+subscriptions/Keto and the chain's membership and emits
+`room.subscription_drift`.
+
+For a bound room `AddRoomSubscriptions`, `RemoveRoomSubscriptions`,
+`UpdateSubscriptionRole`, `DeleteRoom`, chat-native proposals and
+MOTION/VOTE payloads are refused (FailedPrecondition).
+
+**Service cards.** Finance's service identity posts `FINANCE_CARD` (as an
+EVENT) and `TEXT` (as a MESSAGE) into a bound Stawi room of its own
+tenant/partition without being a member, through `SendEvent`. It must be an
+internal-system principal holding `stawi_card_post` on `service_chat`. Grant
+it to finance's service profile only:
+
+```
+# Keto tuple (functional plane, per tenancy)
+service_chat:<tenant_id>/<partition_id>#granted_stawi_card_post@profile_user:<finance-service-profile-id>
+```
+
+`stawi_card_post` is also bound to `ROLE_SERVICE`, so a service account
+holding the `service` relation on `service_chat` for that tenancy has it; no
+human role grants it.
+
+**Configuration**
+
+| Variable | Default | Notes |
+|---|---|---|
+| `SETTLEMENT_SERVICE_URI` | empty | required in staging/production |
+| `SETTLEMENT_SERVICE_WORKLOAD_API_TARGET_PATH` | `/ns/stawi/sa/service-settlement` | |
+| `PROFILE_SERVICE_URI` | `127.0.0.1:7003` | resolves chain addresses (needs `account_resolve`, ROLE_SERVICE) |
+| `QUEUE_STAWI_FACTS_NAME` / `_URI` | `stawi.settlement.facts` / `mem://…` | durable subscription required in staging/production, e.g. `nats://…?jetstream=true&stream_name=svc_stawi_facts&consumer_durable_name=svc_chat_stawi_facts&consumer_filter_subject=svc.stawi.settlement.events&consumer_ack_policy=explicit&consumer_deliver_policy=all&consumer_max_deliver=5` |
+| `QUEUE_STAWI_DRIFT_NAME` / `_URI` | `chat.room.subscription_drift` / `mem://…` | durable in staging/production; empty name disables |
+| `STAWI_RECONCILE_INTERVAL_SECONDS` | `300` | |
+
+Only settlement's NATS credentials may publish on
+`svc.stawi.settlement.events`.
+
 ### Gateway Service
 
 #### 1. GatewayServer.Connect() (`apps/gateway/service/handlers/gateway.go`)
