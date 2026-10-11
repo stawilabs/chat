@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../../core/networking/api_config.dart';
@@ -70,21 +71,8 @@ class _AccountViewState extends ConsumerState<_AccountView> {
     if (result != null) ref.invalidate(stawiAccountStatusProvider);
   }
 
-  Future<void> _getTestFunds() async {
-    final StawiAsset asset;
-    try {
-      asset = StawiAsset.fromInfo(
-        (await ref.read(stawiTestAssetProvider.future)).asset,
-      );
-    } on Object catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(stawiErrorMessage(error))));
-      }
-      return;
-    }
-    if (!mounted) return;
+  /// Mints test funds of [asset], the one the faucet names.
+  Future<void> _getTestFunds(StawiAsset asset) async {
     final amount = await showDialog<String>(
       context: context,
       builder: (context) => _TestFundsDialog(asset: asset),
@@ -99,9 +87,12 @@ class _AccountViewState extends ConsumerState<_AccountView> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (funded != null) {
+      final minted = funded.hasAsset()
+          ? StawiAsset.fromInfo(funded.asset)
+          : asset;
       String shown(String units) {
         final n = BigInt.tryParse(units);
-        return n == null ? units : formatUnits(n, asset);
+        return n == null ? units : formatUnits(n, minted);
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -228,17 +219,28 @@ class _AccountViewState extends ConsumerState<_AccountView> {
             'already registered with your account.',
             style: theme.textTheme.bodyMedium,
           ),
-        if (widget.showTestFunds && account != null) ...[
-          const SizedBox(height: 24),
-          TextButton.icon(
-            key: const Key('stawi-test-funds'),
-            onPressed: _busy ? null : _getTestFunds,
-            icon: const Icon(Icons.science_outlined),
-            label: const Text('Get test funds (testnet)'),
-          ),
-        ],
+        if (widget.showTestFunds && account != null)
+          ...?_testFunds(ref.watch(stawiTestAssetProvider).asData?.value),
       ],
     );
+  }
+
+  /// The faucet button, when the deployment's faucet is on; it mints the
+  /// asset GetAsset names.
+  List<Widget>? _testFunds(settlement.GetAssetResponse? faucet) {
+    if (faucet == null || !faucet.faucetEnabled || !faucet.hasAsset()) {
+      return null;
+    }
+    final asset = StawiAsset.fromInfo(faucet.asset);
+    return [
+      const SizedBox(height: 24),
+      TextButton.icon(
+        key: const Key('stawi-test-funds'),
+        onPressed: _busy ? null : () => _getTestFunds(asset),
+        icon: const Icon(Icons.science_outlined),
+        label: Text('Get test ${asset.symbol} (testnet)'),
+      ),
+    ];
   }
 
   static bool _deploying(StawiAccountStatus status) =>

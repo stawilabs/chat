@@ -162,6 +162,7 @@ void main() {
             amount: req.amount,
             mintedToday: req.amount,
             dailyLimit: '5000000000',
+            asset: usdcInfo,
           ),
         );
       key = (await DeviceKeyStore(vaultWith('p1', anvilKey)).load('p1'))!;
@@ -194,11 +195,29 @@ void main() {
       await tester.pumpWidget(screen(showTestFunds: false));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('stawi-test-funds')), findsNothing);
+      expect(transport.requestsTo(settlement.AccountService.getAsset), isEmpty);
+    });
+
+    testWidgets('are hidden where the deployment has no faucet', (
+      tester,
+    ) async {
+      transport.on(
+        settlement.AccountService.getAsset,
+        (_) => settlement.GetAssetResponse(asset: usdcInfo),
+      );
+      await tester.pumpWidget(screen(showTestFunds: true));
+      await tester.pumpAndSettle();
+      expect(
+        transport.requestsTo(settlement.AccountService.getAsset),
+        isNotEmpty,
+      );
+      expect(find.byKey(const Key('stawi-test-funds')), findsNothing);
     });
 
     testWidgets('mint to the account on testnet builds', (tester) async {
       await tester.pumpWidget(screen(showTestFunds: true));
       await tester.pumpAndSettle();
+      expect(find.text('Get test USDC (testnet)'), findsOneWidget);
       await tester.tap(find.byKey(const Key('stawi-test-funds')));
       await tester.pumpAndSettle();
       expect(find.text('USDC'), findsOneWidget);
