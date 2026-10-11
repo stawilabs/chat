@@ -179,12 +179,13 @@ void main() {
         14,
         now: DateTime.utc(2026, 10, 11, 18, 30),
       );
-      expect(expiry, DateTime.utc(2026, 10, 25));
-      expect(inviteExpiryLabel(expiry), '2026-10-25');
-      expect(parseInviteExpiry(' 2026-10-25 '), expiry);
-      for (final bad in ['2026-10-32', '25/10/2026', '2026-1-5', '']) {
-        expect(() => parseInviteExpiry(bad), throwsFormatException);
-      }
+      expect(expiry, DateTime.utc(2026, 10, 25, 18, 30));
+      expect(inviteExpiryLabel(expiry), '2026-10-25 18:30');
+      expect(
+        inviteExpiryFromSeconds(Int64(expiry.millisecondsSinceEpoch ~/ 1000)),
+        expiry,
+      );
+      expect(inviteExpiryFromSeconds(Int64.ZERO), isNull);
       expect(() => inviteExpiryAfter(0), throwsArgumentError);
       expect(() => inviteExpiryAfter(maxInviteDays), throwsArgumentError);
 
@@ -198,20 +199,29 @@ void main() {
       expect(terms.action, finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE);
       expect(terms.subject.profileId, 'p2');
       expect(terms.arg, Int64(expiry.millisecondsSinceEpoch ~/ 1000));
-      expect(invite.summary, contains('2026-10-25'));
+      expect(invite.summary, contains('2026-10-25 18:30 UTC'));
+      settlement.PrepareRoomCallResponse preparedWith(Int64 seconds) =>
+          settlement.PrepareRoomCallResponse(
+            call: settlement.RoomCall(inviteExpiry: seconds),
+          );
+      checkProposedInviteExpiry(preparedWith(terms.arg), expiresAt: expiry);
+      expect(
+        () => checkProposedInviteExpiry(
+          preparedWith(terms.arg + 1),
+          expiresAt: expiry,
+        ),
+        throwsA(isA<SigningRefused>()),
+      );
       final execute = executeInviteParams(
         onchainProposalId: 3,
         profileId: 'p2',
-        expiresAt: parseInviteExpiry(inviteExpiryLabel(expiry)),
       ).execute;
       expect(execute.onchainProposalId, Int64(3));
-      expect(execute.memberAction, terms);
+      expect(execute.memberAction.action, terms.action);
+      expect(execute.memberAction.subject, terms.subject);
+      expect(execute.memberAction.arg, Int64.ZERO, reason: 'the voted expiry');
       expect(
-        () => executeInviteParams(
-          onchainProposalId: 3,
-          profileId: 'p2',
-          expiresAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-        ),
+        () => executeInviteParams(onchainProposalId: 0, profileId: 'p2'),
         throwsArgumentError,
       );
       expect(queueProposalParams(3).execute.onchainProposalId, Int64(3));

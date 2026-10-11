@@ -36,40 +36,32 @@ GovernanceRequest inviteRequest({
 /// The longest an invitation may stand, in days (settlement's MaxInviteTTL).
 const int maxInviteDays = 30;
 
-/// An invitation's expiry [days] whole UTC days ahead, at midnight UTC. A
-/// proposed invitation names its expiry, and executing the passed proposal
-/// must repeat it exactly (settlement keeps no expiry of its own choosing);
-/// a whole-day expiry is named by its date alone, which the proposal shows.
+/// An invitation's expiry [days] days from [now], to the second. The
+/// proposal commits to it; executing the passed proposal applies it.
 DateTime inviteExpiryAfter(int days, {DateTime? now}) {
   if (days < 1 || days >= maxInviteDays) {
     throw ArgumentError.value(days, 'days', '1 to ${maxInviteDays - 1}');
   }
-  final today = (now ?? DateTime.now()).toUtc();
-  return DateTime.utc(today.year, today.month, today.day + days);
+  final t = (now ?? DateTime.now()).toUtc().add(Duration(days: days));
+  return DateTime.fromMillisecondsSinceEpoch(
+    t.millisecondsSinceEpoch ~/ 1000 * 1000,
+    isUtc: true,
+  );
 }
 
-/// The date an invitation expiry names: "2026-10-31".
+/// An invitation expiry as people read it, in UTC: "2026-10-31 18:30".
 String inviteExpiryLabel(DateTime expiresAt) {
   final t = expiresAt.toUtc();
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${t.year}-${two(t.month)}-${two(t.day)}';
+  return '${t.year}-${two(t.month)}-${two(t.day)} '
+      '${two(t.hour)}:${two(t.minute)}';
 }
 
-/// The expiry a proposal named, from its date ("2026-10-31").
-DateTime parseInviteExpiry(String text) {
-  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text.trim());
-  if (m != null) {
-    final t = DateTime.utc(
-      int.parse(m[1]!),
-      int.parse(m[2]!),
-      int.parse(m[3]!),
-    );
-    if (inviteExpiryLabel(t) == text.trim()) return t;
-  }
-  throw const FormatException(
-    'Enter the invitation expiry the proposal names, as YYYY-MM-DD',
-  );
-}
+/// The expiry settlement or finance reports (unix seconds); null for 0, which
+/// names none.
+DateTime? inviteExpiryFromSeconds(Int64 seconds) => seconds <= Int64.ZERO
+    ? null
+    : DateTime.fromMillisecondsSinceEpoch(seconds.toInt() * 1000, isUtc: true);
 
 Int64 _inviteExpirySeconds(DateTime expiresAt) {
   final seconds = expiresAt.toUtc().millisecondsSinceEpoch ~/ 1000;
@@ -89,8 +81,7 @@ settlement.RoomMemberActionTerms _inviteTerms(
 );
 
 /// Proposes inviting a member of the chat room; the members vote on it. The
-/// invitation's expiry is named here, never left to settlement's default,
-/// since executing the passed proposal has to repeat it.
+/// proposal commits to the invitation's expiry named here.
 GovernanceRequest proposeInviteRequest({
   required String profileId,
   required String name,
@@ -120,12 +111,11 @@ settlement.RoomCallParams queueProposalParams(int onchainProposalId) {
   );
 }
 
-/// Executes a passed invitation proposal: its consequence repeats the member
-/// and the expiry the proposal named, or the chain refuses it.
+/// Executes a passed invitation proposal for the member it named. The expiry
+/// is left 0: settlement applies the one the proposal carried.
 settlement.RoomCallParams executeInviteParams({
   required int onchainProposalId,
   required String profileId,
-  required DateTime expiresAt,
 }) {
   if (onchainProposalId <= 0) {
     throw ArgumentError.value(onchainProposalId, 'onchainProposalId', '> 0');
@@ -133,7 +123,10 @@ settlement.RoomCallParams executeInviteParams({
   return settlement.RoomCallParams(
     execute: settlement.RoomExecuteParams(
       onchainProposalId: Int64(onchainProposalId),
-      memberAction: _inviteTerms(profileId, expiresAt),
+      memberAction: settlement.RoomMemberActionTerms(
+        action: finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE,
+        subject: _member(profileId),
+      ),
     ),
   );
 }

@@ -52,6 +52,7 @@ void main() {
             chatRoomId: roomId,
             kind: req.kind,
             typedHash: hexToBytes(wrapped['hash'] as String),
+            inviteExpiry: req.params.propose.memberAction.arg,
             requiresSignature: !{
               settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
               settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
@@ -112,21 +113,35 @@ void main() {
     ),
   ];
 
-  Future<void> openDialog(WidgetTester tester, GovernanceAction action) async {
+  Future<void> openDialog(
+    WidgetTester tester,
+    GovernanceAction action, {
+    List<Override> extra = const [],
+  }) async {
     tester.view
       ..physicalSize = const Size(1080, 3000)
       ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: overrides(),
+        overrides: [...overrides(), ...extra],
         child: MaterialApp(
           home: Scaffold(
-            body: GovernanceDialog(roomId: roomId, action: action),
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) =>
+                      GovernanceDialog(roomId: roomId, action: action),
+                ),
+                child: const Text('open'),
+              ),
+            ),
           ),
         ),
       ),
     );
+    await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }
 
@@ -260,7 +275,7 @@ void main() {
     });
 
     testWidgets(
-      'a proposed invitation names its expiry and its execution repeats it',
+      'a proposed invitation names its expiry and its execution applies it',
       (tester) async {
         await openDialog(tester, GovernanceAction.proposeInvite);
         await tester.tap(find.byKey(const Key('governance-member')));
@@ -289,9 +304,29 @@ void main() {
           'Propose inviting Amina (invitation expires $date UTC)',
         );
 
-        transport.calls.clear();
+        transport
+          ..calls.clear()
+          ..on(
+            settlement.RoomService.submitRoomCall,
+            (req) => settlement.SubmitRoomCallResponse(
+              call: settlement.RoomCall(
+                callId: req.callId,
+                inviteExpiry: terms.arg,
+              ),
+            ),
+          );
         await tester.pumpWidget(const SizedBox());
-        await openDialog(tester, GovernanceAction.executeInvite);
+        await openDialog(
+          tester,
+          GovernanceAction.executeInvite,
+          extra: [
+            stawiProposalByOnchainIdProvider.overrideWith(
+              (ref, key) async => key == (roomId, 12)
+                  ? finance.Proposal(inviteExpiry: terms.arg)
+                  : null,
+            ),
+          ],
+        );
         await tester.tap(find.byKey(const Key('governance-member')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Amina').last);
@@ -300,9 +335,10 @@ void main() {
           find.byKey(const Key('governance-number')),
           '12',
         );
-        await tester.enterText(
-          find.byKey(const Key('governance-invite-expiry-date')),
-          date,
+        await tester.pumpAndSettle();
+        expect(
+          find.text('The invitation expires $date UTC, as the proposal named.'),
+          findsOneWidget,
         );
         await tester.tap(find.byKey(const Key('governance-sign')));
         await tester.pumpAndSettle();
@@ -310,7 +346,16 @@ void main() {
         final executed = prepared();
         expect(executed.kind, settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE);
         expect(executed.params.execute.onchainProposalId, Int64(12));
-        expect(executed.params.execute.memberAction, terms);
+        final applied = executed.params.execute.memberAction;
+        expect(applied.subject.profileId, 'p2');
+        expect(applied.arg, Int64.ZERO, reason: 'settlement applies the vote');
+        expect(
+          find.text(
+            'Invitation sent to the chain; the invitee can accept it '
+            'until $date UTC',
+          ),
+          findsOneWidget,
+        );
         expect(
           transport
               .requestsTo(settlement.RoomService.submitRoomCall)

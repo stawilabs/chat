@@ -329,6 +329,20 @@ void checkPrincipalExit(
   }
 }
 
+/// A proposed invitation commits to the expiry the member chose
+/// ([expiresAt]); settlement reports the one the call carries.
+void checkProposedInviteExpiry(
+  settlement.PrepareRoomCallResponse prepared, {
+  required DateTime expiresAt,
+}) {
+  final want = Int64(expiresAt.toUtc().millisecondsSinceEpoch ~/ 1000);
+  if (prepared.call.inviteExpiry != want) {
+    throw const SigningRefused(
+      'the proposal carries another invitation expiry',
+    );
+  }
+}
+
 /// Settlement's name for a room call kind, as STAWI_SIGNED_CALL carries it.
 String roomCallKindName(settlement.RoomCallKind kind) =>
     kind.name.replaceFirst('ROOM_CALL_KIND_', '');

@@ -216,6 +216,14 @@ final stawiMemberBalancesProvider = FutureProvider.autoDispose
           ref.watch(stawiFinanceServiceProvider).memberBalances(roomId),
     );
 
+/// A room's proposal by its on-chain number, once finance has indexed it.
+final stawiProposalByOnchainIdProvider = FutureProvider.autoDispose
+    .family<finance.Proposal?, (String, int)>(
+      (ref, key) => ref
+          .watch(stawiFinanceServiceProvider)
+          .proposalByOnchainId(key.$1, key.$2),
+    );
+
 final stawiRolesProvider = FutureProvider.autoDispose
     .family<List<finance.RoleCapabilities>, String>(
       (ref, roomId) => ref.watch(stawiFinanceServiceProvider).roles(roomId),
