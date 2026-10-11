@@ -4,7 +4,6 @@ package settlement
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -31,18 +30,16 @@ func NewRooms(client settlementv1connect.RoomServiceClient) stawi.Rooms {
 }
 
 func (r *rooms) PrepareRoomGenesis(ctx context.Context, req stawi.PrepareGenesisRequest) (*stawi.Genesis, error) {
-	if len(req.RuleValues) > 0 {
-		// Settlement takes a seeded template or a full constitution; rule
-		// values over a template are compiled client-side into a constitution.
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("rule values cannot be applied to a template here; send the template's own rules"))
-	}
+	// Settlement applies the rule values to the template before it compiles
+	// the constitution, so they are part of what the founders sign; a value it
+	// does not accept is refused there, naming the rule.
 	resp, err := r.client.PrepareRoomGenesis(ctx, connect.NewRequest(&settlementv1.PrepareRoomGenesisRequest{
 		ChatRoomId:         req.ChatRoomID,
 		ConstitutionSource: &settlementv1.PrepareRoomGenesisRequest_TemplateId{TemplateId: req.TemplateID},
 		FounderProfileIds:  req.FounderProfileIDs,
 		JoinPolicy:         joinPolicy(req.JoinPolicy),
 		ProfileId:          req.RequestedBy,
+		RuleValues:         req.RuleValues,
 	}))
 	if err != nil {
 		return nil, err

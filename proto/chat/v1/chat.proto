@@ -143,11 +143,17 @@ service ChatService {
       },
       {
         role: ROLE_MEMBER
+        // Every person of the partition holds this role (tenancy writes
+        // member for each access), and every person must be able to start a
+        // group and add people to it: what they may do in a given room is
+        // decided by that room's own relations (chat_room), not here.
         permissions: [
           "event_view",
           "event_send",
           "room_view",
-          "subscription_view"
+          "room_create",
+          "subscription_view",
+          "subscription_manage"
         ]
       },
       {

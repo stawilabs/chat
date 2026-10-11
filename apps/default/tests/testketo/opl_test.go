@@ -71,6 +71,19 @@ func TestServiceChatOPLMatchesManifest(t *testing.T) {
 	}
 }
 
+// TestEveryPersonMayStartARoom: tenancy gives each person of a partition the
+// member role and nothing more, so member must carry room_create and
+// subscription_manage or no one could start a group or add people to it.
+// What a person may do inside a given room is chat_room's to decide.
+func TestEveryPersonMayStartARoom(t *testing.T) {
+	manifest := permissions.BuildManifest(chatpb.File_chat_v1_chat_proto.Services().ByName("ChatService"))
+	member := manifest.RoleBindings["member"]
+	require.Contains(t, member, "room_create")
+	require.Contains(t, member, "subscription_manage")
+	require.NotContains(t, member, "room_update")
+	require.NotContains(t, member, "room_delete")
+}
+
 // TestNamespacesOPLDeclaresEachClassOnce checks the merged document the test
 // Keto loads: one import and every chat namespace exactly once.
 func TestNamespacesOPLDeclaresEachClassOnce(t *testing.T) {

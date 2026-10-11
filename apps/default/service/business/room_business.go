@@ -233,9 +233,11 @@ func (rb *roomBusiness) CreateRoom(
 	)
 	if err != nil {
 		partErr, ok := service.IsPartialBatchError(err)
-		if !ok || partErr.Succeeded == 0 {
-			// Full failure: delete the room (subscriptions are created asynchronously
-			// via events, so none exist yet at this point)
+		if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) {
+			// Full failure — and a room whose creator could not be made its
+			// owner is one: it would exist with members and nobody able to
+			// administer it, and the creator could not even see it. Delete
+			// the room and refuse.
 			_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
 			return nil, fmt.Errorf("failed to create room: %w", err)
 		}
@@ -1149,6 +1151,18 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 }
 
 // validateContactProfile validates contact and profile ID via Profile Service.
+// ownerFailed reports whether the creator's own subscription is among a
+// batch's failures: the owner is always the first item addRoomMembersWithRoles
+// is given.
+func ownerFailed(partErr *service.PartialBatchError) bool {
+	for _, item := range partErr.Errors {
+		if item.Index == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (rb *roomBusiness) validateContactProfile(ctx context.Context, link *commonv1.ContactLink) error {
 	if link.GetContactId() == "" || rb.profileCli == nil {
 		return nil
