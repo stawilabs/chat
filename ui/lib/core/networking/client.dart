@@ -17,14 +17,7 @@ import 'package:antinvestor_api_files/antinvestor_api_files.dart'
         ContactLink,
         PageCursor;
 import 'package:antinvestor_api_profile/antinvestor_api_profile.dart'
-    hide
-        DeviceClient,
-        newDeviceClient,
-        Struct,
-        Value,
-        ListValue,
-        NullValue,
-        Timestamp;
+    hide Struct, Value, ListValue, NullValue, Timestamp;
 import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:connectrpc/io.dart' as connect_io;

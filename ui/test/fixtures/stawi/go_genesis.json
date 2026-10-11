@@ -1,0 +1,132 @@
+{
+  "description": "Go-produced vectors (pkg/evm/stawi) for packages/finance_sdk: AccountPolicyHash = keccak256(abi.encode(PolicyParams)); DevicePubkeyHash = keccak256(device); GenesisDeviceDigest = keccak256(identitySaltHash ‖ pubkeyHash ‖ uint256(chainId) ‖ account ‖ initialPolicyHash ‖ \"genesis\"), the raw digest PrepareDeployAccount returns and DeployAccount recovers the device from; signature is SignDigest over it (65-byte r ‖ s ‖ v, RFC 6979).",
+  "genesis_device_digest": [
+    {
+      "name": "settlement_default",
+      "device_private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "device_public_key": "0x048318535b54105d4a7aae60c08fc45f9687181b4fdfc625bd1a753fa7397fed753547f11ca8696646f2f3acb08e31016afac23e630c5d11f59f61fef57b0d2aa5",
+      "device": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "pubkey_hash": "0xe9707d0e6171f728f7473c24cc0432a9b07eaaf1efed6a137a4a8c12c79552d9",
+      "identity_salt_hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "chain_id": "14601",
+      "account": "0x000000000000000000000000000000000000acc7",
+      "policy": {
+        "asset": "0x00000000000000000000000000000000000a55e7",
+        "period_limit": "5000000000",
+        "period_seconds": "86400",
+        "epoch_start": "0",
+        "allowlist": [
+          "0x000000000000000000000000000000000000acc7"
+        ],
+        "guardians": [],
+        "guardian_threshold": 0,
+        "allowlist_mode": 1
+      },
+      "policy_hash": "0xf7592c21107b87731d6a8c70ff4b182d0340b7b7df5c4dab4894a94fab588403",
+      "digest": "0x4ba6eff6f3e903de3f086c7a9c12b507e3aa7bd144e7dbe7c87c5ba19e746d50",
+      "signature": "0x53d3677c06dfe0ffdcb7bef6b98160f51acf562b8e5963a7d893aa04aac3e11a414d6a5c14b6151a9d1bf14cca8a9bef7903b47729cace1859f534282e59ac4c1c"
+    },
+    {
+      "name": "settlement_zero_limit",
+      "device_private_key": "0x1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "device_public_key": "0x049b97f3e12dac7aa011582c831049640bfcff00adfe003625db4e34d5220e085e5ddcddaaa90125b909932e922a47f0fe6bd960ef153ec2191ee34c0f27e429d6",
+      "device": "0xcbcf2d314ec60eadb90085796d7ff52774c7cf69",
+      "pubkey_hash": "0x963769c4ede9d5e2863d57f2d155e184419b1d4053887a07379cebe587a486ef",
+      "identity_salt_hash": "0x808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "chain_id": "146",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "policy": {
+        "asset": "0x00000000000000000000000000000000000a55e7",
+        "period_limit": "0",
+        "period_seconds": "0",
+        "epoch_start": "0",
+        "allowlist": [
+          "0x0102030405060708090a0b0c0d0e0f1011121314"
+        ],
+        "guardians": [],
+        "guardian_threshold": 0,
+        "allowlist_mode": 1
+      },
+      "policy_hash": "0xc837b0934248ad9bfc4959552059666306f46eed5c987592fbb0407f73655afd",
+      "digest": "0xf43e0a707da00a1d956afcf7600040e0409126e684df08846505852a887d0067",
+      "signature": "0xf1012e033301849e67615f2fd26b02abc845d991a16d4f5389b31271d33d41110430d18eedd6b4b922bb7e96b65e4a3cea1d17c1cff4101576bb0a7a2686062c1b"
+    },
+    {
+      "name": "settlement_max_limit",
+      "device_private_key": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "device_public_key": "0x0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
+      "device": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+      "pubkey_hash": "0x3322f33946a3c503c916c8fc29768a547f01fa665e1eb22f9f66cf7e5a262012",
+      "identity_salt_hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "chain_id": "18446744073709551615",
+      "account": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy": {
+        "asset": "0x00000000000000000000000000000000000a55e7",
+        "period_limit": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+        "period_seconds": "18446744073709551615",
+        "epoch_start": "0",
+        "allowlist": [
+          "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        ],
+        "guardians": [],
+        "guardian_threshold": 0,
+        "allowlist_mode": 1
+      },
+      "policy_hash": "0xebb875225ab3133b19a9ba11a00aabc6fee8a2412568b59ed03c9f90c8edad67",
+      "digest": "0x7bc21ecccdfe28c86a935bd59cd1b914db94c35d603b94e37eb1b03d9702856f",
+      "signature": "0x136c1892faef96c5e00042c8243418bc66f9abe3cda72eb27c4f075afb578d511a57e1c25e861fc181788407f0b5a6d12549e93e2c3cbb21d91f56b08052e6ae1c"
+    },
+    {
+      "name": "guardians_and_epoch",
+      "device_private_key": "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+      "device_public_key": "0x04207bba70bc66309baa582a6ac120fd52d68026c51f6326f8ccedcbd2c1b7eb828c18ff7dbee879a4335a05294dea1e99e251f4b3e3b020b507f87064993fb202",
+      "device": "0x677bb7270e0b03f0a2993a697654fb8ecb6dee91",
+      "pubkey_hash": "0xaaf08c5eedc38e8e5ca8d24736aea17f7b178e2d0fccb8ad1b857bf6e2647814",
+      "identity_salt_hash": "0x05060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324",
+      "chain_id": "31337",
+      "account": "0x404142434445464748494a4b4c4d4e4f50515253",
+      "policy": {
+        "asset": "0x00000000000000000000000000000000000a55e7",
+        "period_limit": "1000000000",
+        "period_seconds": "86400",
+        "epoch_start": "1700000000",
+        "allowlist": [
+          "0x404142434445464748494a4b4c4d4e4f50515253",
+          "0x303132333435363738393a3b3c3d3e3f40414243"
+        ],
+        "guardians": [
+          "0x0000000000000000000000000000000000000a11",
+          "0x0000000000000000000000000000000000000a22"
+        ],
+        "guardian_threshold": 2,
+        "allowlist_mode": 2
+      },
+      "policy_hash": "0x69f9edd98ab3183af8214dd4aafaea7c77218a343d78b35b38d561b38862332a",
+      "digest": "0x1327663d654aaec8fdeb6f702c4925c32aff2ae3855005e718f4678515aefa00",
+      "signature": "0x5108efe03702ce2d46a349d79b6a9225fd88d8e00cc6a857d5ce8666908ad3f673d367d04ebd296f422142b2289ec4f03602e76d6c3ca0ffb39c48deb301d7b81c"
+    },
+    {
+      "name": "empty_policy",
+      "device_private_key": "0x3132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f50",
+      "device_public_key": "0x04e5a9d2eae7c91340552f83c903203c5a40a46f38dfd4f79395f45a87601045e075163cf3e9dfc1e15efec7f3292952c7fdf447c73ad9c6c5a6407f2b91d2c521",
+      "device": "0x2a1477b2995862ff95f279eccaebcd7a331cba05",
+      "pubkey_hash": "0x54ded9be6a5be49cdd26ddcad62c8b31591610403ce79eba011531cd9e3bd1c6",
+      "identity_salt_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "chain_id": "0",
+      "account": "0x0000000000000000000000000000000000000000",
+      "policy": {
+        "asset": "0x0000000000000000000000000000000000000000",
+        "period_limit": "0",
+        "period_seconds": "0",
+        "epoch_start": "0",
+        "allowlist": [],
+        "guardians": [],
+        "guardian_threshold": 0,
+        "allowlist_mode": 0
+      },
+      "policy_hash": "0x96807eaa20a3d328b6cc4a1b7b3287312c305a246367c5c1e99efd8684462050",
+      "digest": "0x28928557803615a9f53b5489b4f39cdd296893854f1e6b8c33df0799fa8451fe",
+      "signature": "0x66429b3563e955a52ede5e4c72f58b2e7b92f3c1be7913c848189923fc98a4b453b2bc572214c729598c9ba5bc194f026438d12a314526de82c66437f6fc8ab21b"
+    }
+  ]
+}

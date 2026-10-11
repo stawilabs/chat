@@ -1,5 +1,6 @@
 import '../../core/logging/app_logger.dart';
 import '../messages/domain/room_event.dart';
+import '../stawi/domain/stawi_payloads.dart';
 
 /// Maximum length for notification text preview
 const int maxNotificationTextLength = 100;
@@ -128,6 +129,12 @@ class NotificationContentFormatter {
         return 'Security update';
       case RoomEventType.roomChange:
         return 'Group update';
+      case RoomEventType.stawiRoomConversion:
+      case RoomEventType.stawiGenesisSignature:
+      case RoomEventType.stawiSignedCall:
+      case RoomEventType.stawiCallOutcome:
+      case RoomEventType.financeCard:
+        return 'Stawi update';
     }
   }
 
@@ -223,6 +230,25 @@ class NotificationContentFormatter {
               event.content['text'] as String? ??
               'Group updated';
           return (body, null);
+
+        case RoomEventType.stawiRoomConversion:
+          return ('Proposed turning this room into a Stawi room', null);
+
+        case RoomEventType.stawiGenesisSignature:
+          return ('Signed the Stawi room genesis', null);
+
+        case RoomEventType.stawiSignedCall:
+          final call = StawiSignedCallView.fromContent(event.content);
+          return (call.summary.isNotEmpty ? call.summary : call.kind, null);
+
+        case RoomEventType.stawiCallOutcome:
+          return (
+            describeOutcome(StawiOutcomeView.fromContent(event.content)),
+            null,
+          );
+
+        case RoomEventType.financeCard:
+          return (FinanceCardView.fromContent(event.content).title, null);
       }
     } catch (e, stackTrace) {
       AppLogger.error(

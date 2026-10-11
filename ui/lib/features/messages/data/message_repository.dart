@@ -435,6 +435,33 @@ class MessageRepository {
     );
   }
 
+  /// Every child event of [parentEventId] of [type], oldest first.
+  Stream<List<domain.RoomEvent>> watchChildEventsByType(
+    String parentEventId,
+    domain.RoomEventType type,
+  ) {
+    final query = _database.select(_database.roomEvents)
+      ..where(
+        (t) =>
+            t.parentId.equals(parentEventId) & t.type.equals(type.storageCode),
+      )
+      ..orderBy([(t) => OrderingTerm.asc(_effectiveTimestamp(t))]);
+
+    return query.watch().map((rows) => rows.map(_toRoomEvent).toList());
+  }
+
+  /// Replaces an event's content with what the server stored for it, without
+  /// marking it edited (e.g. a Stawi conversion the server filled in with
+  /// its genesis).
+  Future<void> replaceServerContent(
+    String messageId,
+    Map<String, dynamic> content,
+  ) async {
+    await (_database.update(_database.roomEvents)
+          ..where((t) => t.id.equals(messageId)))
+        .write(RoomEventsCompanion(content: Value(jsonEncode(content))));
+  }
+
   /// Delete a message for everyone (marks as redacted)
   ///
   /// Sets the redacted flag and timestamp. The message content

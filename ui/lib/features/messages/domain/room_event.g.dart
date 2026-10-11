@@ -92,6 +92,11 @@ const _$RoomEventTypeEnumMap = {
   RoomEventType.roomKey: 'roomKey',
   RoomEventType.roomChange: 'roomChange',
   RoomEventType.groupCallStageUpdate: 'groupCallStageUpdate',
+  RoomEventType.stawiRoomConversion: 'stawiRoomConversion',
+  RoomEventType.stawiGenesisSignature: 'stawiGenesisSignature',
+  RoomEventType.stawiSignedCall: 'stawiSignedCall',
+  RoomEventType.stawiCallOutcome: 'stawiCallOutcome',
+  RoomEventType.financeCard: 'financeCard',
 };
 
 const _$EventStatusEnumMap = {

@@ -4,6 +4,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 
 import '../../features/messages/domain/room_event.dart' as domain;
+import '../../features/stawi/domain/stawi_payloads.dart';
 
 class ChatEventCodec {
   const ChatEventCodec._();
@@ -47,6 +48,13 @@ class ChatEventCodec {
       case domain.RoomEventType.roomKey:
       case domain.RoomEventType.roomChange:
         return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
+      case domain.RoomEventType.stawiRoomConversion:
+      case domain.RoomEventType.stawiGenesisSignature:
+      case domain.RoomEventType.stawiSignedCall:
+      case domain.RoomEventType.stawiCallOutcome:
+      case domain.RoomEventType.financeCard:
+        // Chat accepts Stawi acts only as ROOM_EVENT_TYPE_EVENT.
+        return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
     }
   }
 
@@ -100,6 +108,10 @@ class ChatEventCodec {
     if (callPayload != null) {
       payload.type = pb.PayloadType.PAYLOAD_TYPE_CALL;
       payload.call = callPayload;
+      return payload;
+    }
+
+    if (StawiPayloadCodec.encode(payload, localType, content)) {
       return payload;
     }
 

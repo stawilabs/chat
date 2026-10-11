@@ -1,0 +1,7 @@
+[
+  {"choice": 1, "salt": "0x0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "1", "member": "0x0000000000000000000000000000000000000000", "commitment": "0xdfe58d84d79c0cbbb7049c2ae941fda618361becdde035bdcf8dcc92ce5d21a1"},
+  {"choice": 1, "salt": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf", "proposal_id": "7", "member": "0x0102030405060708090a0b0c0d0e0f1011121314", "commitment": "0xbc0bab3a3176554e0e18f77eb1d2885b6ea4c56eb0278bba87c862e399424fd2"},
+  {"choice": 2, "salt": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf", "proposal_id": "7", "member": "0x0102030405060708090a0b0c0d0e0f1011121314", "commitment": "0x95b0f350f939400f1b3a32d9419736967532dc1367bb5a4bc0aae218474d8d53"},
+  {"choice": 3, "salt": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "proposal_id": "18446744073709551615", "member": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "commitment": "0x53b04a0d1cd4e28da0ae0fbaad1cf1a282b10534650c0495c9c944a3baea3404"},
+  {"choice": 2, "salt": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "proposal_id": "42", "member": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", "commitment": "0x791e9eccf363983b58558a1ad25a89ff670f1b478b3d8d3380ea52974778dbb4"}
+]

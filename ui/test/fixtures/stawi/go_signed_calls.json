@@ -1,0 +1,393 @@
+{
+  "description": "Go-produced vectors (pkg/evm/stawi, pkg/evm/secp256k1) for packages/finance_sdk: AccountWrappedHash = keccak256(\"STAWI_ACCOUNT_1271_V1\" ‖ account ‖ uint256(chainId) ‖ hash); device key public key (0x04 ‖ X ‖ Y) and address keccak256(X ‖ Y)[12:]; and SignDigest over a prepared digest (65-byte r ‖ s ‖ v, low s, v in {27,28}, RFC 6979) as SubmitRoomCall / SubmitAccountCall accept.",
+  "account_wrapped_hash": [
+    {
+      "name": "zero/zero",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "0",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0xb03623ae67a74105d6d0000017a29d8453e11fd2609fb917035a336b0e7e99bf"
+    },
+    {
+      "name": "zero/zero",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "146",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x95fe404cb872cd709ae3650bede87bbe7355eab3243a55ce34a686f7ce2c3ab5"
+    },
+    {
+      "name": "zero/zero",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "14601",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0xfb6357b514acf29a654103db159babffe1d3335b587a4df2a2c2d52b5dd2e21e"
+    },
+    {
+      "name": "zero/zero",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "18446744073709551615",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x7b8beb98fe8c39fbce4f02bf511fb800cb94577fdcff27b1f178267b658167aa"
+    },
+    {
+      "name": "zero/seq",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "0",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x480fbaea02f5d4fd2efa0d8070680e41f1f011aa20f98ccedacd58d8dc1f4468"
+    },
+    {
+      "name": "zero/seq",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "146",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x6b72316486fa769e616b34a0bd5698e11aa55aa989aa7f92a08a030f06f9ba77"
+    },
+    {
+      "name": "zero/seq",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "14601",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0xd51d07f4b5f9252640236c95001af1393567b6fcbeb8ced24e3c407adeaaa5fa"
+    },
+    {
+      "name": "zero/seq",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "18446744073709551615",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x439384ab043e78aff16a484d49d3b70d0576abbfcbb46487320c465a891ff7fc"
+    },
+    {
+      "name": "zero/ones",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "0",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x220290177cce59bbb5b951fb81ffa9548e9e69641b9deb0d77af4379bb74899d"
+    },
+    {
+      "name": "zero/ones",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "146",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0xffd6a5df59e54f5dd243df0e8c80930d916613a6dbcb1436930c8db3fbbdbbd3"
+    },
+    {
+      "name": "zero/ones",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "14601",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0xc71d522f2d8ad726c6329d1f349049c92541ee364703dec9e613da472ea44b7b"
+    },
+    {
+      "name": "zero/ones",
+      "account": "0x0000000000000000000000000000000000000000",
+      "chain_id": "18446744073709551615",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x23992f45ea1c43f4f9f3a3ea3db50a2b0d5ae9b93ccfcac307689eef5ce98a38"
+    },
+    {
+      "name": "seq/zero",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "0",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x287fbd55b2491ceb2b878aab27ef340382e3d76dbd83d6fef6e7577d49435802"
+    },
+    {
+      "name": "seq/zero",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "146",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x4f7ac6ee7dd1d915ac813bfedec7e33109a44f663f951db9d84ddc9b187524c9"
+    },
+    {
+      "name": "seq/zero",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "14601",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x2382d794a19186df1ba6e264a160d7186e5d45f4b28f0472263accf597feffc8"
+    },
+    {
+      "name": "seq/zero",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "18446744073709551615",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x5945ac6e5f27badc0b6409923cee331015e8cfcf2eb7b8120d5175c070247391"
+    },
+    {
+      "name": "seq/seq",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "0",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x0489f99228d821303934a40000789a76b5f623050127d0c1b8a526b88f1f2967"
+    },
+    {
+      "name": "seq/seq",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "146",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x2a497e79172519ce01832ba12cc9de084a5202b4edd13d4da49eaf5781344d40"
+    },
+    {
+      "name": "seq/seq",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "14601",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0xa4578e928dde9c3bbf1d1758850b86d51239a05b0231e0e5cdeb2ff803fd34f1"
+    },
+    {
+      "name": "seq/seq",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "18446744073709551615",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0xb43261e5888cb115309bccec3889382dbc12e4eb75d4dd356baba1ea5d9d1ca9"
+    },
+    {
+      "name": "seq/ones",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "0",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0xacac45f45257698a063e3eb30a1cc7b8894eb1b9e0156da8243dd4a5728eb257"
+    },
+    {
+      "name": "seq/ones",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "146",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x33a36823bc6bc6c213c0be37dd228d0474d422ba084c9ee16da6f107357b8cb3"
+    },
+    {
+      "name": "seq/ones",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "14601",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0xd6802983b0dc6528cc0b010d3050678caa3cd775e1cd4150193da07d480a0924"
+    },
+    {
+      "name": "seq/ones",
+      "account": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "chain_id": "18446744073709551615",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x3f30447acd3597f78630495165f39b42ccf18563320780407d0ff8f5c172e745"
+    },
+    {
+      "name": "anvil_0/zero",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "0",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0xf423e352efafdcd81c56a22f2818fc595f5a311bf3f63e9503d5b50bd20d20ca"
+    },
+    {
+      "name": "anvil_0/zero",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "146",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0x9e80dc85d2e2e3215f124645136fe173cff60085ca5105226474be4c83239a35"
+    },
+    {
+      "name": "anvil_0/zero",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "14601",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0xe86dc593dabeb881c1148db7d5ab8d0155193bfb13126d2a56ed0190d82aeb90"
+    },
+    {
+      "name": "anvil_0/zero",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "18446744073709551615",
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "0xbd93efe3c518646379a380cb409acf25e9a72b78a0467d974f1c9248fefad38d"
+    },
+    {
+      "name": "anvil_0/seq",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "0",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x3df4441c8f70a790d631e3fdce7bdf76e050873343e7d195bc24be0b45d6afc5"
+    },
+    {
+      "name": "anvil_0/seq",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "146",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0xe46dfb3c95b60428be2add5be5e5df44fa46f8c8a3c3e55abd7bd3469b112789"
+    },
+    {
+      "name": "anvil_0/seq",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "14601",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x3fcbbbd71888e228b7aeb67ffb2cc76135d0cf2dad0bf8c3d8a5a04119db70f6"
+    },
+    {
+      "name": "anvil_0/seq",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "18446744073709551615",
+      "hash": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "wrapped": "0x3a7381fae999dc31737c7cf633caf2fdf665aff4b3006f63b7ad7171e5a52c29"
+    },
+    {
+      "name": "anvil_0/ones",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "0",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x04408f09688415df35f4911c8d6f97c760f4fec91bb8af05670f4af2a04556ee"
+    },
+    {
+      "name": "anvil_0/ones",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "146",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x13e358841a138496cbcfbe057ecce085e5608e9e66058a9178ab4e96ee22740b"
+    },
+    {
+      "name": "anvil_0/ones",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "14601",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0xb16de2ae8de3280f3ab4502078707ed53ed5e9270b53796a3be2a21f5bb5330f"
+    },
+    {
+      "name": "anvil_0/ones",
+      "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "chain_id": "18446744073709551615",
+      "hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "wrapped": "0x7c7f985cb60963b11de391422c35d68143a5bb03f26b7698ef2e2afb67449b43"
+    }
+  ],
+  "device_keys": [
+    {
+      "private_key": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "public_key": "0x0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
+      "address": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+    },
+    {
+      "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "public_key": "0x048318535b54105d4a7aae60c08fc45f9687181b4fdfc625bd1a753fa7397fed753547f11ca8696646f2f3acb08e31016afac23e630c5d11f59f61fef57b0d2aa5",
+      "address": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "private_key": "0x1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "public_key": "0x049b97f3e12dac7aa011582c831049640bfcff00adfe003625db4e34d5220e085e5ddcddaaa90125b909932e922a47f0fe6bd960ef153ec2191ee34c0f27e429d6",
+      "address": "0xcbcf2d314ec60eadb90085796d7ff52774c7cf69"
+    },
+    {
+      "private_key": "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+      "public_key": "0x0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798b7c52588d95c3b9aa25b0403f1eef75702e84bb7597aabe663b82f6f04ef2777",
+      "address": "0x80c0dbf239224071c59dd8970ab9d542e3414ab2"
+    }
+  ],
+  "prepared_call_signatures": [
+    {
+      "name": "typed_hash",
+      "private_key": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "digest": "0xc725ffc377aa1902383de5fd649fbf80081d8bfb92e24665b2a7b7691f27d6da",
+      "signature": "0x2b7bb77cb71923b18a6b0d3995382f49152b5456eea7139562ed1b037229e23c3eaa1e6b8c4dc36c32f468b58be4b30dfb62d673dc982d95304401bfffa6ff0c1c",
+      "signer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+    },
+    {
+      "name": "account_wrapped_hash",
+      "private_key": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "digest": "0xb8612512e9beb5e1154c2bcf18919209fc77c335756a5acb31f29b4ba0399556",
+      "signature": "0x0531fbbee8c9d19a3b562f49354a35761cf98e94d9fc79e058c4fcfe1d5ec1fc35f0167065130a0f06c4854c2d958079174a16e3b1fa6a667e5eb3d0fae5aeef1b",
+      "signer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+    },
+    {
+      "name": "seq_digest",
+      "private_key": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "digest": "0x404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+      "signature": "0x16470d44826fe7d42f4d8aeca9c83910e8ad188ecdd5a56123512b2e415f8cba339791032153e0ddfe3f6e4ef4326639960195f549ea00116ff58750b10954061b",
+      "signer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+    },
+    {
+      "name": "ones_digest",
+      "private_key": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "digest": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "signature": "0x7cb38cc5712e9e11a767615f6080dbc111c9cdd613eb98999fd92a86bafd45407923ca1f4d03471d2866f776ef8a6d3cac099b427331aeb245aa9dafeddcf1151b",
+      "signer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+    },
+    {
+      "name": "typed_hash",
+      "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "digest": "0xc725ffc377aa1902383de5fd649fbf80081d8bfb92e24665b2a7b7691f27d6da",
+      "signature": "0xe21b05afcfd757d716b58e058a555f5f9d554b57f92665fae37f2054fac6a7280c1aaf59806bdc4a9cbe138ede108281545a3fc475b19bb8827dbe42370c57291b",
+      "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "name": "account_wrapped_hash",
+      "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "digest": "0xb8612512e9beb5e1154c2bcf18919209fc77c335756a5acb31f29b4ba0399556",
+      "signature": "0x6db6d2c3ee89036926c199540286c9f9e15f38047936a628c665ccf85adf1048478e32b4f0dcb0b48b360c536949c9a9267e2a7413c7094bc4391b62b76105411c",
+      "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "name": "seq_digest",
+      "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "digest": "0x404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+      "signature": "0x801f50f812c0e38aee51b686b8aee931aadcb96ffa7f681383814db4483c2cb74d80bfaa72fc415c9ec286ddee145b70307be5c6c1265b1da4bfd43e93d271081c",
+      "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "name": "ones_digest",
+      "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "digest": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "signature": "0x8f7d3763cc1e1ef6f5c21011f04f80c0ae51c33c6018a30355a4c47a58c3bd17626e3b4df5956744a6f073e3401b54c350c26abd2804f52261abded6afaf4dec1b",
+      "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "name": "typed_hash",
+      "private_key": "0x1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "digest": "0xc725ffc377aa1902383de5fd649fbf80081d8bfb92e24665b2a7b7691f27d6da",
+      "signature": "0x35b05782c6306ebd3987e2aebbf9b3c5b9ad44e516c939188e4fe9e6e57f08710d1e37ce8c5dc6a3d1b2526028a05416515cb48c4c7b85d74d87e1e9875ae52e1c",
+      "signer": "0xcbcf2d314ec60eadb90085796d7ff52774c7cf69"
+    },
+    {
+      "name": "account_wrapped_hash",
+      "private_key": "0x1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "digest": "0xb8612512e9beb5e1154c2bcf18919209fc77c335756a5acb31f29b4ba0399556",
+      "signature": "0x692472387aa73c3d0cc3bd5ccc697f000172795f2b48107b1f145d36032f784a1f50763d406d14255470cf6f22e7a0e5ee284cc16a42fdeddc1625c30a2ab4701b",
+      "signer": "0xcbcf2d314ec60eadb90085796d7ff52774c7cf69"
+    },
+    {
+      "name": "seq_digest",
+      "private_key": "0x1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "digest": "0x404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+      "signature": "0xaad5f5a52ecd48b02da0216654e4d80856b9de3b81cda8e31418f67c1d5936d56e1a3058145ffcee1c87cca76ef875c2ba1d3f3f7b57a9ff085caac35e9dc6351b",
+      "signer": "0xcbcf2d314ec60eadb90085796d7ff52774c7cf69"
+    },
+    {
+      "name": "ones_digest",
+      "private_key": "0x1112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "digest": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "signature": "0x9e2735b9b6b706528199e5ba0ab21b395ae6d101426baff5615e2cbbd75de5326d30edb2b902a01a050d973fadd9872eecd9a5971d6038b5e1ec67e394e8e5721c",
+      "signer": "0xcbcf2d314ec60eadb90085796d7ff52774c7cf69"
+    },
+    {
+      "name": "typed_hash",
+      "private_key": "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+      "digest": "0xc725ffc377aa1902383de5fd649fbf80081d8bfb92e24665b2a7b7691f27d6da",
+      "signature": "0xb4360088760a5e5619a8d7b7204554f4a382fae6fd222f8efd106eae77157f1b044ecd91afd60c92667c956702695da02abe1b752f9dd0251a9845a1131beae61b",
+      "signer": "0x80c0dbf239224071c59dd8970ab9d542e3414ab2"
+    },
+    {
+      "name": "account_wrapped_hash",
+      "private_key": "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+      "digest": "0xb8612512e9beb5e1154c2bcf18919209fc77c335756a5acb31f29b4ba0399556",
+      "signature": "0xb7276544bb5b8c7b8cb871803a7cc9e2586fc8de697d2a510cddf77331da656b01a6a3b40238bbd6eed48d99b3d50ab36bb51e6adf55166c3da02f6f91209d761b",
+      "signer": "0x80c0dbf239224071c59dd8970ab9d542e3414ab2"
+    },
+    {
+      "name": "seq_digest",
+      "private_key": "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+      "digest": "0x404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+      "signature": "0xca22843d80b841c2f1e5ee04e4571ff7694292e6428a44dd3935f9365784109b20ad8fea3a5e7f7688062d4ec9ee39b9e406f8cb9f9572f8080d5a3996e5da7c1c",
+      "signer": "0x80c0dbf239224071c59dd8970ab9d542e3414ab2"
+    },
+    {
+      "name": "ones_digest",
+      "private_key": "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+      "digest": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "signature": "0xa7f83b5963eaf5332c633327cc967be8f4166d3f1e0b77f9761d8f4e42211e9a58aae31be1eb1e496923bbe8ca5e843cfb89f4d986d61d4edfd7d6fc3c9cf62c1b",
+      "signer": "0x80c0dbf239224071c59dd8970ab9d542e3414ab2"
+    }
+  ]
+}

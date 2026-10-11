@@ -82,6 +82,13 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 _buildSettingsItem(
                   context,
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Stawi account',
+                  subtitle: 'Device key, on-chain account',
+                  onTap: () => context.navigateToStawiAccount(),
+                ),
+                _buildSettingsItem(
+                  context,
                   icon: Icons.palette_outlined,
                   title: 'Appearance',
                   subtitle: 'Theme, dark mode, accent color',

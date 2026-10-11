@@ -7,6 +7,7 @@ import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import '../../features/messages/data/message_repository.dart';
 import '../../features/messages/domain/room_event.dart' as domain;
 import '../../features/notifications/badge_service.dart';
+import '../../features/stawi/domain/stawi_payloads.dart';
 import '../auth/background_auth_helper.dart';
 import '../db/database.dart';
 import '../files/files_config_service.dart';
@@ -320,6 +321,9 @@ class BackgroundSyncTask {
               } else if (payload.hasFormSubmissionResult()) {
                 content = _messageToMap(payload.formSubmissionResult);
                 eventType = domain.RoomEventType.formSubmissionResult;
+              } else if (StawiPayloadCodec.decode(payload) case final stawi?) {
+                content = stawi.content;
+                eventType = stawi.type;
               }
             }
 

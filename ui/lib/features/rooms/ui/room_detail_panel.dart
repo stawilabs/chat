@@ -119,6 +119,18 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
               },
             ),
             ListTile(
+              leading: const Icon(Icons.savings_outlined),
+              title: const Text('Stawi'),
+              subtitle: const Text('Savings room on chain'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.navigateToStawiRoom(
+                  roomId: widget.roomId,
+                  roomName: widget.roomName,
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.account_balance_wallet),
               title: const Text('Finance Settings'),
               onTap: () {

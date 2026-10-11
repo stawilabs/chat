@@ -29,6 +29,8 @@ import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/storage_settings_screen.dart';
 import '../features/settings/ui/theme_settings_screen.dart';
 import '../features/settings/ui/two_factor_setup_screen.dart';
+import '../features/stawi/ui/stawi_account_screen.dart';
+import '../features/stawi/ui/stawi_room_screen.dart';
 
 part 'router.g.dart';
 
@@ -195,6 +197,10 @@ GoRouter router(Ref ref) {
         builder: (context, state) => const ThemeSettingsScreen(),
       ),
       GoRoute(
+        path: '/settings/stawi',
+        builder: (context, state) => StawiAccountScreen(),
+      ),
+      GoRoute(
         path: '/chat/:roomId',
         builder: (context, state) {
           final roomId = state.pathParameters['roomId']!;
@@ -208,6 +214,14 @@ GoRouter router(Ref ref) {
           final roomId = state.pathParameters['roomId']!;
           final roomName = state.uri.queryParameters['name'] ?? 'Room Details';
           return RoomDetailScreen(roomId: roomId, roomName: roomName);
+        },
+      ),
+      GoRoute(
+        path: '/room/:roomId/stawi',
+        builder: (context, state) {
+          final roomId = state.pathParameters['roomId']!;
+          final roomName = state.uri.queryParameters['name'] ?? 'Room';
+          return StawiRoomScreen(roomId: roomId, roomName: roomName);
         },
       ),
       GoRoute(

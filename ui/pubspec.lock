@@ -41,6 +41,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  antinvestor_api_authentication:
+    dependency: "direct main"
+    description:
+      name: antinvestor_api_authentication
+      sha256: "8be63154d0c4014ff0862ac58a0e36f55d7137e50a2f3743c50599cd770c2710"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   antinvestor_api_common:
     dependency: "direct main"
     description:
@@ -69,10 +77,10 @@ packages:
     dependency: "direct main"
     description:
       name: antinvestor_api_profile
-      sha256: fb540379b01a5c2b899a74a4ef0c8ceec96ff43846d9b18488a628cf0ab734c5
+      sha256: fc239934a25ceebcf8cf77ed09e250db668477f775d77bedf15121c6463a8e9e
       url: "https://pub.dev"
     source: hosted
-    version: "1.53.0"
+    version: "1.55.0"
   antinvestor_auth_runtime:
     dependency: "direct main"
     description:
@@ -2020,13 +2028,29 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  stawi_api:
+    dependency: "direct main"
+    description:
+      name: stawi_api
+      sha256: "06cbd5bc6fb62ff42d089d90a853c69b6008da6e145b1c737889547d0a68ba70"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
   stawi_api_chat:
     dependency: "direct main"
     description:
       path: "../sdk/dart/chat"
       relative: true
     source: path
-    version: "1.55.0"
+    version: "1.56.0"
+  stawi_finance_sdk:
+    dependency: "direct main"
+    description:
+      name: stawi_finance_sdk
+      sha256: e5ee523acb28dcdbb032d0f83e0862f5a7896c09f1d14aefcc26242777337f68
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
   stream_channel:
     dependency: transitive
     description:

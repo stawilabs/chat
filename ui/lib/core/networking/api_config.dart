@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
+
 /// API endpoint configuration — the single source of endpoint truth.
 ///
 /// Every service URL the app calls is defined here and nowhere else. Builds
@@ -14,6 +16,9 @@
 ///     path gateway (profile, devices, files, ...).
 ///   * `chat.stawi.org`, `gateway.stawi.org` — the chat drone and the
 ///     streaming gateway on the Kubernetes cluster (Gateway API routes).
+///   * `settlement.stawi.org`, `finance.stawi.org` — Stawi settlement (the
+///     one chain writer: account and room calls) and finance (the read
+///     model: rooms, members, statements).
 ///
 /// `env/staging.json` points at the production backends: there is no
 /// separate staging backend for chat. Secrets (`SENTRY_DSN`,
@@ -25,6 +30,11 @@ class ApiConfig {
   /// Build environment label (`staging` or `production`), set by the env
   /// file. Empty for local runs. Used for telemetry tagging only.
   static const String environment = String.fromEnvironment('APP_ENVIRONMENT');
+
+  /// Whether the app offers the testnet faucet: staging builds, and local
+  /// debug runs. Never production (settlement refuses it there anyway).
+  static bool get testFundsEnabled =>
+      environment == 'staging' || (environment.isEmpty && kDebugMode);
 
   /// Unified product API origin (Cloudflare path gateway).
   static const String apiBaseUrl = String.fromEnvironment(
@@ -54,6 +64,26 @@ class ApiConfig {
     defaultValue: 'https://api.stawi.org/profile',
   );
 
+  /// Stawi settlement: builds every digest a device signs and relays the
+  /// signed account and room calls to the chain.
+  static const String settlementBaseUrl = String.fromEnvironment(
+    'SETTLEMENT_URL',
+    defaultValue: 'https://settlement.stawi.org',
+  );
+
+  /// The authentication service's Connect API (genesis session proofs). It
+  /// is served on the accounts host, the same service as the sign-in pages.
+  static const String authenticationBaseUrl = String.fromEnvironment(
+    'AUTHENTICATION_URL',
+    defaultValue: 'https://accounts.stawi.org',
+  );
+
+  /// Stawi finance: the read model (rooms, members, templates, statements).
+  static const String financeBaseUrl = String.fromEnvironment(
+    'FINANCE_URL',
+    defaultValue: 'https://finance.stawi.org',
+  );
+
   // OAuth2 configuration (configurable via --dart-define)
   static const String oauth2IssuerUrl = String.fromEnvironment(
     'OAUTH2_ISSUER_URL',
@@ -63,6 +93,21 @@ class ApiConfig {
     'OAUTH2_CLIENT_ID',
     defaultValue: 'd6qbqdkpf2t52mcunf40',
   );
+
+  /// Resource audiences the access token is requested for, comma-separated
+  /// (e.g. the settlement and finance audiences). Empty requests none, which
+  /// is what the app has always done; set it only once the OAuth2 client is
+  /// allowed every audience listed, or sign-in is refused.
+  static const String oauth2Audiences = String.fromEnvironment(
+    'OAUTH2_AUDIENCES',
+  );
+
+  /// [oauth2Audiences] split into its entries.
+  static List<String> get oauth2AudienceList => [
+    for (final audience in oauth2Audiences.split(','))
+      if (audience.trim().isNotEmpty) audience.trim(),
+  ];
+
   static const String googleServerClientId = String.fromEnvironment(
     'GOOGLE_SERVER_CLIENT_ID',
     defaultValue:
