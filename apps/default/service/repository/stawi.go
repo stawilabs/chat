@@ -16,6 +16,15 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
+// ErrStawiGenesisNotClaimable is returned when a room's genesis may not be
+// recorded by this requester: the room is bound, or another member's genesis
+// is pending and unexpired.
+var ErrStawiGenesisNotClaimable = errors.New("the room's genesis is not open to this requester")
+
+// ErrStawiCallConflict is returned when a call id is already recorded for
+// another room or signer.
+var ErrStawiCallConflict = errors.New("the call is already recorded for another room or signer")
+
 // colState is the state column of the Stawi tables.
 const colState = "state"
 
@@ -24,8 +33,13 @@ type StawiRoomRepository interface {
 	datastore.BaseRepository[*models.StawiRoom]
 	// IsBound reports whether the chain has the room. A missing row is not bound.
 	IsBound(ctx context.Context, roomID string) (bool, error)
-	// RecordGenesis records the genesis prepared for a room that is not bound.
-	RecordGenesis(ctx context.Context, room *models.Room, genesisID, eventID string, founders []string) error
+	// CheckGenesisClaimable reports ErrStawiGenesisNotClaimable when the
+	// requester may not record a genesis for the room now.
+	CheckGenesisClaimable(ctx context.Context, roomID, requestedBy string, now time.Time) error
+	// ClaimGenesis records a prepared genesis: inserted if the room has none,
+	// replacing a pending one only if it is the requester's or has expired,
+	// never over a bound room (ErrStawiGenesisNotClaimable).
+	ClaimGenesis(ctx context.Context, room *models.Room, claim models.StawiGenesisClaim) error
 	// GetByGovernance returns the room a GovernanceModule belongs to.
 	GetByGovernance(ctx context.Context, governance string) (*models.StawiRoom, error)
 	// ListBound pages through bound rooms by id.
@@ -52,31 +66,74 @@ func (r *stawiRoomRepository) IsBound(ctx context.Context, roomID string) (bool,
 	return count > 0, err
 }
 
-func (r *stawiRoomRepository) RecordGenesis(
-	ctx context.Context, room *models.Room, genesisID, eventID string, founders []string,
+func (r *stawiRoomRepository) CheckGenesisClaimable(
+	ctx context.Context, roomID, requestedBy string, now time.Time,
 ) error {
+	row, err := r.GetByID(ctx, roomID)
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return nil
+		}
+		return err
+	}
+	if !genesisClaimable(row, requestedBy, now) {
+		return ErrStawiGenesisNotClaimable
+	}
+	return nil
+}
+
+func genesisClaimable(row *models.StawiRoom, requestedBy string, now time.Time) bool {
+	if row.State != models.StawiRoomStatePending {
+		return false
+	}
+	if row.RequestedBy == requestedBy {
+		return true
+	}
+	return row.GenesisExpiresAt == nil || row.GenesisExpiresAt.Before(now)
+}
+
+func (r *stawiRoomRepository) ClaimGenesis(
+	ctx context.Context, room *models.Room, claim models.StawiGenesisClaim,
+) error {
+	expires := claim.ExpiresAt.UTC()
 	row := &models.StawiRoom{
-		State:          models.StawiRoomStatePending,
-		GenesisID:      genesisID,
-		GenesisEventID: eventID,
-		Founders:       strings.Join(founders, ","),
+		State:            models.StawiRoomStatePending,
+		GenesisID:        claim.GenesisID,
+		GenesisEventID:   claim.EventID,
+		Founders:         strings.Join(claim.Founders, ","),
+		RequestedBy:      claim.RequestedBy,
+		GenesisExpiresAt: &expires,
 	}
 	row.ID = room.GetID()
 	row.TenantID, row.PartitionID, row.AccessID = room.TenantID, room.PartitionID, room.AccessID
-	// A bound room keeps its binding: a later conversion of a bound room is
-	// refused before this point, and the WHERE guards a race with activation.
-	return r.Pool().DB(ctx, false).Clauses(clause.OnConflict{
+
+	// Insert if absent; otherwise replace only a pending genesis that is the
+	// requester's own or has expired. A bound room is never touched.
+	res := r.Pool().DB(ctx, false).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"genesis_id":       genesisID,
-			"genesis_event_id": eventID,
-			"founders":         row.Founders,
-			"modified_at":      time.Now(),
+			"genesis_id":         claim.GenesisID,
+			"genesis_event_id":   claim.EventID,
+			"founders":           row.Founders,
+			"requested_by":       claim.RequestedBy,
+			"genesis_expires_at": expires,
+			"modified_at":        time.Now(),
 		}),
 		Where: clause.Where{Exprs: []clause.Expression{
-			clause.Neq{Column: clause.Column{Table: "stawi_rooms", Name: colState}, Value: models.StawiRoomStateBound},
+			clause.Expr{
+				SQL: "stawi_rooms.state = ? AND (stawi_rooms.requested_by = ? " +
+					"OR stawi_rooms.genesis_expires_at IS NULL OR stawi_rooms.genesis_expires_at < ?)",
+				Vars: []any{models.StawiRoomStatePending, claim.RequestedBy, time.Now().UTC()},
+			},
 		}},
-	}).Create(row).Error
+	}).Create(row)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrStawiGenesisNotClaimable
+	}
+	return nil
 }
 
 func (r *stawiRoomRepository) GetByGovernance(ctx context.Context, governance string) (*models.StawiRoom, error) {
@@ -99,7 +156,9 @@ func (r *stawiRoomRepository) ListBound(ctx context.Context, afterID string, lim
 // StawiRoomCallRepository tracks the signed calls chat relayed.
 type StawiRoomCallRepository interface {
 	datastore.BaseRepository[*models.StawiRoomCall]
-	// Record stores a relayed call once; a repeat relay keeps the first row.
+	// Record stores a relayed call once. A repeat by the same room and signer
+	// keeps the first row; the same call id for another room or signer is
+	// ErrStawiCallConflict.
 	Record(ctx context.Context, call *models.StawiRoomCall) error
 	// FindBySigner finds the call a chain fact names by signer and nonce.
 	FindBySigner(ctx context.Context, roomID, signer string, nonce uint64) (*models.StawiRoomCall, error)
@@ -127,7 +186,19 @@ func NewStawiRoomCallRepository(
 
 func (r *stawiRoomCallRepository) Record(ctx context.Context, call *models.StawiRoomCall) error {
 	call.SignerAddress = strings.ToLower(call.SignerAddress)
-	return r.Pool().DB(ctx, false).Clauses(clause.OnConflict{DoNothing: true}).Create(call).Error
+	res := r.Pool().DB(ctx, false).Clauses(clause.OnConflict{DoNothing: true}).Create(call)
+	if res.Error != nil || res.RowsAffected == 1 {
+		return res.Error
+	}
+	existing, err := r.GetByID(ctx, call.GetID())
+	if err != nil {
+		return err
+	}
+	if existing.RoomID != call.RoomID || existing.SignerAddress != call.SignerAddress ||
+		existing.Nonce != call.Nonce {
+		return ErrStawiCallConflict
+	}
+	return nil
 }
 
 func (r *stawiRoomCallRepository) FindBySigner(

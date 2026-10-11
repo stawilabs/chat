@@ -29,7 +29,11 @@ type StawiRoom struct {
 	// GenesisEventID is the conversion event that carries the genesis card.
 	GenesisEventID string `gorm:"type:varchar(50)"`
 	// Founders is the comma-separated founder profile ids of the genesis.
-	Founders          string `gorm:"type:text"`
+	Founders string `gorm:"type:text"`
+	// RequestedBy is the profile whose conversion prepared the genesis; only
+	// they may replace it while it is pending and unexpired.
+	RequestedBy       string `gorm:"type:varchar(50)"`
+	GenesisExpiresAt  *time.Time
 	ChainID           uint64
 	CustodyAddress    string `gorm:"type:varchar(42);index"`
 	GovernanceAddress string `gorm:"type:varchar(42)"`
@@ -59,6 +63,15 @@ func (r *StawiRoom) IsFounder(profileID string) bool {
 		}
 	}
 	return false
+}
+
+// StawiGenesisClaim is a prepared genesis being recorded against a room.
+type StawiGenesisClaim struct {
+	GenesisID   string
+	EventID     string
+	RequestedBy string
+	Founders    []string
+	ExpiresAt   time.Time
 }
 
 // Stawi room call states, as chat tracks a relayed call until its outcome.

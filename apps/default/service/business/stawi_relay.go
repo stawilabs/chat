@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
@@ -84,6 +85,13 @@ var errStawiNotConfigured = connect.NewError(connect.CodeUnavailable,
 // reported to the room; problems with the act itself, or with reaching
 // settlement, are returned to the sender and nothing is stored.
 func (sr *stawiRelay) relay(ctx context.Context, act *stawiAct) stawiRelayResult {
+	// The send path has already required an active subscription that Keto
+	// lets send into the room; the relay does not rely on it.
+	if act.sender == nil || !act.sender.IsActive() || act.sender.ProfileID == "" ||
+		act.sender.RoomID != "" && act.sender.RoomID != act.event.RoomID {
+		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
+			errors.New("stawi room acts need an active member of the room"))}
+	}
 	if sr == nil || sr.rooms == nil {
 		return stawiRelayResult{ack: errStawiNotConfigured}
 	}
@@ -111,6 +119,11 @@ func (sr *stawiRelay) relayConversion(
 	if bound {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("the room is already a Stawi room"))}
+	}
+
+	// Another member's pending genesis is theirs until it expires.
+	if err := sr.bindings.CheckGenesisClaimable(ctx, act.event.RoomID, act.sender.ProfileID, time.Now()); err != nil {
+		return stawiRelayResult{ack: genesisClaimRefusal(err)}
 	}
 
 	// Founders are named by subscription; each must be an active subscription
@@ -169,9 +182,14 @@ func (sr *stawiRelay) relayConversion(
 	if err != nil {
 		return stawiRelayResult{ack: fmt.Errorf("failed to load the room: %w", err)}
 	}
-	if err = sr.bindings.RecordGenesis(ctx, room, genesis.GenesisID, act.event.GetID(),
-		genesis.FounderProfileIDs); err != nil {
-		return stawiRelayResult{ack: fmt.Errorf("failed to record the genesis: %w", err)}
+	if err = sr.bindings.ClaimGenesis(ctx, room, models.StawiGenesisClaim{
+		GenesisID:   genesis.GenesisID,
+		EventID:     act.event.GetID(),
+		RequestedBy: act.sender.ProfileID,
+		Founders:    genesis.FounderProfileIDs,
+		ExpiresAt:   genesis.ExpiresAt,
+	}); err != nil {
+		return stawiRelayResult{ack: genesisClaimRefusal(err)}
 	}
 	return stawiRelayResult{}
 }
@@ -273,6 +291,9 @@ func (sr *stawiRelay) relaySignedCall(
 	tracked.ID = call.CallID
 	tracked.GenID(ctx)
 	if err = sr.callRepo.Record(ctx, tracked); err != nil {
+		if errors.Is(err, repository.ErrStawiCallConflict) {
+			return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition, err)}
+		}
 		return stawiRelayResult{ack: fmt.Errorf("failed to record the relayed call: %w", err)}
 	}
 	outcome.State = chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED
@@ -325,6 +346,16 @@ func (sr *stawiRelay) withOutcome(
 		return stawiRelayResult{ack: err}
 	}
 	return stawiRelayResult{outcome: event}
+}
+
+// genesisClaimRefusal is the sender-facing refusal when a genesis cannot be
+// recorded for them.
+func genesisClaimRefusal(err error) error {
+	if errors.Is(err, repository.ErrStawiGenesisNotClaimable) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(
+			"another member's conversion of this room is pending; it can be replaced once it expires"))
+	}
+	return fmt.Errorf("failed to record the genesis: %w", err)
 }
 
 const maxOutcomeReason = 1024

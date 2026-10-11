@@ -32,6 +32,10 @@ type Rooms struct {
 	Submitted []stawi.CallSubmission
 
 	errs map[string]error
+
+	// GenesisTTL is how long a prepared genesis stays signable (default 1h;
+	// a negative value prepares geneses that have already expired).
+	GenesisTTL time.Duration
 }
 
 // NewRooms returns an empty fake RoomService.
@@ -96,6 +100,13 @@ func (r *Rooms) Signatures(genesisID string) []stawi.GenesisSignature {
 	return append([]stawi.GenesisSignature(nil), r.signatures[genesisID]...)
 }
 
+func (r *Rooms) genesisTTL() time.Duration {
+	if r.GenesisTTL == 0 {
+		return time.Hour
+	}
+	return r.GenesisTTL
+}
+
 func (r *Rooms) refusal(method string) error {
 	return r.errs[method]
 }
@@ -111,7 +122,7 @@ func (r *Rooms) PrepareRoomGenesis(_ context.Context, req stawi.PrepareGenesisRe
 		GenesisID:         util.IDString(),
 		GenesisHash:       []byte("genesis-hash-" + req.ChatRoomID),
 		ConstitutionHash:  []byte("constitution-" + req.TemplateID),
-		ExpiresAt:         time.Now().Add(time.Hour).UTC().Truncate(time.Second),
+		ExpiresAt:         time.Now().Add(r.genesisTTL()).UTC().Truncate(time.Second),
 		FounderProfileIDs: append([]string(nil), req.FounderProfileIDs...),
 	}
 	r.geneses[g.GenesisID] = g
