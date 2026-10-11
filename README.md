@@ -174,8 +174,12 @@ outcome. Nothing about subscriptions changes on send.
 **Chain facts** drive a bound room's subscriptions, roles and outcomes. Chat
 subscribes to settlement's facts — finance.v1 event protos on
 `svc.stawi.settlement.events` (stream `svc_stawi_facts`), headers `event_name`
-and `event_id` — and applies `room.activated`, `room.membership_observed`,
-`governance.call_observed` and `governance.call_failed`, idempotent by
+and `event_id` — and applies `room.activated` (bound only when its `genesis_id` and
+`chat_room_id` are the genesis chat recorded for that room),
+`room.membership_observed`, `governance.call_observed`,
+`governance.call_failed`, `room.call_final` and `room.call_failed` (the
+relayed call's OBSERVED/FAILED outcome) and `room.genesis_failed` (FAILED on
+the genesis card; the room may be converted again), idempotent by
 `(chain_id, tx_hash, log_index)`, per room in `(block, log_index)` order. A
 fact acts on the room bound to the contract that emitted the log. A room is
 bound only if chat prepared its genesis. A reconciler repairs drift between
@@ -205,7 +209,7 @@ human role grants it.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `SETTLEMENT_SERVICE_URI` | empty | required in staging/production |
+| `SETTLEMENT_SERVICE_URI` | empty | settlement's RoomService (`settlement.v1`, buf.build/stawi/finance); required in staging/production |
 | `SETTLEMENT_SERVICE_WORKLOAD_API_TARGET_PATH` | `/ns/stawi/sa/service-settlement` | |
 | `PROFILE_SERVICE_URI` | `127.0.0.1:7003` | resolves chain addresses (needs `account_resolve`, ROLE_SERVICE) |
 | `QUEUE_STAWI_FACTS_NAME` / `_URI` | `stawi.settlement.facts` / `mem://…` | durable subscription required in staging/production, e.g. `nats://…?jetstream=true&stream_name=svc_stawi_facts&consumer_durable_name=svc_chat_stawi_facts&consumer_filter_subject=svc.stawi.settlement.events&consumer_ack_policy=explicit&consumer_deliver_policy=all&consumer_max_deliver=5` |

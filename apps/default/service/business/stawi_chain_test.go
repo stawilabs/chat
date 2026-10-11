@@ -56,10 +56,11 @@ func (r *recordingDrift) all() []business.StawiDrift {
 
 type chainFixture struct {
 	*stawiFixture
-	chain *business.StawiChain
-	store repository.StawiChainStore
-	drift *recordingDrift
-	carol *commonv1.ContactLink
+	chain     *business.StawiChain
+	store     repository.StawiChainStore
+	drift     *recordingDrift
+	carol     *commonv1.ContactLink
+	genesisID string
 }
 
 func (s *MessageBusinessTestSuite) newChainFixture(t *testing.T, dep *definition.DependencyOption) *chainFixture {
@@ -77,6 +78,9 @@ func (s *MessageBusinessTestSuite) newChainFixture(t *testing.T, dep *definition
 	f.accounts.Own(hexAddr(carolAddr), cf.carol.GetProfileId())
 	// The room's owner converts it, as every binding requires.
 	requireAckOK(t, f.send(t, f.alice, conversion(f.aliceSub, f.bobSub)))
+	pending, err := f.bindings.GetByID(f.ctx, f.roomID)
+	require.NoError(t, err)
+	cf.genesisID = pending.GenesisID
 	cf.chain = business.NewStawiChain(business.StawiChainDeps{
 		Pool:     dbPool,
 		RoomRepo: repository.NewRoomRepository(f.ctx, dbPool, f.workMan),
@@ -99,9 +103,15 @@ func meta(roomID string) *financev1.EventMeta {
 }
 
 func (cf *chainFixture) activated() (string, []byte) {
+	return cf.activatedFor(cf.genesisID, cf.roomID)
+}
+
+// activatedFor is room.activated naming a genesis and a chat room.
+func (cf *chainFixture) activatedFor(genesisID, chatRoomID string) (string, []byte) {
 	b, _ := proto.Marshal(&financev1.RoomActivated{
 		Meta: meta(cf.roomID), RoomId: cf.roomID, ChainId: testChainID,
 		CustodyAddress: custody, GovernanceAddress: governor, PolicyEpoch: 1,
+		GenesisId: genesisID, ChatRoomId: chatRoomID,
 	})
 	return business.FactRoomActivated, b
 }
@@ -503,5 +513,156 @@ func (s *MessageBusinessTestSuite) TestChainDropsADeliveryWhoseHeaderDisagreesWi
 		bound, err = cf.bindings.IsBound(cf.ctx, cf.roomID)
 		require.NoError(t, err)
 		require.True(t, bound)
+	})
+}
+
+func (cf *chainFixture) callFinal(callID string, custodyAddr []byte, block uint64) (string, []byte) {
+	b, _ := proto.Marshal(&financev1.RoomCallFinal{
+		Meta: meta(cf.roomID), CallId: callID, RoomId: cf.roomID, ChainId: testChainID,
+		CustodyAddress: custodyAddr, Kind: 2, TxHash: txHash(block, 0), BlockNumber: block,
+	})
+	return business.FactRoomCallFinal, b
+}
+
+func (cf *chainFixture) callFailed(callID string, custodyAddr []byte, reason string) (string, []byte) {
+	b, _ := proto.Marshal(&financev1.RoomCallFailed{
+		Meta: meta(cf.roomID), CallId: callID, RoomId: cf.roomID, ChainId: testChainID,
+		CustodyAddress: custodyAddr, Kind: 2, Reason: reason,
+	})
+	return business.FactRoomCallFailed, b
+}
+
+func (cf *chainFixture) genesisFailed(genesisID, reason string) (string, []byte) {
+	b, _ := proto.Marshal(&financev1.RoomGenesisFailed{
+		Meta: meta(cf.roomID), GenesisId: genesisID, RoomId: cf.roomID, ChainId: testChainID, Reason: reason,
+	})
+	return business.FactRoomGenesisFailed, b
+}
+
+func (cf *chainFixture) outcomeFor(t *testing.T, callID string) []*chatv1.StawiCallOutcomeContent {
+	t.Helper()
+	var out []*chatv1.StawiCallOutcomeContent
+	for _, o := range cf.outcomes(t) {
+		if o.GetCallId() == callID && o.GetState() != chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// TestRoomCallFactsReportTheOutcomeOfARelayedCall: room.call_final and
+// room.call_failed close a call chat relayed, once, against its act — and
+// only from the call's own room's custody.
+func (s *MessageBusinessTestSuite) TestRoomCallFactsReportTheOutcomeOfARelayedCall() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		cf := s.newChainFixture(t, dep)
+		cf.deliver(t, f2(cf.activated()))
+		finalID, failedID, elsewhereID := util.IDString(), util.IDString(), util.IDString()
+		for i, id := range []string{finalID, failedID, elsewhereID} {
+			cf.rooms.AddCall(stawi.RoomCall{CallID: id, RoomID: cf.roomID, Kind: "CAST_VOTE",
+				SignerAddress: hexAddr(aliceAddr), Nonce: uint64(i + 1)})
+			requireAckOK(t, cf.send(t, cf.alice, signedCall(id, "CAST_VOTE")))
+		}
+
+		final := f2(cf.callFinal(finalID, custody, 50))
+		cf.deliver(t, final, final)
+		outcomes := cf.outcomeFor(t, finalID)
+		require.Len(t, outcomes, 1)
+		require.Equal(t, chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED, outcomes[0].GetState())
+		require.EqualValues(t, 50, outcomes[0].GetBlockNumber())
+		require.NotEmpty(t, outcomes[0].GetSourceEventId())
+
+		cf.deliver(t, f2(cf.callFailed(failedID, custody, "reverted: quorum not met")))
+		outcomes = cf.outcomeFor(t, failedID)
+		require.Len(t, outcomes, 1)
+		require.Equal(t, chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED, outcomes[0].GetState())
+		require.Equal(t, "reverted: quorum not met", outcomes[0].GetReason())
+
+		// Another custody's fact cannot close this room's call.
+		cf.deliver(t, f2(cf.callFinal(elsewhereID, otherCustody, 51)))
+		require.Empty(t, cf.outcomeFor(t, elsewhereID))
+		call, err := cf.calls.GetByID(cf.ctx, elsewhereID)
+		require.NoError(t, err)
+		require.Equal(t, models.StawiCallStateSubmitted, call.State)
+	})
+}
+
+// TestGenesisFailedReopensTheConversion: room.genesis_failed for the room's
+// genesis reports it against the genesis card and lets the room be converted
+// again; one naming another genesis changes nothing.
+func (s *MessageBusinessTestSuite) TestGenesisFailedReopensTheConversion() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		cf := s.newChainFixture(t, dep)
+		cf.deliver(t, f2(cf.genesisFailed(util.IDString(), "not mine")))
+		pending, err := cf.bindings.GetByID(cf.ctx, cf.roomID)
+		require.NoError(t, err)
+		require.Equal(t, models.StawiRoomStatePending, pending.State)
+
+		cf.deliver(t, f2(cf.genesisFailed(cf.genesisID, "quorum did not sign in time")))
+		var failed []*chatv1.StawiCallOutcomeContent
+		for _, o := range cf.outcomes(t) {
+			if o.GetGenesisId() == cf.genesisID &&
+				o.GetState() == chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED {
+				failed = append(failed, o)
+			}
+		}
+		require.Len(t, failed, 1)
+		require.Equal(t, "quorum did not sign in time", failed[0].GetReason())
+		require.Equal(t, pending.GenesisEventID, failed[0].GetSourceEventId())
+
+		// The genesis is gone: an activation for it is refused, and another
+		// admin may now convert.
+		name, payload := cf.activated()
+		require.Error(t, cf.chain.Receive(cf.ctx, name, payload))
+		require.NoError(t, cf.rb.UpdateSubscriptionRole(cf.ctx, &chatv1.UpdateSubscriptionRoleRequest{
+			RoomId: cf.roomID, SubscriptionId: cf.bobSub, Roles: []string{"admin"},
+		}, cf.alice))
+		requireAckOK(t, cf.send(t, cf.bob, conversion(cf.bobSub)))
+	})
+}
+
+// TestActivationMustNameTheRoomsGenesis: room.activated binds only when it
+// names the genesis chat recorded for the room and that chat room.
+func (s *MessageBusinessTestSuite) TestActivationMustNameTheRoomsGenesis() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		cf := s.newChainFixture(t, dep)
+		for name, fact := range map[string][2]string{
+			"another genesis":   {util.IDString(), cf.roomID},
+			"no genesis":        {"", cf.roomID},
+			"another chat room": {cf.genesisID, util.IDString()},
+		} {
+			t.Run(name, func(t *testing.T) {
+				factName, payload := cf.activatedFor(fact[0], fact[1])
+				require.Error(t, cf.chain.Receive(cf.ctx, factName, payload))
+				bound, err := cf.bindings.IsBound(cf.ctx, cf.roomID)
+				require.NoError(t, err)
+				require.False(t, bound)
+			})
+		}
+		cf.deliver(t, f2(cf.activated()))
+		bound, err := cf.bindings.IsBound(cf.ctx, cf.roomID)
+		require.NoError(t, err)
+		require.True(t, bound)
+	})
+}
+
+// TestGovernanceCallFailedMatchesByCallID: settlement now names the call.
+func (s *MessageBusinessTestSuite) TestGovernanceCallFailedMatchesByCallID() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		cf := s.newChainFixture(t, dep)
+		cf.deliver(t, f2(cf.activated()))
+		callX := util.IDString()
+		cf.rooms.AddCall(stawi.RoomCall{CallID: callX, RoomID: cf.roomID, Kind: "PROPOSE",
+			SignerAddress: hexAddr(aliceAddr), Nonce: 4})
+		requireAckOK(t, cf.send(t, cf.alice, signedCall(callX, "PROPOSE")))
+
+		b, _ := proto.Marshal(&financev1.GovernanceCallFailed{
+			Meta: meta(cf.roomID), CallId: callX, Reason: "deadline passed",
+			Call: &financev1.SignedGovernanceCall{ChainId: testChainID, Verifier: governor, RoomId: cf.roomID},
+		})
+		cf.deliver(t, f2(business.FactGovernanceCallFailed, b))
+		outcomes := cf.outcomeFor(t, callX)
+		require.Len(t, outcomes, 1)
+		require.Equal(t, "deadline passed", outcomes[0].GetReason())
 	})
 }

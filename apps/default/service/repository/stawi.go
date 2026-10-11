@@ -83,6 +83,9 @@ func (r *stawiRoomRepository) CheckGenesisClaimable(
 }
 
 func genesisClaimable(row *models.StawiRoom, requestedBy string, now time.Time) bool {
+	if row.State == models.StawiRoomStateFailed {
+		return true
+	}
 	if row.State != models.StawiRoomStatePending {
 		return false
 	}
@@ -112,6 +115,7 @@ func (r *stawiRoomRepository) ClaimGenesis(
 	res := r.Pool().DB(ctx, false).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.Assignments(map[string]any{
+			colState:             models.StawiRoomStatePending,
 			"genesis_id":         claim.GenesisID,
 			"genesis_event_id":   claim.EventID,
 			"founders":           row.Founders,
@@ -121,9 +125,12 @@ func (r *stawiRoomRepository) ClaimGenesis(
 		}),
 		Where: clause.Where{Exprs: []clause.Expression{
 			clause.Expr{
-				SQL: "stawi_rooms.state = ? AND (stawi_rooms.requested_by = ? " +
-					"OR stawi_rooms.genesis_expires_at IS NULL OR stawi_rooms.genesis_expires_at < ?)",
-				Vars: []any{models.StawiRoomStatePending, claim.RequestedBy, time.Now().UTC()},
+				SQL: "stawi_rooms.state = ? OR (stawi_rooms.state = ? AND (stawi_rooms.requested_by = ? " +
+					"OR stawi_rooms.genesis_expires_at IS NULL OR stawi_rooms.genesis_expires_at < ?))",
+				Vars: []any{
+					models.StawiRoomStateFailed,
+					models.StawiRoomStatePending, claim.RequestedBy, time.Now().UTC(),
+				},
 			},
 		}},
 	}).Create(row)

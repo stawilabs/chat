@@ -31,6 +31,9 @@ const (
 	FactRoomMembershipObserved = "room.membership_observed"
 	FactGovernanceCallObserved = "governance.call_observed"
 	FactGovernanceCallFailed   = "governance.call_failed"
+	FactRoomCallFinal          = "room.call_final"
+	FactRoomCallFailed         = "room.call_failed"
+	FactRoomGenesisFailed      = "room.genesis_failed"
 )
 
 const (
@@ -38,6 +41,7 @@ const (
 	sweepBatch            = 100
 	colStawiState         = "state"
 	logKeyFact            = "fact"
+	colModifiedAt         = "modified_at"
 )
 
 // ErrStawiUnrequestedBinding is returned when an activation names a room that
@@ -220,9 +224,68 @@ func (c *StawiChain) Receive(ctx context.Context, eventName string, payload []by
 			ChainID:        msg.GetCall().GetChainId(),
 			Payload:        payload,
 		})
+	case FactRoomCallFinal:
+		var msg financev1.RoomCallFinal
+		if !c.decode(ctx, eventName, payload, &msg) {
+			return nil
+		}
+		return c.receivePositioned(ctx, msg.GetRoomId(), &models.StawiChainFact{
+			FactKey: "call_final:" + msg.GetCallId(), EventName: eventName,
+			CustodyAddress: HexAddress(msg.GetCustodyAddress()), ChainID: msg.GetChainId(),
+			BlockNumber: msg.GetBlockNumber(), Payload: payload,
+		})
+	case FactRoomCallFailed:
+		var msg financev1.RoomCallFailed
+		if !c.decode(ctx, eventName, payload, &msg) {
+			return nil
+		}
+		return c.receivePositioned(ctx, msg.GetRoomId(), &models.StawiChainFact{
+			FactKey: "call_failed:" + msg.GetCallId(), EventName: eventName,
+			CustodyAddress: HexAddress(msg.GetCustodyAddress()), ChainID: msg.GetChainId(), Payload: payload,
+		})
+	case FactRoomGenesisFailed:
+		var msg financev1.RoomGenesisFailed
+		if !c.decode(ctx, eventName, payload, &msg) {
+			return nil
+		}
+		return c.receiveGenesisFailed(ctx, &msg)
 	default:
 		return nil
 	}
+}
+
+// receiveGenesisFailed reports a genesis that never landed against its card
+// and reopens the room for conversion — only when it names the genesis chat
+// recorded for that room and the room is still pending.
+func (c *StawiChain) receiveGenesisFailed(ctx context.Context, msg *financev1.RoomGenesisFailed) error {
+	room, err := c.deps.RoomRepo.GetByID(ctx, msg.GetRoomId())
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return nil
+		}
+		return err
+	}
+	return c.deps.Store.WithRoomLock(ctx, room.GetID(), func(tx *gorm.DB) error {
+		var row models.StawiRoom
+		if findErr := tx.Where("id = ?", room.GetID()).First(&row).Error; findErr != nil {
+			if errors.Is(findErr, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return findErr
+		}
+		res := tx.Table("stawi_rooms").Where("id = ? AND state = ? AND genesis_id = ?", room.GetID(),
+			models.StawiRoomStatePending, msg.GetGenesisId()).
+			Updates(map[string]any{colStawiState: models.StawiRoomStateFailed, colModifiedAt: time.Now()})
+		if res.Error != nil || res.RowsAffected == 0 {
+			return res.Error // another genesis, or already reported
+		}
+		return c.postEvent(ctx, tx, room, util.IDString(), row.GenesisEventID, outcomePayload(
+			&chatv1.StawiCallOutcomeContent{
+				GenesisId: msg.GetGenesisId(), State: chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED,
+				Reason: truncateReason(msg.GetReason()), SourceEventId: row.GenesisEventID,
+				Kind: "ROOM_GENESIS", ChainId: msg.GetChainId(),
+			}))
+	})
 }
 
 func (c *StawiChain) decode(ctx context.Context, name string, payload []byte, msg proto.Message) bool {
@@ -358,8 +421,14 @@ func (c *StawiChain) bind(
 	}
 	// Only a room whose owner or admin had chat prepare its genesis may
 	// be bound, and only to a custody no other room holds.
-	if !found || row.GenesisID == "" {
-		return fmt.Errorf("%w: no genesis was prepared from room %s", ErrStawiUnrequestedBinding, roomID)
+	if !found || row.GenesisID == "" || row.State != models.StawiRoomStatePending {
+		return fmt.Errorf("%w: no genesis is pending for room %s", ErrStawiUnrequestedBinding, roomID)
+	}
+	// Settlement names the genesis and the chat room it was prepared for;
+	// both must be the ones chat recorded.
+	if msg.GetGenesisId() != row.GenesisID || msg.GetChatRoomId() != roomID {
+		return fmt.Errorf("%w: the activation names genesis %q for room %q", ErrStawiUnrequestedBinding,
+			msg.GetGenesisId(), msg.GetChatRoomId())
 	}
 	var holders int64
 	if countErr := tx.Table("stawi_rooms").Where("id <> ? AND (custody_address IN ? OR governance_address IN ?)",
@@ -382,7 +451,7 @@ func (c *StawiChain) bind(
 		models.StawiRoomStateBound).Updates(map[string]any{
 		colStawiState: row.State, "chain_id": row.ChainID, "custody_address": row.CustodyAddress,
 		"governance_address": row.GovernanceAddress, "policy_epoch": row.PolicyEpoch,
-		"bound_at": now, "modified_at": now,
+		"bound_at": now, colModifiedAt: now,
 	}).Error; saveErr != nil {
 		return saveErr
 	}
@@ -443,6 +512,25 @@ func (c *StawiChain) applyFact(ctx context.Context, tx *gorm.DB, room *models.Ro
 			return err
 		}
 		return c.applyCallFailed(ctx, tx, room, fact, &msg)
+	case FactRoomCallFinal:
+		var msg financev1.RoomCallFinal
+		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
+			return err
+		}
+		return c.settleRoomCall(ctx, tx, room, fact, msg.GetCallId(), &chatv1.StawiCallOutcomeContent{
+			State:   chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED,
+			ChainId: msg.GetChainId(), TxHash: msg.GetTxHash(), BlockNumber: msg.GetBlockNumber(),
+		})
+	case FactRoomCallFailed:
+		var msg financev1.RoomCallFailed
+		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
+			return err
+		}
+		return c.settleRoomCall(ctx, tx, room, fact, msg.GetCallId(), &chatv1.StawiCallOutcomeContent{
+			State:   chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED,
+			Reason:  truncateReason(msg.GetReason()),
+			ChainId: msg.GetChainId(), TxHash: msg.GetTxHash(),
+		})
 	default:
 		return nil
 	}
@@ -730,7 +818,7 @@ func (c *StawiChain) removeSubscription(
 
 func setSubscription(tx *gorm.DB, id string, state models.RoomSubscriptionState, role string) error {
 	return tx.Table("room_subscriptions").Where("id = ?", id).Updates(map[string]any{
-		"subscription_state": state, "role": role, "modified_at": time.Now(),
+		"subscription_state": state, "role": role, colModifiedAt: time.Now(),
 	}).Error
 }
 
@@ -765,17 +853,61 @@ func (c *StawiChain) applyCallObserved(
 	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, parent, outcomePayload(outcome))
 }
 
-func (c *StawiChain) applyCallFailed(
-	ctx context.Context, tx *gorm.DB, room *models.Room,
-	fact *models.StawiChainFact, msg *financev1.GovernanceCallFailed,
+// settleRoomCall reports settlement's verdict on a call chat relayed
+// (room.call_final / room.call_failed): once, against the act, and only for a
+// call of the room whose custody emitted the fact.
+func (c *StawiChain) settleRoomCall(
+	ctx context.Context, tx *gorm.DB, room *models.Room, fact *models.StawiChainFact,
+	callID string, outcome *chatv1.StawiCallOutcomeContent,
 ) error {
-	call, err := c.deps.Calls.FindBySigner(ctx, room.GetID(), HexAddress(msg.GetCall().GetMember()),
-		msg.GetCall().GetNonce())
+	call, err := c.deps.Calls.GetByID(ctx, callID)
 	if err != nil {
 		if data.ErrorIsNoRows(err) {
 			return nil // not a call chat relayed
 		}
 		return err
+	}
+	if call.RoomID != room.GetID() {
+		util.Log(ctx).WithField("call_id", callID).WithField(chatutil.KeyRoomID, room.GetID()).
+			Error("stawi chain: a call fact from another room's custody; ignored")
+		return nil
+	}
+	state := models.StawiCallStateObserved
+	if outcome.GetState() == chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED {
+		state = models.StawiCallStateFailed
+	}
+	res := tx.Table("stawi_room_calls").Where("id = ? AND state = ?", call.GetID(),
+		models.StawiCallStateSubmitted).Updates(map[string]any{colStawiState: state})
+	if res.Error != nil || res.RowsAffected == 0 {
+		return res.Error // already settled: reported once
+	}
+	outcome.CallId, outcome.SourceEventId, outcome.Kind = call.GetID(), call.SourceEventID, call.Kind
+	if fact.OutcomeEventID == "" {
+		fact.OutcomeEventID = util.IDString()
+	}
+	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, call.SourceEventID, outcomePayload(outcome))
+}
+
+func (c *StawiChain) applyCallFailed(
+	ctx context.Context, tx *gorm.DB, room *models.Room,
+	fact *models.StawiChainFact, msg *financev1.GovernanceCallFailed,
+) error {
+	var call *models.StawiRoomCall
+	var err error
+	if msg.GetCallId() != "" {
+		call, err = c.deps.Calls.GetByID(ctx, msg.GetCallId())
+	} else {
+		call, err = c.deps.Calls.FindBySigner(ctx, room.GetID(), HexAddress(msg.GetCall().GetMember()),
+			msg.GetCall().GetNonce())
+	}
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return nil // not a call chat relayed
+		}
+		return err
+	}
+	if call.RoomID != room.GetID() {
+		return nil
 	}
 	res := tx.Table("stawi_room_calls").Where("id = ? AND state = ?", call.GetID(),
 		models.StawiCallStateSubmitted).Updates(map[string]any{colStawiState: models.StawiCallStateFailed})
@@ -788,7 +920,7 @@ func (c *StawiChain) applyCallFailed(
 	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, call.SourceEventID, outcomePayload(
 		&chatv1.StawiCallOutcomeContent{
 			CallId: call.GetID(), State: chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED,
-			Reason: truncate(msg.GetReason(), maxOutcomeReason), SourceEventId: call.SourceEventID,
+			Reason: truncateReason(msg.GetReason()), SourceEventId: call.SourceEventID,
 			Kind: call.Kind, TxHash: msg.GetTxHash(),
 		}))
 }
@@ -1062,7 +1194,7 @@ func (c *StawiChain) settleStaleCalls(ctx context.Context) (int, error) {
 			}
 			return c.postEvent(ctx, tx, room, util.IDString(), tracked.SourceEventID, outcomePayload(
 				&chatv1.StawiCallOutcomeContent{
-					CallId: tracked.GetID(), State: state, Reason: truncate(call.Reason, maxOutcomeReason),
+					CallId: tracked.GetID(), State: state, Reason: truncateReason(call.Reason),
 					SourceEventId: tracked.SourceEventID, Kind: tracked.Kind, TxHash: call.TxHash,
 				}))
 		})

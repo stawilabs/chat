@@ -16,6 +16,9 @@ const (
 	// (room.activated). From here membership, roles and deletion follow the
 	// chain only.
 	StawiRoomStateBound = "bound"
+	// StawiRoomStateFailed: the genesis never landed (room.genesis_failed);
+	// the room may be converted again.
+	StawiRoomStateFailed = "failed"
 )
 
 // StawiRoom binds a chat room to its on-chain custody. Its ID is the chat room

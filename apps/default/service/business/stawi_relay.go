@@ -226,7 +226,7 @@ func (sr *stawiRelay) relayGenesisSignature(
 		}
 		return stawiRelayResult{ack: fmt.Errorf("failed to load the room genesis: %w", err)}
 	}
-	if binding.GenesisID != content.GetGenesisId() {
+	if binding.State != models.StawiRoomStatePending || binding.GenesisID != content.GetGenesisId() {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("the genesis is not the room's current genesis"))}
 	}
@@ -362,7 +362,7 @@ func (sr *stawiRelay) refused(
 	ctx context.Context, act *stawiAct, reason string, outcome *chatv1.StawiCallOutcomeContent,
 ) stawiRelayResult {
 	outcome.State = chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED
-	outcome.Reason = truncate(reason, maxOutcomeReason)
+	outcome.Reason = truncateReason(reason)
 	return sr.withOutcome(ctx, act, outcome)
 }
 
@@ -389,11 +389,12 @@ func genesisClaimRefusal(err error) error {
 
 const maxOutcomeReason = 1024
 
-func truncate(s string, n int) string {
-	if len(s) <= n {
+// truncateReason bounds a refusal reason to what an outcome carries.
+func truncateReason(s string) string {
+	if len(s) <= maxOutcomeReason {
 		return s
 	}
-	return s[:n]
+	return s[:maxOutcomeReason]
 }
 
 // newOutcomeEvent builds the server-generated STAWI_CALL_OUTCOME event for a
