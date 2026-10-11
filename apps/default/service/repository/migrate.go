@@ -27,5 +27,9 @@ func Migrate(ctx context.Context, dbManager datastore.Manager, migrationPath str
 		&models.DeviceReplayEvent{},
 		&models.RoomCall{},
 		&models.Proposal{},
+		&models.StawiRoom{},
+		&models.StawiRoomCall{},
+		&models.StawiChainFact{},
+		&models.StawiRoomMember{},
 	)
 }

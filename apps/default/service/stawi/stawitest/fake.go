@@ -1,0 +1,219 @@
+// Package stawitest provides in-memory stand-ins for settlement's RoomService
+// and the profile account lookup, for tests of chat's Stawi room paths.
+package stawitest
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/pitabwire/util"
+
+	"github.com/stawilabs/chat/apps/default/service/stawi"
+)
+
+// Rooms is a fake settlement RoomService. Calls registered with AddCall are
+// served by GetRoomCall and SubmitRoomCall; Refuse makes the next calls of a
+// method fail with the given error.
+type Rooms struct {
+	mu sync.Mutex
+
+	geneses    map[string]*stawi.Genesis
+	signatures map[string][]stawi.GenesisSignature
+	calls      map[string]*stawi.RoomCall
+
+	// Prepared records every PrepareRoomGenesis request.
+	Prepared []stawi.PrepareGenesisRequest
+	// Submitted records every SubmitRoomCall.
+	Submitted []stawi.CallSubmission
+
+	errs map[string]error
+}
+
+// NewRooms returns an empty fake RoomService.
+func NewRooms() *Rooms {
+	return &Rooms{
+		geneses:    map[string]*stawi.Genesis{},
+		signatures: map[string][]stawi.GenesisSignature{},
+		calls:      map[string]*stawi.RoomCall{},
+		errs:       map[string]error{},
+	}
+}
+
+// Method names accepted by Refuse.
+const (
+	MethodPrepareRoomGenesis         = "PrepareRoomGenesis"
+	MethodSubmitRoomGenesisSignature = "SubmitRoomGenesisSignature"
+	MethodSubmitRoomCall             = "SubmitRoomCall"
+	MethodGetRoomCall                = "GetRoomCall"
+)
+
+// Refuse makes method fail with err until Refuse is called with a nil error.
+func (r *Rooms) Refuse(method string, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err == nil {
+		delete(r.errs, method)
+		return
+	}
+	r.errs[method] = err
+}
+
+// Refusal is a settlement refusal as the chain would give it.
+func Refusal(reason string) error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New(reason))
+}
+
+// AddCall registers a prepared call, as if the app had called PrepareRoomCall.
+func (r *Rooms) AddCall(call stawi.RoomCall) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c := call
+	if c.State == stawi.CallStateUnspecified {
+		c.State = stawi.CallStatePrepared
+	}
+	r.calls[c.CallID] = &c
+}
+
+// SetCallState moves a registered call, as the chain would.
+func (r *Rooms) SetCallState(callID string, state stawi.CallState, reason string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if c, ok := r.calls[callID]; ok {
+		c.State = state
+		c.Reason = reason
+	}
+}
+
+// Signatures returns the signatures received for a genesis.
+func (r *Rooms) Signatures(genesisID string) []stawi.GenesisSignature {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]stawi.GenesisSignature(nil), r.signatures[genesisID]...)
+}
+
+func (r *Rooms) refusal(method string) error {
+	return r.errs[method]
+}
+
+func (r *Rooms) PrepareRoomGenesis(_ context.Context, req stawi.PrepareGenesisRequest) (*stawi.Genesis, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.refusal(MethodPrepareRoomGenesis); err != nil {
+		return nil, err
+	}
+	r.Prepared = append(r.Prepared, req)
+	g := &stawi.Genesis{
+		GenesisID:         util.IDString(),
+		GenesisHash:       []byte("genesis-hash-" + req.ChatRoomID),
+		ConstitutionHash:  []byte("constitution-" + req.TemplateID),
+		ExpiresAt:         time.Now().Add(time.Hour).UTC().Truncate(time.Second),
+		FounderProfileIDs: append([]string(nil), req.FounderProfileIDs...),
+	}
+	r.geneses[g.GenesisID] = g
+	return g, nil
+}
+
+func (r *Rooms) SubmitRoomGenesisSignature(
+	_ context.Context, sig stawi.GenesisSignature,
+) (*stawi.GenesisSignatureResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.refusal(MethodSubmitRoomGenesisSignature); err != nil {
+		return nil, err
+	}
+	g, ok := r.geneses[sig.GenesisID]
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("genesis %s not found", sig.GenesisID))
+	}
+	for _, existing := range r.signatures[sig.GenesisID] {
+		if existing.SignerProfileID == sig.SignerProfileID {
+			return &stawi.GenesisSignatureResult{
+				Signed: len(r.signatures[sig.GenesisID]), Required: len(g.FounderProfileIDs),
+			}, nil
+		}
+	}
+	r.signatures[sig.GenesisID] = append(r.signatures[sig.GenesisID], sig)
+	signed := len(r.signatures[sig.GenesisID])
+	return &stawi.GenesisSignatureResult{
+		Signed: signed, Required: len(g.FounderProfileIDs), Submitted: signed == len(g.FounderProfileIDs),
+	}, nil
+}
+
+func (r *Rooms) SubmitRoomCall(_ context.Context, sub stawi.CallSubmission) (*stawi.RoomCall, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.refusal(MethodSubmitRoomCall); err != nil {
+		return nil, err
+	}
+	c, ok := r.calls[sub.CallID]
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("call %s not found", sub.CallID))
+	}
+	r.Submitted = append(r.Submitted, sub)
+	if c.State == stawi.CallStatePrepared {
+		c.State = stawi.CallStateSubmitted
+	}
+	out := *c
+	return &out, nil
+}
+
+func (r *Rooms) GetRoomCall(_ context.Context, callID string) (*stawi.RoomCall, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.refusal(MethodGetRoomCall); err != nil {
+		return nil, err
+	}
+	c, ok := r.calls[callID]
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("call %s not found", callID))
+	}
+	out := *c
+	return &out, nil
+}
+
+// Accounts is a fake profile account lookup.
+type Accounts struct {
+	mu     sync.Mutex
+	owners map[string]string
+	err    error
+	// Calls counts Resolve calls.
+	Calls int
+}
+
+// NewAccounts returns an empty fake account lookup.
+func NewAccounts() *Accounts { return &Accounts{owners: map[string]string{}} }
+
+// Own records that profileID owns address.
+func (a *Accounts) Own(address, profileID string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.owners[strings.ToLower(address)] = profileID
+}
+
+// Fail makes Resolve fail with err (nil restores it).
+func (a *Accounts) Fail(err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.err = err
+}
+
+func (a *Accounts) Resolve(_ context.Context, addresses []string) (map[string]string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.Calls++
+	if a.err != nil {
+		return nil, a.err
+	}
+	out := make(map[string]string, len(addresses))
+	for _, addr := range addresses {
+		if p, ok := a.owners[strings.ToLower(addr)]; ok {
+			out[strings.ToLower(addr)] = p
+		}
+	}
+	return out, nil
+}

@@ -37,6 +37,7 @@ type messageBusiness struct {
 	eventsManager   frevents.Manager
 	authzMiddleware authz.Middleware
 	callPolicy      *callPolicy
+	stawi           *stawiRelay
 
 	payloadConverter *models.PayloadConverter
 }
@@ -44,8 +45,9 @@ type messageBusiness struct {
 type MessageBusinessOption func(*messageBusiness)
 
 type preparedRoomEvent struct {
-	event       *models.RoomEvent
-	callPayload *chatv1.CallContent
+	event        *models.RoomEvent
+	callPayload  *chatv1.CallContent
+	stawiPayload *chatv1.Payload
 }
 
 func WithCallPolicy(
@@ -118,6 +120,7 @@ func (mb *messageBusiness) SendEvents(
 	validEvents := make([]*models.RoomEvent, 0, len(requestEvents))
 	eventToIndex := make(map[string]int, len(requestEvents))
 	callPayloadsByEventID := make(map[string]*chatv1.CallContent)
+	stawiPayloadsByEventID := make(map[string]*chatv1.Payload)
 
 	// Extract unique room IDs for batch access checking
 	uniqueRoomIDs := make(map[string]bool)
@@ -220,6 +223,9 @@ func (mb *messageBusiness) SendEvents(
 		if prepared.callPayload != nil {
 			callPayloadsByEventID[reqEvt.GetId()] = prepared.callPayload
 		}
+		if prepared.stawiPayload != nil {
+			stawiPayloadsByEventID[reqEvt.GetId()] = prepared.stawiPayload
+		}
 		validEvents = append(validEvents, prepared.event)
 	}
 
@@ -262,29 +268,24 @@ func (mb *messageBusiness) SendEvents(
 		return responses, nil
 	}
 
+	// Relay Stawi acts only now, after duplicates are filtered out, so a
+	// retried event is never relayed twice. An act refused back to the sender
+	// is dropped; an outcome the relay produced is stored with the act.
+	validEvents, serverEvents := mb.relayStawiActs(
+		ctx, validEvents, stawiPayloadsByEventID, subscriptionMap, eventToIndex, responses)
+	if len(validEvents) == 0 {
+		return responses, nil
+	}
+
 	util.Log(ctx).WithField("valid_event_count", len(validEvents)).Debug("SendEvents bulk saving")
 
-	// Build the delivery Link payload for each event so it can be persisted in
-	// the outbox within the same transaction as the event.
-	payloads := make(map[string][]byte, len(validEvents))
-	for _, event := range validEvents {
-		sub, ok := subscriptionMap[event.SenderID]
-		if !ok {
-			continue
-		}
-		linkBytes, mErr := protojson.Marshal(buildOutboxLink(event, sub))
-		if mErr != nil {
-			util.Log(ctx).WithError(mErr).WithField("event_id", event.GetID()).
-				Error("failed to marshal outbox link")
-			continue
-		}
-		payloads[event.GetID()] = linkBytes
-	}
+	payloads := buildOutboxPayloads(ctx, validEvents, serverEvents, subscriptionMap)
 
 	// Persist events and their outbox rows atomically. Delivery is performed by
 	// the outbox relay draining the outbox table — nothing is emitted inline, so
 	// a crash can never leave a persisted event undelivered.
-	insertedIDs, bulkCreateErr := mb.outboxRepo.SaveEventsWithOutbox(ctx, validEvents, payloads)
+	insertedIDs, bulkCreateErr := mb.outboxRepo.SaveEventsWithOutbox(
+		ctx, append(append([]*models.RoomEvent{}, validEvents...), serverEvents...), payloads)
 	if bulkCreateErr == nil {
 		chattel.MessagesSentCounter.Add(ctx, int64(len(insertedIDs)))
 	}
@@ -303,6 +304,40 @@ func (mb *messageBusiness) SendEvents(
 	}
 
 	return responses, nil
+}
+
+// buildOutboxPayloads builds the delivery Link payload for each event so it
+// can be persisted in the outbox within the same transaction as the event.
+// Server events (outcomes the relay produced) have no sending subscription.
+func buildOutboxPayloads(
+	ctx context.Context,
+	events, serverEvents []*models.RoomEvent,
+	subscriptionMap map[string]*models.RoomSubscription,
+) map[string][]byte {
+	payloads := make(map[string][]byte, len(events)+len(serverEvents))
+	for _, event := range events {
+		sub, ok := subscriptionMap[event.SenderID]
+		if !ok {
+			continue
+		}
+		linkBytes, mErr := protojson.Marshal(buildOutboxLink(event, sub))
+		if mErr != nil {
+			util.Log(ctx).WithError(mErr).WithField("event_id", event.GetID()).
+				Error("failed to marshal outbox link")
+			continue
+		}
+		payloads[event.GetID()] = linkBytes
+	}
+	for _, event := range serverEvents {
+		linkBytes, mErr := serverEventLink(event)
+		if mErr != nil {
+			util.Log(ctx).WithError(mErr).WithField("event_id", event.GetID()).
+				Error("failed to marshal outbox link")
+			continue
+		}
+		payloads[event.GetID()] = linkBytes
+	}
+	return payloads
 }
 
 // buildOutboxLink constructs the delivery Link persisted to the outbox and
@@ -359,6 +394,11 @@ func (mb *messageBusiness) prepareEventForInsert(
 		))
 	}
 
+	var stawiPayload *chatv1.Payload
+	if models.IsStawiPayload(reqEvt.GetPayload().GetType()) {
+		stawiPayload = reqEvt.GetPayload()
+	}
+
 	var callPayload *chatv1.CallContent
 	if reqEvt.GetType() == chatv1.RoomEventType_ROOM_EVENT_TYPE_CALL && mb.callPolicy != nil {
 		callPayload = reqEvt.GetPayload().GetCall()
@@ -385,9 +425,47 @@ func (mb *messageBusiness) prepareEventForInsert(
 	}
 
 	return &preparedRoomEvent{
-		event:       event,
-		callPayload: callPayload,
+		event:        event,
+		callPayload:  callPayload,
+		stawiPayload: stawiPayload,
 	}, nil
+}
+
+// relayStawiActs relays the Stawi acts among events to settlement. It returns
+// the events still to store and the server events (outcomes) to store with
+// them; an act refused back to its sender gets its error ack and is dropped.
+func (mb *messageBusiness) relayStawiActs(
+	ctx context.Context,
+	events []*models.RoomEvent,
+	stawiPayloads map[string]*chatv1.Payload,
+	subscriptionMap map[string]*models.RoomSubscription,
+	eventToIndex map[string]int,
+	responses []*chatv1.AckEvent,
+) ([]*models.RoomEvent, []*models.RoomEvent) {
+	if len(stawiPayloads) == 0 {
+		return events, nil
+	}
+	kept := events[:0]
+	var serverEvents []*models.RoomEvent
+	for _, event := range events {
+		payload, isAct := stawiPayloads[event.GetID()]
+		if !isAct {
+			kept = append(kept, event)
+			continue
+		}
+		result := mb.stawi.relay(ctx, &stawiAct{
+			event: event, payload: payload, sender: subscriptionMap[event.SenderID],
+		})
+		if result.ack != nil {
+			responses[eventToIndex[event.GetID()]] = ackEventError(event.GetID(), result.ack)
+			continue
+		}
+		kept = append(kept, event)
+		if result.outcome != nil {
+			serverEvents = append(serverEvents, result.outcome)
+		}
+	}
+	return kept, serverEvents
 }
 
 // finalizeEventAck finalizes a single event after the atomic outbox save:
