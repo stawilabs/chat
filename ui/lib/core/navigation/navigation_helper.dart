@@ -76,6 +76,20 @@ class NavigationHelper {
     );
   }
 
+  /// Navigate to a room's Stawi page (conversion, signed acts, statement)
+  static void navigateToStawiRoom(
+    BuildContext context, {
+    required String roomId,
+    required String roomName,
+  }) {
+    context.push('/room/$roomId/stawi?name=${Uri.encodeComponent(roomName)}');
+  }
+
+  /// Navigate to the Stawi account screen (device key, deployment)
+  static void navigateToStawiAccount(BuildContext context) {
+    context.push('/settings/stawi');
+  }
+
   /// Navigate to media compression settings screen
   static void navigateToMediaCompressionSettings(BuildContext context) {
     context.push('/settings/storage/compression');
@@ -156,6 +170,18 @@ extension NavigationContext on BuildContext {
 
   void navigateToSecuritySettings() =>
       NavigationHelper.navigateToSecuritySettings(this);
+
+  void navigateToStawiRoom({
+    required String roomId,
+    required String roomName,
+  }) => NavigationHelper.navigateToStawiRoom(
+    this,
+    roomId: roomId,
+    roomName: roomName,
+  );
+
+  void navigateToStawiAccount() =>
+      NavigationHelper.navigateToStawiAccount(this);
 
   void navigateToGroupSettings({
     required String roomId,

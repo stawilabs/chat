@@ -179,6 +179,47 @@ class MessageSendingService {
     return event;
   }
 
+  /// Sends a Stawi act (a room conversion, a genesis signature or a signed
+  /// call) into the room. Acts are never encrypted: chat reads them to relay
+  /// them to settlement.
+  Future<domain.RoomEvent> sendStawiAct({
+    required String roomId,
+    required domain.RoomEventType type,
+    required Map<String, dynamic> content,
+    String? parentId,
+  }) async {
+    if (!domain.stawiEventTypes.contains(type) ||
+        type == domain.RoomEventType.stawiCallOutcome ||
+        type == domain.RoomEventType.financeCard) {
+      throw ArgumentError.value(type, 'type', 'not a Stawi act a member sends');
+    }
+    final localId = Xid().toString();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final senderId = await _getSubscriptionIdOrProvisional(roomId);
+
+    final event = domain.RoomEvent(
+      id: localId,
+      roomId: roomId,
+      senderId: senderId,
+      type: type,
+      content: content,
+      parentId: parentId,
+      createdAt: now,
+      localId: localId,
+    );
+
+    await _messageRepo.insertMessage(event);
+    await _jobRepo.addJob(JobType.sendMessage, {
+      'roomId': roomId,
+      'type': event.type.wireName,
+      'content': event.content,
+      'localId': localId,
+      'parentId': parentId,
+    });
+
+    return event;
+  }
+
   /// Send an image message with optional compression
   ///
   /// Parameters:

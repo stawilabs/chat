@@ -103,7 +103,37 @@ enum RoomEventType {
   /// Authoritative video-stage membership update for group calls
   @JsonValue('groupCallStageUpdate')
   groupCallStageUpdate,
+
+  /// Stawi: a request to turn the room into a Stawi room; once the server
+  /// has prepared the genesis it is the genesis card founders sign.
+  @JsonValue('stawiRoomConversion')
+  stawiRoomConversion,
+
+  /// Stawi: a founder's device signature over the room genesis.
+  @JsonValue('stawiGenesisSignature')
+  stawiGenesisSignature,
+
+  /// Stawi: a device-signed room governance call (invite, vote, ...).
+  @JsonValue('stawiSignedCall')
+  stawiSignedCall,
+
+  /// Stawi: server-generated outcome of a conversion, signature or call.
+  @JsonValue('stawiCallOutcome')
+  stawiCallOutcome,
+
+  /// Stawi: a display-only finance card posted by the finance service.
+  @JsonValue('financeCard')
+  financeCard,
 }
+
+/// Event types that carry a Stawi payload.
+const Set<RoomEventType> stawiEventTypes = {
+  RoomEventType.stawiRoomConversion,
+  RoomEventType.stawiGenesisSignature,
+  RoomEventType.stawiSignedCall,
+  RoomEventType.stawiCallOutcome,
+  RoomEventType.financeCard,
+};
 
 extension RoomEventTypeStorage on RoomEventType {
   String get wireName {
@@ -164,6 +194,16 @@ extension RoomEventTypeStorage on RoomEventType {
         return 'roomChange';
       case RoomEventType.groupCallStageUpdate:
         return 'groupCallStageUpdate';
+      case RoomEventType.stawiRoomConversion:
+        return 'stawiRoomConversion';
+      case RoomEventType.stawiGenesisSignature:
+        return 'stawiGenesisSignature';
+      case RoomEventType.stawiSignedCall:
+        return 'stawiSignedCall';
+      case RoomEventType.stawiCallOutcome:
+        return 'stawiCallOutcome';
+      case RoomEventType.financeCard:
+        return 'financeCard';
     }
   }
 
@@ -225,6 +265,16 @@ extension RoomEventTypeStorage on RoomEventType {
         return 240;
       case RoomEventType.groupCallStageUpdate:
         return 250;
+      case RoomEventType.stawiRoomConversion:
+        return 260;
+      case RoomEventType.stawiGenesisSignature:
+        return 262;
+      case RoomEventType.stawiSignedCall:
+        return 264;
+      case RoomEventType.stawiCallOutcome:
+        return 266;
+      case RoomEventType.financeCard:
+        return 268;
     }
   }
 }
@@ -287,6 +337,16 @@ RoomEventType roomEventTypeFromStorageCode(int code) {
       return RoomEventType.roomChange;
     case 250:
       return RoomEventType.groupCallStageUpdate;
+    case 260:
+      return RoomEventType.stawiRoomConversion;
+    case 262:
+      return RoomEventType.stawiGenesisSignature;
+    case 264:
+      return RoomEventType.stawiSignedCall;
+    case 266:
+      return RoomEventType.stawiCallOutcome;
+    case 268:
+      return RoomEventType.financeCard;
     default:
       return RoomEventType.unknown;
   }
@@ -382,6 +442,21 @@ RoomEventType? tryRoomEventTypeFromWireName(String? raw) {
     case 'groupCallStageUpdate':
     case 'RoomEventType.groupCallStageUpdate':
       return RoomEventType.groupCallStageUpdate;
+    case 'stawiRoomConversion':
+    case 'RoomEventType.stawiRoomConversion':
+      return RoomEventType.stawiRoomConversion;
+    case 'stawiGenesisSignature':
+    case 'RoomEventType.stawiGenesisSignature':
+      return RoomEventType.stawiGenesisSignature;
+    case 'stawiSignedCall':
+    case 'RoomEventType.stawiSignedCall':
+      return RoomEventType.stawiSignedCall;
+    case 'stawiCallOutcome':
+    case 'RoomEventType.stawiCallOutcome':
+      return RoomEventType.stawiCallOutcome;
+    case 'financeCard':
+    case 'RoomEventType.financeCard':
+      return RoomEventType.financeCard;
     default:
       return null;
   }

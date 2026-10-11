@@ -29,13 +29,18 @@ import '../networking/api_config.dart';
 /// ever changes.
 const String kChatRedirectUri = 'org.stawi.chat://sso/redirect';
 
-const AuthConfig kChatAuthConfig = AuthConfig(
+final AuthConfig kChatAuthConfig = AuthConfig(
   clientId: ApiConfig.oauth2ClientId,
   idpBaseUrl: ApiConfig.oauth2IssuerUrl,
   apiBaseUrl: ApiConfig.apiBaseUrl,
   redirectScheme: 'org.stawi.chat',
   redirectUri: kChatRedirectUri,
-  scopes: ['openid', 'profile', 'offline_access'],
+  scopes: const ['openid', 'profile', 'offline_access'],
+  // One token serves every service; audiences are opt-in per build
+  // (OAUTH2_AUDIENCES), see ApiConfig.oauth2Audiences.
+  audiences: ApiConfig.oauth2AudienceList.isEmpty
+      ? null
+      : ApiConfig.oauth2AudienceList,
 );
 
 /// Constructs a fresh [AuthRuntime] for the chat app.

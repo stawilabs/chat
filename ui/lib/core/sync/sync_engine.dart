@@ -19,6 +19,7 @@ import '../../features/rooms/data/room_subscription_repository.dart';
 import '../../features/rooms/data/room_subscription_service.dart';
 import '../../features/rooms/data/room_sync_manager.dart';
 import '../../features/rooms/data/room_sync_state.dart';
+import '../../features/stawi/domain/stawi_payloads.dart';
 import '../crypto/e2e_encryption_service.dart';
 import '../db/database.dart';
 import '../files/files_config_service.dart';
@@ -835,6 +836,7 @@ class SyncEngine with WidgetsBindingObserver {
 
     // Extract content from typed payload fields
     var content = <String, dynamic>{};
+    domain.RoomEventType? stawiType;
     var isRoomKeyEvent = false;
     if (event.hasPayload()) {
       final payload = event.payload;
@@ -1009,6 +1011,9 @@ class SyncEngine with WidgetsBindingObserver {
         content = _messageToMap(payload.formRequest);
       } else if (payload.hasFormSubmissionResult()) {
         content = _messageToMap(payload.formSubmissionResult);
+      } else if (StawiPayloadCodec.decode(payload) case final stawi?) {
+        content = stawi.content;
+        stawiType = stawi.type;
       }
     }
 
@@ -1030,16 +1035,24 @@ class SyncEngine with WidgetsBindingObserver {
 
     // Determine domain event type - override for room change/moderation events
     final domainType =
-        (content['isRoomChange'] == true || content['isModeration'] == true)
-        ? domain.RoomEventType.roomChange
-        : _resolveDomainEventType(
-            event.type,
-            event.hasPayload() ? event.payload : null,
-          );
+        stawiType ??
+        ((content['isRoomChange'] == true || content['isModeration'] == true)
+            ? domain.RoomEventType.roomChange
+            : _resolveDomainEventType(
+                event.type,
+                event.hasPayload() ? event.payload : null,
+              ));
 
     // Check if this event already exists locally (e.g. own message echo from server)
     // If it does and its status is already >= sent, only advance status - never regress.
     final existingEvent = await _messageRepo.getEventById(event.id);
+    if (existingEvent != null &&
+        domainType == domain.RoomEventType.stawiRoomConversion &&
+        content['genesis'] != null &&
+        existingEvent.content['genesis'] == null) {
+      // The server turns a conversion into the genesis card: keep its copy.
+      await _messageRepo.replaceServerContent(event.id, content);
+    }
     if (existingEvent != null) {
       // Event already exists by server ID - ack was processed first (normal case)
       if (existingEvent.status.isAtLeast(domain.EventStatus.sent)) {
@@ -2508,6 +2521,12 @@ class SyncEngine with WidgetsBindingObserver {
         return pb.RoomEventType.ROOM_EVENT_TYPE_MESSAGE;
       case domain.RoomEventType.roomChange:
         // Room change events are system events
+        return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
+      case domain.RoomEventType.stawiRoomConversion:
+      case domain.RoomEventType.stawiGenesisSignature:
+      case domain.RoomEventType.stawiSignedCall:
+      case domain.RoomEventType.stawiCallOutcome:
+      case domain.RoomEventType.financeCard:
         return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
     }
   }

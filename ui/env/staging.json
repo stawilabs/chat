@@ -6,5 +6,7 @@
   "PROFILE_URL": "https://api.stawi.org/profile",
   "DEVICES_URL": "https://api.stawi.org/devices",
   "FILES_URL": "https://api.stawi.org/files",
+  "SETTLEMENT_URL": "https://settlement.stawi.org",
+  "FINANCE_URL": "https://finance.stawi.org",
   "OAUTH2_ISSUER_URL": "https://oauth2.stawi.org"
 }

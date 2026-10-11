@@ -10,6 +10,7 @@ import '../../advanced/ui/group_config_bubble.dart';
 import '../../advanced/ui/motion_bubble.dart';
 import '../../advanced/ui/transaction_bubble.dart';
 import '../../forms/ui/form_message_card.dart';
+import '../../stawi/ui/stawi_timeline.dart';
 import '../data/message_forwarding_service.dart';
 import '../data/message_sending_service.dart';
 import '../domain/room_event.dart';
@@ -618,6 +619,12 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
       case RoomEventType.roomKey:
         // Room key events are internal and should not be displayed
         return const SizedBox.shrink();
+      case RoomEventType.stawiRoomConversion:
+      case RoomEventType.stawiGenesisSignature:
+      case RoomEventType.stawiSignedCall:
+      case RoomEventType.stawiCallOutcome:
+      case RoomEventType.financeCard:
+        return StawiTimelineItem(event: widget.message, isMe: isMe);
       case RoomEventType.callOffer:
       case RoomEventType.callAnswer:
       case RoomEventType.callIce:

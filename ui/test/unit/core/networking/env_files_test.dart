@@ -14,6 +14,8 @@ const _knownKeys = {
   'PROFILE_URL',
   'DEVICES_URL',
   'FILES_URL',
+  'SETTLEMENT_URL',
+  'FINANCE_URL',
   'OAUTH2_ISSUER_URL',
 };
 
