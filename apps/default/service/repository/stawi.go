@@ -271,11 +271,16 @@ type StawiChainStore interface {
 	// RecordFailure counts a failed application, schedules the next attempt
 	// after an exponential backoff from base, and quarantines the fact at the
 	// limit; it reports whether the fact is now quarantined.
-	RecordFailure(tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int, base time.Duration) (bool, error)
+	// A limit of zero never quarantines (revocations are retried until they
+	// land); maxBackoff caps the wait.
+	RecordFailure(
+		tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int, base, maxBackoff time.Duration,
+	) (bool, error)
 	// TouchWaiting stamps facts that waited behind another, so the sweep
 	// serves other rooms first.
 	TouchWaiting(tx *gorm.DB, ids []string) error
-	// Redrive returns a room's quarantined facts to the queue (operator).
+	// Redrive returns a room's quarantined and backing-off facts to the
+	// queue at once (operator).
 	Redrive(ctx context.Context, roomID string) (int64, error)
 	// PruneApplied drops the payload of applied facts older than before; the
 	// fact's key stays, so a replay is still recognised. Membership rows, not
@@ -359,14 +364,11 @@ func (s *stawiChainStore) PendingNoLock(ctx context.Context, roomID string) ([]*
 }
 
 func (s *stawiChainStore) RecordFailure(
-	tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int, base time.Duration,
+	tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int, base, maxBackoff time.Duration,
 ) (bool, error) {
 	now := time.Now()
 	fact.Attempts++
-	const (
-		maxBackoff = time.Hour
-		maxShift   = 20
-	)
+	const maxShift = 20
 	var backoff time.Duration
 	if base > 0 {
 		backoff = base << min(fact.Attempts-1, maxShift)
@@ -376,7 +378,7 @@ func (s *stawiChainStore) RecordFailure(
 	}
 	next := now.Add(backoff)
 	fact.NextAttemptAt = &next
-	quarantine := fact.Attempts >= limit
+	quarantine := limit > 0 && fact.Attempts >= limit
 	msg := cause.Error()
 	const maxErr = 2000
 	if len(msg) > maxErr {
@@ -398,7 +400,7 @@ func (s *stawiChainStore) TouchWaiting(tx *gorm.DB, ids []string) error {
 
 func (s *stawiChainStore) Redrive(ctx context.Context, roomID string) (int64, error) {
 	res := s.pool.DB(ctx, false).Table("stawi_chain_facts").
-		Where("room_id = ? AND quarantined = ? AND applied = ?", roomID, true, false).
+		Where("room_id = ? AND applied = ? AND (quarantined = ? OR next_attempt_at IS NOT NULL)", roomID, false, true).
 		Updates(map[string]any{"quarantined": false, "attempts": 0, "next_attempt_at": nil})
 	return res.RowsAffected, res.Error
 }
@@ -443,7 +445,9 @@ func (s *stawiChainStore) EnqueueKeto(tx *gorm.DB, room *models.Room, subscripti
 
 func (s *stawiChainStore) PendingKeto(ctx context.Context, roomID string, limit int) ([]*models.StawiKetoOp, error) {
 	var ops []*models.StawiKetoOp
-	query := s.pool.DB(ctx, false).Order("attempts ASC, modified_at ASC").Limit(limit)
+	// Removals first: access the chain has taken away is withdrawn before
+	// anything is granted.
+	query := s.pool.DB(ctx, false).Order("(role <> '') ASC, attempts ASC, modified_at ASC").Limit(limit)
 	if roomID != "" {
 		query = query.Where("room_id = ?", roomID)
 	}

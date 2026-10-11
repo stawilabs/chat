@@ -65,13 +65,13 @@ func (c *StawiChain) ApplyRoom(ctx context.Context, roomID string) error {
 // profile not yet looked up.
 func (c *StawiChain) applyPass(ctx context.Context, room *models.Room) (bool, error) {
 	roomID := room.GetID()
-	profiles, err := c.resolvePendingProfiles(ctx, roomID)
-	if err != nil {
-		return false, err // profile is down: never skip, the delivery is retried
-	}
+	// A profile outage holds back only the facts that need a lookup; the
+	// rest (revocations of known members above all) still apply, and the
+	// outage is reported so the delivery is retried.
+	profiles, lookupErr := c.resolvePendingProfiles(ctx, roomID)
 
 	var outcome factResult
-	err = c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
+	err := c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
 		facts, pendingErr := c.deps.Store.Pending(tx, roomID)
 		if pendingErr != nil {
 			return pendingErr
@@ -82,6 +82,9 @@ func (c *StawiChain) applyPass(ctx context.Context, room *models.Room) (bool, er
 	})
 	if err != nil {
 		return false, err
+	}
+	if lookupErr != nil {
+		return false, lookupErr // the deferred facts wait for profile; no further pass now
 	}
 	return outcome.deferred, outcome.stuck
 }
@@ -99,7 +102,12 @@ func (c *StawiChain) applyInOrder(
 	now := time.Now()
 	for i, fact := range facts {
 		subject := factSubject(fact)
-		if gate.holds(subject) || !fact.Ready(now) {
+		reduction := isReduction(fact)
+		// A fact that removes or lowers access never waits behind an earlier
+		// fact of its member: revocations fail closed. Additions wait.
+		held := !reduction && gate.holds(subject)
+		backingOff := fact.NextAttemptAt != nil && fact.NextAttemptAt.After(now)
+		if held || backingOff || (fact.Quarantined && !reduction) {
 			gate.block(subject)
 			waiting = append(waiting, fact.GetID())
 			continue
@@ -109,7 +117,7 @@ func (c *StawiChain) applyInOrder(
 			return outcome, err
 		}
 		if result.deferred || result.stuck != nil {
-			gate.block(subject)
+			gate.block(subject) // later additions of the member wait
 		}
 		outcome.deferred = outcome.deferred || result.deferred
 		if outcome.stuck == nil {
@@ -154,14 +162,22 @@ func (c *StawiChain) applyOne(
 	if errors.Is(applyErr, errProfileNotLookedUp) {
 		return factResult{deferred: true}, nil // not a failure: the next pass looks it up
 	}
-	quarantined, err := c.deps.Store.RecordFailure(tx, fact, applyErr, c.deps.MaxFactAttempts,
-		c.deps.FactRetryBackoff)
+	limit, maxBackoff := c.deps.MaxFactAttempts, maxFactBackoff
+	if isReduction(fact) {
+		// A revocation is never set aside: it is retried, soon, until it lands.
+		limit, maxBackoff = 0, maxRevocationBackoff
+	}
+	quarantined, err := c.deps.Store.RecordFailure(tx, fact, applyErr, limit, c.deps.FactRetryBackoff, maxBackoff)
 	if err != nil {
 		return factResult{}, err
 	}
 	logger := util.Log(ctx).WithError(applyErr).WithFields(map[string]any{
 		logKeyFact: fact.FactKey, chatutil.KeyRoomID: room.GetID(), "attempts": fact.Attempts,
 	})
+	if limit == 0 && fact.Attempts >= c.deps.MaxFactAttempts {
+		chattel.StawiRevocationsFailingCounter.Add(ctx, 1)
+		logger.Error("stawi chain: a revocation keeps failing; the member keeps access until it lands")
+	}
 	if quarantined {
 		chattel.StawiFactsQuarantinedCounter.Add(ctx, 1)
 		logger.Error("stawi chain: fact quarantined after repeated failures; re-drive once fixed")
@@ -169,6 +185,58 @@ func (c *StawiChain) applyOne(
 	}
 	logger.Warn("stawi chain: fact not applied; it will be retried")
 	return factResult{stuck: fmt.Errorf("failed to apply %s %s: %w", fact.EventName, fact.FactKey, applyErr)}, nil
+}
+
+// Backoff caps: additions back off up to an hour; revocations retry at
+// least every minute.
+const (
+	maxFactBackoff       = time.Hour
+	maxRevocationBackoff = time.Minute
+)
+
+// isReduction reports whether a fact removes or lowers a member's access:
+// an exit, a suspension, a return to no state, a role revocation or an
+// invitation revoked. Such facts fail closed: they apply as soon as they
+// arrive, never wait behind an earlier fact of the member and are never
+// quarantined. Folding is positional per member and per role, so an older
+// fact applied after them (a re-driven invitation or role grant) changes
+// nothing — a revocation cannot be undone by a re-drive.
+func isReduction(fact *models.StawiChainFact) bool {
+	if fact.EventName != FactRoomMembershipObserved {
+		return false
+	}
+	var msg financev1.RoomMembershipObserved
+	if proto.Unmarshal(fact.Payload, &msg) != nil {
+		return false
+	}
+	return reducesAccess(&msg)
+}
+
+func reducesAccess(msg *financev1.RoomMembershipObserved) bool {
+	switch msg.GetEvent() {
+	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITE_REVOKED:
+		return true
+	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROLE_CHANGED:
+		return !msg.GetRoleAssigned()
+	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_STATE_CHANGED:
+		switch msg.GetToState() {
+		case financev1.RoomMemberState_ROOM_MEMBER_STATE_EXITED,
+			financev1.RoomMemberState_ROOM_MEMBER_STATE_SUSPENDED,
+			financev1.RoomMemberState_ROOM_MEMBER_STATE_UNSPECIFIED:
+			return true
+		case financev1.RoomMemberState_ROOM_MEMBER_STATE_ACTIVE,
+			financev1.RoomMemberState_ROOM_MEMBER_STATE_UNADMITTED:
+			return false
+		}
+		return true // an unknown state is treated as the lowest
+	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_UNSPECIFIED,
+		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITED,
+		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROOM_BINDING_SET,
+		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_JOIN_POLICY_SET,
+		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_SET,
+		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_REVOKED:
+	}
+	return false
 }
 
 // roomWide is the subject of a fact whose subject cannot be told: it waits
@@ -292,7 +360,8 @@ func (c *StawiChain) resolveAddresses(
 	}
 	owners, err := c.deps.Accounts.Resolve(ctx, unresolved)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve %d addresses: %w", len(unresolved), err)
+		// The known profiles still serve; the unresolved addresses' facts wait.
+		return profiles, fmt.Errorf("failed to resolve %d addresses: %w", len(unresolved), err)
 	}
 	for _, address := range unresolved {
 		profiles[address] = "" // looked up: no profile owns it (yet)
@@ -391,10 +460,15 @@ func (c *StawiChain) applyMembership(
 	}
 	if member.ProfileID == "" {
 		profileID, looked := profiles[member.Address]
-		if !looked {
+		switch {
+		case looked:
+			member.ProfileID = profileID
+		case !reducesAccess(msg):
 			return errProfileNotLookedUp
+		default:
+			// A member with no profile has no subscription, so a revocation
+			// has nothing to remove: record it now, resolve later.
 		}
-		member.ProfileID = profileID
 	}
 	if err = c.deps.Store.SaveMember(tx, member); err != nil {
 		return err
@@ -426,11 +500,17 @@ func foldMembership(member *models.StawiRoomMember, msg *financev1.RoomMembershi
 		if !pos.After(member.StatePosition()) {
 			return false, nil
 		}
-		if member.State != models.StawiMemberStateInvited {
+		switch member.State {
+		case models.StawiMemberStateInvited:
+			member.State = models.StawiMemberStateNone
+		case models.StawiMemberStateNone, models.StawiMemberStateExited:
+			// The invitation itself has not applied (it is held back or
+			// missing): record the revocation's position, so that applying
+			// the older invitation later changes nothing.
+		case models.StawiMemberStateActive, models.StawiMemberStateSuspended, models.StawiMemberStateUnadmitted:
 			return false, fmt.Errorf("%w: revocation with no open invitation (state %d)", errMembershipOutOfSync,
 				member.State)
 		}
-		member.State = models.StawiMemberStateNone
 	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_STATE_CHANGED:
 		if !pos.After(member.StatePosition()) {
 			return false, nil
