@@ -13,7 +13,6 @@ import '../domain/signing_checks.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
 import 'stawi_identity.dart';
-import 'stawi_room_engines.dart';
 
 /// Issues the authentication service's genesis session proof (P26): proof
 /// that this profile held a live session on this device when its first key
@@ -238,10 +237,13 @@ class StawiAccountService {
   /// Prepares a loan or withdrawal call on the member's account and checks
   /// it on the device. Nothing is signed yet: the member sees
   /// [PreparedEngineCall.call] (a payoff's quoted ceiling, for one) first.
+  /// [engines] is the room's live Room.engines; without them nothing is
+  /// prepared, since the call could not be checked.
   Future<PreparedEngineCall> prepareEngineCall(
     AccountEngineRequest request, {
-    RoomEngines? engines,
+    required RoomEngineTargets? engines,
   }) async {
+    if (engines == null) throw const SigningRefused(enginesUnknownReason);
     final account = (await _identity()).primary;
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
@@ -266,15 +268,13 @@ class StawiAccountService {
       prepared: prepared,
       request: request,
       account: account.address,
-      loanEngine: engines?.loanEngine,
-      rulesEngine: engines?.rulesEngine,
+      engines: engines,
     );
     return PreparedEngineCall(
       callId: prepared.callId,
       digest: checked.digest,
       call: checked.call,
       request: request,
-      engineConfirmed: engines != null,
     );
   }
 
@@ -336,14 +336,10 @@ class PreparedEngineCall {
     required this.digest,
     required this.call,
     required this.request,
-    this.engineConfirmed = false,
   });
 
   final String callId;
   final Uint8List digest;
-
-  /// Whether the target was checked against the room's bound engine.
-  final bool engineConfirmed;
 
   /// What the account will do, decoded from the prepared calldata.
   final EngineCall call;

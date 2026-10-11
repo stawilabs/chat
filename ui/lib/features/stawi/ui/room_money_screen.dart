@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
-import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show EngineCall;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart'
+    show EngineCall, bytesToHex0x;
 
 import '../../auth/data/current_user_provider.dart';
 import '../data/stawi_account_service.dart';
@@ -459,7 +460,6 @@ class AccountEngineDialog extends ConsumerStatefulWidget {
 
 class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   final _amount = TextEditingController();
-  final _product = TextEditingController();
   final _instalments = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -468,19 +468,14 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   @override
   void dispose() {
     _amount.dispose();
-    _product.dispose();
     _instalments.dispose();
     super.dispose();
   }
 
-  RoomProduct? _picked;
+  /// The picked product's 32-byte id, passed to settlement as it is.
+  Uint8List? _picked;
 
-  Uint8List? _productId() {
-    if (!widget.call.takesProduct) return null;
-    if (_picked != null) return _picked!.id;
-    final name = _product.text.trim();
-    return name.isEmpty ? null : productIdOf(name);
-  }
+  Uint8List? _productId() => widget.call.takesProduct ? _picked : null;
 
   Future<void> _review() async {
     setState(() {
@@ -541,38 +536,65 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     }
   }
 
-  /// A picker over the room's products when they can be listed; until then
-  /// the member names the product as the room's rules do.
+  /// A picker over the room's loan forms or dues products, as its rules
+  /// engines hold them, with each one's key terms.
   Widget _productField() {
-    final kind = widget.call == AccountEngineCall.loanRequest
-        ? RoomProductKind.loan
-        : RoomProductKind.dues;
-    final products = ref
+    final loans = widget.call == AccountEngineCall.loanRequest;
+    return ref
         .watch(roomProductsProvider(widget.roomId))
-        .asData
-        ?.value
-        ?.where((p) => p.kind == kind)
-        .toList();
-    final label = kind == RoomProductKind.loan ? 'Loan form' : 'Dues product';
-    if (products != null) {
-      return DropdownButtonFormField<RoomProduct>(
-        key: const Key('engine-product-picker'),
-        initialValue: _picked,
-        decoration: InputDecoration(labelText: label),
-        items: [
-          for (final p in products)
-            DropdownMenuItem(value: p, child: Text(p.name)),
-        ],
-        onChanged: (p) => setState(() => _picked = p),
-      );
-    }
-    return TextField(
-      key: const Key('engine-product'),
-      controller: _product,
-      decoration: InputDecoration(
-        labelText: '$label (as the room’s rules name it)',
-      ),
-    );
+        .when(
+          loading: () => const LinearProgressIndicator(),
+          error: (error, _) => Text(stawiErrorMessage(error)),
+          data: (products) {
+            final entries = loans
+                ? [
+                    for (final p in products.loanProducts)
+                      (
+                        id: Uint8List.fromList(p.productId),
+                        label: productLabel(p.name, p.productId),
+                        terms: loanProductTerms(p),
+                      ),
+                  ]
+                : [
+                    for (final p in products.duesProducts.where(
+                      (p) => p.memberChoice,
+                    ))
+                      (
+                        id: Uint8List.fromList(p.productId),
+                        label: productLabel(p.name, p.productId),
+                        terms: duesProductTerms(p),
+                      ),
+                  ];
+            if (!products.rulesConfigured || entries.isEmpty) {
+              return Text(
+                loans
+                    ? 'This room offers no loans yet.'
+                    : 'No dues in this room let members choose the amount.',
+                key: const Key('engine-no-products'),
+              );
+            }
+            return RadioGroup<String>(
+              key: const Key('engine-product-picker'),
+              groupValue: _picked == null ? null : bytesToHex0x(_picked!),
+              onChanged: (value) => setState(
+                () => _picked = entries
+                    .firstWhere((e) => bytesToHex0x(e.id) == value)
+                    .id,
+              ),
+              child: Column(
+                children: [
+                  for (final e in entries)
+                    RadioListTile<String>(
+                      key: Key('product-${bytesToHex0x(e.id)}'),
+                      value: bytesToHex0x(e.id),
+                      title: Text(e.label),
+                      subtitle: Text(e.terms),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
   }
 
   @override
@@ -614,11 +636,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                   decoration: const InputDecoration(labelText: 'Instalments'),
                 ),
             ] else
-              _Review(
-                call: prepared.call,
-                request: prepared.request,
-                engineConfirmed: prepared.engineConfirmed,
-              ),
+              _Review(call: prepared.call, request: prepared.request),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -655,15 +673,10 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
 /// What the account will do, decoded from the call settlement prepared and
 /// checked on this device.
 class _Review extends StatelessWidget {
-  const _Review({
-    required this.call,
-    required this.request,
-    required this.engineConfirmed,
-  });
+  const _Review({required this.call, required this.request});
 
   final EngineCall call;
   final AccountEngineRequest request;
-  final bool engineConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -687,8 +700,7 @@ class _Review extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Checked on this device: this is the call you asked for, on this '
-          'room, from your account'
-          '${engineConfirmed ? ', on the room’s own engine.' : '.'}',
+          'room, from your account, on the room’s own engine.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

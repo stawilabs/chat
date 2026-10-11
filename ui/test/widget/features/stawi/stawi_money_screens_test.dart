@@ -11,6 +11,7 @@ import 'package:stawi/features/stawi/data/stawi_binding.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
@@ -360,6 +361,9 @@ void main() {
               (ref) async => identityWith('p1', payoff.account),
             ),
             roomCustodyProvider.overrideWith((ref, id) async => custody),
+            roomEnginesProvider.overrideWith(
+              (ref, id) async => payoff.engines(),
+            ),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
                 accounts: settlement.AccountServiceClient(transport),

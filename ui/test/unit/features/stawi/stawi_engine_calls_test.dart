@@ -83,7 +83,10 @@ void main() {
             ),
           );
         final s = service(v);
-        final prepared = await s.prepareEngineCall(request);
+        final prepared = await s.prepareEngineCall(
+          request,
+          engines: v.engines(),
+        );
         expect(prepared.call.action, request.call.action, reason: v.name);
         expect(prepared.call.room, v.room);
 
@@ -112,7 +115,7 @@ void main() {
       );
       final prepared = await service(
         v,
-      ).prepareEngineCall(requestFor(v, amount: ''));
+      ).prepareEngineCall(requestFor(v, amount: ''), engines: v.engines());
       final prepare = transport
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
@@ -150,7 +153,9 @@ void main() {
             (req) => pledge.prepared(req.kind),
           );
         await expectLater(
-          service(pledge).prepareEngineCall(entry.value),
+          service(
+            pledge,
+          ).prepareEngineCall(entry.value, engines: pledge.engines()),
           throwsA(isA<SigningRefused>()),
           reason: entry.key,
         );
@@ -166,7 +171,7 @@ void main() {
               ..call.engineTarget = Uint8List.fromList(List.filled(20, 9)),
       );
       await expectLater(
-        service(v).prepareEngineCall(requestFor(v)),
+        service(v).prepareEngineCall(requestFor(v), engines: v.engines()),
         throwsA(isA<SigningRefused>()),
       );
     });
@@ -181,7 +186,7 @@ void main() {
           ..call.intentDigest = bad,
       );
       await expectLater(
-        service(v).prepareEngineCall(requestFor(v)),
+        service(v).prepareEngineCall(requestFor(v), engines: v.engines()),
         throwsA(isA<SigningRefused>()),
       );
     });
@@ -257,9 +262,5 @@ void main() {
       chainChoiceOf(finance.VoteChoice.VOTE_CHOICE_ABSTAIN),
       voteChoiceAbstain,
     );
-  });
-
-  test('product ids are keccak256 of the rule name', () {
-    expect(productIdOf(' standard '), keccak256(utf8.encode('standard')));
   });
 }

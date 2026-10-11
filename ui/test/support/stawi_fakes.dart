@@ -337,6 +337,19 @@ class GoEngineCallVector {
     );
   }
 
+  /// The room's engines with this call's target as the engine its action runs
+  /// on (the other engine elsewhere).
+  RoomEngineTargets engines({bool callable = true}) {
+    final onLoan = json['on_loan_engine'] as bool;
+    final other = Uint8List.fromList(List.filled(20, 0xee));
+    return RoomEngineTargets(
+      rulesEngine: onLoan ? other : target,
+      rulesCallable: callable,
+      loanEngine: onLoan ? target : other,
+      loanCallable: callable,
+    );
+  }
+
   /// What settlement's PrepareAccountCall returns for this call.
   settlement.PrepareAccountCallResponse prepared(
     settlement.AccountCallKind kind,

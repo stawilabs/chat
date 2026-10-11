@@ -236,15 +236,17 @@ Uint8List checkedContributionDigest({
 /// digest is the intent's own, the intent binds exactly the engine call
 /// settlement returned (verifyEngineCallIntent), and that call is the action,
 /// room, loan, product and amount the member asked for.
-/// With [loanEngine] and [rulesEngine] (the room's bound engines), the
-/// prepared target must be the engine the action runs on.
+/// The prepared target must also be the room's own engine for the action
+/// (its LoanEngine for loan actions, its RulesEngine otherwise) with an active
+/// grant: [engines] is finance's live Room.engines. Without them the call
+/// cannot be checked, so it is refused.
 ({Uint8List digest, EngineCall call}) checkedEngineCall({
   required settlement.PrepareAccountCallResponse prepared,
   required AccountEngineRequest request,
   required Uint8List account,
-  Uint8List? loanEngine,
-  Uint8List? rulesEngine,
+  required RoomEngineTargets? engines,
 }) {
+  if (engines == null) throw const SigningRefused(enginesUnknownReason);
   final digest = checkedAccountCallDigest(
     prepared: prepared,
     kind: request.call.kind,
@@ -263,20 +265,17 @@ Uint8List checkedContributionDigest({
       intent,
       prepared.call.engineTarget,
       prepared.call.engineCalldata,
+      engines: engines,
     );
   } on EngineCallException catch (e) {
-    throw SigningRefused(
-      'the engine call does not check out (${e.error.name})',
-    );
+    throw SigningRefused(switch (e.error) {
+      EngineCallError.notTheRoomsEngine =>
+        'the call targets a contract that is not this room’s active engine',
+      _ => 'the engine call does not check out (${e.error.name})',
+    });
   }
   if (call.action != request.call.action) {
     throw SigningRefused('settlement prepared ${call.action.functionName}');
-  }
-  final engine = call.action.onLoanEngine ? loanEngine : rulesEngine;
-  if (engine != null && !bytesEqual(prepared.call.engineTarget, engine)) {
-    throw const SigningRefused(
-      'the call targets another engine than the room’s',
-    );
   }
   if (!bytesEqual(call.room, request.custody)) {
     throw const SigningRefused('the call is for another room');
@@ -301,6 +300,12 @@ Uint8List checkedContributionDigest({
   }
   return (digest: digest, call: call);
 }
+
+/// Why an engine call is refused when the room's engines are unknown.
+const String enginesUnknownReason =
+    'the room’s engines could not be read just now (settlement may be '
+    'unreachable), so the call cannot be checked against them; try again '
+    'shortly';
 
 /// The exit settlement built for a PROPOSE_PRINCIPAL_EXIT with a spend: the
 /// ballot's payload hash must be the exit intent's digest, and the intent must

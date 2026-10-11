@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -89,10 +88,6 @@ enum AccountEngineCall {
   /// Whether the call names a product (a loan form or a dues product).
   bool get takesProduct => this == loanRequest || this == chooseAmount;
 }
-
-/// A loan form or dues product id: keccak256 of its name, as the room's rules
-/// name it (Go rules.ProductID).
-Uint8List productIdOf(String name) => sdk.keccak256(utf8.encode(name.trim()));
 
 final RegExp _positive = RegExp(r'^[1-9][0-9]{0,77}$');
 

@@ -159,11 +159,19 @@ void main() {
     final request = GoEngineCallVector.load().firstWhere(
       (v) => v.name == 'loan_request',
     );
+    final productId = hexToBytes(request.json['product_id'] as String);
 
     Future<FakeConnectTransport> pump(
       WidgetTester tester,
-      List<RoomProduct>? products,
-    ) async {
+      finance.ListRoomProductsResponse products, {
+      AccountEngineCall call = AccountEngineCall.loanRequest,
+      RoomEngineTargets? engines,
+      bool enginesKnown = true,
+    }) async {
+      tester.view
+        ..physicalSize = const Size(1080, 3000)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       final transport = FakeConnectTransport()
         ..on(
           settlement.AccountService.prepareAccountCall,
@@ -174,10 +182,8 @@ void main() {
           overrides: [
             roomProductsProvider.overrideWith((ref, id) async => products),
             roomEnginesProvider.overrideWith(
-              (ref, id) async => RoomEngines(
-                loanEngine: request.target,
-                rulesEngine: Uint8List(20),
-              ),
+              (ref, id) async =>
+                  enginesKnown ? (engines ?? request.engines()) : null,
             ),
             roomCustodyProvider.overrideWith((ref, id) async => request.room),
             stawiAccountServiceProvider.overrideWithValue(
@@ -189,12 +195,9 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
+          child: MaterialApp(
             home: Scaffold(
-              body: AccountEngineDialog(
-                roomId: roomId,
-                call: AccountEngineCall.loanRequest,
-              ),
+              body: AccountEngineDialog(roomId: roomId, call: call),
             ),
           ),
         ),
@@ -203,26 +206,60 @@ void main() {
       return transport;
     }
 
-    testWidgets('names the room’s loan forms when they can be listed', (
+    final products = finance.ListRoomProductsResponse(
+      rulesConfigured: true,
+      loanProducts: [
+        finance.RoomLoanProduct(
+          name: 'Emergency loan',
+          productId: productId,
+          maxAmount: finance.Money(assetId: 'USDC.146', amount: '900000000'),
+          rateBps: 300,
+          rateBasis: finance.LoanRateBasis.LOAN_RATE_BASIS_PER_PERIOD,
+          minInstalments: 1,
+          maxInstalments: 6,
+        ),
+        finance.RoomLoanProduct(
+          productId: Uint8List.fromList([
+            0xab,
+            0xcd,
+            0xef,
+            0x01,
+            ...List.filled(28, 0),
+          ]),
+        ),
+      ],
+      duesProducts: [
+        finance.RoomDuesProduct(
+          name: 'Monthly dues',
+          productId: Uint8List(32),
+          amount: finance.Money(assetId: 'USDC.146', amount: '1000'),
+          everyPeriods: 1,
+          memberChoice: true,
+          minAmount: finance.Money(assetId: 'USDC.146', amount: '500'),
+          maxAmount: finance.Money(assetId: 'USDC.146', amount: '5000'),
+          active: true,
+        ),
+        finance.RoomDuesProduct(
+          name: 'Joining fee',
+          productId: Uint8List.fromList(List.filled(32, 1)),
+          active: true,
+        ),
+      ],
+    );
+
+    testWidgets('picks a loan form with its terms and passes its id', (
       tester,
     ) async {
-      final transport = await pump(tester, [
-        RoomProduct(
-          id: hexToBytes(request.json['product_id'] as String),
-          name: 'Emergency loan',
-          kind: RoomProductKind.loan,
-        ),
-        RoomProduct(
-          id: Uint8List(32),
-          name: 'Monthly dues',
-          kind: RoomProductKind.dues,
-        ),
-      ]);
-      expect(find.byKey(const Key('engine-product')), findsNothing);
-      await tester.tap(find.byKey(const Key('engine-product-picker')));
-      await tester.pumpAndSettle();
+      final transport = await pump(tester, products);
+      expect(find.text('Emergency loan'), findsOneWidget);
+      expect(
+        find.text('up to 900000000 USDC.146 · 3% per period · 1–6 instalments'),
+        findsOneWidget,
+      );
+      expect(find.text('Product 0xabcdef01'), findsOneWidget);
       expect(find.text('Monthly dues'), findsNothing);
-      await tester.tap(find.text('Emergency loan').last);
+
+      await tester.tap(find.text('Emergency loan'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('engine-amount')),
@@ -235,20 +272,45 @@ void main() {
       final prepare = transport
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
-      expect(
-        prepare.params.productId,
-        hexToBytes(request.json['product_id'] as String),
-      );
+      expect(prepare.params.productId, productId);
       expect(find.textContaining('on the room’s own engine'), findsOneWidget);
       expect(find.byKey(const Key('engine-sign')), findsOneWidget);
     });
 
-    testWidgets('falls back to a typed name until products can be listed', (
+    testWidgets('offers only the dues a member may choose', (tester) async {
+      await pump(tester, products, call: AccountEngineCall.chooseAmount);
+      expect(find.text('Monthly dues'), findsOneWidget);
+      expect(
+        find.textContaining('you choose 500 USDC.146–5000 USDC.146'),
+        findsOneWidget,
+      );
+      expect(find.text('Joining fee'), findsNothing);
+      expect(find.text('Emergency loan'), findsNothing);
+    });
+
+    testWidgets('says so when the room offers no loans', (tester) async {
+      await pump(
+        tester,
+        finance.ListRoomProductsResponse(rulesConfigured: true),
+      );
+      expect(find.byKey(const Key('engine-no-products')), findsOneWidget);
+    });
+
+    testWidgets('signs nothing when the room’s engines are unknown', (
       tester,
     ) async {
-      await pump(tester, null);
-      expect(find.byKey(const Key('engine-product')), findsOneWidget);
-      expect(find.byKey(const Key('engine-product-picker')), findsNothing);
+      final transport = await pump(tester, products, enginesKnown: false);
+      await tester.tap(find.text('Emergency loan'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('engine-amount')),
+        request.json['amount'] as String,
+      );
+      await tester.tap(find.byKey(const Key('engine-review')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('engines could not be read'), findsOneWidget);
+      expect(find.byKey(const Key('engine-sign')), findsNothing);
+      expect(transport.calls, isEmpty);
     });
   });
 }

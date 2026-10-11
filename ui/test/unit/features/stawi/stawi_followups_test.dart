@@ -139,12 +139,13 @@ void main() {
 
   group('room engine check', () {
     final vectors = GoEngineCallVector.load();
+    late FakeConnectTransport transport;
 
     Future<PreparedEngineCall> prepare(
       GoEngineCallVector v,
-      RoomEngines? engines,
+      RoomEngineTargets? engines,
     ) {
-      final transport = FakeConnectTransport()
+      transport = FakeConnectTransport()
         ..on(
           settlement.AccountService.prepareAccountCall,
           (req) => v.prepared(req.kind),
@@ -167,32 +168,113 @@ void main() {
       );
     }
 
-    test('accepts the room’s own engine for each action', () async {
-      final pledge = vectors.firstWhere((v) => v.name == 'loan_pledge');
-      final equity = vectors.firstWhere((v) => v.name == 'withdraw_equity');
-      final other = Uint8List(20);
-      final onLoan = await prepare(
-        pledge,
-        RoomEngines(loanEngine: pledge.target, rulesEngine: other),
+    final pledge = vectors.firstWhere((v) => v.name == 'loan_pledge');
+    final equity = vectors.firstWhere((v) => v.name == 'withdraw_equity');
+
+    test('accepts the room’s own active engine for each action', () async {
+      expect(
+        (await prepare(pledge, pledge.engines())).call.action.onLoanEngine,
+        isTrue,
       );
-      expect(onLoan.engineConfirmed, isTrue);
-      final onRules = await prepare(
-        equity,
-        RoomEngines(loanEngine: other, rulesEngine: equity.target),
+      expect(
+        (await prepare(equity, equity.engines())).call.action.onLoanEngine,
+        isFalse,
       );
-      expect(onRules.engineConfirmed, isTrue);
-      expect((await prepare(pledge, null)).engineConfirmed, isFalse);
     });
 
-    test('refuses a target other than the room’s engine', () async {
-      final pledge = vectors.firstWhere((v) => v.name == 'loan_pledge');
-      await expectLater(
-        prepare(
-          pledge,
-          // Right address, wrong engine: a pledge runs on the LoanEngine.
-          RoomEngines(loanEngine: Uint8List(20), rulesEngine: pledge.target),
+    test('refuses another engine, or one whose grant is not active', () async {
+      for (final engines in [
+        // Right address, wrong engine: a pledge runs on the LoanEngine.
+        RoomEngineTargets(
+          rulesEngine: pledge.target,
+          rulesCallable: true,
+          loanEngine: Uint8List(20),
+          loanCallable: true,
         ),
-        throwsA(isA<SigningRefused>()),
+        pledge.engines(callable: false),
+      ]) {
+        await expectLater(
+          prepare(pledge, engines),
+          throwsA(
+            isA<SigningRefused>().having(
+              (e) => e.reason,
+              'reason',
+              contains('not this room’s active engine'),
+            ),
+          ),
+        );
+      }
+    });
+
+    test('refuses to prepare anything when the engines are unknown', () async {
+      await expectLater(
+        prepare(pledge, null),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            enginesUnknownReason,
+          ),
+        ),
+      );
+      expect(transport.calls, isEmpty);
+    });
+
+    test('engine targets come from finance Room.engines', () {
+      expect(engineTargetsOf(finance.Room()), isNull);
+      final targets = engineTargetsOf(
+        finance.Room(
+          engines: finance.RoomEngines(
+            rulesEngine: finance.RoomEngineBinding(
+              address: Uint8List.fromList(List.filled(20, 1)),
+              callable: true,
+            ),
+            loanEngine: finance.RoomEngineBinding(
+              address: Uint8List.fromList(List.filled(20, 2)),
+            ),
+          ),
+        ),
+      )!;
+      expect(targets.rulesEngine, List.filled(20, 1));
+      expect(targets.rulesCallable, isTrue);
+      expect(targets.loanEngine, List.filled(20, 2));
+      expect(targets.loanCallable, isFalse);
+    });
+  });
+
+  group('product terms', () {
+    test('label unnamed products by their id', () {
+      expect(productLabel('Emergency loan', Uint8List(32)), 'Emergency loan');
+      expect(
+        productLabel('', Uint8List.fromList([0xab, 0xcd, 0xef, 0x01, 0x23])),
+        'Product 0xabcdef01',
+      );
+    });
+
+    test('summarise loan and dues terms', () {
+      final loan = finance.RoomLoanProduct(
+        maxAmount: finance.Money(assetId: 'USDC.146', amount: '50000'),
+        rateBps: 250,
+        rateBasis: finance.LoanRateBasis.valueOf(1),
+        minInstalments: 1,
+        maxInstalments: 6,
+      );
+      final terms = loanProductTerms(loan);
+      expect(terms, contains('up to 50000 USDC.146'));
+      expect(terms, contains('2.50%'));
+      expect(terms, contains('1–6 instalments'));
+
+      final dues = finance.RoomDuesProduct(
+        amount: finance.Money(assetId: 'USDC.146', amount: '1000'),
+        everyPeriods: 1,
+        memberChoice: true,
+        minAmount: finance.Money(assetId: 'USDC.146', amount: '500'),
+        maxAmount: finance.Money(assetId: 'USDC.146', amount: '5000'),
+        active: true,
+      );
+      expect(
+        duesProductTerms(dues),
+        '1000 USDC.146 · every period · you choose 500 USDC.146–5000 USDC.146',
       );
     });
   });
