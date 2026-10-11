@@ -110,6 +110,38 @@ func refuseIfChainManaged(ctx context.Context, bindings repository.StawiRoomRepo
 	return nil
 }
 
+// withStawiBindings sets each room's Stawi binding on the read model, loading
+// the bindings of all the rooms in one query.
+func (rb *roomBusiness) withStawiBindings(ctx context.Context, rooms ...*chatv1.Room) error {
+	if rb.stawiBindings == nil || len(rooms) == 0 {
+		return nil
+	}
+	roomIDs := make([]string, 0, len(rooms))
+	for _, room := range rooms {
+		if room != nil {
+			roomIDs = append(roomIDs, room.GetId())
+		}
+	}
+	bindings, err := rb.stawiBindings.GetByRoomIDs(ctx, roomIDs)
+	if err != nil {
+		return fmt.Errorf("failed to load the rooms' Stawi bindings: %w", err)
+	}
+	for _, room := range rooms {
+		if binding, ok := bindings[room.GetId()]; ok {
+			room.Stawi = binding.ToAPI()
+		}
+	}
+	return nil
+}
+
+// withStawiBinding returns the room read model with its Stawi binding set.
+func (rb *roomBusiness) withStawiBinding(ctx context.Context, room *chatv1.Room) (*chatv1.Room, error) {
+	if err := rb.withStawiBindings(ctx, room); err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
 // CreateRoom named return required for deferred tracing.
 func (rb *roomBusiness) CreateRoom(
 	ctx context.Context,
@@ -164,7 +196,7 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, err
 	}
 	if existingRoom != nil {
-		return existingRoom.ToAPI(), nil
+		return rb.withStawiBinding(ctx, existingRoom.ToAPI())
 	}
 
 	// Owner subscription
@@ -285,7 +317,7 @@ func (rb *roomBusiness) GetRoom(
 		return nil, fmt.Errorf("failed to get room: %w", err)
 	}
 
-	return room.ToAPI(), nil
+	return rb.withStawiBinding(ctx, room.ToAPI())
 }
 
 func (rb *roomBusiness) UpdateRoom(
@@ -355,7 +387,7 @@ func (rb *roomBusiness) UpdateRoom(
 			Warn("failed to emit room update event")
 	}
 
-	return room.ToAPI(), nil
+	return rb.withStawiBinding(ctx, room.ToAPI())
 }
 
 func (rb *roomBusiness) DeleteRoom(
@@ -498,6 +530,9 @@ func (rb *roomBusiness) SearchRooms(
 		}
 	}
 
+	if err = rb.withStawiBindings(ctx, resultList...); err != nil {
+		return nil, err
+	}
 	return resultList, nil
 }
 

@@ -3527,6 +3527,14 @@ components:
           type: boolean
           title: requires_approval
           description: If true, changes to this room require approval from owners before execution
+        stawi:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.StawiRoomBinding'
+          title: stawi
+          description: |-
+            The room's Stawi binding: set once the room has been converted to a
+             Stawi room (a genesis was prepared), unset for a plain chat room. Every
+             member sees it, including one who joined after the conversion.
       title: Room
       additionalProperties: false
     chat.v1.RoomChangeAction:
@@ -3932,6 +3940,53 @@ components:
         - STAWI_JOIN_POLICY_PRIVATE
         - STAWI_JOIN_POLICY_PUBLIC
       description: StawiJoinPolicy is how someone may enter a Stawi room once it is on chain.
+    chat.v1.StawiRoomBinding:
+      type: object
+      properties:
+        state:
+          allOf:
+            - $ref: '#/components/schemas/chat.v1.StawiRoomState'
+          title: state
+        genesisId:
+          type: string
+          title: genesis_id
+          description: The latest genesis prepared for the room.
+        genesisEventId:
+          type: string
+          title: genesis_event_id
+          description: The room event (stawi room conversion) that carries the genesis card.
+        genesisExpiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: genesis_expires_at
+          description: When the pending genesis expires; unset once bound.
+        chainId:
+          type: string
+          title: chain_id
+          format: int64
+          description: The following are set once the room is bound.
+        custodyAddress:
+          type: string
+          title: custody_address
+          description: The room's RoomCustody contract address (0x-prefixed, lower case).
+        governanceAddress:
+          type: string
+          title: governance_address
+          description: The room's GovernanceModule address (0x-prefixed, lower case).
+        policyEpoch:
+          type: string
+          title: policy_epoch
+          format: int64
+        boundAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: bound_at
+      title: StawiRoomBinding
+      additionalProperties: false
+      description: |-
+        StawiRoomBinding binds a chat room to its on-chain custody. The chain room
+         id is the chat room id: one identifier names the room in chat, in finance
+         and on chain.
     chat.v1.StawiRoomConversionContent:
       type: object
       properties:
@@ -3991,6 +4046,15 @@ components:
          founders have signed the genesis. Chat relays the request to settlement,
          which compiles the constitution and prepares the genesis; chat then fills
          in `genesis` on the stored event, so the event itself is the genesis card.
+    chat.v1.StawiRoomState:
+      type: string
+      title: StawiRoomState
+      enum:
+        - STAWI_ROOM_STATE_UNSPECIFIED
+        - STAWI_ROOM_STATE_PENDING
+        - STAWI_ROOM_STATE_BOUND
+        - STAWI_ROOM_STATE_FAILED
+      description: StawiRoomState is where a room's conversion to a Stawi room stands.
     chat.v1.StawiSignedCallContent:
       type: object
       properties:

@@ -97,6 +97,63 @@ func (RoomType) EnumDescriptor() ([]byte, []int) {
 	return file_chat_v1_chat_proto_rawDescGZIP(), []int{0}
 }
 
+// StawiRoomState is where a room's conversion to a Stawi room stands.
+type StawiRoomState int32
+
+const (
+	StawiRoomState_STAWI_ROOM_STATE_UNSPECIFIED StawiRoomState = 0
+	// A genesis was prepared and awaits founder signatures; the room is not yet
+	// on chain.
+	StawiRoomState_STAWI_ROOM_STATE_PENDING StawiRoomState = 1
+	// The chain has the room: membership, roles and deletion follow the chain.
+	StawiRoomState_STAWI_ROOM_STATE_BOUND StawiRoomState = 2
+	// The genesis never landed; the room may be converted again.
+	StawiRoomState_STAWI_ROOM_STATE_FAILED StawiRoomState = 3
+)
+
+// Enum value maps for StawiRoomState.
+var (
+	StawiRoomState_name = map[int32]string{
+		0: "STAWI_ROOM_STATE_UNSPECIFIED",
+		1: "STAWI_ROOM_STATE_PENDING",
+		2: "STAWI_ROOM_STATE_BOUND",
+		3: "STAWI_ROOM_STATE_FAILED",
+	}
+	StawiRoomState_value = map[string]int32{
+		"STAWI_ROOM_STATE_UNSPECIFIED": 0,
+		"STAWI_ROOM_STATE_PENDING":     1,
+		"STAWI_ROOM_STATE_BOUND":       2,
+		"STAWI_ROOM_STATE_FAILED":      3,
+	}
+)
+
+func (x StawiRoomState) Enum() *StawiRoomState {
+	p := new(StawiRoomState)
+	*p = x
+	return p
+}
+
+func (x StawiRoomState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StawiRoomState) Descriptor() protoreflect.EnumDescriptor {
+	return file_chat_v1_chat_proto_enumTypes[1].Descriptor()
+}
+
+func (StawiRoomState) Type() protoreflect.EnumType {
+	return &file_chat_v1_chat_proto_enumTypes[1]
+}
+
+func (x StawiRoomState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StawiRoomState.Descriptor instead.
+func (StawiRoomState) EnumDescriptor() ([]byte, []int) {
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{1}
+}
+
 // NotificationLevel controls how notifications are delivered for a room subscription.
 type NotificationLevel int32
 
@@ -134,11 +191,11 @@ func (x NotificationLevel) String() string {
 }
 
 func (NotificationLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_chat_proto_enumTypes[1].Descriptor()
+	return file_chat_v1_chat_proto_enumTypes[2].Descriptor()
 }
 
 func (NotificationLevel) Type() protoreflect.EnumType {
-	return &file_chat_v1_chat_proto_enumTypes[1]
+	return &file_chat_v1_chat_proto_enumTypes[2]
 }
 
 func (x NotificationLevel) Number() protoreflect.EnumNumber {
@@ -147,7 +204,7 @@ func (x NotificationLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use NotificationLevel.Descriptor instead.
 func (NotificationLevel) EnumDescriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{1}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{2}
 }
 
 // ProposalType represents the kind of change being proposed.
@@ -193,11 +250,11 @@ func (x ProposalType) String() string {
 }
 
 func (ProposalType) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_chat_proto_enumTypes[2].Descriptor()
+	return file_chat_v1_chat_proto_enumTypes[3].Descriptor()
 }
 
 func (ProposalType) Type() protoreflect.EnumType {
-	return &file_chat_v1_chat_proto_enumTypes[2]
+	return &file_chat_v1_chat_proto_enumTypes[3]
 }
 
 func (x ProposalType) Number() protoreflect.EnumNumber {
@@ -206,7 +263,7 @@ func (x ProposalType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProposalType.Descriptor instead.
 func (ProposalType) EnumDescriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{2}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{3}
 }
 
 // ProposalState represents the current state of a proposal.
@@ -249,11 +306,11 @@ func (x ProposalState) String() string {
 }
 
 func (ProposalState) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_chat_proto_enumTypes[3].Descriptor()
+	return file_chat_v1_chat_proto_enumTypes[4].Descriptor()
 }
 
 func (ProposalState) Type() protoreflect.EnumType {
-	return &file_chat_v1_chat_proto_enumTypes[3]
+	return &file_chat_v1_chat_proto_enumTypes[4]
 }
 
 func (x ProposalState) Number() protoreflect.EnumNumber {
@@ -262,7 +319,7 @@ func (x ProposalState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProposalState.Descriptor instead.
 func (ProposalState) EnumDescriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{3}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{4}
 }
 
 // Action to take on a proposal
@@ -299,11 +356,11 @@ func (x ProposalAction) String() string {
 }
 
 func (ProposalAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_chat_v1_chat_proto_enumTypes[4].Descriptor()
+	return file_chat_v1_chat_proto_enumTypes[5].Descriptor()
 }
 
 func (ProposalAction) Type() protoreflect.EnumType {
-	return &file_chat_v1_chat_proto_enumTypes[4]
+	return &file_chat_v1_chat_proto_enumTypes[5]
 }
 
 func (x ProposalAction) Number() protoreflect.EnumNumber {
@@ -312,7 +369,7 @@ func (x ProposalAction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProposalAction.Descriptor instead.
 func (ProposalAction) EnumDescriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{4}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{5}
 }
 
 type SendEventRequest struct {
@@ -740,8 +797,12 @@ type Room struct {
 	CreatorId   string                 `protobuf:"bytes,9,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
 	// If true, changes to this room require approval from owners before execution
 	RequiresApproval bool `protobuf:"varint,10,opt,name=requires_approval,json=requiresApproval,proto3" json:"requires_approval,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The room's Stawi binding: set once the room has been converted to a
+	// Stawi room (a genesis was prepared), unset for a plain chat room. Every
+	// member sees it, including one who joined after the conversion.
+	Stawi         *StawiRoomBinding `protobuf:"bytes,12,opt,name=stawi,proto3" json:"stawi,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Room) Reset() {
@@ -844,6 +905,130 @@ func (x *Room) GetRequiresApproval() bool {
 	return false
 }
 
+func (x *Room) GetStawi() *StawiRoomBinding {
+	if x != nil {
+		return x.Stawi
+	}
+	return nil
+}
+
+// StawiRoomBinding binds a chat room to its on-chain custody. The chain room
+// id is the chat room id: one identifier names the room in chat, in finance
+// and on chain.
+type StawiRoomBinding struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	State StawiRoomState         `protobuf:"varint,1,opt,name=state,proto3,enum=chat.v1.StawiRoomState" json:"state,omitempty"`
+	// The latest genesis prepared for the room.
+	GenesisId string `protobuf:"bytes,2,opt,name=genesis_id,json=genesisId,proto3" json:"genesis_id,omitempty"`
+	// The room event (stawi room conversion) that carries the genesis card.
+	GenesisEventId string `protobuf:"bytes,3,opt,name=genesis_event_id,json=genesisEventId,proto3" json:"genesis_event_id,omitempty"`
+	// When the pending genesis expires; unset once bound.
+	GenesisExpiresAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=genesis_expires_at,json=genesisExpiresAt,proto3" json:"genesis_expires_at,omitempty"`
+	// The following are set once the room is bound.
+	ChainId uint64 `protobuf:"varint,5,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	// The room's RoomCustody contract address (0x-prefixed, lower case).
+	CustodyAddress string `protobuf:"bytes,6,opt,name=custody_address,json=custodyAddress,proto3" json:"custody_address,omitempty"`
+	// The room's GovernanceModule address (0x-prefixed, lower case).
+	GovernanceAddress string                 `protobuf:"bytes,7,opt,name=governance_address,json=governanceAddress,proto3" json:"governance_address,omitempty"`
+	PolicyEpoch       uint64                 `protobuf:"varint,8,opt,name=policy_epoch,json=policyEpoch,proto3" json:"policy_epoch,omitempty"`
+	BoundAt           *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=bound_at,json=boundAt,proto3" json:"bound_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *StawiRoomBinding) Reset() {
+	*x = StawiRoomBinding{}
+	mi := &file_chat_v1_chat_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StawiRoomBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StawiRoomBinding) ProtoMessage() {}
+
+func (x *StawiRoomBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_v1_chat_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StawiRoomBinding.ProtoReflect.Descriptor instead.
+func (*StawiRoomBinding) Descriptor() ([]byte, []int) {
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *StawiRoomBinding) GetState() StawiRoomState {
+	if x != nil {
+		return x.State
+	}
+	return StawiRoomState_STAWI_ROOM_STATE_UNSPECIFIED
+}
+
+func (x *StawiRoomBinding) GetGenesisId() string {
+	if x != nil {
+		return x.GenesisId
+	}
+	return ""
+}
+
+func (x *StawiRoomBinding) GetGenesisEventId() string {
+	if x != nil {
+		return x.GenesisEventId
+	}
+	return ""
+}
+
+func (x *StawiRoomBinding) GetGenesisExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GenesisExpiresAt
+	}
+	return nil
+}
+
+func (x *StawiRoomBinding) GetChainId() uint64 {
+	if x != nil {
+		return x.ChainId
+	}
+	return 0
+}
+
+func (x *StawiRoomBinding) GetCustodyAddress() string {
+	if x != nil {
+		return x.CustodyAddress
+	}
+	return ""
+}
+
+func (x *StawiRoomBinding) GetGovernanceAddress() string {
+	if x != nil {
+		return x.GovernanceAddress
+	}
+	return ""
+}
+
+func (x *StawiRoomBinding) GetPolicyEpoch() uint64 {
+	if x != nil {
+		return x.PolicyEpoch
+	}
+	return 0
+}
+
+func (x *StawiRoomBinding) GetBoundAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BoundAt
+	}
+	return nil
+}
+
 type CreateRoomRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Optional caller-supplied room identifier.
@@ -871,7 +1056,7 @@ type CreateRoomRequest struct {
 
 func (x *CreateRoomRequest) Reset() {
 	*x = CreateRoomRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[9]
+	mi := &file_chat_v1_chat_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -883,7 +1068,7 @@ func (x *CreateRoomRequest) String() string {
 func (*CreateRoomRequest) ProtoMessage() {}
 
 func (x *CreateRoomRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[9]
+	mi := &file_chat_v1_chat_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -896,7 +1081,7 @@ func (x *CreateRoomRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoomRequest.ProtoReflect.Descriptor instead.
 func (*CreateRoomRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{9}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateRoomRequest) GetId() string {
@@ -965,7 +1150,7 @@ type CreateRoomResponse struct {
 
 func (x *CreateRoomResponse) Reset() {
 	*x = CreateRoomResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[10]
+	mi := &file_chat_v1_chat_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -977,7 +1162,7 @@ func (x *CreateRoomResponse) String() string {
 func (*CreateRoomResponse) ProtoMessage() {}
 
 func (x *CreateRoomResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[10]
+	mi := &file_chat_v1_chat_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -990,7 +1175,7 @@ func (x *CreateRoomResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoomResponse.ProtoReflect.Descriptor instead.
 func (*CreateRoomResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{10}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CreateRoomResponse) GetRoom() *Room {
@@ -1019,7 +1204,7 @@ type SearchRoomsRequest struct {
 
 func (x *SearchRoomsRequest) Reset() {
 	*x = SearchRoomsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[11]
+	mi := &file_chat_v1_chat_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1031,7 +1216,7 @@ func (x *SearchRoomsRequest) String() string {
 func (*SearchRoomsRequest) ProtoMessage() {}
 
 func (x *SearchRoomsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[11]
+	mi := &file_chat_v1_chat_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1044,7 +1229,7 @@ func (x *SearchRoomsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchRoomsRequest.ProtoReflect.Descriptor instead.
 func (*SearchRoomsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{11}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SearchRoomsRequest) GetQuery() string {
@@ -1086,7 +1271,7 @@ type SearchRoomsResponse struct {
 
 func (x *SearchRoomsResponse) Reset() {
 	*x = SearchRoomsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[12]
+	mi := &file_chat_v1_chat_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1098,7 +1283,7 @@ func (x *SearchRoomsResponse) String() string {
 func (*SearchRoomsResponse) ProtoMessage() {}
 
 func (x *SearchRoomsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[12]
+	mi := &file_chat_v1_chat_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1111,7 +1296,7 @@ func (x *SearchRoomsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchRoomsResponse.ProtoReflect.Descriptor instead.
 func (*SearchRoomsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{12}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SearchRoomsResponse) GetData() []*Room {
@@ -1147,7 +1332,7 @@ type UpdateRoomRequest struct {
 
 func (x *UpdateRoomRequest) Reset() {
 	*x = UpdateRoomRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[13]
+	mi := &file_chat_v1_chat_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1159,7 +1344,7 @@ func (x *UpdateRoomRequest) String() string {
 func (*UpdateRoomRequest) ProtoMessage() {}
 
 func (x *UpdateRoomRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[13]
+	mi := &file_chat_v1_chat_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1357,7 @@ func (x *UpdateRoomRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRoomRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRoomRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{13}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateRoomRequest) GetRoomId() string {
@@ -1213,7 +1398,7 @@ type UpdateRoomResponse struct {
 
 func (x *UpdateRoomResponse) Reset() {
 	*x = UpdateRoomResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[14]
+	mi := &file_chat_v1_chat_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1410,7 @@ func (x *UpdateRoomResponse) String() string {
 func (*UpdateRoomResponse) ProtoMessage() {}
 
 func (x *UpdateRoomResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[14]
+	mi := &file_chat_v1_chat_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1423,7 @@ func (x *UpdateRoomResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRoomResponse.ProtoReflect.Descriptor instead.
 func (*UpdateRoomResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{14}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *UpdateRoomResponse) GetRoom() *Room {
@@ -1264,7 +1449,7 @@ type DeleteRoomRequest struct {
 
 func (x *DeleteRoomRequest) Reset() {
 	*x = DeleteRoomRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[15]
+	mi := &file_chat_v1_chat_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1276,7 +1461,7 @@ func (x *DeleteRoomRequest) String() string {
 func (*DeleteRoomRequest) ProtoMessage() {}
 
 func (x *DeleteRoomRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[15]
+	mi := &file_chat_v1_chat_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1289,7 +1474,7 @@ func (x *DeleteRoomRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRoomRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRoomRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{15}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *DeleteRoomRequest) GetRoomId() string {
@@ -1309,7 +1494,7 @@ type DeleteRoomResponse struct {
 
 func (x *DeleteRoomResponse) Reset() {
 	*x = DeleteRoomResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[16]
+	mi := &file_chat_v1_chat_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1321,7 +1506,7 @@ func (x *DeleteRoomResponse) String() string {
 func (*DeleteRoomResponse) ProtoMessage() {}
 
 func (x *DeleteRoomResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[16]
+	mi := &file_chat_v1_chat_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1334,7 +1519,7 @@ func (x *DeleteRoomResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRoomResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRoomResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{16}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DeleteRoomResponse) GetRoomId() string {
@@ -1368,7 +1553,7 @@ type RoomSubscription struct {
 
 func (x *RoomSubscription) Reset() {
 	*x = RoomSubscription{}
-	mi := &file_chat_v1_chat_proto_msgTypes[17]
+	mi := &file_chat_v1_chat_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1380,7 +1565,7 @@ func (x *RoomSubscription) String() string {
 func (*RoomSubscription) ProtoMessage() {}
 
 func (x *RoomSubscription) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[17]
+	mi := &file_chat_v1_chat_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1393,7 +1578,7 @@ func (x *RoomSubscription) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomSubscription.ProtoReflect.Descriptor instead.
 func (*RoomSubscription) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{17}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RoomSubscription) GetId() string {
@@ -1448,7 +1633,7 @@ type AddRoomSubscriptionsRequest struct {
 
 func (x *AddRoomSubscriptionsRequest) Reset() {
 	*x = AddRoomSubscriptionsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[18]
+	mi := &file_chat_v1_chat_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1460,7 +1645,7 @@ func (x *AddRoomSubscriptionsRequest) String() string {
 func (*AddRoomSubscriptionsRequest) ProtoMessage() {}
 
 func (x *AddRoomSubscriptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[18]
+	mi := &file_chat_v1_chat_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1473,7 +1658,7 @@ func (x *AddRoomSubscriptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddRoomSubscriptionsRequest.ProtoReflect.Descriptor instead.
 func (*AddRoomSubscriptionsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{18}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AddRoomSubscriptionsRequest) GetRoomId() string {
@@ -1500,7 +1685,7 @@ type AddRoomSubscriptionsResponse struct {
 
 func (x *AddRoomSubscriptionsResponse) Reset() {
 	*x = AddRoomSubscriptionsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[19]
+	mi := &file_chat_v1_chat_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1512,7 +1697,7 @@ func (x *AddRoomSubscriptionsResponse) String() string {
 func (*AddRoomSubscriptionsResponse) ProtoMessage() {}
 
 func (x *AddRoomSubscriptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[19]
+	mi := &file_chat_v1_chat_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1525,7 +1710,7 @@ func (x *AddRoomSubscriptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddRoomSubscriptionsResponse.ProtoReflect.Descriptor instead.
 func (*AddRoomSubscriptionsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{19}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AddRoomSubscriptionsResponse) GetRoomId() string {
@@ -1552,7 +1737,7 @@ type RemoveRoomSubscriptionsRequest struct {
 
 func (x *RemoveRoomSubscriptionsRequest) Reset() {
 	*x = RemoveRoomSubscriptionsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[20]
+	mi := &file_chat_v1_chat_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1564,7 +1749,7 @@ func (x *RemoveRoomSubscriptionsRequest) String() string {
 func (*RemoveRoomSubscriptionsRequest) ProtoMessage() {}
 
 func (x *RemoveRoomSubscriptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[20]
+	mi := &file_chat_v1_chat_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1577,7 +1762,7 @@ func (x *RemoveRoomSubscriptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveRoomSubscriptionsRequest.ProtoReflect.Descriptor instead.
 func (*RemoveRoomSubscriptionsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{20}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RemoveRoomSubscriptionsRequest) GetRoomId() string {
@@ -1604,7 +1789,7 @@ type RemoveRoomSubscriptionsResponse struct {
 
 func (x *RemoveRoomSubscriptionsResponse) Reset() {
 	*x = RemoveRoomSubscriptionsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[21]
+	mi := &file_chat_v1_chat_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1616,7 +1801,7 @@ func (x *RemoveRoomSubscriptionsResponse) String() string {
 func (*RemoveRoomSubscriptionsResponse) ProtoMessage() {}
 
 func (x *RemoveRoomSubscriptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[21]
+	mi := &file_chat_v1_chat_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1629,7 +1814,7 @@ func (x *RemoveRoomSubscriptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveRoomSubscriptionsResponse.ProtoReflect.Descriptor instead.
 func (*RemoveRoomSubscriptionsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{21}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RemoveRoomSubscriptionsResponse) GetRoomId() string {
@@ -1657,7 +1842,7 @@ type UpdateSubscriptionRoleRequest struct {
 
 func (x *UpdateSubscriptionRoleRequest) Reset() {
 	*x = UpdateSubscriptionRoleRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[22]
+	mi := &file_chat_v1_chat_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1669,7 +1854,7 @@ func (x *UpdateSubscriptionRoleRequest) String() string {
 func (*UpdateSubscriptionRoleRequest) ProtoMessage() {}
 
 func (x *UpdateSubscriptionRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[22]
+	mi := &file_chat_v1_chat_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1682,7 +1867,7 @@ func (x *UpdateSubscriptionRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSubscriptionRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSubscriptionRoleRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{22}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *UpdateSubscriptionRoleRequest) GetSubscriptionId() string {
@@ -1716,7 +1901,7 @@ type UpdateSubscriptionRoleResponse struct {
 
 func (x *UpdateSubscriptionRoleResponse) Reset() {
 	*x = UpdateSubscriptionRoleResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[23]
+	mi := &file_chat_v1_chat_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1728,7 +1913,7 @@ func (x *UpdateSubscriptionRoleResponse) String() string {
 func (*UpdateSubscriptionRoleResponse) ProtoMessage() {}
 
 func (x *UpdateSubscriptionRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[23]
+	mi := &file_chat_v1_chat_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1741,7 +1926,7 @@ func (x *UpdateSubscriptionRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSubscriptionRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSubscriptionRoleResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{23}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *UpdateSubscriptionRoleResponse) GetRoomId() string {
@@ -1768,7 +1953,7 @@ type SearchRoomSubscriptionsRequest struct {
 
 func (x *SearchRoomSubscriptionsRequest) Reset() {
 	*x = SearchRoomSubscriptionsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[24]
+	mi := &file_chat_v1_chat_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1780,7 +1965,7 @@ func (x *SearchRoomSubscriptionsRequest) String() string {
 func (*SearchRoomSubscriptionsRequest) ProtoMessage() {}
 
 func (x *SearchRoomSubscriptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[24]
+	mi := &file_chat_v1_chat_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1793,7 +1978,7 @@ func (x *SearchRoomSubscriptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchRoomSubscriptionsRequest.ProtoReflect.Descriptor instead.
 func (*SearchRoomSubscriptionsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{24}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SearchRoomSubscriptionsRequest) GetRoomId() string {
@@ -1822,7 +2007,7 @@ type SearchRoomSubscriptionsResponse struct {
 
 func (x *SearchRoomSubscriptionsResponse) Reset() {
 	*x = SearchRoomSubscriptionsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[25]
+	mi := &file_chat_v1_chat_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1834,7 +2019,7 @@ func (x *SearchRoomSubscriptionsResponse) String() string {
 func (*SearchRoomSubscriptionsResponse) ProtoMessage() {}
 
 func (x *SearchRoomSubscriptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[25]
+	mi := &file_chat_v1_chat_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1847,7 +2032,7 @@ func (x *SearchRoomSubscriptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchRoomSubscriptionsResponse.ProtoReflect.Descriptor instead.
 func (*SearchRoomSubscriptionsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{25}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SearchRoomSubscriptionsResponse) GetRoomId() string {
@@ -1893,7 +2078,7 @@ type SubscriptionSettings struct {
 
 func (x *SubscriptionSettings) Reset() {
 	*x = SubscriptionSettings{}
-	mi := &file_chat_v1_chat_proto_msgTypes[26]
+	mi := &file_chat_v1_chat_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1905,7 +2090,7 @@ func (x *SubscriptionSettings) String() string {
 func (*SubscriptionSettings) ProtoMessage() {}
 
 func (x *SubscriptionSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[26]
+	mi := &file_chat_v1_chat_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1918,7 +2103,7 @@ func (x *SubscriptionSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscriptionSettings.ProtoReflect.Descriptor instead.
 func (*SubscriptionSettings) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{26}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SubscriptionSettings) GetSubscriptionId() string {
@@ -1973,7 +2158,7 @@ type GetSubscriptionSettingsRequest struct {
 
 func (x *GetSubscriptionSettingsRequest) Reset() {
 	*x = GetSubscriptionSettingsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[27]
+	mi := &file_chat_v1_chat_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1985,7 +2170,7 @@ func (x *GetSubscriptionSettingsRequest) String() string {
 func (*GetSubscriptionSettingsRequest) ProtoMessage() {}
 
 func (x *GetSubscriptionSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[27]
+	mi := &file_chat_v1_chat_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1998,7 +2183,7 @@ func (x *GetSubscriptionSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubscriptionSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetSubscriptionSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{27}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetSubscriptionSettingsRequest) GetRoomId() string {
@@ -2025,7 +2210,7 @@ type GetSubscriptionSettingsResponse struct {
 
 func (x *GetSubscriptionSettingsResponse) Reset() {
 	*x = GetSubscriptionSettingsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[28]
+	mi := &file_chat_v1_chat_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2037,7 +2222,7 @@ func (x *GetSubscriptionSettingsResponse) String() string {
 func (*GetSubscriptionSettingsResponse) ProtoMessage() {}
 
 func (x *GetSubscriptionSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[28]
+	mi := &file_chat_v1_chat_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2050,7 +2235,7 @@ func (x *GetSubscriptionSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSubscriptionSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetSubscriptionSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{28}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetSubscriptionSettingsResponse) GetSettings() *SubscriptionSettings {
@@ -2081,7 +2266,7 @@ type UpdateSubscriptionSettingsRequest struct {
 
 func (x *UpdateSubscriptionSettingsRequest) Reset() {
 	*x = UpdateSubscriptionSettingsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[29]
+	mi := &file_chat_v1_chat_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2093,7 +2278,7 @@ func (x *UpdateSubscriptionSettingsRequest) String() string {
 func (*UpdateSubscriptionSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateSubscriptionSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[29]
+	mi := &file_chat_v1_chat_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2106,7 +2291,7 @@ func (x *UpdateSubscriptionSettingsRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use UpdateSubscriptionSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSubscriptionSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{29}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpdateSubscriptionSettingsRequest) GetRoomId() string {
@@ -2161,7 +2346,7 @@ type UpdateSubscriptionSettingsResponse struct {
 
 func (x *UpdateSubscriptionSettingsResponse) Reset() {
 	*x = UpdateSubscriptionSettingsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[30]
+	mi := &file_chat_v1_chat_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2173,7 +2358,7 @@ func (x *UpdateSubscriptionSettingsResponse) String() string {
 func (*UpdateSubscriptionSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateSubscriptionSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[30]
+	mi := &file_chat_v1_chat_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2186,7 +2371,7 @@ func (x *UpdateSubscriptionSettingsResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use UpdateSubscriptionSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSubscriptionSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{30}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UpdateSubscriptionSettingsResponse) GetSettings() *SubscriptionSettings {
@@ -2213,7 +2398,7 @@ type LiveRequest struct {
 
 func (x *LiveRequest) Reset() {
 	*x = LiveRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[31]
+	mi := &file_chat_v1_chat_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2225,7 +2410,7 @@ func (x *LiveRequest) String() string {
 func (*LiveRequest) ProtoMessage() {}
 
 func (x *LiveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[31]
+	mi := &file_chat_v1_chat_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2238,7 +2423,7 @@ func (x *LiveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiveRequest.ProtoReflect.Descriptor instead.
 func (*LiveRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{31}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *LiveRequest) GetSource() *v1.ContactLink {
@@ -2264,7 +2449,7 @@ type LiveResponse struct {
 
 func (x *LiveResponse) Reset() {
 	*x = LiveResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[32]
+	mi := &file_chat_v1_chat_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2276,7 +2461,7 @@ func (x *LiveResponse) String() string {
 func (*LiveResponse) ProtoMessage() {}
 
 func (x *LiveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[32]
+	mi := &file_chat_v1_chat_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2289,7 +2474,7 @@ func (x *LiveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiveResponse.ProtoReflect.Descriptor instead.
 func (*LiveResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{32}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *LiveResponse) GetError() *v1.ErrorDetail {
@@ -2319,7 +2504,7 @@ type Proposal struct {
 
 func (x *Proposal) Reset() {
 	*x = Proposal{}
-	mi := &file_chat_v1_chat_proto_msgTypes[33]
+	mi := &file_chat_v1_chat_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2331,7 +2516,7 @@ func (x *Proposal) String() string {
 func (*Proposal) ProtoMessage() {}
 
 func (x *Proposal) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[33]
+	mi := &file_chat_v1_chat_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2344,7 +2529,7 @@ func (x *Proposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Proposal.ProtoReflect.Descriptor instead.
 func (*Proposal) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{33}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *Proposal) GetId() string {
@@ -2436,7 +2621,7 @@ type ListProposalsRequest struct {
 
 func (x *ListProposalsRequest) Reset() {
 	*x = ListProposalsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[34]
+	mi := &file_chat_v1_chat_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2448,7 +2633,7 @@ func (x *ListProposalsRequest) String() string {
 func (*ListProposalsRequest) ProtoMessage() {}
 
 func (x *ListProposalsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[34]
+	mi := &file_chat_v1_chat_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2461,7 +2646,7 @@ func (x *ListProposalsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProposalsRequest.ProtoReflect.Descriptor instead.
 func (*ListProposalsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{34}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListProposalsRequest) GetRoomId() string {
@@ -2496,7 +2681,7 @@ type ListProposalsResponse struct {
 
 func (x *ListProposalsResponse) Reset() {
 	*x = ListProposalsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[35]
+	mi := &file_chat_v1_chat_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2508,7 +2693,7 @@ func (x *ListProposalsResponse) String() string {
 func (*ListProposalsResponse) ProtoMessage() {}
 
 func (x *ListProposalsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[35]
+	mi := &file_chat_v1_chat_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2521,7 +2706,7 @@ func (x *ListProposalsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProposalsResponse.ProtoReflect.Descriptor instead.
 func (*ListProposalsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{35}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ListProposalsResponse) GetProposals() []*Proposal {
@@ -2557,7 +2742,7 @@ type SubmitProposalRequest struct {
 
 func (x *SubmitProposalRequest) Reset() {
 	*x = SubmitProposalRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[36]
+	mi := &file_chat_v1_chat_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2569,7 +2754,7 @@ func (x *SubmitProposalRequest) String() string {
 func (*SubmitProposalRequest) ProtoMessage() {}
 
 func (x *SubmitProposalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[36]
+	mi := &file_chat_v1_chat_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2582,7 +2767,7 @@ func (x *SubmitProposalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitProposalRequest.ProtoReflect.Descriptor instead.
 func (*SubmitProposalRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{36}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SubmitProposalRequest) GetRoomId() string {
@@ -2623,7 +2808,7 @@ type SubmitProposalResponse struct {
 
 func (x *SubmitProposalResponse) Reset() {
 	*x = SubmitProposalResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[37]
+	mi := &file_chat_v1_chat_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2635,7 +2820,7 @@ func (x *SubmitProposalResponse) String() string {
 func (*SubmitProposalResponse) ProtoMessage() {}
 
 func (x *SubmitProposalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[37]
+	mi := &file_chat_v1_chat_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2648,7 +2833,7 @@ func (x *SubmitProposalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitProposalResponse.ProtoReflect.Descriptor instead.
 func (*SubmitProposalResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{37}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SubmitProposalResponse) GetProposal() *Proposal {
@@ -2677,7 +2862,7 @@ type ResolveReplayCursorRequest struct {
 
 func (x *ResolveReplayCursorRequest) Reset() {
 	*x = ResolveReplayCursorRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[38]
+	mi := &file_chat_v1_chat_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2689,7 +2874,7 @@ func (x *ResolveReplayCursorRequest) String() string {
 func (*ResolveReplayCursorRequest) ProtoMessage() {}
 
 func (x *ResolveReplayCursorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[38]
+	mi := &file_chat_v1_chat_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2702,7 +2887,7 @@ func (x *ResolveReplayCursorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveReplayCursorRequest.ProtoReflect.Descriptor instead.
 func (*ResolveReplayCursorRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{38}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ResolveReplayCursorRequest) GetProfileId() string {
@@ -2738,7 +2923,7 @@ type ResolveReplayCursorResponse struct {
 
 func (x *ResolveReplayCursorResponse) Reset() {
 	*x = ResolveReplayCursorResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[39]
+	mi := &file_chat_v1_chat_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2750,7 +2935,7 @@ func (x *ResolveReplayCursorResponse) String() string {
 func (*ResolveReplayCursorResponse) ProtoMessage() {}
 
 func (x *ResolveReplayCursorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[39]
+	mi := &file_chat_v1_chat_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2763,7 +2948,7 @@ func (x *ResolveReplayCursorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveReplayCursorResponse.ProtoReflect.Descriptor instead.
 func (*ResolveReplayCursorResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{39}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ResolveReplayCursorResponse) GetCursor() string {
@@ -2790,7 +2975,7 @@ type GetLatestReplayCursorRequest struct {
 
 func (x *GetLatestReplayCursorRequest) Reset() {
 	*x = GetLatestReplayCursorRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[40]
+	mi := &file_chat_v1_chat_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2802,7 +2987,7 @@ func (x *GetLatestReplayCursorRequest) String() string {
 func (*GetLatestReplayCursorRequest) ProtoMessage() {}
 
 func (x *GetLatestReplayCursorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[40]
+	mi := &file_chat_v1_chat_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2815,7 +3000,7 @@ func (x *GetLatestReplayCursorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLatestReplayCursorRequest.ProtoReflect.Descriptor instead.
 func (*GetLatestReplayCursorRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{40}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *GetLatestReplayCursorRequest) GetProfileId() string {
@@ -2842,7 +3027,7 @@ type GetLatestReplayCursorResponse struct {
 
 func (x *GetLatestReplayCursorResponse) Reset() {
 	*x = GetLatestReplayCursorResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[41]
+	mi := &file_chat_v1_chat_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2854,7 +3039,7 @@ func (x *GetLatestReplayCursorResponse) String() string {
 func (*GetLatestReplayCursorResponse) ProtoMessage() {}
 
 func (x *GetLatestReplayCursorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[41]
+	mi := &file_chat_v1_chat_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2867,7 +3052,7 @@ func (x *GetLatestReplayCursorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLatestReplayCursorResponse.ProtoReflect.Descriptor instead.
 func (*GetLatestReplayCursorResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{41}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *GetLatestReplayCursorResponse) GetCursor() string {
@@ -2893,7 +3078,7 @@ type ListReplayEventsRequest struct {
 
 func (x *ListReplayEventsRequest) Reset() {
 	*x = ListReplayEventsRequest{}
-	mi := &file_chat_v1_chat_proto_msgTypes[42]
+	mi := &file_chat_v1_chat_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2905,7 +3090,7 @@ func (x *ListReplayEventsRequest) String() string {
 func (*ListReplayEventsRequest) ProtoMessage() {}
 
 func (x *ListReplayEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[42]
+	mi := &file_chat_v1_chat_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2918,7 +3103,7 @@ func (x *ListReplayEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReplayEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListReplayEventsRequest) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{42}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ListReplayEventsRequest) GetProfileId() string {
@@ -2969,7 +3154,7 @@ type ReplayEntry struct {
 
 func (x *ReplayEntry) Reset() {
 	*x = ReplayEntry{}
-	mi := &file_chat_v1_chat_proto_msgTypes[43]
+	mi := &file_chat_v1_chat_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2981,7 +3166,7 @@ func (x *ReplayEntry) String() string {
 func (*ReplayEntry) ProtoMessage() {}
 
 func (x *ReplayEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[43]
+	mi := &file_chat_v1_chat_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2994,7 +3179,7 @@ func (x *ReplayEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayEntry.ProtoReflect.Descriptor instead.
 func (*ReplayEntry) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{43}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ReplayEntry) GetCursor() string {
@@ -3020,7 +3205,7 @@ type ListReplayEventsResponse struct {
 
 func (x *ListReplayEventsResponse) Reset() {
 	*x = ListReplayEventsResponse{}
-	mi := &file_chat_v1_chat_proto_msgTypes[44]
+	mi := &file_chat_v1_chat_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3032,7 +3217,7 @@ func (x *ListReplayEventsResponse) String() string {
 func (*ListReplayEventsResponse) ProtoMessage() {}
 
 func (x *ListReplayEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chat_v1_chat_proto_msgTypes[44]
+	mi := &file_chat_v1_chat_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3045,7 +3230,7 @@ func (x *ListReplayEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReplayEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListReplayEventsResponse) Descriptor() ([]byte, []int) {
-	return file_chat_v1_chat_proto_rawDescGZIP(), []int{44}
+	return file_chat_v1_chat_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ListReplayEventsResponse) GetEntries() []*ReplayEntry {
@@ -3084,7 +3269,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\aroom_id\x18\x01 \x01(\tB\x1b\xbaH\x18r\x16\x10\x03\x18(2\x10[0-9a-z_-]{3,40}R\x06roomId\"b\n" +
 	"\x0fGetRoomResponse\x12!\n" +
 	"\x04room\x18\x01 \x01(\v2\r.chat.v1.RoomR\x04room\x12,\n" +
-	"\x05error\x18\x02 \x01(\v2\x16.common.v1.ErrorDetailR\x05error\"\xb2\x03\n" +
+	"\x05error\x18\x02 \x01(\v2\x16.common.v1.ErrorDetailR\x05error\"\xe3\x03\n" +
 	"\x04Room\x12+\n" +
 	"\x02id\x18\x02 \x01(\tB\x1b\xbaH\x18r\x16\x10\x03\x18(2\x10[0-9a-z_-]{3,40}R\x02id\x12\x1e\n" +
 	"\x04name\x18\x03 \x01(\tB\n" +
@@ -3101,7 +3286,19 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\n" +
 	"creator_id\x18\t \x01(\tR\tcreatorId\x12+\n" +
 	"\x11requires_approval\x18\n" +
-	" \x01(\bR\x10requiresApproval\"\xdc\x02\n" +
+	" \x01(\bR\x10requiresApproval\x12/\n" +
+	"\x05stawi\x18\f \x01(\v2\x19.chat.v1.StawiRoomBindingR\x05stawi\"\xa1\x03\n" +
+	"\x10StawiRoomBinding\x12-\n" +
+	"\x05state\x18\x01 \x01(\x0e2\x17.chat.v1.StawiRoomStateR\x05state\x12\x1d\n" +
+	"\n" +
+	"genesis_id\x18\x02 \x01(\tR\tgenesisId\x12(\n" +
+	"\x10genesis_event_id\x18\x03 \x01(\tR\x0egenesisEventId\x12H\n" +
+	"\x12genesis_expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x10genesisExpiresAt\x12\x19\n" +
+	"\bchain_id\x18\x05 \x01(\x04R\achainId\x12'\n" +
+	"\x0fcustody_address\x18\x06 \x01(\tR\x0ecustodyAddress\x12-\n" +
+	"\x12governance_address\x18\a \x01(\tR\x11governanceAddress\x12!\n" +
+	"\fpolicy_epoch\x18\b \x01(\x04R\vpolicyEpoch\x125\n" +
+	"\bbound_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\aboundAt\"\xdc\x02\n" +
 	"\x11CreateRoomRequest\x12+\n" +
 	"\x02id\x18\x03 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x132\x0e^[0-9a-v]{20}$\x98\x01\x14R\x02id\x12\x1e\n" +
 	"\x04name\x18\x04 \x01(\tB\n" +
@@ -3285,7 +3482,12 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x10ROOM_TYPE_DIRECT\x10\x01\x12\x13\n" +
 	"\x0fROOM_TYPE_GROUP\x10\x02\x12\x15\n" +
 	"\x11ROOM_TYPE_CHANNEL\x10\x03\x12\x11\n" +
-	"\rROOM_TYPE_BOT\x10\x04*\x91\x01\n" +
+	"\rROOM_TYPE_BOT\x10\x04*\x89\x01\n" +
+	"\x0eStawiRoomState\x12 \n" +
+	"\x1cSTAWI_ROOM_STATE_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18STAWI_ROOM_STATE_PENDING\x10\x01\x12\x1a\n" +
+	"\x16STAWI_ROOM_STATE_BOUND\x10\x02\x12\x1b\n" +
+	"\x17STAWI_ROOM_STATE_FAILED\x10\x03*\x91\x01\n" +
 	"\x11NotificationLevel\x12\"\n" +
 	"\x1eNOTIFICATION_LEVEL_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16NOTIFICATION_LEVEL_ALL\x10\x01\x12\x1f\n" +
@@ -3421,169 +3623,175 @@ func file_chat_v1_chat_proto_rawDescGZIP() []byte {
 	return file_chat_v1_chat_proto_rawDescData
 }
 
-var file_chat_v1_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_chat_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_chat_v1_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_chat_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_chat_v1_chat_proto_goTypes = []any{
 	(RoomType)(0),                              // 0: chat.v1.RoomType
-	(NotificationLevel)(0),                     // 1: chat.v1.NotificationLevel
-	(ProposalType)(0),                          // 2: chat.v1.ProposalType
-	(ProposalState)(0),                         // 3: chat.v1.ProposalState
-	(ProposalAction)(0),                        // 4: chat.v1.ProposalAction
-	(*SendEventRequest)(nil),                   // 5: chat.v1.SendEventRequest
-	(*SendEventResponse)(nil),                  // 6: chat.v1.SendEventResponse
-	(*GetEventRequest)(nil),                    // 7: chat.v1.GetEventRequest
-	(*GetEventResponse)(nil),                   // 8: chat.v1.GetEventResponse
-	(*GetHistoryRequest)(nil),                  // 9: chat.v1.GetHistoryRequest
-	(*GetHistoryResponse)(nil),                 // 10: chat.v1.GetHistoryResponse
-	(*GetRoomRequest)(nil),                     // 11: chat.v1.GetRoomRequest
-	(*GetRoomResponse)(nil),                    // 12: chat.v1.GetRoomResponse
-	(*Room)(nil),                               // 13: chat.v1.Room
-	(*CreateRoomRequest)(nil),                  // 14: chat.v1.CreateRoomRequest
-	(*CreateRoomResponse)(nil),                 // 15: chat.v1.CreateRoomResponse
-	(*SearchRoomsRequest)(nil),                 // 16: chat.v1.SearchRoomsRequest
-	(*SearchRoomsResponse)(nil),                // 17: chat.v1.SearchRoomsResponse
-	(*UpdateRoomRequest)(nil),                  // 18: chat.v1.UpdateRoomRequest
-	(*UpdateRoomResponse)(nil),                 // 19: chat.v1.UpdateRoomResponse
-	(*DeleteRoomRequest)(nil),                  // 20: chat.v1.DeleteRoomRequest
-	(*DeleteRoomResponse)(nil),                 // 21: chat.v1.DeleteRoomResponse
-	(*RoomSubscription)(nil),                   // 22: chat.v1.RoomSubscription
-	(*AddRoomSubscriptionsRequest)(nil),        // 23: chat.v1.AddRoomSubscriptionsRequest
-	(*AddRoomSubscriptionsResponse)(nil),       // 24: chat.v1.AddRoomSubscriptionsResponse
-	(*RemoveRoomSubscriptionsRequest)(nil),     // 25: chat.v1.RemoveRoomSubscriptionsRequest
-	(*RemoveRoomSubscriptionsResponse)(nil),    // 26: chat.v1.RemoveRoomSubscriptionsResponse
-	(*UpdateSubscriptionRoleRequest)(nil),      // 27: chat.v1.UpdateSubscriptionRoleRequest
-	(*UpdateSubscriptionRoleResponse)(nil),     // 28: chat.v1.UpdateSubscriptionRoleResponse
-	(*SearchRoomSubscriptionsRequest)(nil),     // 29: chat.v1.SearchRoomSubscriptionsRequest
-	(*SearchRoomSubscriptionsResponse)(nil),    // 30: chat.v1.SearchRoomSubscriptionsResponse
-	(*SubscriptionSettings)(nil),               // 31: chat.v1.SubscriptionSettings
-	(*GetSubscriptionSettingsRequest)(nil),     // 32: chat.v1.GetSubscriptionSettingsRequest
-	(*GetSubscriptionSettingsResponse)(nil),    // 33: chat.v1.GetSubscriptionSettingsResponse
-	(*UpdateSubscriptionSettingsRequest)(nil),  // 34: chat.v1.UpdateSubscriptionSettingsRequest
-	(*UpdateSubscriptionSettingsResponse)(nil), // 35: chat.v1.UpdateSubscriptionSettingsResponse
-	(*LiveRequest)(nil),                        // 36: chat.v1.LiveRequest
-	(*LiveResponse)(nil),                       // 37: chat.v1.LiveResponse
-	(*Proposal)(nil),                           // 38: chat.v1.Proposal
-	(*ListProposalsRequest)(nil),               // 39: chat.v1.ListProposalsRequest
-	(*ListProposalsResponse)(nil),              // 40: chat.v1.ListProposalsResponse
-	(*SubmitProposalRequest)(nil),              // 41: chat.v1.SubmitProposalRequest
-	(*SubmitProposalResponse)(nil),             // 42: chat.v1.SubmitProposalResponse
-	(*ResolveReplayCursorRequest)(nil),         // 43: chat.v1.ResolveReplayCursorRequest
-	(*ResolveReplayCursorResponse)(nil),        // 44: chat.v1.ResolveReplayCursorResponse
-	(*GetLatestReplayCursorRequest)(nil),       // 45: chat.v1.GetLatestReplayCursorRequest
-	(*GetLatestReplayCursorResponse)(nil),      // 46: chat.v1.GetLatestReplayCursorResponse
-	(*ListReplayEventsRequest)(nil),            // 47: chat.v1.ListReplayEventsRequest
-	(*ReplayEntry)(nil),                        // 48: chat.v1.ReplayEntry
-	(*ListReplayEventsResponse)(nil),           // 49: chat.v1.ListReplayEventsResponse
-	(*RoomEvent)(nil),                          // 50: chat.v1.RoomEvent
-	(*AckEvent)(nil),                           // 51: chat.v1.AckEvent
-	(*v1.ErrorDetail)(nil),                     // 52: common.v1.ErrorDetail
-	(*v1.PageCursor)(nil),                      // 53: common.v1.PageCursor
-	(*structpb.Struct)(nil),                    // 54: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),              // 55: google.protobuf.Timestamp
-	(*v1.ContactLink)(nil),                     // 56: common.v1.ContactLink
-	(*ClientCommand)(nil),                      // 57: chat.v1.ClientCommand
+	(StawiRoomState)(0),                        // 1: chat.v1.StawiRoomState
+	(NotificationLevel)(0),                     // 2: chat.v1.NotificationLevel
+	(ProposalType)(0),                          // 3: chat.v1.ProposalType
+	(ProposalState)(0),                         // 4: chat.v1.ProposalState
+	(ProposalAction)(0),                        // 5: chat.v1.ProposalAction
+	(*SendEventRequest)(nil),                   // 6: chat.v1.SendEventRequest
+	(*SendEventResponse)(nil),                  // 7: chat.v1.SendEventResponse
+	(*GetEventRequest)(nil),                    // 8: chat.v1.GetEventRequest
+	(*GetEventResponse)(nil),                   // 9: chat.v1.GetEventResponse
+	(*GetHistoryRequest)(nil),                  // 10: chat.v1.GetHistoryRequest
+	(*GetHistoryResponse)(nil),                 // 11: chat.v1.GetHistoryResponse
+	(*GetRoomRequest)(nil),                     // 12: chat.v1.GetRoomRequest
+	(*GetRoomResponse)(nil),                    // 13: chat.v1.GetRoomResponse
+	(*Room)(nil),                               // 14: chat.v1.Room
+	(*StawiRoomBinding)(nil),                   // 15: chat.v1.StawiRoomBinding
+	(*CreateRoomRequest)(nil),                  // 16: chat.v1.CreateRoomRequest
+	(*CreateRoomResponse)(nil),                 // 17: chat.v1.CreateRoomResponse
+	(*SearchRoomsRequest)(nil),                 // 18: chat.v1.SearchRoomsRequest
+	(*SearchRoomsResponse)(nil),                // 19: chat.v1.SearchRoomsResponse
+	(*UpdateRoomRequest)(nil),                  // 20: chat.v1.UpdateRoomRequest
+	(*UpdateRoomResponse)(nil),                 // 21: chat.v1.UpdateRoomResponse
+	(*DeleteRoomRequest)(nil),                  // 22: chat.v1.DeleteRoomRequest
+	(*DeleteRoomResponse)(nil),                 // 23: chat.v1.DeleteRoomResponse
+	(*RoomSubscription)(nil),                   // 24: chat.v1.RoomSubscription
+	(*AddRoomSubscriptionsRequest)(nil),        // 25: chat.v1.AddRoomSubscriptionsRequest
+	(*AddRoomSubscriptionsResponse)(nil),       // 26: chat.v1.AddRoomSubscriptionsResponse
+	(*RemoveRoomSubscriptionsRequest)(nil),     // 27: chat.v1.RemoveRoomSubscriptionsRequest
+	(*RemoveRoomSubscriptionsResponse)(nil),    // 28: chat.v1.RemoveRoomSubscriptionsResponse
+	(*UpdateSubscriptionRoleRequest)(nil),      // 29: chat.v1.UpdateSubscriptionRoleRequest
+	(*UpdateSubscriptionRoleResponse)(nil),     // 30: chat.v1.UpdateSubscriptionRoleResponse
+	(*SearchRoomSubscriptionsRequest)(nil),     // 31: chat.v1.SearchRoomSubscriptionsRequest
+	(*SearchRoomSubscriptionsResponse)(nil),    // 32: chat.v1.SearchRoomSubscriptionsResponse
+	(*SubscriptionSettings)(nil),               // 33: chat.v1.SubscriptionSettings
+	(*GetSubscriptionSettingsRequest)(nil),     // 34: chat.v1.GetSubscriptionSettingsRequest
+	(*GetSubscriptionSettingsResponse)(nil),    // 35: chat.v1.GetSubscriptionSettingsResponse
+	(*UpdateSubscriptionSettingsRequest)(nil),  // 36: chat.v1.UpdateSubscriptionSettingsRequest
+	(*UpdateSubscriptionSettingsResponse)(nil), // 37: chat.v1.UpdateSubscriptionSettingsResponse
+	(*LiveRequest)(nil),                        // 38: chat.v1.LiveRequest
+	(*LiveResponse)(nil),                       // 39: chat.v1.LiveResponse
+	(*Proposal)(nil),                           // 40: chat.v1.Proposal
+	(*ListProposalsRequest)(nil),               // 41: chat.v1.ListProposalsRequest
+	(*ListProposalsResponse)(nil),              // 42: chat.v1.ListProposalsResponse
+	(*SubmitProposalRequest)(nil),              // 43: chat.v1.SubmitProposalRequest
+	(*SubmitProposalResponse)(nil),             // 44: chat.v1.SubmitProposalResponse
+	(*ResolveReplayCursorRequest)(nil),         // 45: chat.v1.ResolveReplayCursorRequest
+	(*ResolveReplayCursorResponse)(nil),        // 46: chat.v1.ResolveReplayCursorResponse
+	(*GetLatestReplayCursorRequest)(nil),       // 47: chat.v1.GetLatestReplayCursorRequest
+	(*GetLatestReplayCursorResponse)(nil),      // 48: chat.v1.GetLatestReplayCursorResponse
+	(*ListReplayEventsRequest)(nil),            // 49: chat.v1.ListReplayEventsRequest
+	(*ReplayEntry)(nil),                        // 50: chat.v1.ReplayEntry
+	(*ListReplayEventsResponse)(nil),           // 51: chat.v1.ListReplayEventsResponse
+	(*RoomEvent)(nil),                          // 52: chat.v1.RoomEvent
+	(*AckEvent)(nil),                           // 53: chat.v1.AckEvent
+	(*v1.ErrorDetail)(nil),                     // 54: common.v1.ErrorDetail
+	(*v1.PageCursor)(nil),                      // 55: common.v1.PageCursor
+	(*structpb.Struct)(nil),                    // 56: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),              // 57: google.protobuf.Timestamp
+	(*v1.ContactLink)(nil),                     // 58: common.v1.ContactLink
+	(*ClientCommand)(nil),                      // 59: chat.v1.ClientCommand
 }
 var file_chat_v1_chat_proto_depIdxs = []int32{
-	50, // 0: chat.v1.SendEventRequest.event:type_name -> chat.v1.RoomEvent
-	51, // 1: chat.v1.SendEventResponse.ack:type_name -> chat.v1.AckEvent
-	50, // 2: chat.v1.GetEventResponse.event:type_name -> chat.v1.RoomEvent
-	52, // 3: chat.v1.GetEventResponse.error:type_name -> common.v1.ErrorDetail
-	53, // 4: chat.v1.GetHistoryRequest.cursor:type_name -> common.v1.PageCursor
-	50, // 5: chat.v1.GetHistoryResponse.events:type_name -> chat.v1.RoomEvent
-	13, // 6: chat.v1.GetRoomResponse.room:type_name -> chat.v1.Room
-	52, // 7: chat.v1.GetRoomResponse.error:type_name -> common.v1.ErrorDetail
+	52, // 0: chat.v1.SendEventRequest.event:type_name -> chat.v1.RoomEvent
+	53, // 1: chat.v1.SendEventResponse.ack:type_name -> chat.v1.AckEvent
+	52, // 2: chat.v1.GetEventResponse.event:type_name -> chat.v1.RoomEvent
+	54, // 3: chat.v1.GetEventResponse.error:type_name -> common.v1.ErrorDetail
+	55, // 4: chat.v1.GetHistoryRequest.cursor:type_name -> common.v1.PageCursor
+	52, // 5: chat.v1.GetHistoryResponse.events:type_name -> chat.v1.RoomEvent
+	14, // 6: chat.v1.GetRoomResponse.room:type_name -> chat.v1.Room
+	54, // 7: chat.v1.GetRoomResponse.error:type_name -> common.v1.ErrorDetail
 	0,  // 8: chat.v1.Room.type:type_name -> chat.v1.RoomType
-	54, // 9: chat.v1.Room.metadata:type_name -> google.protobuf.Struct
-	55, // 10: chat.v1.Room.created_at:type_name -> google.protobuf.Timestamp
-	55, // 11: chat.v1.Room.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 12: chat.v1.CreateRoomRequest.type:type_name -> chat.v1.RoomType
-	56, // 13: chat.v1.CreateRoomRequest.members:type_name -> common.v1.ContactLink
-	54, // 14: chat.v1.CreateRoomRequest.metadata:type_name -> google.protobuf.Struct
-	13, // 15: chat.v1.CreateRoomResponse.room:type_name -> chat.v1.Room
-	52, // 16: chat.v1.CreateRoomResponse.error:type_name -> common.v1.ErrorDetail
-	54, // 17: chat.v1.SearchRoomsRequest.extras:type_name -> google.protobuf.Struct
-	53, // 18: chat.v1.SearchRoomsRequest.cursor:type_name -> common.v1.PageCursor
-	13, // 19: chat.v1.SearchRoomsResponse.data:type_name -> chat.v1.Room
-	54, // 20: chat.v1.UpdateRoomRequest.metadata:type_name -> google.protobuf.Struct
-	13, // 21: chat.v1.UpdateRoomResponse.room:type_name -> chat.v1.Room
-	52, // 22: chat.v1.UpdateRoomResponse.error:type_name -> common.v1.ErrorDetail
-	52, // 23: chat.v1.DeleteRoomResponse.error:type_name -> common.v1.ErrorDetail
-	56, // 24: chat.v1.RoomSubscription.member:type_name -> common.v1.ContactLink
-	55, // 25: chat.v1.RoomSubscription.joined_at:type_name -> google.protobuf.Timestamp
-	55, // 26: chat.v1.RoomSubscription.last_active:type_name -> google.protobuf.Timestamp
-	22, // 27: chat.v1.AddRoomSubscriptionsRequest.members:type_name -> chat.v1.RoomSubscription
-	52, // 28: chat.v1.AddRoomSubscriptionsResponse.error:type_name -> common.v1.ErrorDetail
-	52, // 29: chat.v1.RemoveRoomSubscriptionsResponse.error:type_name -> common.v1.ErrorDetail
-	52, // 30: chat.v1.UpdateSubscriptionRoleResponse.error:type_name -> common.v1.ErrorDetail
-	53, // 31: chat.v1.SearchRoomSubscriptionsRequest.cursor:type_name -> common.v1.PageCursor
-	22, // 32: chat.v1.SearchRoomSubscriptionsResponse.members:type_name -> chat.v1.RoomSubscription
-	1,  // 33: chat.v1.SubscriptionSettings.notification_level:type_name -> chat.v1.NotificationLevel
-	31, // 34: chat.v1.GetSubscriptionSettingsResponse.settings:type_name -> chat.v1.SubscriptionSettings
-	52, // 35: chat.v1.GetSubscriptionSettingsResponse.error:type_name -> common.v1.ErrorDetail
-	1,  // 36: chat.v1.UpdateSubscriptionSettingsRequest.notification_level:type_name -> chat.v1.NotificationLevel
-	31, // 37: chat.v1.UpdateSubscriptionSettingsResponse.settings:type_name -> chat.v1.SubscriptionSettings
-	52, // 38: chat.v1.UpdateSubscriptionSettingsResponse.error:type_name -> common.v1.ErrorDetail
-	56, // 39: chat.v1.LiveRequest.source:type_name -> common.v1.ContactLink
-	57, // 40: chat.v1.LiveRequest.client_states:type_name -> chat.v1.ClientCommand
-	52, // 41: chat.v1.LiveResponse.error:type_name -> common.v1.ErrorDetail
-	2,  // 42: chat.v1.Proposal.type:type_name -> chat.v1.ProposalType
-	3,  // 43: chat.v1.Proposal.state:type_name -> chat.v1.ProposalState
-	54, // 44: chat.v1.Proposal.payload:type_name -> google.protobuf.Struct
-	55, // 45: chat.v1.Proposal.created_at:type_name -> google.protobuf.Timestamp
-	55, // 46: chat.v1.Proposal.expires_at:type_name -> google.protobuf.Timestamp
-	55, // 47: chat.v1.Proposal.resolved_at:type_name -> google.protobuf.Timestamp
-	3,  // 48: chat.v1.ListProposalsRequest.state:type_name -> chat.v1.ProposalState
-	53, // 49: chat.v1.ListProposalsRequest.cursor:type_name -> common.v1.PageCursor
-	38, // 50: chat.v1.ListProposalsResponse.proposals:type_name -> chat.v1.Proposal
-	4,  // 51: chat.v1.SubmitProposalRequest.action:type_name -> chat.v1.ProposalAction
-	38, // 52: chat.v1.SubmitProposalResponse.proposal:type_name -> chat.v1.Proposal
-	52, // 53: chat.v1.SubmitProposalResponse.error:type_name -> common.v1.ErrorDetail
-	48, // 54: chat.v1.ListReplayEventsResponse.entries:type_name -> chat.v1.ReplayEntry
-	5,  // 55: chat.v1.ChatService.SendEvent:input_type -> chat.v1.SendEventRequest
-	7,  // 56: chat.v1.ChatService.GetEvent:input_type -> chat.v1.GetEventRequest
-	9,  // 57: chat.v1.ChatService.GetHistory:input_type -> chat.v1.GetHistoryRequest
-	11, // 58: chat.v1.ChatService.GetRoom:input_type -> chat.v1.GetRoomRequest
-	14, // 59: chat.v1.ChatService.CreateRoom:input_type -> chat.v1.CreateRoomRequest
-	16, // 60: chat.v1.ChatService.SearchRooms:input_type -> chat.v1.SearchRoomsRequest
-	18, // 61: chat.v1.ChatService.UpdateRoom:input_type -> chat.v1.UpdateRoomRequest
-	20, // 62: chat.v1.ChatService.DeleteRoom:input_type -> chat.v1.DeleteRoomRequest
-	23, // 63: chat.v1.ChatService.AddRoomSubscriptions:input_type -> chat.v1.AddRoomSubscriptionsRequest
-	25, // 64: chat.v1.ChatService.RemoveRoomSubscriptions:input_type -> chat.v1.RemoveRoomSubscriptionsRequest
-	27, // 65: chat.v1.ChatService.UpdateSubscriptionRole:input_type -> chat.v1.UpdateSubscriptionRoleRequest
-	29, // 66: chat.v1.ChatService.SearchRoomSubscriptions:input_type -> chat.v1.SearchRoomSubscriptionsRequest
-	32, // 67: chat.v1.ChatService.GetSubscriptionSettings:input_type -> chat.v1.GetSubscriptionSettingsRequest
-	34, // 68: chat.v1.ChatService.UpdateSubscriptionSettings:input_type -> chat.v1.UpdateSubscriptionSettingsRequest
-	36, // 69: chat.v1.ChatService.Live:input_type -> chat.v1.LiveRequest
-	39, // 70: chat.v1.ChatService.ListProposals:input_type -> chat.v1.ListProposalsRequest
-	41, // 71: chat.v1.ChatService.SubmitProposal:input_type -> chat.v1.SubmitProposalRequest
-	43, // 72: chat.v1.ChatService.ResolveReplayCursor:input_type -> chat.v1.ResolveReplayCursorRequest
-	45, // 73: chat.v1.ChatService.GetLatestReplayCursor:input_type -> chat.v1.GetLatestReplayCursorRequest
-	47, // 74: chat.v1.ChatService.ListReplayEvents:input_type -> chat.v1.ListReplayEventsRequest
-	6,  // 75: chat.v1.ChatService.SendEvent:output_type -> chat.v1.SendEventResponse
-	8,  // 76: chat.v1.ChatService.GetEvent:output_type -> chat.v1.GetEventResponse
-	10, // 77: chat.v1.ChatService.GetHistory:output_type -> chat.v1.GetHistoryResponse
-	12, // 78: chat.v1.ChatService.GetRoom:output_type -> chat.v1.GetRoomResponse
-	15, // 79: chat.v1.ChatService.CreateRoom:output_type -> chat.v1.CreateRoomResponse
-	17, // 80: chat.v1.ChatService.SearchRooms:output_type -> chat.v1.SearchRoomsResponse
-	19, // 81: chat.v1.ChatService.UpdateRoom:output_type -> chat.v1.UpdateRoomResponse
-	21, // 82: chat.v1.ChatService.DeleteRoom:output_type -> chat.v1.DeleteRoomResponse
-	24, // 83: chat.v1.ChatService.AddRoomSubscriptions:output_type -> chat.v1.AddRoomSubscriptionsResponse
-	26, // 84: chat.v1.ChatService.RemoveRoomSubscriptions:output_type -> chat.v1.RemoveRoomSubscriptionsResponse
-	28, // 85: chat.v1.ChatService.UpdateSubscriptionRole:output_type -> chat.v1.UpdateSubscriptionRoleResponse
-	30, // 86: chat.v1.ChatService.SearchRoomSubscriptions:output_type -> chat.v1.SearchRoomSubscriptionsResponse
-	33, // 87: chat.v1.ChatService.GetSubscriptionSettings:output_type -> chat.v1.GetSubscriptionSettingsResponse
-	35, // 88: chat.v1.ChatService.UpdateSubscriptionSettings:output_type -> chat.v1.UpdateSubscriptionSettingsResponse
-	37, // 89: chat.v1.ChatService.Live:output_type -> chat.v1.LiveResponse
-	40, // 90: chat.v1.ChatService.ListProposals:output_type -> chat.v1.ListProposalsResponse
-	42, // 91: chat.v1.ChatService.SubmitProposal:output_type -> chat.v1.SubmitProposalResponse
-	44, // 92: chat.v1.ChatService.ResolveReplayCursor:output_type -> chat.v1.ResolveReplayCursorResponse
-	46, // 93: chat.v1.ChatService.GetLatestReplayCursor:output_type -> chat.v1.GetLatestReplayCursorResponse
-	49, // 94: chat.v1.ChatService.ListReplayEvents:output_type -> chat.v1.ListReplayEventsResponse
-	75, // [75:95] is the sub-list for method output_type
-	55, // [55:75] is the sub-list for method input_type
-	55, // [55:55] is the sub-list for extension type_name
-	55, // [55:55] is the sub-list for extension extendee
-	0,  // [0:55] is the sub-list for field type_name
+	56, // 9: chat.v1.Room.metadata:type_name -> google.protobuf.Struct
+	57, // 10: chat.v1.Room.created_at:type_name -> google.protobuf.Timestamp
+	57, // 11: chat.v1.Room.updated_at:type_name -> google.protobuf.Timestamp
+	15, // 12: chat.v1.Room.stawi:type_name -> chat.v1.StawiRoomBinding
+	1,  // 13: chat.v1.StawiRoomBinding.state:type_name -> chat.v1.StawiRoomState
+	57, // 14: chat.v1.StawiRoomBinding.genesis_expires_at:type_name -> google.protobuf.Timestamp
+	57, // 15: chat.v1.StawiRoomBinding.bound_at:type_name -> google.protobuf.Timestamp
+	0,  // 16: chat.v1.CreateRoomRequest.type:type_name -> chat.v1.RoomType
+	58, // 17: chat.v1.CreateRoomRequest.members:type_name -> common.v1.ContactLink
+	56, // 18: chat.v1.CreateRoomRequest.metadata:type_name -> google.protobuf.Struct
+	14, // 19: chat.v1.CreateRoomResponse.room:type_name -> chat.v1.Room
+	54, // 20: chat.v1.CreateRoomResponse.error:type_name -> common.v1.ErrorDetail
+	56, // 21: chat.v1.SearchRoomsRequest.extras:type_name -> google.protobuf.Struct
+	55, // 22: chat.v1.SearchRoomsRequest.cursor:type_name -> common.v1.PageCursor
+	14, // 23: chat.v1.SearchRoomsResponse.data:type_name -> chat.v1.Room
+	56, // 24: chat.v1.UpdateRoomRequest.metadata:type_name -> google.protobuf.Struct
+	14, // 25: chat.v1.UpdateRoomResponse.room:type_name -> chat.v1.Room
+	54, // 26: chat.v1.UpdateRoomResponse.error:type_name -> common.v1.ErrorDetail
+	54, // 27: chat.v1.DeleteRoomResponse.error:type_name -> common.v1.ErrorDetail
+	58, // 28: chat.v1.RoomSubscription.member:type_name -> common.v1.ContactLink
+	57, // 29: chat.v1.RoomSubscription.joined_at:type_name -> google.protobuf.Timestamp
+	57, // 30: chat.v1.RoomSubscription.last_active:type_name -> google.protobuf.Timestamp
+	24, // 31: chat.v1.AddRoomSubscriptionsRequest.members:type_name -> chat.v1.RoomSubscription
+	54, // 32: chat.v1.AddRoomSubscriptionsResponse.error:type_name -> common.v1.ErrorDetail
+	54, // 33: chat.v1.RemoveRoomSubscriptionsResponse.error:type_name -> common.v1.ErrorDetail
+	54, // 34: chat.v1.UpdateSubscriptionRoleResponse.error:type_name -> common.v1.ErrorDetail
+	55, // 35: chat.v1.SearchRoomSubscriptionsRequest.cursor:type_name -> common.v1.PageCursor
+	24, // 36: chat.v1.SearchRoomSubscriptionsResponse.members:type_name -> chat.v1.RoomSubscription
+	2,  // 37: chat.v1.SubscriptionSettings.notification_level:type_name -> chat.v1.NotificationLevel
+	33, // 38: chat.v1.GetSubscriptionSettingsResponse.settings:type_name -> chat.v1.SubscriptionSettings
+	54, // 39: chat.v1.GetSubscriptionSettingsResponse.error:type_name -> common.v1.ErrorDetail
+	2,  // 40: chat.v1.UpdateSubscriptionSettingsRequest.notification_level:type_name -> chat.v1.NotificationLevel
+	33, // 41: chat.v1.UpdateSubscriptionSettingsResponse.settings:type_name -> chat.v1.SubscriptionSettings
+	54, // 42: chat.v1.UpdateSubscriptionSettingsResponse.error:type_name -> common.v1.ErrorDetail
+	58, // 43: chat.v1.LiveRequest.source:type_name -> common.v1.ContactLink
+	59, // 44: chat.v1.LiveRequest.client_states:type_name -> chat.v1.ClientCommand
+	54, // 45: chat.v1.LiveResponse.error:type_name -> common.v1.ErrorDetail
+	3,  // 46: chat.v1.Proposal.type:type_name -> chat.v1.ProposalType
+	4,  // 47: chat.v1.Proposal.state:type_name -> chat.v1.ProposalState
+	56, // 48: chat.v1.Proposal.payload:type_name -> google.protobuf.Struct
+	57, // 49: chat.v1.Proposal.created_at:type_name -> google.protobuf.Timestamp
+	57, // 50: chat.v1.Proposal.expires_at:type_name -> google.protobuf.Timestamp
+	57, // 51: chat.v1.Proposal.resolved_at:type_name -> google.protobuf.Timestamp
+	4,  // 52: chat.v1.ListProposalsRequest.state:type_name -> chat.v1.ProposalState
+	55, // 53: chat.v1.ListProposalsRequest.cursor:type_name -> common.v1.PageCursor
+	40, // 54: chat.v1.ListProposalsResponse.proposals:type_name -> chat.v1.Proposal
+	5,  // 55: chat.v1.SubmitProposalRequest.action:type_name -> chat.v1.ProposalAction
+	40, // 56: chat.v1.SubmitProposalResponse.proposal:type_name -> chat.v1.Proposal
+	54, // 57: chat.v1.SubmitProposalResponse.error:type_name -> common.v1.ErrorDetail
+	50, // 58: chat.v1.ListReplayEventsResponse.entries:type_name -> chat.v1.ReplayEntry
+	6,  // 59: chat.v1.ChatService.SendEvent:input_type -> chat.v1.SendEventRequest
+	8,  // 60: chat.v1.ChatService.GetEvent:input_type -> chat.v1.GetEventRequest
+	10, // 61: chat.v1.ChatService.GetHistory:input_type -> chat.v1.GetHistoryRequest
+	12, // 62: chat.v1.ChatService.GetRoom:input_type -> chat.v1.GetRoomRequest
+	16, // 63: chat.v1.ChatService.CreateRoom:input_type -> chat.v1.CreateRoomRequest
+	18, // 64: chat.v1.ChatService.SearchRooms:input_type -> chat.v1.SearchRoomsRequest
+	20, // 65: chat.v1.ChatService.UpdateRoom:input_type -> chat.v1.UpdateRoomRequest
+	22, // 66: chat.v1.ChatService.DeleteRoom:input_type -> chat.v1.DeleteRoomRequest
+	25, // 67: chat.v1.ChatService.AddRoomSubscriptions:input_type -> chat.v1.AddRoomSubscriptionsRequest
+	27, // 68: chat.v1.ChatService.RemoveRoomSubscriptions:input_type -> chat.v1.RemoveRoomSubscriptionsRequest
+	29, // 69: chat.v1.ChatService.UpdateSubscriptionRole:input_type -> chat.v1.UpdateSubscriptionRoleRequest
+	31, // 70: chat.v1.ChatService.SearchRoomSubscriptions:input_type -> chat.v1.SearchRoomSubscriptionsRequest
+	34, // 71: chat.v1.ChatService.GetSubscriptionSettings:input_type -> chat.v1.GetSubscriptionSettingsRequest
+	36, // 72: chat.v1.ChatService.UpdateSubscriptionSettings:input_type -> chat.v1.UpdateSubscriptionSettingsRequest
+	38, // 73: chat.v1.ChatService.Live:input_type -> chat.v1.LiveRequest
+	41, // 74: chat.v1.ChatService.ListProposals:input_type -> chat.v1.ListProposalsRequest
+	43, // 75: chat.v1.ChatService.SubmitProposal:input_type -> chat.v1.SubmitProposalRequest
+	45, // 76: chat.v1.ChatService.ResolveReplayCursor:input_type -> chat.v1.ResolveReplayCursorRequest
+	47, // 77: chat.v1.ChatService.GetLatestReplayCursor:input_type -> chat.v1.GetLatestReplayCursorRequest
+	49, // 78: chat.v1.ChatService.ListReplayEvents:input_type -> chat.v1.ListReplayEventsRequest
+	7,  // 79: chat.v1.ChatService.SendEvent:output_type -> chat.v1.SendEventResponse
+	9,  // 80: chat.v1.ChatService.GetEvent:output_type -> chat.v1.GetEventResponse
+	11, // 81: chat.v1.ChatService.GetHistory:output_type -> chat.v1.GetHistoryResponse
+	13, // 82: chat.v1.ChatService.GetRoom:output_type -> chat.v1.GetRoomResponse
+	17, // 83: chat.v1.ChatService.CreateRoom:output_type -> chat.v1.CreateRoomResponse
+	19, // 84: chat.v1.ChatService.SearchRooms:output_type -> chat.v1.SearchRoomsResponse
+	21, // 85: chat.v1.ChatService.UpdateRoom:output_type -> chat.v1.UpdateRoomResponse
+	23, // 86: chat.v1.ChatService.DeleteRoom:output_type -> chat.v1.DeleteRoomResponse
+	26, // 87: chat.v1.ChatService.AddRoomSubscriptions:output_type -> chat.v1.AddRoomSubscriptionsResponse
+	28, // 88: chat.v1.ChatService.RemoveRoomSubscriptions:output_type -> chat.v1.RemoveRoomSubscriptionsResponse
+	30, // 89: chat.v1.ChatService.UpdateSubscriptionRole:output_type -> chat.v1.UpdateSubscriptionRoleResponse
+	32, // 90: chat.v1.ChatService.SearchRoomSubscriptions:output_type -> chat.v1.SearchRoomSubscriptionsResponse
+	35, // 91: chat.v1.ChatService.GetSubscriptionSettings:output_type -> chat.v1.GetSubscriptionSettingsResponse
+	37, // 92: chat.v1.ChatService.UpdateSubscriptionSettings:output_type -> chat.v1.UpdateSubscriptionSettingsResponse
+	39, // 93: chat.v1.ChatService.Live:output_type -> chat.v1.LiveResponse
+	42, // 94: chat.v1.ChatService.ListProposals:output_type -> chat.v1.ListProposalsResponse
+	44, // 95: chat.v1.ChatService.SubmitProposal:output_type -> chat.v1.SubmitProposalResponse
+	46, // 96: chat.v1.ChatService.ResolveReplayCursor:output_type -> chat.v1.ResolveReplayCursorResponse
+	48, // 97: chat.v1.ChatService.GetLatestReplayCursor:output_type -> chat.v1.GetLatestReplayCursorResponse
+	51, // 98: chat.v1.ChatService.ListReplayEvents:output_type -> chat.v1.ListReplayEventsResponse
+	79, // [79:99] is the sub-list for method output_type
+	59, // [59:79] is the sub-list for method input_type
+	59, // [59:59] is the sub-list for extension type_name
+	59, // [59:59] is the sub-list for extension extendee
+	0,  // [0:59] is the sub-list for field type_name
 }
 
 func init() { file_chat_v1_chat_proto_init() }
@@ -3592,17 +3800,17 @@ func file_chat_v1_chat_proto_init() {
 		return
 	}
 	file_chat_v1_definitions_proto_init()
-	file_chat_v1_chat_proto_msgTypes[29].OneofWrappers = []any{}
-	file_chat_v1_chat_proto_msgTypes[33].OneofWrappers = []any{}
+	file_chat_v1_chat_proto_msgTypes[30].OneofWrappers = []any{}
 	file_chat_v1_chat_proto_msgTypes[34].OneofWrappers = []any{}
-	file_chat_v1_chat_proto_msgTypes[36].OneofWrappers = []any{}
+	file_chat_v1_chat_proto_msgTypes[35].OneofWrappers = []any{}
+	file_chat_v1_chat_proto_msgTypes[37].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chat_v1_chat_proto_rawDesc), len(file_chat_v1_chat_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   45,
+			NumEnums:      6,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

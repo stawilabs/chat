@@ -12,6 +12,7 @@
 import 'dart:async' as $async;
 import 'dart:core' as $core;
 
+import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
 import '../../common/v1/common.pb.dart' as $8;
@@ -528,6 +529,7 @@ class Room extends $pb.GeneratedMessage {
     $core.String? creatorId,
     $core.bool? requiresApproval,
     RoomType? type,
+    StawiRoomBinding? stawi,
   }) {
     final $result = create();
     if (id != null) {
@@ -560,6 +562,9 @@ class Room extends $pb.GeneratedMessage {
     if (type != null) {
       $result.type = type;
     }
+    if (stawi != null) {
+      $result.stawi = stawi;
+    }
     return $result;
   }
   Room._() : super();
@@ -577,6 +582,7 @@ class Room extends $pb.GeneratedMessage {
     ..aOS(9, _omitFieldNames ? '' : 'creatorId')
     ..aOB(10, _omitFieldNames ? '' : 'requiresApproval')
     ..e<RoomType>(11, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE, defaultOrMaker: RoomType.ROOM_TYPE_UNSPECIFIED, valueOf: RoomType.valueOf, enumValues: RoomType.values)
+    ..aOM<StawiRoomBinding>(12, _omitFieldNames ? '' : 'stawi', subBuilder: StawiRoomBinding.create)
     ..hasRequiredFields = false
   ;
 
@@ -697,6 +703,195 @@ class Room extends $pb.GeneratedMessage {
   $core.bool hasType() => $_has(9);
   @$pb.TagNumber(11)
   void clearType() => clearField(11);
+
+  /// The room's Stawi binding: set once the room has been converted to a
+  /// Stawi room (a genesis was prepared), unset for a plain chat room. Every
+  /// member sees it, including one who joined after the conversion.
+  @$pb.TagNumber(12)
+  StawiRoomBinding get stawi => $_getN(10);
+  @$pb.TagNumber(12)
+  set stawi(StawiRoomBinding v) { setField(12, v); }
+  @$pb.TagNumber(12)
+  $core.bool hasStawi() => $_has(10);
+  @$pb.TagNumber(12)
+  void clearStawi() => clearField(12);
+  @$pb.TagNumber(12)
+  StawiRoomBinding ensureStawi() => $_ensure(10);
+}
+
+/// StawiRoomBinding binds a chat room to its on-chain custody. The chain room
+/// id is the chat room id: one identifier names the room in chat, in finance
+/// and on chain.
+class StawiRoomBinding extends $pb.GeneratedMessage {
+  factory StawiRoomBinding({
+    StawiRoomState? state,
+    $core.String? genesisId,
+    $core.String? genesisEventId,
+    $2.Timestamp? genesisExpiresAt,
+    $fixnum.Int64? chainId,
+    $core.String? custodyAddress,
+    $core.String? governanceAddress,
+    $fixnum.Int64? policyEpoch,
+    $2.Timestamp? boundAt,
+  }) {
+    final $result = create();
+    if (state != null) {
+      $result.state = state;
+    }
+    if (genesisId != null) {
+      $result.genesisId = genesisId;
+    }
+    if (genesisEventId != null) {
+      $result.genesisEventId = genesisEventId;
+    }
+    if (genesisExpiresAt != null) {
+      $result.genesisExpiresAt = genesisExpiresAt;
+    }
+    if (chainId != null) {
+      $result.chainId = chainId;
+    }
+    if (custodyAddress != null) {
+      $result.custodyAddress = custodyAddress;
+    }
+    if (governanceAddress != null) {
+      $result.governanceAddress = governanceAddress;
+    }
+    if (policyEpoch != null) {
+      $result.policyEpoch = policyEpoch;
+    }
+    if (boundAt != null) {
+      $result.boundAt = boundAt;
+    }
+    return $result;
+  }
+  StawiRoomBinding._() : super();
+  factory StawiRoomBinding.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory StawiRoomBinding.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'StawiRoomBinding', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..e<StawiRoomState>(1, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE, defaultOrMaker: StawiRoomState.STAWI_ROOM_STATE_UNSPECIFIED, valueOf: StawiRoomState.valueOf, enumValues: StawiRoomState.values)
+    ..aOS(2, _omitFieldNames ? '' : 'genesisId')
+    ..aOS(3, _omitFieldNames ? '' : 'genesisEventId')
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'genesisExpiresAt', subBuilder: $2.Timestamp.create)
+    ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'chainId', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOS(6, _omitFieldNames ? '' : 'custodyAddress')
+    ..aOS(7, _omitFieldNames ? '' : 'governanceAddress')
+    ..a<$fixnum.Int64>(8, _omitFieldNames ? '' : 'policyEpoch', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOM<$2.Timestamp>(9, _omitFieldNames ? '' : 'boundAt', subBuilder: $2.Timestamp.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  StawiRoomBinding clone() => StawiRoomBinding()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  StawiRoomBinding copyWith(void Function(StawiRoomBinding) updates) => super.copyWith((message) => updates(message as StawiRoomBinding)) as StawiRoomBinding;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiRoomBinding create() => StawiRoomBinding._();
+  StawiRoomBinding createEmptyInstance() => create();
+  static $pb.PbList<StawiRoomBinding> createRepeated() => $pb.PbList<StawiRoomBinding>();
+  @$core.pragma('dart2js:noInline')
+  static StawiRoomBinding getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiRoomBinding>(create);
+  static StawiRoomBinding? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  StawiRoomState get state => $_getN(0);
+  @$pb.TagNumber(1)
+  set state(StawiRoomState v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasState() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearState() => clearField(1);
+
+  /// The latest genesis prepared for the room.
+  @$pb.TagNumber(2)
+  $core.String get genesisId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set genesisId($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasGenesisId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGenesisId() => clearField(2);
+
+  /// The room event (stawi room conversion) that carries the genesis card.
+  @$pb.TagNumber(3)
+  $core.String get genesisEventId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set genesisEventId($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasGenesisEventId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGenesisEventId() => clearField(3);
+
+  /// When the pending genesis expires; unset once bound.
+  @$pb.TagNumber(4)
+  $2.Timestamp get genesisExpiresAt => $_getN(3);
+  @$pb.TagNumber(4)
+  set genesisExpiresAt($2.Timestamp v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasGenesisExpiresAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearGenesisExpiresAt() => clearField(4);
+  @$pb.TagNumber(4)
+  $2.Timestamp ensureGenesisExpiresAt() => $_ensure(3);
+
+  /// The following are set once the room is bound.
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get chainId => $_getI64(4);
+  @$pb.TagNumber(5)
+  set chainId($fixnum.Int64 v) { $_setInt64(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasChainId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearChainId() => clearField(5);
+
+  /// The room's RoomCustody contract address (0x-prefixed, lower case).
+  @$pb.TagNumber(6)
+  $core.String get custodyAddress => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set custodyAddress($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasCustodyAddress() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCustodyAddress() => clearField(6);
+
+  /// The room's GovernanceModule address (0x-prefixed, lower case).
+  @$pb.TagNumber(7)
+  $core.String get governanceAddress => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set governanceAddress($core.String v) { $_setString(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasGovernanceAddress() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearGovernanceAddress() => clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get policyEpoch => $_getI64(7);
+  @$pb.TagNumber(8)
+  set policyEpoch($fixnum.Int64 v) { $_setInt64(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasPolicyEpoch() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPolicyEpoch() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $2.Timestamp get boundAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set boundAt($2.Timestamp v) { setField(9, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasBoundAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearBoundAt() => clearField(9);
+  @$pb.TagNumber(9)
+  $2.Timestamp ensureBoundAt() => $_ensure(8);
 }
 
 class CreateRoomRequest extends $pb.GeneratedMessage {
