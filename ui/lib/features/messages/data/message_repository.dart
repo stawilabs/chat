@@ -450,21 +450,6 @@ class MessageRepository {
     return query.watch().map((rows) => rows.map(_toRoomEvent).toList());
   }
 
-  /// The newest event of [type] in [roomId].
-  Stream<domain.RoomEvent?> watchLatestEventByType(
-    String roomId,
-    domain.RoomEventType type,
-  ) {
-    final query = _database.select(_database.roomEvents)
-      ..where((t) => t.roomId.equals(roomId) & t.type.equals(type.storageCode))
-      ..orderBy([(t) => OrderingTerm.desc(_effectiveTimestamp(t))])
-      ..limit(1);
-
-    return query.watchSingleOrNull().map(
-      (row) => row == null ? null : _toRoomEvent(row),
-    );
-  }
-
   /// Replaces an event's content with what the server stored for it, without
   /// marking it edited (e.g. a Stawi conversion the server filled in with
   /// its genesis).

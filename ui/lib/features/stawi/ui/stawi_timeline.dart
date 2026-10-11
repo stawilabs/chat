@@ -456,14 +456,6 @@ class FinanceCardBubble extends ConsumerWidget {
       () => ref.read(stawiFinanceServiceProvider).proposal(proposalId),
     );
     if (proposal == null || !context.mounted) return;
-    if (proposal.ballot == finance.BallotMode.BALLOT_MODE_SECRET) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Secret-ballot votes are not supported in the app yet'),
-        ),
-      );
-      return;
-    }
     if (proposal.onchainProposalId.toInt() <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('The proposal is not on chain yet')),
@@ -474,7 +466,10 @@ class FinanceCardBubble extends ConsumerWidget {
       context: context,
       builder: (_) => GovernanceDialog(
         roomId: roomId,
-        action: GovernanceAction.vote,
+        // A secret ballot is committed now and revealed after voting closes.
+        action: proposal.ballot == finance.BallotMode.BALLOT_MODE_SECRET
+            ? GovernanceAction.secretVote
+            : GovernanceAction.vote,
         onchainProposalId: proposal.onchainProposalId.toInt(),
       ),
     );

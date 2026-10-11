@@ -1,9 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show hexToBytes;
 
 import '../../auth/data/current_user_provider.dart';
+import '../../messages/domain/room_event.dart';
 import '../../rooms/data/detail_panel_providers.dart';
+import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/governance_requests.dart';
 import 'stawi_feedback.dart';
@@ -15,21 +20,24 @@ Future<bool> sendGovernanceRequest(
   WidgetRef ref, {
   required String roomId,
   required GovernanceRequest request,
-}) async {
-  final sent = await runStawiAction(
-    context,
-    () => ref
-        .read(stawiRoomServiceProvider)
-        .signedCall(
-          roomId: roomId,
-          kind: request.kind,
-          params: request.params,
-          summary: request.summary,
-        ),
-    success: 'Signed and sent: ${request.summary}',
-  );
-  return sent != null;
-}
+}) => _send(
+  context,
+  () => ref
+      .read(stawiRoomServiceProvider)
+      .signedCall(
+        roomId: roomId,
+        kind: request.kind,
+        params: request.params,
+        summary: request.summary,
+      ),
+  'Signed and sent: ${request.summary}',
+);
+
+Future<bool> _send(
+  BuildContext context,
+  Future<RoomEvent> Function() act,
+  String success,
+) async => await runStawiAction(context, act, success: success) != null;
 
 /// The governance acts a member can sign from a Stawi room.
 enum GovernanceAction {
@@ -39,14 +47,44 @@ enum GovernanceAction {
   admit('Admit a member', Icons.how_to_reg_outlined),
   proposeRemoval('Propose removing a member', Icons.person_remove_outlined),
   vote('Vote on a proposal', Icons.how_to_vote_outlined),
+  secretVote('Cast a secret vote', Icons.lock_outline),
+  revealVote('Reveal my secret vote', Icons.lock_open_outlined),
+  assignRole('Propose a role holder', Icons.badge_outlined),
+  revokeRole('Propose removing a role holder', Icons.person_off_outlined),
   delegate('Delegate my votes', Icons.forward_outlined),
   revokeDelegation('Revoke my delegation', Icons.undo),
+  freeze('Approve freezing the room', Icons.ac_unit),
+  proposeExit('Propose a principal exit', Icons.output_outlined),
+  voteExit('Vote on a principal exit', Icons.fact_check_outlined),
   leave('Leave the room', Icons.exit_to_app);
 
   const GovernanceAction(this.label, this.icon);
 
   final String label;
   final IconData icon;
+
+  bool get needsMember => switch (this) {
+    invite ||
+    admit ||
+    proposeRemoval ||
+    delegate ||
+    assignRole ||
+    revokeRole => true,
+    _ => false,
+  };
+
+  bool get needsRole => this == assignRole || this == revokeRole;
+
+  /// The number field's label, when the act takes one.
+  String? get numberLabel => switch (this) {
+    acceptInvitation => 'Invitation number',
+    vote || secretVote || revealVote => 'On-chain proposal number',
+    voteExit => 'Exit ballot number',
+    proposeExit => 'Exit proposal to cancel (optional)',
+    _ => null,
+  };
+
+  bool get needsChoice => this == vote || this == secretVote;
 }
 
 /// Lets the member pick a governance act, fill in what it needs, then signs
@@ -57,6 +95,7 @@ Future<void> showGovernanceSheet(
 }) async {
   final action = await showModalBottomSheet<GovernanceAction>(
     context: context,
+    isScrollControlled: true,
     builder: (context) => SafeArea(
       child: ListView(
         shrinkWrap: true,
@@ -91,7 +130,7 @@ class GovernanceDialog extends ConsumerStatefulWidget {
   final String roomId;
   final GovernanceAction action;
 
-  /// Prefills the proposal for [GovernanceAction.vote].
+  /// Prefills the proposal for a vote.
   final int? onchainProposalId;
 
   @override
@@ -101,42 +140,52 @@ class GovernanceDialog extends ConsumerStatefulWidget {
 class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
   String? _memberProfileId;
   String _memberName = '';
+  String? _roleId;
+  String _roleName = '';
+  int _capabilities = 0;
   late final TextEditingController _number = TextEditingController(
     text: widget.onchainProposalId?.toString() ?? '',
   );
+  final _text = TextEditingController();
   finance.VoteChoice _choice = finance.VoteChoice.VOTE_CHOICE_APPROVE;
+  bool _approve = true;
   int _days = 30;
   bool _sending = false;
   String? _error;
 
+  GovernanceAction get _action => widget.action;
+
   @override
   void dispose() {
     _number.dispose();
+    _text.dispose();
     super.dispose();
   }
 
-  bool get _needsMember => switch (widget.action) {
-    GovernanceAction.invite ||
-    GovernanceAction.admit ||
-    GovernanceAction.proposeRemoval ||
-    GovernanceAction.delegate => true,
-    _ => false,
-  };
-
-  bool get _needsNumber =>
-      widget.action == GovernanceAction.acceptInvitation ||
-      widget.action == GovernanceAction.vote;
-
-  GovernanceRequest _request() {
-    final member = _memberProfileId;
-    if (_needsMember && member == null) {
-      throw const FormatException('Choose a member');
-    }
-    final number = int.tryParse(_number.text.trim());
-    if (_needsNumber && (number == null || number <= 0)) {
+  int? _parsedNumber({required bool required}) {
+    final raw = _number.text.trim();
+    if (raw.isEmpty && !required) return 0;
+    final n = int.tryParse(raw);
+    if (n == null || n <= 0) {
       throw const FormatException('Enter a number greater than zero');
     }
-    return switch (widget.action) {
+    return n;
+  }
+
+  /// The act as a signed call, or null for the secret-ballot acts, which the
+  /// room service seals and reveals itself.
+  GovernanceRequest? _request() {
+    final member = _memberProfileId;
+    if (_action.needsMember && member == null) {
+      throw const FormatException('Choose a member');
+    }
+    if (_action.needsRole && _roleId == null) {
+      throw const FormatException('Choose a role');
+    }
+    final number = _action.numberLabel == null
+        ? null
+        : _parsedNumber(required: _action != GovernanceAction.proposeExit);
+    return switch (_action) {
       GovernanceAction.invite => inviteRequest(
         profileId: member!,
         name: _memberName,
@@ -155,20 +204,63 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         onchainProposalId: number!,
         choice: _choice,
       ),
+      GovernanceAction.secretVote || GovernanceAction.revealVote => null,
+      GovernanceAction.assignRole => assignRoleRequest(
+        profileId: member!,
+        name: _memberName,
+        roleId: _roleId!,
+        roleName: _roleName,
+        capabilities: _capabilities,
+      ),
+      GovernanceAction.revokeRole => revokeRoleRequest(
+        profileId: member!,
+        name: _memberName,
+        roleId: _roleId!,
+        roleName: _roleName,
+      ),
       GovernanceAction.delegate => delegateRequest(
         profileId: member!,
         name: _memberName,
         until: DateTime.now().add(Duration(days: _days)),
       ),
       GovernanceAction.revokeDelegation => revokeDelegationRequest,
+      GovernanceAction.freeze => freezeRequest(_reason()),
+      GovernanceAction.proposeExit => proposePrincipalExitRequest(
+        payloadHash: _payloadHash(),
+        cancelTarget: number ?? 0,
+      ),
+      GovernanceAction.voteExit => votePrincipalExitRequest(
+        ballotId: number!,
+        approve: _approve,
+      ),
       GovernanceAction.leave => leaveRequest,
     };
   }
 
+  String _reason() {
+    final reason = _text.text.trim();
+    if (reason.isEmpty || reason.length > 256) {
+      throw const FormatException('Give a reason (at most 256 characters)');
+    }
+    return reason;
+  }
+
+  Uint8List _payloadHash() {
+    try {
+      final bytes = hexToBytes(_text.text.trim());
+      if (bytes.length == 32) return bytes;
+    } on FormatException {
+      // reported below
+    }
+    throw const FormatException('The payload hash is 32 bytes of hex (0x…)');
+  }
+
   Future<void> _submit() async {
-    final GovernanceRequest request;
+    final GovernanceRequest? request;
+    final int? proposal;
     try {
       request = _request();
+      proposal = request == null ? _parsedNumber(required: true) : null;
     } on FormatException catch (e) {
       setState(() => _error = e.message);
       return;
@@ -177,12 +269,33 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       _sending = true;
       _error = null;
     });
-    final ok = await sendGovernanceRequest(
-      context,
-      ref,
-      roomId: widget.roomId,
-      request: request,
-    );
+    final service = ref.read(stawiRoomServiceProvider);
+    final send = switch (_action) {
+      GovernanceAction.secretVote => () => _send(
+        context,
+        () => service.commitSecretVote(
+          roomId: widget.roomId,
+          onchainProposalId: proposal!,
+          choice: _choice,
+        ),
+        'Secret vote cast; reveal it when voting closes',
+      ),
+      GovernanceAction.revealVote => () => _send(
+        context,
+        () => service.revealSecretVote(
+          roomId: widget.roomId,
+          onchainProposalId: proposal!,
+        ),
+        'Vote revealed',
+      ),
+      _ => () => sendGovernanceRequest(
+        context,
+        ref,
+        roomId: widget.roomId,
+        request: request!,
+      ),
+    };
+    final ok = await send();
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pop();
@@ -196,13 +309,13 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     final me = ref.watch(currentProfileIdProvider).asData?.value;
     final members = ref.watch(roomMembersProvider(widget.roomId));
     return AlertDialog(
-      title: Text(widget.action.label),
+      title: Text(_action.label),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_needsMember)
+            if (_action.needsMember)
               members.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (error, _) => Text(stawiErrorMessage(error)),
@@ -212,7 +325,9 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
                   decoration: const InputDecoration(labelText: 'Member'),
                   items: [
                     for (final m in list.where(
-                      (m) => m.profileId != null && m.profileId != me,
+                      (m) =>
+                          m.profileId != null &&
+                          (m.profileId != me || _action.needsRole),
                     ))
                       DropdownMenuItem(value: m.profileId, child: Text(m.name)),
                   ],
@@ -224,40 +339,45 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
                   }),
                 ),
               ),
-            if (_needsNumber)
+            if (_action.needsRole) _rolePicker(),
+            if (_action == GovernanceAction.assignRole) _capabilityPicker(),
+            if (_action.numberLabel != null)
               TextField(
                 key: const Key('governance-number'),
                 controller: _number,
                 keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: _action.numberLabel),
+              ),
+            if (_action.needsChoice) _choicePicker(),
+            if (_action == GovernanceAction.secretVote)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Only a sealed commitment is sent now. Your choice stays on '
+                  'this device until you reveal it after voting closes.',
+                ),
+              ),
+            if (_action == GovernanceAction.voteExit)
+              SwitchListTile(
+                key: const Key('governance-approve'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Approve the exit'),
+                value: _approve,
+                onChanged: (v) => setState(() => _approve = v),
+              ),
+            if (_action == GovernanceAction.freeze ||
+                _action == GovernanceAction.proposeExit)
+              TextField(
+                key: const Key('governance-text'),
+                controller: _text,
+                maxLength: _action == GovernanceAction.freeze ? 256 : 66,
                 decoration: InputDecoration(
-                  labelText: widget.action == GovernanceAction.vote
-                      ? 'On-chain proposal number'
-                      : 'Invitation number',
+                  labelText: _action == GovernanceAction.freeze
+                      ? 'Reason'
+                      : 'Exit intent digest (0x…)',
                 ),
               ),
-            if (widget.action == GovernanceAction.vote)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: SegmentedButton<finance.VoteChoice>(
-                  segments: const [
-                    ButtonSegment(
-                      value: finance.VoteChoice.VOTE_CHOICE_APPROVE,
-                      label: Text('Approve'),
-                    ),
-                    ButtonSegment(
-                      value: finance.VoteChoice.VOTE_CHOICE_REJECT,
-                      label: Text('Reject'),
-                    ),
-                    ButtonSegment(
-                      value: finance.VoteChoice.VOTE_CHOICE_ABSTAIN,
-                      label: Text('Abstain'),
-                    ),
-                  ],
-                  selected: {_choice},
-                  onSelectionChanged: (s) => setState(() => _choice = s.first),
-                ),
-              ),
-            if (widget.action == GovernanceAction.delegate)
+            if (_action == GovernanceAction.delegate)
               DropdownButtonFormField<int>(
                 initialValue: _days,
                 decoration: const InputDecoration(labelText: 'For'),
@@ -268,20 +388,21 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
                 ],
                 onChanged: (v) => setState(() => _days = v ?? 30),
               ),
-            if (!_needsMember && !_needsNumber)
-              Text(switch (widget.action) {
-                GovernanceAction.leave =>
-                  'You will leave the Stawi room on chain. This is signed '
-                      'with your device key.',
-                GovernanceAction.join =>
-                  'You will ask to join; a member admits you afterwards.',
-                _ => 'This is signed with your device key.',
-              }),
+            if (_action == GovernanceAction.leave)
+              const Text(
+                'You will leave the Stawi room on chain. This is signed with '
+                'your device key.',
+              ),
+            if (_action == GovernanceAction.join)
+              const Text(
+                'You will ask to join; a member admits you afterwards.',
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _error!,
+                  key: const Key('governance-error'),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
@@ -301,4 +422,69 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       ],
     );
   }
+
+  Widget _choicePicker() => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: SegmentedButton<finance.VoteChoice>(
+      segments: const [
+        ButtonSegment(
+          value: finance.VoteChoice.VOTE_CHOICE_APPROVE,
+          label: Text('Approve'),
+        ),
+        ButtonSegment(
+          value: finance.VoteChoice.VOTE_CHOICE_REJECT,
+          label: Text('Reject'),
+        ),
+        ButtonSegment(
+          value: finance.VoteChoice.VOTE_CHOICE_ABSTAIN,
+          label: Text('Abstain'),
+        ),
+      ],
+      selected: {_choice},
+      onSelectionChanged: (s) => setState(() => _choice = s.first),
+    ),
+  );
+
+  Widget _rolePicker() => ref
+      .watch(stawiRolesProvider(widget.roomId))
+      .when(
+        loading: () => const LinearProgressIndicator(),
+        error: (error, _) => Text(stawiErrorMessage(error)),
+        data: (roles) => DropdownButtonFormField<String>(
+          key: const Key('governance-role'),
+          initialValue: _roleId,
+          decoration: const InputDecoration(labelText: 'Role'),
+          items: [
+            for (final r in roles)
+              DropdownMenuItem(
+                value: r.roleId,
+                child: Text(r.displayName.isEmpty ? r.roleId : r.displayName),
+              ),
+          ],
+          onChanged: (value) => setState(() {
+            _roleId = value;
+            final role = roles.firstWhere((r) => r.roleId == value);
+            _roleName = role.displayName.isEmpty
+                ? role.roleId
+                : role.displayName;
+          }),
+        ),
+      );
+
+  Widget _capabilityPicker() => Wrap(
+    spacing: 6,
+    children: [
+      for (final entry in RoomCapability.labels.entries)
+        FilterChip(
+          key: Key('capability-${entry.value}'),
+          label: Text(entry.value),
+          selected: _capabilities & entry.key != 0,
+          onSelected: (on) => setState(
+            () => _capabilities = on
+                ? _capabilities | entry.key
+                : _capabilities & ~entry.key,
+          ),
+        ),
+    ],
+  );
 }

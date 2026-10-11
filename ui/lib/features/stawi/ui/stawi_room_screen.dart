@@ -5,6 +5,7 @@ import '../data/stawi_timeline_providers.dart';
 import 'contribute_screen.dart';
 import 'convert_room_screen.dart';
 import 'governance_sheet.dart';
+import 'room_money_screen.dart';
 import 'statement_screen.dart';
 import 'stawi_account_screen.dart';
 import 'stawi_feedback.dart';
@@ -95,6 +96,18 @@ class StawiRoomScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) =>
                     ContributeScreen(roomId: roomId, roomName: roomName),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const Key('stawi-money'),
+            icon: const Icon(Icons.account_balance_outlined),
+            label: const Text('Savings, share-outs, loans and members'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    RoomMoneyScreen(roomId: roomId, roomName: roomName),
               ),
             ),
           ),

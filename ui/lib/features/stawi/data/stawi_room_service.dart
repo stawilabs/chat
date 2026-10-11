@@ -1,8 +1,14 @@
+import 'dart:typed_data';
+
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 
 import '../../messages/data/message_sending_service.dart';
 import '../../messages/domain/room_event.dart';
+import '../domain/governance_requests.dart';
+import '../domain/secret_ballot.dart';
 import '../domain/signing_checks.dart';
 import '../domain/stawi_payloads.dart';
 import 'device_key_store.dart';
@@ -27,15 +33,18 @@ class StawiRoomService {
     required DeviceKeyStore keys,
     required Future<StawiIdentity> Function() identity,
     required StawiActSender send,
+    SecretBallotStore? ballots,
   }) : _rooms = rooms,
        _keys = keys,
        _identity = identity,
-       _send = send;
+       _send = send,
+       _ballots = ballots;
 
   final settlement.RoomServiceClient _rooms;
   final DeviceKeyStore _keys;
   final Future<StawiIdentity> Function() _identity;
   final StawiActSender _send;
+  final SecretBallotStore? _ballots;
 
   /// Asks for [roomId] to become a Stawi room. Chat prepares the genesis
   /// with settlement and turns this event into the genesis card.
@@ -109,6 +118,7 @@ class StawiRoomService {
     required settlement.RoomCallKind kind,
     required String summary,
     settlement.RoomCallParams? params,
+    Uint8List? account,
   }) async {
     final me = await _identity();
     if (me.accounts.isEmpty) {
@@ -119,13 +129,14 @@ class StawiRoomService {
         chatRoomId: roomId,
         kind: kind,
         params: params,
+        account: account,
       ),
     );
     final digest = checkedRoomCallDigest(
       prepared: prepared,
       kind: kind,
       chatRoomId: roomId,
-      ownAccounts: me.addresses,
+      ownAccounts: account == null ? me.addresses : [account],
     );
     final key = await _keys.loadOrCreate(me.profileId);
     return _send(
@@ -142,6 +153,112 @@ class StawiRoomService {
   }
 }
 
+extension StawiSecretBallot on StawiRoomService {
+  SecretBallotStore get _store =>
+      _ballots ?? (throw const StawiUnavailable('Secret ballots are off'));
+
+  /// Casts a secret-ballot vote: the choice is sealed with a fresh salt on
+  /// this device, and only its commitment, made for the member's primary
+  /// account (which is pinned as the signer), is sent.
+  Future<RoomEvent> commitSecretVote({
+    required String roomId,
+    required int onchainProposalId,
+    required finance.VoteChoice choice,
+  }) async {
+    final account = (await _identity()).primary;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    final sealed = await _store.seal(
+      roomId: roomId,
+      proposalId: onchainProposalId,
+      choice: choice,
+      member: account.address,
+    );
+    final request = commitVoteRequest(
+      onchainProposalId: onchainProposalId,
+      commitment: sealed.commitment(onchainProposalId),
+    );
+    return signedCall(
+      roomId: roomId,
+      kind: request.kind,
+      params: request.params,
+      summary: request.summary,
+      account: account.address,
+    );
+  }
+
+  /// Reveals the vote this device sealed for the proposal.
+  Future<RoomEvent> revealSecretVote({
+    required String roomId,
+    required int onchainProposalId,
+  }) async {
+    final sealed = await _store.load(roomId, onchainProposalId);
+    if (sealed == null) {
+      throw const StawiUnavailable(
+        'This device holds no sealed vote for that proposal',
+      );
+    }
+    final request = revealVoteRequest(
+      onchainProposalId: onchainProposalId,
+      choice: sealed.choice,
+      salt: sealed.salt,
+    );
+    return signedCall(
+      roomId: roomId,
+      kind: request.kind,
+      params: request.params,
+      summary: request.summary,
+      account: sealed.member,
+    );
+  }
+}
+
+/// The rules engine's permissionless calls: nobody signs them and the engine
+/// recomputes every amount, so the app hands them straight to settlement.
+const Set<settlement.RoomCallKind> engineRoomCallKinds = {
+  settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
+  settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
+  settlement.RoomCallKind.ROOM_CALL_KIND_REFUND_FORMER,
+  settlement.RoomCallKind.ROOM_CALL_KIND_DISBURSE_LOAN,
+};
+
+extension StawiEngineCalls on StawiRoomService {
+  /// Pushes a rules-engine call for [memberProfileId] (COLLECT, SETTLE,
+  /// REFUND_FORMER) or [loanId] (DISBURSE_LOAN): prepared and submitted to
+  /// settlement directly, with no signature and no chat event.
+  Future<settlement.RoomCall> pushEngineCall({
+    required String roomId,
+    required settlement.RoomCallKind kind,
+    String? memberProfileId,
+    int? loanId,
+  }) async {
+    if (!engineRoomCallKinds.contains(kind)) {
+      throw ArgumentError.value(kind, 'kind', 'not a rules-engine call');
+    }
+    final prepared = await _rooms.prepareRoomCall(
+      settlement.PrepareRoomCallRequest(
+        chatRoomId: roomId,
+        kind: kind,
+        params: settlement.RoomCallParams(
+          engine: settlement.RoomEngineParams(
+            member: memberProfileId == null
+                ? null
+                : settlement.RoomMemberRef(profileId: memberProfileId),
+            loanId: loanId == null ? null : Int64(loanId),
+          ),
+        ),
+      ),
+    );
+    if (prepared.call.kind != kind || prepared.call.requiresSignature) {
+      throw const SigningRefused('settlement prepared another kind of call');
+    }
+    return (await _rooms.submitRoomCall(
+      settlement.SubmitRoomCallRequest(callId: prepared.callId),
+    )).call;
+  }
+}
+
 final stawiRoomServiceProvider = Provider<StawiRoomService>((ref) {
   final sending = ref.watch(messageSendingServiceProvider);
   return StawiRoomService(
@@ -149,5 +266,6 @@ final stawiRoomServiceProvider = Provider<StawiRoomService>((ref) {
     keys: ref.watch(deviceKeyStoreProvider),
     identity: () => ref.read(stawiIdentityProvider.future),
     send: sending.sendStawiAct,
+    ballots: SecretBallotStore(const SecureStorageDeviceKeyVault()),
   );
 });

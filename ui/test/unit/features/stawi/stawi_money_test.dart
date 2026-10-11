@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
@@ -180,12 +181,8 @@ void main() {
       fakeSettlement();
       final keys = DeviceKeyStore(vaultWith('p1', v.devicePrivateKey));
       await expectLater(
-        service(
-          keys,
-          v.identity('p1'),
-          proofs: unavailableGenesisSessionProof,
-        ).deploy(),
-        throwsA(isA<StawiUnavailable>()),
+        service(keys, v.identity('p1'), proofs: refusingSessionProofs).deploy(),
+        throwsA(isA<connect.ConnectException>()),
       );
       expect(
         transport.requestsTo(settlement.AccountService.deployAccount),

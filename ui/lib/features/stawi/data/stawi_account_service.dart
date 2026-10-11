@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:antinvestor_api_authentication/antinvestor_api_authentication.dart'
+    as authentication;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import '../domain/account_engine_calls.dart';
 import '../domain/signing_checks.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
@@ -16,18 +20,26 @@ import 'stawi_identity.dart';
 typedef GenesisSessionProofs =
     Future<Uint8List> Function({required Uint8List deviceAddress});
 
-/// The app has no generated client for the authentication service's genesis
-/// session-proof endpoint, so account deployment cannot complete from this
-/// build yet.
-Future<Uint8List> unavailableGenesisSessionProof({
-  required Uint8List deviceAddress,
-}) async => throw const StawiUnavailable(
-  'Deploying an account needs a genesis session proof, which this version '
-  'of the app cannot request yet.',
-);
+/// The proof from the authentication service's IssueGenesisSessionProof,
+/// bound to the caller's own live session and device (taken from the token,
+/// never from the request). Settlement takes the token as its UTF-8 bytes.
+GenesisSessionProofs authenticationSessionProofs(
+  authentication.AuthenticationServiceClient client,
+) => ({required Uint8List deviceAddress}) async {
+  final response = await client.issueGenesisSessionProof(
+    authentication.IssueGenesisSessionProofRequest(
+      pubkeyHash: bytesToHex(devicePubkeyHash(deviceAddress)),
+      deviceKeyId: bytesToHex0x(deviceAddress).toLowerCase(),
+    ),
+  );
+  if (response.token.isEmpty) {
+    throw const StawiUnavailable('The sign-in service issued no session proof');
+  }
+  return Uint8List.fromList(utf8.encode(response.token));
+};
 
 final genesisSessionProofsProvider = Provider<GenesisSessionProofs>(
-  (ref) => unavailableGenesisSessionProof,
+  (ref) => authenticationSessionProofs(ref.watch(authenticationProvider)),
 );
 
 /// The profile's account as the account screen shows it.
@@ -219,6 +231,50 @@ class StawiAccountService {
       ),
     );
     return submitted.call;
+  }
+
+  /// A loan or withdrawal call on the member's account, signed on this device
+  /// and sent straight to settlement. See [AccountEngineCall] for what the
+  /// backend still has to ship.
+  Future<settlement.AccountCall> engineCall(
+    AccountEngineRequest request,
+  ) async {
+    final kind = settlement.AccountCallKind.valueOf(request.call.code);
+    if (kind == null) {
+      throw StawiUnavailable(
+        '${request.call.label} needs a newer Stawi settlement API '
+        '(stawi_api 0.3.0, stawi feat/account-engine-calls).',
+      );
+    }
+    final me = await _identity();
+    final account = me.primary;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    final key = await _keys.loadOrCreate(me.profileId);
+    // TODO(stawilabs): stawi branch feat/account-engine-calls. With stawi_api 0.3.0,
+    // also set loanId, productId, instalments and replaces from [request].
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: kind,
+        params: settlement.AccountCallParams(
+          room: request.custody,
+          amount: request.call.takesAmount ? request.amount : null,
+        ),
+      ),
+    );
+    final digest = checkedAccountCallDigest(
+      prepared: prepared,
+      kind: kind,
+      account: account.address,
+    );
+    return (await _accounts.submitAccountCall(
+      settlement.SubmitAccountCallRequest(
+        callId: prepared.callId,
+        authorization: key.sign(digest),
+      ),
+    )).call;
   }
 
   /// Follows a submitted account call until it is final, failed or expired,

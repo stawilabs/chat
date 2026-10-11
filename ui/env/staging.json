@@ -8,5 +8,6 @@
   "FILES_URL": "https://api.stawi.org/files",
   "SETTLEMENT_URL": "https://settlement.stawi.org",
   "FINANCE_URL": "https://finance.stawi.org",
+  "AUTHENTICATION_URL": "https://accounts.stawi.org",
   "OAUTH2_ISSUER_URL": "https://oauth2.stawi.org"
 }

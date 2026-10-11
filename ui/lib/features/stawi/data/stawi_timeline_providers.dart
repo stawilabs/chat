@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../messages/data/message_providers.dart';
 import '../../messages/domain/room_event.dart';
 import '../domain/stawi_payloads.dart';
+import 'stawi_binding.dart';
 
 /// The outcomes chat posted under an act (keyed by the act's event id),
 /// oldest first.
@@ -24,14 +25,6 @@ final stawiGenesisSignaturesProvider = StreamProvider.autoDispose
           ),
     );
 
-/// The room's latest conversion request, if any.
-final stawiConversionProvider = StreamProvider.autoDispose
-    .family<RoomEvent?, String>(
-      (ref, roomId) => ref
-          .watch(messageRepositoryProvider)
-          .watchLatestEventByType(roomId, RoomEventType.stawiRoomConversion),
-    );
-
 /// Where a chat room stands on its way to being a Stawi room.
 enum StawiRoomPhase {
   /// A plain chat room (never converted, or the last conversion did not go
@@ -48,7 +41,8 @@ enum StawiRoomPhase {
   active,
 }
 
-/// The room's phase from its latest conversion and the outcomes under it.
+/// A genesis card's phase from its conversion and the outcomes under it (the
+/// card shows its own progress; the room's phase comes from its binding).
 StawiRoomPhase stawiRoomPhase(
   RoomEvent? conversion,
   List<RoomEvent> outcomes, {
@@ -74,15 +68,18 @@ StawiRoomPhase stawiRoomPhase(
   return StawiRoomPhase.awaitingSignatures;
 }
 
-/// The room's phase, live.
+/// The room's phase from chat's binding: chat records the conversion, the
+/// chain's activation and a failed genesis, so every member sees the same.
+StawiRoomPhase phaseOfBinding(StawiBinding? binding) =>
+    switch (binding?.state) {
+      null || StawiBindingState.failed => StawiRoomPhase.chatOnly,
+      StawiBindingState.pending => StawiRoomPhase.awaitingSignatures,
+      StawiBindingState.bound => StawiRoomPhase.active,
+    };
+
+/// The room's phase, live, from its binding.
 final stawiRoomPhaseProvider = Provider.autoDispose
-    .family<AsyncValue<StawiRoomPhase>, String>((ref, roomId) {
-      final conversion = ref.watch(stawiConversionProvider(roomId));
-      return conversion.whenData((event) {
-        if (event == null) return StawiRoomPhase.chatOnly;
-        final outcomes =
-            ref.watch(stawiOutcomesProvider(event.id)).asData?.value ??
-            const <RoomEvent>[];
-        return stawiRoomPhase(event, outcomes);
-      });
-    });
+    .family<AsyncValue<StawiRoomPhase>, String>(
+      (ref, roomId) =>
+          ref.watch(stawiBindingProvider(roomId)).whenData(phaseOfBinding),
+    );

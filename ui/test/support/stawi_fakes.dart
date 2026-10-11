@@ -234,3 +234,12 @@ class GoGenesisVector {
 /// A uint64 decimal (possibly above Int64's signed range) as Int64 bits.
 Int64 _u64(String decimal) =>
     Int64.parseHex(BigInt.parse(decimal).toRadixString(16));
+
+/// A session-proof source whose issuer refuses, as the authentication service
+/// does without a live session on this device.
+Future<Uint8List> refusingSessionProofs({
+  required Uint8List deviceAddress,
+}) async => throw connect.ConnectException(
+  connect.Code.permissionDenied,
+  'no live authenticated session for this profile on this device',
+);

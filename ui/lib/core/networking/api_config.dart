@@ -71,6 +71,13 @@ class ApiConfig {
     defaultValue: 'https://settlement.stawi.org',
   );
 
+  /// The authentication service's Connect API (genesis session proofs). It
+  /// is served on the accounts host, the same service as the sign-in pages.
+  static const String authenticationBaseUrl = String.fromEnvironment(
+    'AUTHENTICATION_URL',
+    defaultValue: 'https://accounts.stawi.org',
+  );
+
   /// Stawi finance: the read model (rooms, members, templates, statements).
   static const String financeBaseUrl = String.fromEnvironment(
     'FINANCE_URL',

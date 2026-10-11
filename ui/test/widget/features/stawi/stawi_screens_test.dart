@@ -115,12 +115,15 @@ void main() {
       await pump(
         tester,
         state: settlement.AccountState(deployed: false),
-        proofs: unavailableGenesisSessionProof,
+        proofs: refusingSessionProofs,
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('stawi-deploy-account')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('genesis session proof'), findsOneWidget);
+      expect(
+        find.textContaining('no live authenticated session'),
+        findsOneWidget,
+      );
       expect(
         transport.requestsTo(settlement.AccountService.deployAccount),
         isEmpty,
@@ -172,7 +175,7 @@ void main() {
           StawiAccountService(
             accounts: settlement.AccountServiceClient(transport),
             keys: DeviceKeyStore(MemoryDeviceKeyVault()),
-            proofs: unavailableGenesisSessionProof,
+            proofs: refusingSessionProofs,
             identity: () async => identityWith('p1', account),
           ),
         ),
@@ -260,7 +263,7 @@ void main() {
             StawiAccountService(
               accounts: settlement.AccountServiceClient(transport),
               keys: keys,
-              proofs: unavailableGenesisSessionProof,
+              proofs: refusingSessionProofs,
               identity: () async => identityWith('p1', account),
             ),
           ),

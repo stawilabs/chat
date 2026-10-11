@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fixnum/fixnum.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -141,4 +143,167 @@ GovernanceRequest delegateRequest({
 const GovernanceRequest revokeDelegationRequest = GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_DELEGATION,
   summary: 'Revoke vote delegation',
+);
+
+/// Commits a secret-ballot vote: only the commitment goes on chain; the
+/// choice and salt stay on this device until the reveal.
+GovernanceRequest commitVoteRequest({
+  required int onchainProposalId,
+  required Uint8List commitment,
+}) {
+  if (commitment.length != 32) {
+    throw ArgumentError.value(commitment.length, 'commitment', 'must be 32');
+  }
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_COMMIT_VOTE,
+    params: settlement.RoomCallParams(
+      vote: settlement.RoomVoteParams(
+        onchainProposalId: Int64(onchainProposalId),
+        commitment: commitment,
+      ),
+    ),
+    summary: 'Cast a secret vote on proposal #$onchainProposalId',
+  );
+}
+
+/// Reveals a committed secret-ballot vote.
+GovernanceRequest revealVoteRequest({
+  required int onchainProposalId,
+  required finance.VoteChoice choice,
+  required Uint8List salt,
+}) {
+  if (salt.length != 32) {
+    throw ArgumentError.value(salt.length, 'salt', 'must be 32 bytes');
+  }
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_REVEAL_VOTE,
+    params: settlement.RoomCallParams(
+      vote: settlement.RoomVoteParams(
+        onchainProposalId: Int64(onchainProposalId),
+        choice: choice,
+        salt: salt,
+      ),
+    ),
+    summary: 'Reveal my vote on proposal #$onchainProposalId',
+  );
+}
+
+/// Proposes a principal exit: the custody's fallback spend of [payloadHash]
+/// (the exit intent's digest), or, with [cancelTarget], cancelling an earlier
+/// exit proposal.
+GovernanceRequest proposePrincipalExitRequest({
+  required Uint8List payloadHash,
+  int cancelTarget = 0,
+}) {
+  if (payloadHash.length != 32) {
+    throw ArgumentError.value(payloadHash.length, 'payloadHash', 'must be 32');
+  }
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE_PRINCIPAL_EXIT,
+    params: settlement.RoomCallParams(
+      principalExit: settlement.RoomPrincipalExitParams(
+        payloadHash: payloadHash,
+        cancelTarget: Int64(cancelTarget),
+      ),
+    ),
+    summary: cancelTarget > 0
+        ? 'Propose cancelling principal exit #$cancelTarget'
+        : 'Propose a principal exit',
+  );
+}
+
+/// Votes on the principal-exit ballot [ballotId].
+GovernanceRequest votePrincipalExitRequest({
+  required int ballotId,
+  required bool approve,
+}) {
+  if (ballotId <= 0) {
+    throw ArgumentError.value(ballotId, 'ballotId', 'must be positive');
+  }
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_VOTE_PRINCIPAL_EXIT,
+    params: settlement.RoomCallParams(
+      principalExit: settlement.RoomPrincipalExitParams(
+        ballotId: Int64(ballotId),
+        approve: approve,
+      ),
+    ),
+    summary:
+        '${approve ? 'Approve' : 'Reject'} principal exit ballot #$ballotId',
+  );
+}
+
+/// An officer's approval to freeze the room.
+GovernanceRequest freezeRequest(String reason) {
+  final trimmed = reason.trim();
+  if (trimmed.isEmpty || trimmed.length > 256) {
+    throw ArgumentError.value(reason, 'reason', 'give a reason (≤ 256)');
+  }
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_FREEZE,
+    params: settlement.RoomCallParams(
+      freeze_7: settlement.RoomFreezeParams(reason: trimmed),
+    ),
+    summary: 'Approve freezing the room: $trimmed',
+  );
+}
+
+/// RoomMembership.CAP_* bits a role may carry.
+abstract final class RoomCapability {
+  static const int invite = 1 << 0;
+  static const int suspend = 1 << 1;
+  static const int readmit = 1 << 2;
+  static const int admit = 1 << 3;
+  static const int freeze = 1 << 4;
+  static const int lend = 1 << 5;
+
+  static const Map<int, String> labels = {
+    invite: 'Invite',
+    suspend: 'Suspend',
+    readmit: 'Readmit',
+    admit: 'Admit',
+    freeze: 'Freeze',
+    lend: 'Lend',
+  };
+}
+
+/// Proposes electing [name] to the constitution's role [roleId]; the members
+/// vote on it.
+GovernanceRequest assignRoleRequest({
+  required String profileId,
+  required String name,
+  required String roleId,
+  required String roleName,
+  required int capabilities,
+  DateTime? validUntil,
+}) => GovernanceRequest(
+  kind: settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE,
+  params: settlement.RoomCallParams(
+    role: settlement.RoomRoleTerms(
+      member: _member(profileId),
+      roleId: roleId,
+      capabilities: capabilities,
+      validUntil: Int64(
+        validUntil == null
+            ? 0
+            : validUntil.toUtc().millisecondsSinceEpoch ~/ 1000,
+      ),
+      assign: true,
+    ),
+  ),
+  summary: 'Propose $name as $roleName',
+);
+
+/// Proposes removing [name] from the role [roleId].
+GovernanceRequest revokeRoleRequest({
+  required String profileId,
+  required String name,
+  required String roleId,
+  required String roleName,
+}) => GovernanceRequest(
+  kind: settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_ROLE,
+  params: settlement.RoomCallParams(
+    role: settlement.RoomRoleTerms(member: _member(profileId), roleId: roleId),
+  ),
+  summary: 'Propose removing $name as $roleName',
 );

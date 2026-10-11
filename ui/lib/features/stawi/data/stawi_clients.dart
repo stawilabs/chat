@@ -1,3 +1,5 @@
+import 'package:antinvestor_api_authentication/antinvestor_api_authentication.dart'
+    as authentication;
 import 'package:antinvestor_auth_runtime/antinvestor_auth_runtime.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -60,6 +62,37 @@ final financeGovernanceProvider = Provider<finance.GovernanceServiceClient>((
 ) {
   final runtime = ref.watch(authRuntimeProvider);
   return finance.GovernanceServiceClient(
+    createRuntimeTransportFactory(runtime)(
+      Uri.parse(ApiConfig.financeBaseUrl),
+      const [],
+    ),
+  );
+});
+
+final authenticationProvider =
+    Provider<authentication.AuthenticationServiceClient>((ref) {
+      final runtime = ref.watch(authRuntimeProvider);
+      return authentication.AuthenticationServiceClient(
+        createRuntimeTransportFactory(runtime)(
+          Uri.parse(ApiConfig.authenticationBaseUrl),
+          const [],
+        ),
+      );
+    });
+
+final financeSavingsProvider = Provider<finance.SavingsServiceClient>((ref) {
+  final runtime = ref.watch(authRuntimeProvider);
+  return finance.SavingsServiceClient(
+    createRuntimeTransportFactory(runtime)(
+      Uri.parse(ApiConfig.financeBaseUrl),
+      const [],
+    ),
+  );
+});
+
+final financeCreditProvider = Provider<finance.CreditServiceClient>((ref) {
+  final runtime = ref.watch(authRuntimeProvider);
+  return finance.CreditServiceClient(
     createRuntimeTransportFactory(runtime)(
       Uri.parse(ApiConfig.financeBaseUrl),
       const [],

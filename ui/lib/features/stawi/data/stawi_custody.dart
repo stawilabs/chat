@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
+import 'stawi_binding.dart';
 import 'stawi_clients.dart';
 
 /// Finds a bound chat room's RoomCustody address, or null when the source
@@ -31,16 +32,25 @@ RoomCustodySource firstCustodyOf(List<RoomCustodySource> sources) =>
       return null;
     };
 
-/// Where custody addresses come from, in order. The chat Room's own Stawi
-/// binding (room.stawi, chat#33) goes first once the chat SDK has it; the
-/// activation outcome carries no custody, so finance is the source until then.
-final roomCustodySourceProvider = Provider<RoomCustodySource>(
-  (ref) =>
-      firstCustodyOf([financeCustodySource(ref.watch(financeRoomsProvider))]),
+/// The custody from the chat Room's own Stawi binding, once bound.
+RoomCustodySource bindingCustodySource(StawiBindingReader read) =>
+    (chatRoomId) async {
+      final binding = await read(chatRoomId);
+      return binding != null && binding.isBound ? binding.custody : null;
+    };
+
+/// Where custody addresses come from, in order: the chat Room's binding, then
+/// finance's read model.
+final roomCustodySourceProvider = FutureProvider<RoomCustodySource>(
+  (ref) async => firstCustodyOf([
+    bindingCustodySource(await ref.watch(stawiBindingReaderProvider.future)),
+    financeCustodySource(ref.watch(financeRoomsProvider)),
+  ]),
 );
 
 /// The room's custody address; null while no source knows it.
 final roomCustodyProvider = FutureProvider.autoDispose
     .family<Uint8List?, String>(
-      (ref, chatRoomId) => ref.watch(roomCustodySourceProvider)(chatRoomId),
+      (ref, chatRoomId) async =>
+          (await ref.watch(roomCustodySourceProvider.future))(chatRoomId),
     );

@@ -41,6 +41,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  antinvestor_api_authentication:
+    dependency: "direct main"
+    description:
+      name: antinvestor_api_authentication
+      sha256: "8be63154d0c4014ff0862ac58a0e36f55d7137e50a2f3743c50599cd770c2710"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   antinvestor_api_common:
     dependency: "direct main"
     description:
@@ -2034,7 +2042,7 @@ packages:
       path: "../sdk/dart/chat"
       relative: true
     source: path
-    version: "1.55.0"
+    version: "1.56.0"
   stawi_finance_sdk:
     dependency: "direct main"
     description:
