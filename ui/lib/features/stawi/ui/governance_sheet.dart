@@ -3,14 +3,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show hexToBytes;
 
 import '../../auth/data/current_user_provider.dart';
-import '../../messages/domain/room_event.dart';
 import '../../rooms/data/detail_panel_providers.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/governance_requests.dart';
+import '../domain/signing_checks.dart';
 import 'stawi_feedback.dart';
 
 /// Signs [request] on this device and sends it into [roomId]. The act shows in
@@ -20,6 +21,7 @@ Future<bool> sendGovernanceRequest(
   WidgetRef ref, {
   required String roomId,
   required GovernanceRequest request,
+  void Function(settlement.PrepareRoomCallResponse prepared)? check,
 }) => _send(
   context,
   () => ref
@@ -29,13 +31,14 @@ Future<bool> sendGovernanceRequest(
         kind: request.kind,
         params: request.params,
         summary: request.summary,
+        check: check,
       ),
   'Signed and sent: ${request.summary}',
 );
 
-Future<bool> _send(
+Future<bool> _send<T>(
   BuildContext context,
-  Future<RoomEvent> Function() act,
+  Future<T> Function() act,
   String success,
 ) async => await runStawiAction(context, act, success: success) != null;
 
@@ -55,7 +58,13 @@ enum GovernanceAction {
   revokeDelegation('Revoke my delegation', Icons.undo),
   freeze('Approve freezing the room', Icons.ac_unit),
   proposeExit('Propose a principal exit', Icons.output_outlined),
+  proposeExitCancel('Propose cancelling a principal exit', Icons.block),
   voteExit('Vote on a principal exit', Icons.fact_check_outlined),
+  executeExit('Run a passed principal exit', Icons.play_circle_outline),
+  executeExitCancel(
+    'Run a passed exit cancellation',
+    Icons.stop_circle_outlined,
+  ),
   leave('Leave the room', Icons.exit_to_app);
 
   const GovernanceAction(this.label, this.icon);
@@ -79,8 +88,8 @@ enum GovernanceAction {
   String? get numberLabel => switch (this) {
     acceptInvitation => 'Invitation number',
     vote || secretVote || revealVote => 'On-chain proposal number',
-    voteExit => 'Exit ballot number',
-    proposeExit => 'Exit proposal to cancel (optional)',
+    voteExit || executeExit || executeExitCancel => 'Exit ballot number',
+    proposeExitCancel => 'Exit ballot to cancel',
     _ => null,
   };
 
@@ -147,6 +156,9 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     text: widget.onchainProposalId?.toString() ?? '',
   );
   final _text = TextEditingController();
+  final _amount = TextEditingController();
+  final _sourceBucket = TextEditingController(text: 'savings');
+  _ExitTo _exitTo = _ExitTo.member;
   finance.VoteChoice _choice = finance.VoteChoice.VOTE_CHOICE_APPROVE;
   bool _approve = true;
   int _days = 30;
@@ -159,6 +171,8 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
   void dispose() {
     _number.dispose();
     _text.dispose();
+    _amount.dispose();
+    _sourceBucket.dispose();
     super.dispose();
   }
 
@@ -184,7 +198,7 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     }
     final number = _action.numberLabel == null
         ? null
-        : _parsedNumber(required: _action != GovernanceAction.proposeExit);
+        : _parsedNumber(required: true);
     return switch (_action) {
       GovernanceAction.invite => inviteRequest(
         profileId: member!,
@@ -225,10 +239,10 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       ),
       GovernanceAction.revokeDelegation => revokeDelegationRequest,
       GovernanceAction.freeze => freezeRequest(_reason()),
-      GovernanceAction.proposeExit => proposePrincipalExitRequest(
-        payloadHash: _payloadHash(),
-        cancelTarget: number ?? 0,
-      ),
+      GovernanceAction.proposeExit => _exitRequest(),
+      GovernanceAction.proposeExitCancel => proposeExitCancelRequest(number!),
+      GovernanceAction.executeExit ||
+      GovernanceAction.executeExitCancel => null,
       GovernanceAction.voteExit => votePrincipalExitRequest(
         ballotId: number!,
         approve: _approve,
@@ -245,14 +259,48 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     return reason;
   }
 
-  Uint8List _payloadHash() {
-    try {
-      final bytes = hexToBytes(_text.text.trim());
-      if (bytes.length == 32) return bytes;
-    } on FormatException {
-      // reported below
+  GovernanceRequest _exitRequest() {
+    final amount = _amount.text.trim();
+    final source = _sourceBucket.text.trim();
+    if (source.isEmpty) throw const FormatException('Name the source bucket');
+    if (!RegExp(r'^[1-9][0-9]{0,77}$').hasMatch(amount)) {
+      throw const FormatException('Enter a whole amount greater than zero');
     }
-    throw const FormatException('The payload hash is 32 bytes of hex (0x…)');
+    switch (_exitTo) {
+      case _ExitTo.member:
+        if (_memberProfileId == null) {
+          throw const FormatException('Choose a member');
+        }
+        return proposePrincipalExitRequest(
+          sourceBucket: source,
+          amount: amount,
+          memberProfileId: _memberProfileId,
+          memberName: _memberName,
+        );
+      case _ExitTo.bucket:
+        final bucket = _text.text.trim();
+        if (bucket.isEmpty) throw const FormatException('Name the bucket');
+        return proposePrincipalExitRequest(
+          sourceBucket: source,
+          amount: amount,
+          bucket: bucket,
+        );
+      case _ExitTo.external:
+        Uint8List? to;
+        try {
+          to = hexToBytes(_text.text.trim());
+        } on FormatException {
+          to = null;
+        }
+        if (to == null || to.length != 20) {
+          throw const FormatException('The account is a 20-byte address');
+        }
+        return proposePrincipalExitRequest(
+          sourceBucket: source,
+          amount: amount,
+          externalAccount: to,
+        );
+    }
   }
 
   Future<void> _submit() async {
@@ -288,11 +336,29 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         ),
         'Vote revealed',
       ),
+      GovernanceAction.executeExit ||
+      GovernanceAction.executeExitCancel => () => _send(
+        context,
+        () => service.pushEngineCall(
+          roomId: widget.roomId,
+          kind: _action == GovernanceAction.executeExit
+              ? settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE_PRINCIPAL_EXIT
+              : settlement
+                    .RoomCallKind
+                    .ROOM_CALL_KIND_EXECUTE_PRINCIPAL_EXIT_CANCEL,
+          params: executeExitParams(proposal!),
+        ),
+        'Submitted to the chain',
+      ),
       _ => () => sendGovernanceRequest(
         context,
         ref,
         roomId: widget.roomId,
         request: request!,
+        check: _action == GovernanceAction.proposeExit
+            ? (prepared) =>
+                  checkPrincipalExit(prepared, amount: _amount.text.trim())
+            : null,
       ),
     };
     final ok = await send();
@@ -315,7 +381,9 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_action.needsMember)
+            if (_action.needsMember ||
+                (_action == GovernanceAction.proposeExit &&
+                    _exitTo == _ExitTo.member))
               members.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (error, _) => Text(stawiErrorMessage(error)),
@@ -365,16 +433,20 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
                 value: _approve,
                 onChanged: (v) => setState(() => _approve = v),
               ),
+            if (_action == GovernanceAction.proposeExit) ..._exitFields(),
             if (_action == GovernanceAction.freeze ||
-                _action == GovernanceAction.proposeExit)
+                (_action == GovernanceAction.proposeExit &&
+                    _exitTo != _ExitTo.member))
               TextField(
                 key: const Key('governance-text'),
                 controller: _text,
-                maxLength: _action == GovernanceAction.freeze ? 256 : 66,
+                maxLength: _action == GovernanceAction.freeze ? 256 : 64,
                 decoration: InputDecoration(
                   labelText: _action == GovernanceAction.freeze
                       ? 'Reason'
-                      : 'Exit intent digest (0x…)',
+                      : _exitTo == _ExitTo.bucket
+                      ? 'Destination bucket'
+                      : 'Destination account (0x…)',
                 ),
               ),
             if (_action == GovernanceAction.delegate)
@@ -422,6 +494,35 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       ],
     );
   }
+
+  List<Widget> _exitFields() => [
+    TextField(
+      key: const Key('exit-source'),
+      controller: _sourceBucket,
+      decoration: const InputDecoration(labelText: 'From bucket'),
+    ),
+    TextField(
+      key: const Key('exit-amount'),
+      controller: _amount,
+      keyboardType: TextInputType.number,
+      decoration: const InputDecoration(
+        labelText: 'Amount',
+        helperText: 'In the asset’s smallest unit',
+      ),
+    ),
+    Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SegmentedButton<_ExitTo>(
+        segments: const [
+          ButtonSegment(value: _ExitTo.member, label: Text('Member')),
+          ButtonSegment(value: _ExitTo.bucket, label: Text('Bucket')),
+          ButtonSegment(value: _ExitTo.external, label: Text('Account')),
+        ],
+        selected: {_exitTo},
+        onSelectionChanged: (s) => setState(() => _exitTo = s.first),
+      ),
+    ),
+  ];
 
   Widget _choicePicker() => Padding(
     padding: const EdgeInsets.only(top: 12),
@@ -488,3 +589,6 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     ],
   );
 }
+
+/// Where a principal exit pays to.
+enum _ExitTo { member, bucket, external }

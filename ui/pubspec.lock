@@ -2032,10 +2032,10 @@ packages:
     dependency: "direct main"
     description:
       name: stawi_api
-      sha256: "35dcde853e866497f0b1a9271ee80f04e427047d8327e3103f1efd92e3e02752"
+      sha256: f5a509dc63496bbfdddacd366973d34fd4da8ccdf356f5fe9ad1d5a25d6a1c06
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.3.0"
   stawi_api_chat:
     dependency: "direct main"
     description:
@@ -2047,10 +2047,10 @@ packages:
     dependency: "direct main"
     description:
       name: stawi_finance_sdk
-      sha256: cd6a1864e461f40328448a2218538d48dadb7e47f836f2ad623651b5f077b062
+      sha256: b5f6914fb9f2e2b28dc77f71a5a3890e3c58a52794a4d73663d51ebf828a3070
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.3.0"
   stream_channel:
     dependency: transitive
     description:

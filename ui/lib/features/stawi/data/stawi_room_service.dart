@@ -119,6 +119,7 @@ class StawiRoomService {
     required String summary,
     settlement.RoomCallParams? params,
     Uint8List? account,
+    void Function(settlement.PrepareRoomCallResponse prepared)? check,
   }) async {
     final me = await _identity();
     if (me.accounts.isEmpty) {
@@ -138,6 +139,7 @@ class StawiRoomService {
       chatRoomId: roomId,
       ownAccounts: account == null ? me.addresses : [account],
     );
+    check?.call(prepared);
     final key = await _keys.loadOrCreate(me.profileId);
     return _send(
       roomId: roomId,
@@ -214,13 +216,16 @@ extension StawiSecretBallot on StawiRoomService {
   }
 }
 
-/// The rules engine's permissionless calls: nobody signs them and the engine
-/// recomputes every amount, so the app hands them straight to settlement.
+/// The permissionless room calls: nobody signs them (the engines recompute
+/// every amount; custody checks a passed exit ballot itself), so the app hands
+/// them straight to settlement.
 const Set<settlement.RoomCallKind> engineRoomCallKinds = {
   settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
   settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
   settlement.RoomCallKind.ROOM_CALL_KIND_REFUND_FORMER,
   settlement.RoomCallKind.ROOM_CALL_KIND_DISBURSE_LOAN,
+  settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE_PRINCIPAL_EXIT,
+  settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE_PRINCIPAL_EXIT_CANCEL,
 };
 
 extension StawiEngineCalls on StawiRoomService {
@@ -232,22 +237,25 @@ extension StawiEngineCalls on StawiRoomService {
     required settlement.RoomCallKind kind,
     String? memberProfileId,
     int? loanId,
+    settlement.RoomCallParams? params,
   }) async {
     if (!engineRoomCallKinds.contains(kind)) {
-      throw ArgumentError.value(kind, 'kind', 'not a rules-engine call');
+      throw ArgumentError.value(kind, 'kind', 'not a permissionless call');
     }
     final prepared = await _rooms.prepareRoomCall(
       settlement.PrepareRoomCallRequest(
         chatRoomId: roomId,
         kind: kind,
-        params: settlement.RoomCallParams(
-          engine: settlement.RoomEngineParams(
-            member: memberProfileId == null
-                ? null
-                : settlement.RoomMemberRef(profileId: memberProfileId),
-            loanId: loanId == null ? null : Int64(loanId),
-          ),
-        ),
+        params:
+            params ??
+            settlement.RoomCallParams(
+              engine: settlement.RoomEngineParams(
+                member: memberProfileId == null
+                    ? null
+                    : settlement.RoomMemberRef(profileId: memberProfileId),
+                loanId: loanId == null ? null : Int64(loanId),
+              ),
+            ),
       ),
     );
     if (prepared.call.kind != kind || prepared.call.requiresSignature) {

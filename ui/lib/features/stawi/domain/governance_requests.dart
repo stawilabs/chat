@@ -188,29 +188,78 @@ GovernanceRequest revealVoteRequest({
   );
 }
 
-/// Proposes a principal exit: the custody's fallback spend of [payloadHash]
-/// (the exit intent's digest), or, with [cancelTarget], cancelling an earlier
-/// exit proposal.
+/// Proposes a principal exit: the custody's fallback spend of [amount] from
+/// [sourceBucket] to a member, an approved external account or another
+/// bucket (exactly one). Settlement builds the exit intent; the ballot's
+/// payload hash is its digest, which the device checks before signing.
 GovernanceRequest proposePrincipalExitRequest({
-  required Uint8List payloadHash,
-  int cancelTarget = 0,
+  required String sourceBucket,
+  required String amount,
+  String? memberProfileId,
+  String memberName = '',
+  Uint8List? externalAccount,
+  String? bucket,
 }) {
-  if (payloadHash.length != 32) {
-    throw ArgumentError.value(payloadHash.length, 'payloadHash', 'must be 32');
+  final destinations = [
+    memberProfileId,
+    externalAccount,
+    bucket,
+  ].where((d) => d != null).length;
+  if (destinations != 1) {
+    throw ArgumentError('choose exactly one destination');
+  }
+  if (!RegExp(r'^[1-9][0-9]{0,77}$').hasMatch(amount)) {
+    throw ArgumentError.value(amount, 'amount', 'a whole amount above zero');
+  }
+  if (externalAccount != null && externalAccount.length != 20) {
+    throw ArgumentError.value(externalAccount, 'externalAccount', '20 bytes');
+  }
+  final to = memberProfileId != null
+      ? memberName
+      : externalAccount != null
+      ? 'an external account'
+      : 'the $bucket bucket';
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE_PRINCIPAL_EXIT,
+    params: settlement.RoomCallParams(
+      principalExit: settlement.RoomPrincipalExitParams(
+        spend: settlement.RoomExitSpend(
+          sourceBucket: sourceBucket,
+          amount: amount,
+          member: memberProfileId == null ? null : _member(memberProfileId),
+          externalAccount: externalAccount,
+          bucket: bucket,
+        ),
+      ),
+    ),
+    summary: 'Propose a principal exit of $amount from $sourceBucket to $to',
+  );
+}
+
+/// Proposes cancelling the principal exit ballot [cancelTarget].
+GovernanceRequest proposeExitCancelRequest(int cancelTarget) {
+  if (cancelTarget <= 0) {
+    throw ArgumentError.value(cancelTarget, 'cancelTarget', 'positive');
   }
   return GovernanceRequest(
     kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE_PRINCIPAL_EXIT,
     params: settlement.RoomCallParams(
       principalExit: settlement.RoomPrincipalExitParams(
-        payloadHash: payloadHash,
         cancelTarget: Int64(cancelTarget),
       ),
     ),
-    summary: cancelTarget > 0
-        ? 'Propose cancelling principal exit #$cancelTarget'
-        : 'Propose a principal exit',
+    summary: 'Propose cancelling principal exit #$cancelTarget',
   );
 }
+
+/// Runs a passed exit (or exit-cancellation) ballot once its timelock has
+/// run: permissionless, unsigned, straight to settlement.
+settlement.RoomCallParams executeExitParams(int ballotId) =>
+    settlement.RoomCallParams(
+      principalExit: settlement.RoomPrincipalExitParams(
+        ballotId: Int64(ballotId),
+      ),
+    );
 
 /// Votes on the principal-exit ballot [ballotId].
 GovernanceRequest votePrincipalExitRequest({

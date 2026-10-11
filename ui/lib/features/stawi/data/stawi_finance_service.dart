@@ -69,13 +69,12 @@ class StawiFinanceService {
         finance.ListMembersRequest(roomId: roomId),
       )).members;
 
-  /// [memberId]'s balances in [roomId] (their statement's per-asset totals).
-  Future<List<finance.Balances>> memberBalances(
-    String roomId,
-    String memberId,
-  ) async => (await _treasury.getStatement(
-    finance.GetStatementRequest(roomId: roomId, memberId: memberId),
-  )).statement.balances;
+  /// Every member's money in [roomId]: indexed totals, the live book (when
+  /// settlement could read it: books_available) and their loans.
+  Future<finance.ListMemberBalancesResponse> memberBalances(String roomId) =>
+      _savingsClient.listMemberBalances(
+        finance.ListMemberBalancesRequest(roomId: roomId),
+      );
 
   /// The room's contribution periods, newest first as finance lists them.
   Future<List<finance.Period>> periods(String roomId) async =>
@@ -181,12 +180,11 @@ final stawiMembersProvider = FutureProvider.autoDispose
       (ref, roomId) => ref.watch(stawiFinanceServiceProvider).members(roomId),
     );
 
-/// One member's balances, keyed by (room, member).
+/// Every member's balances in a room.
 final stawiMemberBalancesProvider = FutureProvider.autoDispose
-    .family<List<finance.Balances>, ({String roomId, String memberId})>(
-      (ref, key) => ref
-          .watch(stawiFinanceServiceProvider)
-          .memberBalances(key.roomId, key.memberId),
+    .family<finance.ListMemberBalancesResponse, String>(
+      (ref, roomId) =>
+          ref.watch(stawiFinanceServiceProvider).memberBalances(roomId),
     );
 
 final stawiRolesProvider = FutureProvider.autoDispose

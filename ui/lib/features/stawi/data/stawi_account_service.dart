@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:antinvestor_api_authentication/antinvestor_api_authentication.dart'
     as authentication;
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
@@ -233,46 +234,55 @@ class StawiAccountService {
     return submitted.call;
   }
 
-  /// A loan or withdrawal call on the member's account, signed on this device
-  /// and sent straight to settlement. See [AccountEngineCall] for what the
-  /// backend still has to ship.
-  Future<settlement.AccountCall> engineCall(
+  /// Prepares a loan or withdrawal call on the member's account and checks
+  /// it on the device. Nothing is signed yet: the member sees
+  /// [PreparedEngineCall.call] (a payoff's quoted ceiling, for one) first.
+  Future<PreparedEngineCall> prepareEngineCall(
     AccountEngineRequest request,
   ) async {
-    final kind = settlement.AccountCallKind.valueOf(request.call.code);
-    if (kind == null) {
-      throw StawiUnavailable(
-        '${request.call.label} needs a newer Stawi settlement API '
-        '(stawi_api 0.3.0, stawi feat/account-engine-calls).',
-      );
-    }
-    final me = await _identity();
-    final account = me.primary;
+    final account = (await _identity()).primary;
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
-    final key = await _keys.loadOrCreate(me.profileId);
-    // TODO(stawilabs): stawi branch feat/account-engine-calls. With stawi_api 0.3.0,
-    // also set loanId, productId, instalments and replaces from [request].
     final prepared = await _accounts.prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
-        kind: kind,
+        kind: request.call.kind,
         params: settlement.AccountCallParams(
           room: request.custody,
-          amount: request.call.takesAmount ? request.amount : null,
+          amount: request.amount.isEmpty ? null : request.amount,
+          loanId: request.call.takesLoan ? Int64(request.loanId) : null,
+          productId: request.productId,
+          instalments: request.call == AccountEngineCall.loanRequest
+              ? request.instalments
+              : null,
+          replaces: request.replaces > 0 ? Int64(request.replaces) : null,
         ),
       ),
     );
-    final digest = checkedAccountCallDigest(
+    final checked = checkedEngineCall(
       prepared: prepared,
-      kind: kind,
+      request: request,
       account: account.address,
     );
+    return PreparedEngineCall(
+      callId: prepared.callId,
+      digest: checked.digest,
+      call: checked.call,
+      request: request,
+    );
+  }
+
+  /// Signs a prepared, checked engine call on this device and submits it.
+  Future<settlement.AccountCall> submitEngineCall(
+    PreparedEngineCall prepared,
+  ) async {
+    final me = await _identity();
+    final key = await _keys.loadOrCreate(me.profileId);
     return (await _accounts.submitAccountCall(
       settlement.SubmitAccountCallRequest(
         callId: prepared.callId,
-        authorization: key.sign(digest),
+        authorization: key.sign(prepared.digest),
       ),
     )).call;
   }
@@ -311,6 +321,24 @@ class StawiAccountService {
       ),
     );
   }
+}
+
+/// An engine call settlement prepared and the device checked, awaiting the
+/// member's go-ahead.
+class PreparedEngineCall {
+  const PreparedEngineCall({
+    required this.callId,
+    required this.digest,
+    required this.call,
+    required this.request,
+  });
+
+  final String callId;
+  final Uint8List digest;
+
+  /// What the account will do, decoded from the prepared calldata.
+  final EngineCall call;
+  final AccountEngineRequest request;
 }
 
 final RegExp _positiveDecimal = RegExp(r'^[1-9][0-9]{0,77}$');

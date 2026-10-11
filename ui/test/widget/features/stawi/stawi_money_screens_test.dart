@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +10,9 @@ import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_binding.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
+import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
+import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/ui/governance_sheet.dart';
 import 'package:stawi/features/stawi/ui/room_money_screen.dart';
@@ -210,32 +210,83 @@ void main() {
       expect(prepared().params.principalExit.approve, isFalse);
     });
 
-    testWidgets('a principal exit proposal checks its payload hash', (
+    testWidgets('a principal exit names its spend and is checked', (
       tester,
     ) async {
+      final v = GoEngineCallVector.load().first;
+      transport.on(settlement.RoomService.prepareRoomCall, (req) {
+        final intent = v.intent..amount = req.params.principalExit.spend.amount;
+        return settlement.PrepareRoomCallResponse(
+          callId: 'call0000000000000001',
+          digest: hexToBytes(wrapped['wrapped'] as String),
+          signer: account,
+          call: settlement.RoomCall(
+            chainId: Int64(146),
+            chatRoomId: roomId,
+            kind: req.kind,
+            typedHash: hexToBytes(wrapped['hash'] as String),
+            requiresSignature: true,
+            exitIntent: intent,
+            payloadHash: intentDigestOf(sdkIntentOf(intent)),
+          ),
+        );
+      });
       await openDialog(tester, GovernanceAction.proposeExit);
-      await tester.enterText(find.byKey(const Key('governance-text')), '0x12');
       await tester.tap(find.byKey(const Key('governance-sign')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('governance-error')), findsOneWidget);
 
+      await tester.enterText(find.byKey(const Key('exit-amount')), '5000');
+      await tester.tap(find.text('Bucket'));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('governance-text')),
-        '0x${'ab' * 32}',
+        'reserve',
       );
       await tester.tap(find.byKey(const Key('governance-sign')));
       await tester.pumpAndSettle();
-      expect(
-        prepared().params.principalExit.payloadHash,
-        Uint8List.fromList(List.filled(32, 0xab)),
+      final spend = prepared().params.principalExit.spend;
+      expect(spend.sourceBucket, 'savings');
+      expect(spend.amount, '5000');
+      expect(spend.bucket, 'reserve');
+      expect(sender.sent.single.content['kind'], 'PROPOSE_PRINCIPAL_EXIT');
+    });
+
+    testWidgets('a passed exit is run straight on settlement', (tester) async {
+      transport.on(
+        settlement.RoomService.prepareRoomCall,
+        (req) => settlement.PrepareRoomCallResponse(
+          callId: 'call0000000000000002',
+          call: settlement.RoomCall(kind: req.kind),
+        ),
       );
+      await openDialog(tester, GovernanceAction.executeExit);
+      await tester.enterText(find.byKey(const Key('governance-number')), '7');
+      await tester.tap(find.byKey(const Key('governance-sign')));
+      await tester.pumpAndSettle();
+      expect(
+        prepared().kind,
+        settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE_PRINCIPAL_EXIT,
+      );
+      expect(prepared().params.principalExit.ballotId, Int64(7));
+      expect(
+        transport.requestsTo(settlement.RoomService.submitRoomCall),
+        hasLength(1),
+      );
+      expect(sender.sent, isEmpty);
     });
   });
 
   group('RoomMoneyScreen', () {
-    final custody = Uint8List.fromList(List.filled(20, 0xc0));
+    final payoff = GoEngineCallVector.load().firstWhere(
+      (v) => v.name == 'loan_payoff',
+    );
+    final custody = payoff.room;
 
-    Future<void> pump(WidgetTester tester) async {
+    Future<void> pump(
+      WidgetTester tester, {
+      finance.ListMemberBalancesResponse? balances,
+    }) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -263,27 +314,58 @@ void main() {
               (ref, id) async => [
                 finance.Loan(
                   loanId: 'loan1',
-                  principal: finance.Money(assetId: 'USDC.146', amount: '900'),
+                  onchainLoanId: Int64(1),
+                  borrowerAccount: payoff.account,
+                  requested: finance.Money(assetId: 'USDC.146', amount: '900'),
+                  repaidInterest: finance.Money(
+                    assetId: 'USDC.146',
+                    amount: '12',
+                  ),
+                  instalments: 4,
                 ),
               ],
             ),
-            stawiMembersProvider.overrideWith(
-              (ref, id) async => [
-                finance.Member(memberId: 'mem1', profileId: 'p2'),
-              ],
-            ),
             stawiMemberBalancesProvider.overrideWith(
-              (ref, key) async => [
-                finance.Balances(assetId: 'USDC.146', total: '1234'),
-              ],
+              (ref, id) async =>
+                  balances ??
+                  finance.ListMemberBalancesResponse(
+                    booksAvailable: true,
+                    balances: [
+                      finance.MemberBalance(
+                        memberId: 'mem1',
+                        profileId: 'p2',
+                        membershipState: 'ACTIVE',
+                        contributed: finance.Money(
+                          assetId: 'USDC.146',
+                          amount: '1234',
+                        ),
+                        book: finance.MemberBook(
+                          credit: finance.Money(
+                            assetId: 'USDC.146',
+                            amount: '300',
+                          ),
+                          standing: finance
+                              .MemberDuesStanding
+                              .MEMBER_DUES_STANDING_IN_ARREARS,
+                        ),
+                        loansOutstanding: finance.Money(
+                          assetId: 'USDC.146',
+                          amount: '450',
+                        ),
+                      ),
+                    ],
+                  ),
+            ),
+            stawiIdentityProvider.overrideWith(
+              (ref) async => identityWith('p1', payoff.account),
             ),
             roomCustodyProvider.overrideWith((ref, id) async => custody),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
                 accounts: settlement.AccountServiceClient(transport),
-                keys: DeviceKeyStore(vaultWith('p1', anvilKey)),
+                keys: DeviceKeyStore(vaultWith('p1', payoff.devicePrivateKey)),
                 proofs: refusingSessionProofs,
-                identity: () async => identityWith('p1', account),
+                identity: () async => identityWith('p1', payoff.account),
               ),
             ),
           ],
@@ -321,31 +403,98 @@ void main() {
       expect(prepared().kind, settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT);
     });
 
-    testWidgets('loan requests say what the backend still needs', (
+    testWidgets('a payoff shows the quoted ceiling before signing', (
       tester,
     ) async {
+      transport
+        ..on(
+          settlement.AccountService.prepareAccountCall,
+          (req) => payoff.prepared(req.kind),
+        )
+        ..on(
+          settlement.AccountService.submitAccountCall,
+          (req) => settlement.SubmitAccountCallResponse(
+            call: settlement.AccountCall(callId: req.callId),
+          ),
+        );
       await pump(tester);
       await tester.tap(find.text('Loans'));
       await tester.pumpAndSettle();
-      expect(find.text('900 USDC.146'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('engine-loanRequest')));
+      expect(find.textContaining('Loan #1'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('loan-1')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('engine-amount')), '1000');
-      await tester.tap(find.byKey(const Key('engine-sign')));
+      expect(find.text('12 USDC.146'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('loan-1-loanPayoff')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('stawi_api 0.3.0'), findsOneWidget);
+
+      // No loan-number input: the loan is the one tapped.
+      expect(find.byKey(const Key('engine-loan')), findsNothing);
+      await tester.tap(find.byKey(const Key('engine-review')));
+      await tester.pumpAndSettle();
+      final prepare = transport
+          .requestsTo(settlement.AccountService.prepareAccountCall)
+          .single;
+      expect(prepare.params.loanId, Int64(1));
+      expect(prepare.params.hasAmount(), isFalse);
+      expect(find.textContaining('Pays at most 520000000'), findsOneWidget);
       expect(
-        transport.requestsTo(settlement.AccountService.prepareAccountCall),
+        transport.requestsTo(settlement.AccountService.submitAccountCall),
         isEmpty,
       );
+
+      await tester.tap(find.byKey(const Key('engine-sign')));
+      await tester.pumpAndSettle();
+      final submit = transport
+          .requestsTo(settlement.AccountService.submitAccountCall)
+          .single;
+      expect(bytesToHex0x(submit.authorization), payoff.signature);
     });
 
-    testWidgets('lists members with their balances', (tester) async {
+    testWidgets('a refused check stops before signing', (tester) async {
+      final pledge = GoEngineCallVector.load().firstWhere(
+        (v) => v.name == 'loan_pledge',
+      );
+      transport.on(
+        settlement.AccountService.prepareAccountCall,
+        (req) => pledge.prepared(req.kind),
+      );
+      await pump(tester);
+      await tester.tap(find.text('Savings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('engine-withdrawCredit')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('engine-amount')), '10');
+      await tester.tap(find.byKey(const Key('engine-review')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Not signed'), findsOneWidget);
+      expect(find.byKey(const Key('engine-sign')), findsNothing);
+    });
+
+    testWidgets('lists members with their balances and books', (tester) async {
       await pump(tester);
       await tester.tap(find.text('Members'));
       await tester.pumpAndSettle();
       expect(find.text('p2'), findsOneWidget);
-      expect(find.text('1234 USDC.146'), findsOneWidget);
+      expect(find.textContaining('contributed 1234 USDC.146'), findsOneWidget);
+      expect(find.textContaining('in arrears'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('member-mem1')));
+      await tester.pumpAndSettle();
+      expect(find.text('300 USDC.146'), findsOneWidget);
+      expect(find.text('450 USDC.146'), findsOneWidget);
+      expect(find.byKey(const Key('books-unavailable')), findsNothing);
+    });
+
+    testWidgets('says when live books are unavailable', (tester) async {
+      await pump(
+        tester,
+        balances: finance.ListMemberBalancesResponse(
+          booksAvailable: false,
+          balances: [finance.MemberBalance(memberId: 'mem1', profileId: 'p2')],
+        ),
+      );
+      await tester.tap(find.text('Members'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('books-unavailable')), findsOneWidget);
     });
   });
 

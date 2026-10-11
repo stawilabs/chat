@@ -5,6 +5,8 @@ import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import 'account_engine_calls.dart';
+import 'intent_bridge.dart';
 import 'stawi_payloads.dart';
 
 /// Settlement builds every digest a device signs. Before the device signs one,
@@ -227,6 +229,89 @@ Uint8List checkedContributionDigest({
     );
   }
   return digest;
+}
+
+/// The digest to sign for a prepared engine call, and the call it binds (to
+/// show the member: a payoff's ceiling, for one). Checked with the SDK: the
+/// digest is the intent's own, the intent binds exactly the engine call
+/// settlement returned (verifyEngineCallIntent), and that call is the action,
+/// room, loan, product and amount the member asked for.
+({Uint8List digest, EngineCall call}) checkedEngineCall({
+  required settlement.PrepareAccountCallResponse prepared,
+  required AccountEngineRequest request,
+  required Uint8List account,
+}) {
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: request.call.kind,
+    account: account,
+  );
+  final intent = sdkIntentOf(prepared.financialIntent);
+  if (!bytesEqual(intentDigestOf(intent), digest)) {
+    throw const SigningRefused('the digest is not the prepared intent\'s');
+  }
+  if (intent.account.isNotEmpty && !bytesEqual(intent.account, account)) {
+    throw const SigningRefused('the call is made from another account');
+  }
+  final EngineCall call;
+  try {
+    call = verifyEngineCallIntent(
+      intent,
+      prepared.call.engineTarget,
+      prepared.call.engineCalldata,
+    );
+  } on EngineCallException catch (e) {
+    throw SigningRefused(
+      'the engine call does not check out (${e.error.name})',
+    );
+  }
+  if (call.action != request.call.action) {
+    throw SigningRefused('settlement prepared ${call.action.functionName}');
+  }
+  if (!bytesEqual(call.room, request.custody)) {
+    throw const SigningRefused('the call is for another room');
+  }
+  if (request.call.takesLoan && call.loanId != BigInt.from(request.loanId)) {
+    throw const SigningRefused('the call names another loan');
+  }
+  if (request.amount.isNotEmpty &&
+      call.amount != BigInt.parse(request.amount)) {
+    throw SigningRefused(
+      'the call moves ${call.amount}, not the ${request.amount} you asked for',
+    );
+  }
+  if (request.call.takesProduct &&
+      !bytesEqual(call.productId, request.productId!)) {
+    throw const SigningRefused('the call names another product');
+  }
+  if (request.call == AccountEngineCall.loanRequest &&
+      (call.instalments != request.instalments ||
+          call.replaces != BigInt.from(request.replaces))) {
+    throw const SigningRefused('the loan terms differ from your request');
+  }
+  return (digest: digest, call: call);
+}
+
+/// The exit settlement built for a PROPOSE_PRINCIPAL_EXIT with a spend: the
+/// ballot's payload hash must be the exit intent's digest, and the intent must
+/// move [amount] out of the room.
+void checkPrincipalExit(
+  settlement.PrepareRoomCallResponse prepared, {
+  required String amount,
+}) {
+  final call = prepared.call;
+  if (!call.hasExitIntent()) {
+    throw const SigningRefused('settlement returned no exit intent');
+  }
+  final intent = sdkIntentOf(call.exitIntent);
+  if (!bytesEqual(intentDigestOf(intent), call.payloadHash)) {
+    throw const SigningRefused('the ballot does not carry this exit');
+  }
+  if (intent.amount != BigInt.parse(amount)) {
+    throw SigningRefused(
+      'the exit moves ${intent.amount}, not the $amount proposed',
+    );
+  }
 }
 
 /// Settlement's name for a room call kind, as STAWI_SIGNED_CALL carries it.

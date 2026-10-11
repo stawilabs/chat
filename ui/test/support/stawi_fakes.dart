@@ -243,3 +243,114 @@ Future<Uint8List> refusingSessionProofs({
   connect.Code.permissionDenied,
   'no live authenticated session for this profile on this device',
 );
+
+/// One Go-produced engine call (stawi_finance_sdk 0.3.0
+/// test/vectors/go_engine_calls.json): the call, its ENGINE_CALL intent, the
+/// intent digest and the device's signature over it.
+class GoEngineCallVector {
+  GoEngineCallVector(this.json, this.devicePrivateKey);
+
+  static List<GoEngineCallVector> load() {
+    final d =
+        jsonDecode(
+              File(
+                'test/fixtures/stawi/go_engine_calls.json',
+              ).readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    return [
+      for (final v in d['engine_calls'] as List)
+        GoEngineCallVector(
+          v as Map<String, dynamic>,
+          d['device_private_key'] as String,
+        ),
+    ];
+  }
+
+  final Map<String, dynamic> json;
+  final String devicePrivateKey;
+
+  String get name => json['name'] as String;
+  String get action => json['action'] as String;
+  Uint8List get target => hexToBytes(json['target'] as String);
+  Uint8List get room => hexToBytes(json['room'] as String);
+  Uint8List get calldata => hexToBytes(json['calldata'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  String get signature => json['signature'] as String;
+  Map<String, dynamic> get _intent => json['intent'] as Map<String, dynamic>;
+  Uint8List get account => hexToBytes(_intent['account'] as String);
+
+  /// The vector's intent as finance.v1 carries it.
+  finance.FinancialIntent get intent {
+    final i = _intent;
+    final d = i['domain'] as Map<String, dynamic>;
+    finance.Principal principal(Object? p) {
+      final m = p! as Map<String, dynamic>;
+      return finance.Principal(
+        type: finance.PrincipalType.valueOf(m['type'] as int),
+        id: hexToBytes(m['id'] as String),
+      );
+    }
+
+    finance.ValueLocation location(Object? l) {
+      final m = l! as Map<String, dynamic>;
+      return finance.ValueLocation(
+        kind: finance.LocationKind.valueOf(m['kind'] as int),
+        address: hexToBytes(m['address'] as String),
+        bucket: m['bucket'] as String,
+      );
+    }
+
+    Int64 n(Object? v) => _u64('$v');
+    return finance.FinancialIntent(
+      intentId: hexToBytes(i['intent_id'] as String),
+      type: finance.IntentType.valueOf(i['type'] as int),
+      domain: finance.IntentDomain(
+        protocolVersion: d['protocol_version'] as int,
+        chainId: n(d['chain_id']),
+        verifyingContract: hexToBytes(d['verifying_contract'] as String),
+        accountVersion: d['account_version'] as int,
+        moduleVersion: d['module_version'] as int,
+        environment: d['environment'] as String,
+      ),
+      requestedBy: principal(i['requested_by']),
+      authorizedBy: principal(i['authorized_by']),
+      account: hexToBytes(i['account'] as String),
+      room: hexToBytes(i['room'] as String),
+      source: location(i['source']),
+      destination: location(i['destination']),
+      asset: hexToBytes(i['asset'] as String),
+      amount: i['amount'] as String,
+      mode: finance.AuthorizationMode.valueOf(i['mode'] as int),
+      authorizationId: hexToBytes(i['authorization_id'] as String),
+      capabilityId: hexToBytes(i['capability_id'] as String),
+      constitutionHash: hexToBytes(i['constitution_hash'] as String),
+      securityPolicyHash: hexToBytes(i['security_policy_hash'] as String),
+      policyEpoch: n(i['policy_epoch']),
+      nonce: n(i['nonce']),
+      credentialEpoch: n(i['credential_epoch']),
+      recoveryEpoch: n(i['recovery_epoch']),
+      validAfter: n(i['valid_after']),
+      validUntil: n(i['valid_until']),
+      countryPolicyVersion: hexToBytes(i['country_policy_version'] as String),
+      complianceRequired: i['compliance_required'] as bool,
+    );
+  }
+
+  /// What settlement's PrepareAccountCall returns for this call.
+  settlement.PrepareAccountCallResponse prepared(
+    settlement.AccountCallKind kind,
+  ) => settlement.PrepareAccountCallResponse(
+    callId: 'acct00000000000000e1',
+    intentDigest: digest,
+    financialIntent: intent,
+    call: settlement.AccountCall(
+      callId: 'acct00000000000000e1',
+      address: account,
+      kind: kind,
+      intentDigest: digest,
+      engineTarget: target,
+      engineCalldata: calldata,
+    ),
+  );
+}

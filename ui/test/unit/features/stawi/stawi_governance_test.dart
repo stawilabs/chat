@@ -14,7 +14,6 @@ import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
-import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
 import 'package:stawi/features/stawi/domain/governance_requests.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
@@ -154,13 +153,32 @@ void main() {
 
   group('governance requests', () {
     test('principal exit, freeze and roles carry their terms', () {
-      final hash = Uint8List.fromList(List.filled(32, 5));
-      final exit = proposePrincipalExitRequest(payloadHash: hash);
+      final exit = proposePrincipalExitRequest(
+        sourceBucket: 'savings',
+        amount: '5000',
+        memberProfileId: 'p2',
+        memberName: 'Amina',
+      );
       expect(
         exit.kind,
         settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE_PRINCIPAL_EXIT,
       );
-      expect(exit.params!.principalExit.payloadHash, hash);
+      expect(exit.params!.principalExit.spend.sourceBucket, 'savings');
+      expect(exit.params!.principalExit.spend.amount, '5000');
+      expect(exit.params!.principalExit.spend.member.profileId, 'p2');
+      expect(
+        () => proposePrincipalExitRequest(
+          sourceBucket: 'savings',
+          amount: '5000',
+          memberProfileId: 'p2',
+          bucket: 'reserve',
+        ),
+        throwsArgumentError,
+      );
+      final cancel = proposeExitCancelRequest(6);
+      expect(cancel.params!.principalExit.cancelTarget, Int64(6));
+      expect(cancel.params!.principalExit.hasSpend(), isFalse);
+      expect(executeExitParams(6).principalExit.ballotId, Int64(6));
 
       final vote = votePrincipalExitRequest(ballotId: 4, approve: false);
       expect(vote.params!.principalExit.ballotId, Int64(4));
@@ -264,66 +282,6 @@ void main() {
         ),
         throwsArgumentError,
       );
-    });
-  });
-
-  group('account engine calls', () {
-    final custody = Uint8List.fromList(List.filled(20, 0xc0));
-
-    test('validate what each call needs', () {
-      expect(
-        () => AccountEngineRequest(
-          call: AccountEngineCall.loanRequest,
-          custody: custody,
-          amount: '0',
-        ),
-        throwsFormatException,
-      );
-      expect(
-        () => AccountEngineRequest(
-          call: AccountEngineCall.loanPayoff,
-          custody: custody,
-          amount: '10',
-        ),
-        throwsFormatException,
-      );
-      final ok = AccountEngineRequest(
-        call: AccountEngineCall.loanPledge,
-        custody: custody,
-        amount: '10',
-        loanId: 3,
-      );
-      expect(ok.summary, 'Pledge 10 to loan #3');
-    });
-
-    test('wait for stawi_api 0.3.0 and touch nothing until then', () async {
-      final service = StawiAccountService(
-        accounts: settlement.AccountServiceClient(transport),
-        keys: DeviceKeyStore(MemoryDeviceKeyVault()),
-        proofs: refusingSessionProofs,
-        identity: () async => identityWith('p1', Uint8List(20)),
-      );
-      for (final call in AccountEngineCall.values) {
-        expect(settlement.AccountCallKind.valueOf(call.code), isNull);
-        await expectLater(
-          service.engineCall(
-            AccountEngineRequest(
-              call: call,
-              custody: custody,
-              amount: '10',
-              loanId: 1,
-            ),
-          ),
-          throwsA(
-            isA<StawiUnavailable>().having(
-              (e) => e.message,
-              'message',
-              contains('feat/account-engine-calls'),
-            ),
-          ),
-        );
-      }
-      expect(transport.calls, isEmpty);
     });
   });
 
@@ -449,11 +407,15 @@ void main() {
         ),
       )
       ..on(
-        finance.TreasuryService.getStatement,
-        (req) => finance.GetStatementResponse(
-          statement: finance.Statement(
-            balances: [finance.Balances(assetId: 'USDC.146', total: '42')],
-          ),
+        finance.SavingsService.listMemberBalances,
+        (req) => finance.ListMemberBalancesResponse(
+          balances: [
+            finance.MemberBalance(
+              memberId: 'mem1',
+              contributed: finance.Money(assetId: 'USDC.146', amount: '42'),
+            ),
+          ],
+          booksAvailable: true,
         ),
       );
     final service = StawiFinanceService(
@@ -461,17 +423,20 @@ void main() {
       treasury: finance.TreasuryServiceClient(transport),
       governance: finance.GovernanceServiceClient(transport),
       credit: finance.CreditServiceClient(transport),
+      savings: finance.SavingsServiceClient(transport),
       identity: () async => const StawiIdentity(profileId: 'p1', accounts: []),
     );
     expect((await service.roles(roomId)).single.roleId, 'chair');
     expect((await service.loans(roomId)).single.loanId, 'loan1');
-    expect((await service.memberBalances(roomId, 'mem1')).single.total, '42');
+    final balances = await service.memberBalances(roomId);
+    expect(balances.balances.single.contributed.amount, '42');
+    expect(balances.booksAvailable, isTrue);
     expect(
       transport
-          .requestsTo(finance.TreasuryService.getStatement)
+          .requestsTo(finance.SavingsService.listMemberBalances)
           .single
-          .memberId,
-      'mem1',
+          .roomId,
+      roomId,
     );
   });
 
