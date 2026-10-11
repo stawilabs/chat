@@ -249,9 +249,11 @@ final stawiPendingRevealsProvider = FutureProvider.autoDispose
     );
 
 /// The permissionless room calls: nobody signs them (the engines recompute
-/// every amount; custody checks a passed exit ballot itself), so the app hands
-/// them straight to settlement.
+/// every amount; the chain checks a passed proposal or exit ballot itself),
+/// so the app hands them straight to settlement.
 const Set<settlement.RoomCallKind> engineRoomCallKinds = {
+  settlement.RoomCallKind.ROOM_CALL_KIND_QUEUE,
+  settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE,
   settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
   settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
   settlement.RoomCallKind.ROOM_CALL_KIND_REFUND_FORMER,
@@ -261,9 +263,10 @@ const Set<settlement.RoomCallKind> engineRoomCallKinds = {
 };
 
 extension StawiEngineCalls on StawiRoomService {
-  /// Pushes a rules-engine call for [memberProfileId] (COLLECT, SETTLE,
-  /// REFUND_FORMER) or [loanId] (DISBURSE_LOAN): prepared and submitted to
-  /// settlement directly, with no signature and no chat event.
+  /// Pushes a permissionless call: a rules-engine call for [memberProfileId]
+  /// (COLLECT, SETTLE, REFUND_FORMER) or [loanId] (DISBURSE_LOAN), or a
+  /// passed decision's QUEUE or EXECUTE named by [params]. Prepared and
+  /// submitted to settlement directly, with no signature and no chat event.
   Future<settlement.RoomCall> pushEngineCall({
     required String roomId,
     required settlement.RoomCallKind kind,

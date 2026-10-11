@@ -13,6 +13,7 @@ import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
+import 'package:stawi/features/stawi/domain/governance_requests.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/ui/governance_sheet.dart';
@@ -52,6 +53,8 @@ void main() {
             requiresSignature: !{
               settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
               settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
+              settlement.RoomCallKind.ROOM_CALL_KIND_QUEUE,
+              settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE,
             }.contains(req.kind),
           ),
         ),
@@ -252,6 +255,79 @@ void main() {
       expect(spend.amount, '5000000000');
       expect(spend.bucket, 'reserve');
       expect(sender.sent.single.content['kind'], 'PROPOSE_PRINCIPAL_EXIT');
+    });
+
+    testWidgets(
+      'a proposed invitation names its expiry and its execution repeats it',
+      (tester) async {
+        await openDialog(tester, GovernanceAction.proposeInvite);
+        await tester.tap(find.byKey(const Key('governance-member')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Amina').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('governance-sign')));
+        await tester.pumpAndSettle();
+
+        final proposed = prepared();
+        expect(proposed.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
+        final terms = proposed.params.propose.memberAction;
+        expect(
+          terms.action,
+          finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE,
+        );
+        expect(terms.subject.profileId, 'p2');
+        expect(terms.arg, isNot(Int64.ZERO), reason: 'never the default');
+        final expiry = DateTime.fromMillisecondsSinceEpoch(
+          terms.arg.toInt() * 1000,
+          isUtc: true,
+        );
+        final date = inviteExpiryLabel(expiry);
+        expect(
+          sender.sent.single.content['summary'],
+          'Propose inviting Amina (invitation expires $date UTC)',
+        );
+
+        transport.calls.clear();
+        await tester.pumpWidget(const SizedBox());
+        await openDialog(tester, GovernanceAction.executeInvite);
+        await tester.tap(find.byKey(const Key('governance-member')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Amina').last);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const Key('governance-number')),
+          '12',
+        );
+        await tester.enterText(
+          find.byKey(const Key('governance-invite-expiry-date')),
+          date,
+        );
+        await tester.tap(find.byKey(const Key('governance-sign')));
+        await tester.pumpAndSettle();
+
+        final executed = prepared();
+        expect(executed.kind, settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE);
+        expect(executed.params.execute.onchainProposalId, Int64(12));
+        expect(executed.params.execute.memberAction, terms);
+        expect(
+          transport
+              .requestsTo(settlement.RoomService.submitRoomCall)
+              .single
+              .hasSignature(),
+          isFalse,
+        );
+      },
+    );
+
+    testWidgets('a passed proposal is queued unsigned', (tester) async {
+      await openDialog(tester, GovernanceAction.queueProposal);
+      await tester.enterText(find.byKey(const Key('governance-number')), '5');
+      await tester.tap(find.byKey(const Key('governance-sign')));
+      await tester.pumpAndSettle();
+      expect(prepared().kind, settlement.RoomCallKind.ROOM_CALL_KIND_QUEUE);
+      expect(prepared().params.execute.onchainProposalId, Int64(5));
+      expect(prepared().params.execute.hasMemberAction(), isFalse);
+      expect(sender.sent, isEmpty);
     });
 
     testWidgets('a passed exit is run straight on settlement', (tester) async {

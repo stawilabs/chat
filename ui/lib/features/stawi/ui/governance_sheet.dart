@@ -46,6 +46,9 @@ Future<bool> _send<T>(
 /// The governance acts a member can sign from a Stawi room.
 enum GovernanceAction {
   invite('Invite a member', Icons.person_add_alt),
+  proposeInvite('Propose inviting a member', Icons.group_add_outlined),
+  queueProposal('Queue a passed proposal', Icons.queue_outlined),
+  executeInvite('Run a passed invitation', Icons.play_arrow_outlined),
   acceptInvitation('Accept an invitation', Icons.mark_email_read_outlined),
   join('Ask to join', Icons.login),
   admit('Admit a member', Icons.how_to_reg_outlined),
@@ -75,6 +78,8 @@ enum GovernanceAction {
 
   bool get needsMember => switch (this) {
     invite ||
+    proposeInvite ||
+    executeInvite ||
     admit ||
     proposeRemoval ||
     delegate ||
@@ -88,7 +93,11 @@ enum GovernanceAction {
   /// The number field's label, when the act takes one.
   String? get numberLabel => switch (this) {
     acceptInvitation => 'Invitation number',
-    vote || secretVote || revealVote => 'On-chain proposal number',
+    vote ||
+    secretVote ||
+    revealVote ||
+    queueProposal ||
+    executeInvite => 'On-chain proposal number',
     voteExit || executeExit || executeExitCancel => 'Exit ballot number',
     proposeExitCancel => 'Exit ballot to cancel',
     _ => null,
@@ -170,6 +179,10 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
   finance.VoteChoice _choice = finance.VoteChoice.VOTE_CHOICE_APPROVE;
   bool _approve = true;
   int _days = 30;
+  int _inviteDays = 14;
+
+  /// The expiry a passed invitation proposal named, to repeat on execution.
+  DateTime? _inviteExpiry;
   bool _sending = false;
   String? _error;
 
@@ -212,6 +225,13 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         profileId: member!,
         name: _memberName,
       ),
+      GovernanceAction.proposeInvite => proposeInviteRequest(
+        profileId: member!,
+        name: _memberName,
+        expiresAt: inviteExpiryAfter(_inviteDays),
+      ),
+      GovernanceAction.queueProposal => null,
+      GovernanceAction.executeInvite => _executeInvite(),
       GovernanceAction.acceptInvitation => acceptInvitationRequest(number!),
       GovernanceAction.join => joinRequest,
       GovernanceAction.admit => admitRequest(
@@ -257,6 +277,12 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       ),
       GovernanceAction.leave => leaveRequest,
     };
+  }
+
+  /// Reads the expiry the proposal named; the call itself is pushed unsigned.
+  GovernanceRequest? _executeInvite() {
+    _inviteExpiry = parseInviteExpiry(_text.text);
+    return null;
   }
 
   String _reason() {
@@ -367,6 +393,28 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         ref.invalidate(stawiPendingRevealsProvider(widget.roomId));
         return event;
       }, 'Vote revealed'),
+      GovernanceAction.queueProposal => () => _send(
+        context,
+        () => service.pushEngineCall(
+          roomId: widget.roomId,
+          kind: settlement.RoomCallKind.ROOM_CALL_KIND_QUEUE,
+          params: queueProposalParams(proposal!),
+        ),
+        'Queued; it can run once its timelock passes',
+      ),
+      GovernanceAction.executeInvite => () => _send(
+        context,
+        () => service.pushEngineCall(
+          roomId: widget.roomId,
+          kind: settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE,
+          params: executeInviteParams(
+            onchainProposalId: proposal!,
+            profileId: _memberProfileId!,
+            expiresAt: _inviteExpiry!,
+          ),
+        ),
+        'Invitation sent to the chain; the invitee can accept it',
+      ),
       GovernanceAction.executeExit ||
       GovernanceAction.executeExitCancel => () => _send(
         context,
@@ -488,6 +536,40 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
                       : _exitTo == _ExitTo.bucket
                       ? 'Destination bucket'
                       : 'Destination account (0x…)',
+                ),
+              ),
+            if (_action == GovernanceAction.proposeInvite) ...[
+              DropdownButtonFormField<int>(
+                key: const Key('governance-invite-days'),
+                initialValue: _inviteDays,
+                decoration: const InputDecoration(
+                  labelText: 'Invitation stands for',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 7, child: Text('7 days')),
+                  DropdownMenuItem(value: 14, child: Text('14 days')),
+                  DropdownMenuItem(value: 29, child: Text('29 days')),
+                ],
+                onChanged: (v) => setState(() => _inviteDays = v ?? 14),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'The invitation expires '
+                  '${inviteExpiryLabel(inviteExpiryAfter(_inviteDays))} UTC. '
+                  'Whoever runs the passed proposal names the same date.',
+                  key: const Key('governance-invite-expiry'),
+                ),
+              ),
+            ],
+            if (_action == GovernanceAction.executeInvite)
+              TextField(
+                key: const Key('governance-invite-expiry-date'),
+                controller: _text,
+                keyboardType: TextInputType.datetime,
+                decoration: const InputDecoration(
+                  labelText: 'Invitation expiry (YYYY-MM-DD)',
+                  helperText: 'The date the proposal names',
                 ),
               ),
             if (_action == GovernanceAction.delegate)

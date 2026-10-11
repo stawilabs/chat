@@ -175,6 +175,48 @@ void main() {
         ),
         throwsArgumentError,
       );
+      final expiry = inviteExpiryAfter(
+        14,
+        now: DateTime.utc(2026, 10, 11, 18, 30),
+      );
+      expect(expiry, DateTime.utc(2026, 10, 25));
+      expect(inviteExpiryLabel(expiry), '2026-10-25');
+      expect(parseInviteExpiry(' 2026-10-25 '), expiry);
+      for (final bad in ['2026-10-32', '25/10/2026', '2026-1-5', '']) {
+        expect(() => parseInviteExpiry(bad), throwsFormatException);
+      }
+      expect(() => inviteExpiryAfter(0), throwsArgumentError);
+      expect(() => inviteExpiryAfter(maxInviteDays), throwsArgumentError);
+
+      final invite = proposeInviteRequest(
+        profileId: 'p2',
+        name: 'Amina',
+        expiresAt: expiry,
+      );
+      expect(invite.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
+      final terms = invite.params!.propose.memberAction;
+      expect(terms.action, finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE);
+      expect(terms.subject.profileId, 'p2');
+      expect(terms.arg, Int64(expiry.millisecondsSinceEpoch ~/ 1000));
+      expect(invite.summary, contains('2026-10-25'));
+      final execute = executeInviteParams(
+        onchainProposalId: 3,
+        profileId: 'p2',
+        expiresAt: parseInviteExpiry(inviteExpiryLabel(expiry)),
+      ).execute;
+      expect(execute.onchainProposalId, Int64(3));
+      expect(execute.memberAction, terms);
+      expect(
+        () => executeInviteParams(
+          onchainProposalId: 3,
+          profileId: 'p2',
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        ),
+        throwsArgumentError,
+      );
+      expect(queueProposalParams(3).execute.onchainProposalId, Int64(3));
+      expect(queueProposalParams(3).execute.hasMemberAction(), isFalse);
+
       final cancel = proposeExitCancelRequest(6);
       expect(cancel.params!.principalExit.cancelTarget, Int64(6));
       expect(cancel.params!.principalExit.hasSpend(), isFalse);
