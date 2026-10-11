@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
@@ -16,13 +17,13 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
+	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 // Settlement fact names chat consumes (finance.v1 event protos).
@@ -37,11 +38,17 @@ const (
 )
 
 const (
-	defaultStaleCallAfter = 10 * time.Minute
-	sweepBatch            = 100
-	colStawiState         = "state"
-	logKeyFact            = "fact"
-	colModifiedAt         = "modified_at"
+	defaultMaxFactAttempts    = 5
+	defaultReconcilePerPass   = 50
+	defaultFactRetention      = 30 * 24 * time.Hour
+	ketoDrainBatch            = 500
+	stawiFactsDeadLetterQueue = "stawi.settlement.facts"
+	defaultStaleCallAfter     = 10 * time.Minute
+	sweepBatch                = 100
+	colStawiState             = "state"
+	logKeyFact                = "fact"
+	colEventID                = "event_id"
+	colModifiedAt             = "modified_at"
 )
 
 // ErrStawiUnrequestedBinding is returned when an activation names a room that
@@ -100,6 +107,17 @@ type StawiChainDeps struct {
 	// StaleCallAfter is how long a relayed call may wait for a fact before
 	// the reconciler asks settlement about it (default 10 minutes).
 	StaleCallAfter time.Duration
+	// MaxFactAttempts is how often a fact may fail before it is quarantined
+	// (default 5).
+	MaxFactAttempts int
+	// ReconcileRoomsPerPass bounds one reconciler pass (default 50); passes
+	// rotate through the bound rooms.
+	ReconcileRoomsPerPass int
+	// FactRetention is how long applied facts are kept (default 30 days);
+	// reconciliation reads membership rows, not facts.
+	FactRetention time.Duration
+	// DeadLetters records facts refused for an operator (optional).
+	DeadLetters repository.DeadLetterRepository
 }
 
 // StawiChain applies settlement's chain facts to chat. It is the only writer
@@ -114,12 +132,24 @@ type StawiChainDeps struct {
 type StawiChain struct {
 	deps      StawiChainDeps
 	converter *models.PayloadConverter
+
+	mu              sync.Mutex
+	reconcileCursor string
 }
 
 // NewStawiChain creates the chain consumer.
 func NewStawiChain(deps StawiChainDeps) *StawiChain {
 	if deps.StaleCallAfter <= 0 {
 		deps.StaleCallAfter = defaultStaleCallAfter
+	}
+	if deps.MaxFactAttempts <= 0 {
+		deps.MaxFactAttempts = defaultMaxFactAttempts
+	}
+	if deps.ReconcileRoomsPerPass <= 0 {
+		deps.ReconcileRoomsPerPass = defaultReconcilePerPass
+	}
+	if deps.FactRetention == 0 {
+		deps.FactRetention = defaultFactRetention
 	}
 	return &StawiChain{deps: deps, converter: models.NewPayloadConverter()}
 }
@@ -183,7 +213,7 @@ func (c *StawiChain) Receive(ctx context.Context, eventName string, payload []by
 		if !c.decode(ctx, eventName, payload, &msg) {
 			return nil
 		}
-		return c.receiveActivation(ctx, &msg)
+		return c.receiveActivation(ctx, &msg, payload)
 	case FactRoomMembershipObserved:
 		var msg financev1.RoomMembershipObserved
 		if !c.decode(ctx, eventName, payload, &msg) {
@@ -350,7 +380,20 @@ func (c *StawiChain) receivePositioned(ctx context.Context, claimedRoomID string
 		return fmt.Errorf("failed to record the fact: %w", err)
 	}
 	if fact.RoomID == "" {
-		return nil
+		// The emitter's room may have been bound while this fact was being
+		// recorded (by another replica), after the binding placed waiting
+		// facts: look again, so the fact is not left unplaced.
+		binding, err := c.bindingByEmitter(ctx, fact.CustodyAddress)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil // waits for activation (or the sweep) to place it
+		}
+		if err != nil {
+			return err
+		}
+		if err = c.deps.Store.AssignRoom(ctx, fact.CustodyAddress, binding.GetID()); err != nil {
+			return err
+		}
+		fact.RoomID = binding.GetID()
 	}
 	return c.ApplyRoom(ctx, fact.RoomID)
 }
@@ -373,7 +416,35 @@ func (c *StawiChain) bindingByEmitter(ctx context.Context, address string) (*mod
 // receiveActivation binds the room to its custody: the chat room id is the
 // on-chain room binding. It is applied as it arrives; the facts that waited
 // for the room's custody are then placed and applied.
-func (c *StawiChain) receiveActivation(ctx context.Context, msg *financev1.RoomActivated) error {
+func (c *StawiChain) receiveActivation(ctx context.Context, msg *financev1.RoomActivated, payload []byte) error {
+	err := c.activate(ctx, msg)
+	if errors.Is(err, ErrStawiUnrequestedBinding) || errors.Is(err, ErrStawiRebind) {
+		// A refused binding is final: acknowledge it, keep it for an operator
+		// and alert, rather than redelivering it forever.
+		c.refuseActivation(ctx, msg, payload, err)
+		return nil
+	}
+	return err
+}
+
+func (c *StawiChain) refuseActivation(ctx context.Context, msg *financev1.RoomActivated, payload []byte, cause error) {
+	chattel.StawiActivationsRefusedCounter.Add(ctx, 1)
+	util.Log(ctx).WithError(cause).WithFields(map[string]any{
+		chatutil.KeyRoomID: msg.GetRoomId(), "genesis_id": msg.GetGenesisId(),
+		"custody": HexAddress(msg.GetCustodyAddress()),
+	}).Error("stawi chain: room.activated refused; kept for an operator")
+	if c.deps.DeadLetters == nil {
+		return
+	}
+	if err := c.deps.DeadLetters.Record(ctx, stawiFactsDeadLetterQueue, cause.Error(), payload,
+		map[string]string{"event_name": FactRoomActivated, colEventID: msg.GetMeta().GetEventId()}); err != nil {
+		util.Log(ctx).WithError(err).Error("stawi chain: could not record the refused activation")
+	}
+}
+
+// activate binds the room an activation names, then places and applies the
+// facts that waited for it.
+func (c *StawiChain) activate(ctx context.Context, msg *financev1.RoomActivated) error {
 	roomID := msg.GetRoomId()
 	room, err := c.deps.RoomRepo.GetByID(ctx, roomID)
 	if err != nil {
@@ -464,743 +535,4 @@ func (c *StawiChain) bind(
 			Kind:          "ROOM_ACTIVATED",
 			ChainId:       msg.GetChainId(),
 		}))
-}
-
-// ApplyRoom applies the room's pending facts in chain order.
-func (c *StawiChain) ApplyRoom(ctx context.Context, roomID string) error {
-	room, err := c.deps.RoomRepo.GetByID(ctx, roomID)
-	if err != nil {
-		if data.ErrorIsNoRows(err) {
-			return nil // facts wait for the room
-		}
-		return err
-	}
-	return c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
-		facts, pendingErr := c.deps.Store.Pending(tx, roomID)
-		if pendingErr != nil {
-			return pendingErr
-		}
-		for _, fact := range facts {
-			if applyErr := c.applyFact(ctx, tx, room, fact); applyErr != nil {
-				return fmt.Errorf("failed to apply %s %s: %w", fact.EventName, fact.FactKey, applyErr)
-			}
-			if markErr := c.deps.Store.MarkApplied(tx, fact); markErr != nil {
-				return markErr
-			}
-		}
-		return nil
-	})
-}
-
-func (c *StawiChain) applyFact(ctx context.Context, tx *gorm.DB, room *models.Room, fact *models.StawiChainFact) error {
-	switch fact.EventName {
-	case FactRoomMembershipObserved:
-		var msg financev1.RoomMembershipObserved
-		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
-			return err
-		}
-		return c.applyMembership(ctx, tx, room, fact, &msg)
-	case FactGovernanceCallObserved:
-		var msg financev1.GovernanceCallObserved
-		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
-			return err
-		}
-		return c.applyCallObserved(ctx, tx, room, fact, &msg)
-	case FactGovernanceCallFailed:
-		var msg financev1.GovernanceCallFailed
-		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
-			return err
-		}
-		return c.applyCallFailed(ctx, tx, room, fact, &msg)
-	case FactRoomCallFinal:
-		var msg financev1.RoomCallFinal
-		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
-			return err
-		}
-		return c.settleRoomCall(ctx, tx, room, fact, msg.GetCallId(), &chatv1.StawiCallOutcomeContent{
-			State:   chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED,
-			ChainId: msg.GetChainId(), TxHash: msg.GetTxHash(), BlockNumber: msg.GetBlockNumber(),
-		})
-	case FactRoomCallFailed:
-		var msg financev1.RoomCallFailed
-		if err := proto.Unmarshal(fact.Payload, &msg); err != nil {
-			return err
-		}
-		return c.settleRoomCall(ctx, tx, room, fact, msg.GetCallId(), &chatv1.StawiCallOutcomeContent{
-			State:   chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED,
-			Reason:  truncateReason(msg.GetReason()),
-			ChainId: msg.GetChainId(), TxHash: msg.GetTxHash(),
-		})
-	default:
-		return nil
-	}
-}
-
-func (c *StawiChain) applyMembership(
-	ctx context.Context, tx *gorm.DB, room *models.Room,
-	fact *models.StawiChainFact, msg *financev1.RoomMembershipObserved,
-) error {
-	pos := models.ChainPosition{Block: fact.BlockNumber, LogIndex: fact.LogIndex}
-	var address []byte
-	switch msg.GetEvent() {
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITED,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITE_REVOKED:
-		address = msg.GetInvitee()
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_STATE_CHANGED,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROLE_CHANGED:
-		address = msg.GetMember()
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_UNSPECIFIED,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROOM_BINDING_SET,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_JOIN_POLICY_SET,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_SET,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_REVOKED:
-		return nil // bindings, join policy and delegates do not change subscriptions
-	default:
-		return nil
-	}
-	if len(address) == 0 {
-		return nil
-	}
-
-	member, err := c.deps.Store.Member(tx, room, HexAddress(address))
-	if err != nil {
-		return err
-	}
-	if !foldMembership(member, msg, pos) {
-		return nil // an older fact than the member's state already reflects
-	}
-	return c.syncMember(ctx, tx, room, member, fact)
-}
-
-// foldMembership applies one membership fact to the member's record if it is
-// newer than what the record already reflects. It reports whether it changed.
-func foldMembership(member *models.StawiRoomMember, msg *financev1.RoomMembershipObserved,
-	pos models.ChainPosition,
-) bool {
-	switch msg.GetEvent() {
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITED:
-		if !pos.After(member.StatePosition()) ||
-			(member.State != models.StawiMemberStateNone && member.State != models.StawiMemberStateExited) {
-			return false
-		}
-		member.State = models.StawiMemberStateInvited
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITE_REVOKED:
-		if !pos.After(member.StatePosition()) || member.State != models.StawiMemberStateInvited {
-			return false
-		}
-		member.State = models.StawiMemberStateNone
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_STATE_CHANGED:
-		if !pos.After(member.StatePosition()) {
-			return false
-		}
-		member.State = models.StawiMemberState(msg.GetToState())
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROLE_CHANGED:
-		roleID := HexAddress(msg.GetRoleId())
-		if entry, ok := member.Role(roleID); ok && !pos.After(entry.Position) {
-			return false
-		}
-		member.SetRole(roleID, models.RoleEntry{Assigned: msg.GetRoleAssigned(), Position: pos})
-		return true
-	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_UNSPECIFIED,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROOM_BINDING_SET,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_JOIN_POLICY_SET,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_SET,
-		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_REVOKED:
-		return false
-	default:
-		return false
-	}
-	member.StateBlock, member.StateLogIndex = pos.Block, pos.LogIndex
-	return true
-}
-
-// syncMember brings the member's subscription in line with the member record
-// and saves the record, posting a room change when the subscription moved.
-func (c *StawiChain) syncMember(
-	ctx context.Context, tx *gorm.DB, room *models.Room, member *models.StawiRoomMember, fact *models.StawiChainFact,
-) error {
-	if err := c.resolveProfile(ctx, member); err != nil {
-		return err
-	}
-	if member.ProfileID == "" {
-		// No profile owns the address yet; the reconciler retries.
-		return c.deps.Store.SaveMember(tx, member)
-	}
-	action, err := c.writeSubscription(ctx, tx, room, member)
-	if err != nil {
-		return err
-	}
-	if err = c.deps.Store.SaveMember(tx, member); err != nil {
-		return err
-	}
-	if action == chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_UNSPECIFIED || fact == nil {
-		return nil
-	}
-	if fact.OutcomeEventID == "" {
-		fact.OutcomeEventID = util.IDString()
-	}
-	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, "", &chatv1.Payload{
-		Type: chatv1.PayloadType_PAYLOAD_TYPE_ROOM_CHANGE,
-		Data: &chatv1.Payload_RoomChange{RoomChange: &chatv1.RoomChangeContent{
-			Action:                action,
-			TargetSubscriptionIds: []string{member.SubscriptionID},
-			Body:                  roomChangeBody(action),
-		}},
-	})
-}
-
-func roomChangeBody(action chatv1.RoomChangeAction) string {
-	switch action {
-	case chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED:
-		return "joined the room on chain"
-	case chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_REMOVED:
-		return "left the room on chain"
-	case chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED:
-		return "role changed on chain"
-	case chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_UNSPECIFIED,
-		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_CREATED,
-		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_UPDATED,
-		chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_DELETED:
-	}
-	return ""
-}
-
-func (c *StawiChain) resolveProfile(ctx context.Context, member *models.StawiRoomMember) error {
-	if member.ProfileID != "" {
-		return nil
-	}
-	if c.deps.Accounts == nil {
-		return errors.New("stawi chain: no profile account resolver configured")
-	}
-	owners, err := c.deps.Accounts.Resolve(ctx, []string{member.Address})
-	if err != nil {
-		return fmt.Errorf("failed to resolve %s: %w", member.Address, err)
-	}
-	member.ProfileID = owners[member.Address]
-	return nil
-}
-
-// desiredSubscription is the subscription the chain's membership calls for.
-type desiredSubscription struct {
-	present bool
-	state   models.RoomSubscriptionState
-	role    string
-}
-
-func desiredFor(member *models.StawiRoomMember) desiredSubscription {
-	switch member.State {
-	case models.StawiMemberStateActive, models.StawiMemberStateUnadmitted:
-		role := authz.RoleMember
-		if member.HoldsAnyRole() {
-			role = authz.RoleAdmin
-		}
-		return desiredSubscription{present: true, state: models.RoomSubscriptionStateActive, role: role}
-	case models.StawiMemberStateSuspended:
-		return desiredSubscription{present: true, state: models.RoomSubscriptionStateActive, role: authz.RoleGuest}
-	case models.StawiMemberStateInvited:
-		return desiredSubscription{present: true, state: models.RoomSubscriptionStateProposed, role: authz.RoleMember}
-	case models.StawiMemberStateNone, models.StawiMemberStateExited:
-		return desiredSubscription{}
-	}
-	return desiredSubscription{}
-}
-
-func (d desiredSubscription) matches(sub *models.RoomSubscription) bool {
-	if !d.present {
-		return sub == nil || sub.SubscriptionState == models.RoomSubscriptionStateBlocked
-	}
-	return sub != nil && sub.SubscriptionState == d.state && sub.Role == d.role
-}
-
-// currentSubscription finds the member's subscription: the one the member
-// record names (in any state), else a live one for the member's profile.
-func currentSubscription(tx *gorm.DB, roomID string, member *models.StawiRoomMember) (*models.RoomSubscription, error) {
-	var sub models.RoomSubscription
-	var err error
-	if member.SubscriptionID != "" {
-		err = tx.Where("id = ? AND room_id = ?", member.SubscriptionID, roomID).First(&sub).Error
-	} else {
-		err = tx.Where("room_id = ? AND profile_id = ? AND subscription_state IN ?", roomID, member.ProfileID,
-			[]models.RoomSubscriptionState{models.RoomSubscriptionStateActive, models.RoomSubscriptionStateProposed}).
-			Order("id ASC").First(&sub).Error
-	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil //nolint:nilnil // no subscription is an answer, not an error
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &sub, nil
-}
-
-// writeSubscription is the one path that writes a Stawi room's subscription
-// row and its Keto tuple, from the member record alone. The row is written in
-// the room's transaction; the tuple is written before the transaction
-// commits, so a Keto failure rolls the row back and the fact is redelivered:
-// it retries until both hold. Every step is idempotent.
-func (c *StawiChain) writeSubscription(
-	ctx context.Context, tx *gorm.DB, room *models.Room, member *models.StawiRoomMember,
-) (chatv1.RoomChangeAction, error) {
-	none := chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_UNSPECIFIED
-	want := desiredFor(member)
-	sub, err := currentSubscription(tx, room.GetID(), member)
-	if err != nil {
-		return none, err
-	}
-
-	if !want.present {
-		return c.removeSubscription(ctx, tx, room.GetID(), member, sub)
-	}
-
-	action := none
-	switch {
-	case sub == nil:
-		sub = &models.RoomSubscription{
-			RoomID: room.GetID(), ProfileID: member.ProfileID, Role: want.role, SubscriptionState: want.state,
-		}
-		sub.TenantID, sub.PartitionID, sub.AccessID = room.TenantID, room.PartitionID, room.AccessID
-		sub.GenID(ctx)
-		if err = tx.Create(sub).Error; err != nil {
-			return none, err
-		}
-		if want.state == models.RoomSubscriptionStateActive {
-			action = chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED
-		}
-	case !want.matches(sub):
-		wasActive := sub.IsActive()
-		roleChanged := sub.Role != want.role
-		if err = setSubscription(tx, sub.GetID(), want.state, want.role); err != nil {
-			return none, err
-		}
-		switch {
-		case !wasActive && want.state == models.RoomSubscriptionStateActive:
-			action = chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED
-		case wasActive && want.state != models.RoomSubscriptionStateActive:
-			action = chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_REMOVED
-		case roleChanged:
-			action = chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_ROLE_CHANGED
-		}
-	}
-	member.SubscriptionID = sub.GetID()
-
-	if want.state == models.RoomSubscriptionStateActive {
-		err = c.deps.Authz.SetRoomMemberRole(ctx, room.GetID(), sub.GetID(), want.role)
-	} else {
-		err = c.deps.Authz.RemoveRoomMember(ctx, room.GetID(), sub.GetID())
-	}
-	return action, err
-}
-
-// removeSubscription is writeSubscription's path for a member the chain no
-// longer has: the row is blocked and the tuples removed.
-func (c *StawiChain) removeSubscription(
-	ctx context.Context, tx *gorm.DB, roomID string, member *models.StawiRoomMember, sub *models.RoomSubscription,
-) (chatv1.RoomChangeAction, error) {
-	none := chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_UNSPECIFIED
-	if sub == nil {
-		return none, nil
-	}
-	member.SubscriptionID = sub.GetID()
-	wasLive := sub.SubscriptionState != models.RoomSubscriptionStateBlocked
-	if wasLive {
-		if err := setSubscription(tx, sub.GetID(), models.RoomSubscriptionStateBlocked, sub.Role); err != nil {
-			return none, err
-		}
-	}
-	if err := c.deps.Authz.RemoveRoomMember(ctx, roomID, sub.GetID()); err != nil {
-		return none, err
-	}
-	if wasLive {
-		return chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_REMOVED, nil
-	}
-	return none, nil
-}
-
-func setSubscription(tx *gorm.DB, id string, state models.RoomSubscriptionState, role string) error {
-	return tx.Table("room_subscriptions").Where("id = ?", id).Updates(map[string]any{
-		"subscription_state": state, "role": role, colModifiedAt: time.Now(),
-	}).Error
-}
-
-func (c *StawiChain) applyCallObserved(
-	ctx context.Context, tx *gorm.DB, room *models.Room,
-	fact *models.StawiChainFact, msg *financev1.GovernanceCallObserved,
-) error {
-	outcome := &chatv1.StawiCallOutcomeContent{
-		State:       chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED,
-		Kind:        strings.TrimPrefix(msg.GetEvent().String(), "GOVERNANCE_CHAIN_EVENT_"),
-		ChainId:     msg.GetChainId(),
-		TxHash:      msg.GetTxHash(),
-		BlockNumber: msg.GetBlockNumber(),
-		LogIndex:    msg.GetLogIndex(),
-	}
-	parent := ""
-	if len(msg.GetCallMember()) > 0 {
-		call, err := c.deps.Calls.FindBySigner(ctx, room.GetID(), HexAddress(msg.GetCallMember()), msg.GetCallNonce())
-		if err != nil && !data.ErrorIsNoRows(err) {
-			return err
-		}
-		if call != nil {
-			outcome.CallId, outcome.SourceEventId, parent = call.GetID(), call.SourceEventID, call.SourceEventID
-			if err = settleCall(tx, call.GetID(), models.StawiCallStateObserved); err != nil {
-				return err
-			}
-		}
-	}
-	if fact.OutcomeEventID == "" {
-		fact.OutcomeEventID = util.IDString()
-	}
-	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, parent, outcomePayload(outcome))
-}
-
-// settleRoomCall reports settlement's verdict on a call chat relayed
-// (room.call_final / room.call_failed): once, against the act, and only for a
-// call of the room whose custody emitted the fact.
-func (c *StawiChain) settleRoomCall(
-	ctx context.Context, tx *gorm.DB, room *models.Room, fact *models.StawiChainFact,
-	callID string, outcome *chatv1.StawiCallOutcomeContent,
-) error {
-	call, err := c.deps.Calls.GetByID(ctx, callID)
-	if err != nil {
-		if data.ErrorIsNoRows(err) {
-			return nil // not a call chat relayed
-		}
-		return err
-	}
-	if call.RoomID != room.GetID() {
-		util.Log(ctx).WithField("call_id", callID).WithField(chatutil.KeyRoomID, room.GetID()).
-			Error("stawi chain: a call fact from another room's custody; ignored")
-		return nil
-	}
-	state := models.StawiCallStateObserved
-	if outcome.GetState() == chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED {
-		state = models.StawiCallStateFailed
-	}
-	res := tx.Table("stawi_room_calls").Where("id = ? AND state = ?", call.GetID(),
-		models.StawiCallStateSubmitted).Updates(map[string]any{colStawiState: state})
-	if res.Error != nil || res.RowsAffected == 0 {
-		return res.Error // already settled: reported once
-	}
-	outcome.CallId, outcome.SourceEventId, outcome.Kind = call.GetID(), call.SourceEventID, call.Kind
-	if fact.OutcomeEventID == "" {
-		fact.OutcomeEventID = util.IDString()
-	}
-	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, call.SourceEventID, outcomePayload(outcome))
-}
-
-func (c *StawiChain) applyCallFailed(
-	ctx context.Context, tx *gorm.DB, room *models.Room,
-	fact *models.StawiChainFact, msg *financev1.GovernanceCallFailed,
-) error {
-	var call *models.StawiRoomCall
-	var err error
-	if msg.GetCallId() != "" {
-		call, err = c.deps.Calls.GetByID(ctx, msg.GetCallId())
-	} else {
-		call, err = c.deps.Calls.FindBySigner(ctx, room.GetID(), HexAddress(msg.GetCall().GetMember()),
-			msg.GetCall().GetNonce())
-	}
-	if err != nil {
-		if data.ErrorIsNoRows(err) {
-			return nil // not a call chat relayed
-		}
-		return err
-	}
-	if call.RoomID != room.GetID() {
-		return nil
-	}
-	res := tx.Table("stawi_room_calls").Where("id = ? AND state = ?", call.GetID(),
-		models.StawiCallStateSubmitted).Updates(map[string]any{colStawiState: models.StawiCallStateFailed})
-	if res.Error != nil || res.RowsAffected == 0 {
-		return res.Error // already settled: reported once
-	}
-	if fact.OutcomeEventID == "" {
-		fact.OutcomeEventID = util.IDString()
-	}
-	return c.postEvent(ctx, tx, room, fact.OutcomeEventID, call.SourceEventID, outcomePayload(
-		&chatv1.StawiCallOutcomeContent{
-			CallId: call.GetID(), State: chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED,
-			Reason: truncateReason(msg.GetReason()), SourceEventId: call.SourceEventID,
-			Kind: call.Kind, TxHash: msg.GetTxHash(),
-		}))
-}
-
-func settleCall(tx *gorm.DB, callID, state string) error {
-	return tx.Table("stawi_room_calls").Where("id = ? AND state = ?", callID, models.StawiCallStateSubmitted).
-		Updates(map[string]any{colStawiState: state}).Error
-}
-
-func outcomePayload(outcome *chatv1.StawiCallOutcomeContent) *chatv1.Payload {
-	return &chatv1.Payload{
-		Type: chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
-		Data: &chatv1.Payload_StawiCallOutcome{StawiCallOutcome: outcome},
-	}
-}
-
-// postEvent stores a server event and its outbox row in the room's
-// transaction, under a fixed id, so a re-applied fact posts it once.
-func (c *StawiChain) postEvent(
-	ctx context.Context, tx *gorm.DB, room *models.Room, eventID, parentID string, payload *chatv1.Payload,
-) error {
-	content, err := c.converter.FromProto(payload)
-	if err != nil {
-		return err
-	}
-	eventType := chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM
-	event := &models.RoomEvent{RoomID: room.GetID(), EventType: int32(eventType), Content: content, ParentID: parentID}
-	event.ID = eventID
-	event.CreatedAt = time.Now()
-	event.TenantID, event.PartitionID, event.AccessID = room.TenantID, room.PartitionID, room.AccessID
-	res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(event)
-	if res.Error != nil || res.RowsAffected == 0 {
-		return res.Error
-	}
-	link, err := serverEventLink(event)
-	if err != nil {
-		return err
-	}
-	outbox := &models.RoomOutbox{EventID: eventID, RoomID: room.GetID(), Payload: link}
-	outbox.TenantID, outbox.PartitionID, outbox.AccessID = room.TenantID, room.PartitionID, room.AccessID
-	outbox.GenID(ctx)
-	return tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "event_id"}}, DoNothing: true}).
-		Create(outbox).Error
-}
-
-// Run is the chain consumer's background loop: every interval it applies
-// rooms whose facts are still waiting (for instance after a failed delivery
-// that the queue gave up on) and reconciles bound rooms with the chain.
-func (c *StawiChain) Run(ctx context.Context, interval time.Duration) error {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			c.Sweep(ctx)
-		}
-	}
-}
-
-// Sweep applies waiting facts and reconciles once.
-func (c *StawiChain) Sweep(ctx context.Context) {
-	rooms, err := c.deps.Store.RoomsWithPending(ctx, sweepBatch)
-	if err != nil {
-		util.Log(ctx).WithError(err).Warn("stawi chain: could not list rooms with waiting facts")
-	}
-	for _, roomID := range rooms {
-		if applyErr := c.ApplyRoom(ctx, roomID); applyErr != nil {
-			util.Log(ctx).WithError(applyErr).WithField(chatutil.KeyRoomID, roomID).
-				Warn("stawi chain: waiting facts not applied; retrying next sweep")
-		}
-	}
-	if _, err = c.Reconcile(ctx); err != nil {
-		util.Log(ctx).WithError(err).Warn("stawi reconciler: pass failed")
-	}
-}
-
-// Reconcile compares every bound room's subscriptions and Keto tuples with
-// the chain's membership as chat has folded it from settlement's facts,
-// repairs the differences and emits room.subscription_drift for each room it
-// repaired. It also asks settlement about relayed calls whose outcome never
-// arrived as a fact.
-func (c *StawiChain) Reconcile(ctx context.Context) (ReconcileReport, error) {
-	var report ReconcileReport
-	const page = 100
-	after := ""
-	for {
-		rooms, err := c.deps.Bindings.ListBound(ctx, after, page)
-		if err != nil {
-			return report, err
-		}
-		for _, binding := range rooms {
-			drift, roomErr := c.reconcileRoom(ctx, binding.GetID())
-			if roomErr != nil {
-				util.Log(ctx).WithError(roomErr).WithField(chatutil.KeyRoomID, binding.GetID()).
-					Warn("stawi reconciler: room not reconciled; retrying next pass")
-				continue
-			}
-			report.Rooms++
-			report.Repaired += drift.Total()
-		}
-		if len(rooms) < page {
-			break
-		}
-		after = rooms[len(rooms)-1].GetID()
-	}
-	resolved, err := c.settleStaleCalls(ctx)
-	report.CallsResolved = resolved
-	return report, err
-}
-
-func (c *StawiChain) reconcileRoom(ctx context.Context, roomID string) (StawiDrift, error) {
-	drift := StawiDrift{RoomID: roomID, At: time.Now()}
-	room, err := c.deps.RoomRepo.GetByID(ctx, roomID)
-	if err != nil {
-		return drift, err
-	}
-	err = c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
-		var members []*models.StawiRoomMember
-		if findErr := tx.Where("room_id = ?", roomID).Find(&members).Error; findErr != nil {
-			return findErr
-		}
-		expected := map[string]bool{}
-		for _, member := range members {
-			if repairErr := c.reconcileMember(ctx, tx, room, member, &drift); repairErr != nil {
-				return repairErr
-			}
-			if desiredFor(member).present && member.SubscriptionID != "" {
-				expected[member.SubscriptionID] = true
-			}
-		}
-		return c.removeStrays(ctx, tx, roomID, expected, &drift)
-	})
-	if err != nil || drift.Total() == 0 {
-		return drift, err
-	}
-	if c.deps.Drift != nil {
-		if pubErr := c.deps.Drift.PublishDrift(ctx, drift); pubErr != nil {
-			util.Log(ctx).WithError(pubErr).WithField(chatutil.KeyRoomID, roomID).
-				Warn("stawi reconciler: failed to publish room.subscription_drift")
-		}
-	}
-	return drift, nil
-}
-
-func (c *StawiChain) reconcileMember(
-	ctx context.Context, tx *gorm.DB, room *models.Room, member *models.StawiRoomMember, drift *StawiDrift,
-) error {
-	if err := c.resolveProfile(ctx, member); err != nil {
-		return err
-	}
-	if member.ProfileID == "" {
-		return nil
-	}
-	sub, err := currentSubscription(tx, room.GetID(), member)
-	if err != nil {
-		return err
-	}
-	want := desiredFor(member)
-	rowOK := want.matches(sub)
-	ketoOK := true
-	if rowOK && want.present {
-		ketoOK = c.ketoHolds(ctx, room.GetID(), sub.GetID(), want)
-	}
-	if rowOK && ketoOK && (sub == nil || member.SubscriptionID == sub.GetID()) {
-		return nil
-	}
-	if _, err = c.writeSubscription(ctx, tx, room, member); err != nil {
-		return err
-	}
-	switch {
-	case !rowOK && want.present && (sub == nil || sub.SubscriptionState == models.RoomSubscriptionStateBlocked):
-		drift.Restored++
-	case !rowOK:
-		drift.RolesFixed++
-	case !ketoOK:
-		drift.PermissionsRepaired++
-	}
-	return c.deps.Store.SaveMember(tx, member)
-}
-
-// ketoHolds checks the subscription's room permissions are exactly the ones
-// its role grants.
-func (c *StawiChain) ketoHolds(ctx context.Context, roomID, subID string, want desiredSubscription) bool {
-	if want.state != models.RoomSubscriptionStateActive {
-		return c.deps.Authz.CanRoomView(ctx, subID, roomID) != nil
-	}
-	view := c.deps.Authz.CanRoomView(ctx, subID, roomID) == nil
-	send := c.deps.Authz.CanMessageSend(ctx, subID, roomID) == nil
-	manage := c.deps.Authz.CanMembersManage(ctx, subID, roomID) == nil
-	switch want.role {
-	case authz.RoleGuest:
-		return view && !send && !manage
-	case authz.RoleAdmin:
-		return view && send && manage && c.deps.Authz.CanRolesManage(ctx, subID, roomID) != nil
-	default:
-		return view && send && !manage
-	}
-}
-
-// removeStrays deactivates live subscriptions the chain's membership does not
-// account for.
-func (c *StawiChain) removeStrays(
-	ctx context.Context, tx *gorm.DB, roomID string, expected map[string]bool, drift *StawiDrift,
-) error {
-	var live []*models.RoomSubscription
-	if err := tx.Where("room_id = ? AND subscription_state IN ?", roomID,
-		[]models.RoomSubscriptionState{models.RoomSubscriptionStateActive, models.RoomSubscriptionStateProposed}).
-		Find(&live).Error; err != nil {
-		return err
-	}
-	for _, sub := range live {
-		if expected[sub.GetID()] {
-			continue
-		}
-		if err := setSubscription(tx, sub.GetID(), models.RoomSubscriptionStateBlocked, sub.Role); err != nil {
-			return err
-		}
-		if err := c.deps.Authz.RemoveRoomMember(ctx, roomID, sub.GetID()); err != nil {
-			return err
-		}
-		drift.Removed++
-	}
-	return nil
-}
-
-// settleStaleCalls asks settlement about relayed calls still waiting for an
-// outcome and reports the ones settlement has settled.
-func (c *StawiChain) settleStaleCalls(ctx context.Context) (int, error) {
-	if c.deps.Rooms == nil {
-		return 0, nil
-	}
-	calls, err := c.deps.Calls.ListSubmittedBefore(ctx, time.Now().Add(-c.deps.StaleCallAfter), sweepBatch)
-	if err != nil {
-		return 0, err
-	}
-	resolved := 0
-	for _, tracked := range calls {
-		call, getErr := c.deps.Rooms.GetRoomCall(ctx, tracked.GetID())
-		if getErr != nil {
-			continue
-		}
-		// Settle only from settlement's record of this very call: same id,
-		// same room, same signer and nonce as chat relayed.
-		if call.CallID != tracked.GetID() || call.RoomID != tracked.RoomID ||
-			!strings.EqualFold(call.SignerAddress, tracked.SignerAddress) || call.Nonce != tracked.Nonce {
-			util.Log(ctx).WithField("call_id", tracked.GetID()).
-				Error("stawi reconciler: settlement's call record does not match the relayed call")
-			continue
-		}
-		var state chatv1.StawiCallOutcomeState
-		var callState string
-		switch call.State {
-		case stawi.CallStateFinal:
-			state, callState = chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED, models.StawiCallStateObserved
-		case stawi.CallStateFailed:
-			state, callState = chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_FAILED, models.StawiCallStateFailed
-		case stawi.CallStateUnspecified, stawi.CallStatePrepared, stawi.CallStateSubmitted:
-			continue
-		}
-		room, roomErr := c.deps.RoomRepo.GetByID(ctx, tracked.RoomID)
-		if roomErr != nil {
-			continue
-		}
-		lockErr := c.deps.Store.WithRoomLock(ctx, tracked.RoomID, func(tx *gorm.DB) error {
-			res := tx.Table("stawi_room_calls").Where("id = ? AND state = ?", tracked.GetID(),
-				models.StawiCallStateSubmitted).Updates(map[string]any{colStawiState: callState})
-			if res.Error != nil || res.RowsAffected == 0 {
-				return res.Error
-			}
-			return c.postEvent(ctx, tx, room, util.IDString(), tracked.SourceEventID, outcomePayload(
-				&chatv1.StawiCallOutcomeContent{
-					CallId: tracked.GetID(), State: state, Reason: truncateReason(call.Reason),
-					SourceEventId: tracked.SourceEventID, Kind: tracked.Kind, TxHash: call.TxHash,
-				}))
-		})
-		if lockErr == nil {
-			resolved++
-		}
-	}
-	return resolved, nil
 }

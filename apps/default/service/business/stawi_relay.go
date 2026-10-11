@@ -284,6 +284,21 @@ func (sr *stawiRelay) relaySignedCall(
 		return stawiRelayResult{ack: ackErr}
 	}
 
+	// A call this room already relayed (an earlier attempt whose event was
+	// then lost) is accepted again without a second submission.
+	if prior, priorErr := sr.callRepo.GetByID(ctx, call.CallID); priorErr == nil {
+		if prior.RoomID != act.event.RoomID || !strings.EqualFold(prior.SignerAddress, call.SignerAddress) ||
+			prior.Nonce != call.Nonce {
+			return stawiRelayResult{
+				ack: connect.NewError(connect.CodeFailedPrecondition, repository.ErrStawiCallConflict),
+			}
+		}
+		return sr.withOutcome(ctx, act, &chatv1.StawiCallOutcomeContent{CallId: call.CallID, Kind: call.Kind,
+			State: chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED})
+	} else if !data.ErrorIsNoRows(priorErr) {
+		return stawiRelayResult{ack: fmt.Errorf("failed to look up the relayed call: %w", priorErr)}
+	}
+
 	submitted, err := sr.rooms.SubmitRoomCall(ctx, stawi.CallSubmission{
 		CallID: call.CallID,
 		Signature: stawi.DeviceSignature{
@@ -296,6 +311,11 @@ func (sr *stawiRelay) relaySignedCall(
 		SignerProfileID: act.sender.ProfileID,
 	})
 	outcome := &chatv1.StawiCallOutcomeContent{CallId: call.CallID, Kind: call.Kind}
+	if err != nil && connect.CodeOf(err) == connect.CodeAlreadyExists {
+		// Settlement already has this call's signature (an earlier attempt):
+		// what counts is where it stands now, not that this submit repeated.
+		submitted, err = sr.rooms.GetRoomCall(ctx, call.CallID)
+	}
 	if err != nil {
 		return sr.refusedOrTransient(ctx, act, err, outcome)
 	}

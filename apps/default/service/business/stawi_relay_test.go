@@ -2,6 +2,7 @@ package business_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
@@ -401,5 +402,44 @@ func (s *MessageBusinessTestSuite) TestStawiRelayFollowsSettlementsRoomServiceRu
 		require.Len(t, sig.Signature, 128)
 		require.Equal(t, []byte("auth"), sig.AuthenticatorData)
 		require.Equal(t, []byte("{}"), sig.ClientDataJSON)
+	})
+}
+
+// TestStawiCallRetryAfterAnUnsavedRelayIsAccepted: a call settlement already
+// has (relayed by an attempt whose event then failed to save, or reported as
+// already submitted) is shown ACCEPTED on retry, never a false FAILED, and is
+// not submitted twice.
+func (s *MessageBusinessTestSuite) TestStawiCallRetryAfterAnUnsavedRelayIsAccepted() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		f.bind(t)
+		f.accounts.Own("0xa11ce", f.alice.GetProfileId())
+
+		// An earlier attempt relayed and recorded the call, then lost its event.
+		f.rooms.AddCall(stawi.RoomCall{CallID: "call-relayed", RoomID: f.roomID, Kind: "LEAVE",
+			SignerAddress: "0xa11ce", Nonce: 1, ProfileID: f.alice.GetProfileId(), State: stawi.CallStateSubmitted})
+		tracked := &models.StawiRoomCall{RoomID: f.roomID, SignerAddress: "0xa11ce", Nonce: 1, Kind: "LEAVE",
+			SourceEventID: util.IDString(), State: models.StawiCallStateSubmitted}
+		tracked.ID = "call-relayed"
+		require.NoError(t, f.calls.Record(f.ctx, tracked))
+
+		eventID := requireAckOK(t, f.send(t, f.alice, signedCall("call-relayed", "LEAVE")))
+		require.Empty(t, f.rooms.Submitted, "not submitted twice")
+		outcomes := f.outcomesFor(t, eventID)
+		require.Len(t, outcomes, 1)
+		require.Equal(t, chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED, outcomes[0].GetState())
+
+		// Settlement reports the call as already submitted.
+		f.rooms.AddCall(stawi.RoomCall{CallID: "call-dup", RoomID: f.roomID, Kind: "LEAVE",
+			SignerAddress: "0xa11ce", Nonce: 2, ProfileID: f.alice.GetProfileId(), State: stawi.CallStateSubmitted})
+		f.rooms.Refuse(stawitest.MethodSubmitRoomCall,
+			connect.NewError(connect.CodeAlreadyExists, errors.New("call already submitted")))
+		eventID = requireAckOK(t, f.send(t, f.alice, signedCall("call-dup", "LEAVE")))
+		outcomes = f.outcomesFor(t, eventID)
+		require.Len(t, outcomes, 1)
+		require.Equal(t, chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_ACCEPTED, outcomes[0].GetState())
+		dup, err := f.calls.GetByID(f.ctx, "call-dup")
+		require.NoError(t, err)
+		require.Equal(t, eventID, dup.SourceEventID)
 	})
 }

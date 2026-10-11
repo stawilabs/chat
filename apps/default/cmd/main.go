@@ -323,6 +323,8 @@ func newStawiChain(
 		Rooms:    rooms,
 		Authz:    authzMiddleware,
 		Drift:    queues.NewStawiDriftPublisher(queueMan, cfg.QueueStawiDriftName),
+		// Refused activations are kept with the dead letters for an operator.
+		DeadLetters: repository.NewDeadLetterRepository(ctx, dbPool, workMan),
 	})
 }
 

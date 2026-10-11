@@ -39,7 +39,7 @@ type StawiRoom struct {
 	GenesisExpiresAt  *time.Time
 	ChainID           uint64
 	CustodyAddress    string `gorm:"type:varchar(42);index"`
-	GovernanceAddress string `gorm:"type:varchar(42)"`
+	GovernanceAddress string `gorm:"type:varchar(42);index"`
 	PolicyEpoch       uint64
 	BoundAt           *time.Time
 }
@@ -96,6 +96,9 @@ type StawiRoomCall struct {
 	SignerAddress        string `gorm:"type:varchar(42);index:idx_stawi_call_signer,priority:2"`
 	Nonce                uint64 `gorm:"index:idx_stawi_call_signer,priority:3"`
 	State                string `gorm:"type:varchar(16);index"`
+	// LastCheckedAt is when the reconciler last asked settlement about the
+	// call; the least recently checked are asked first.
+	LastCheckedAt *time.Time `gorm:"index"`
 }
 
 // TableName returns the database table name for StawiRoomCall.
@@ -121,10 +124,32 @@ type StawiChainFact struct {
 	// OutcomeEventID is the id of the room event the fact posts, minted before
 	// it is posted so a re-application posts the same event once.
 	OutcomeEventID string `gorm:"type:varchar(50)"`
+	// Attempts counts failed applications; at the limit the fact is
+	// quarantined so the room's later facts are not held up.
+	Attempts      int
+	LastError     string `gorm:"type:text"`
+	LastAttemptAt *time.Time
+	Quarantined   bool `gorm:"index"`
 }
 
 // TableName returns the database table name for StawiChainFact.
 func (*StawiChainFact) TableName() string { return "stawi_chain_facts" }
+
+// StawiKetoOp is a pending Keto write for a Stawi subscription, written in
+// the same transaction as the subscription row so it cannot be lost: Role is
+// the relation the subscription must hold, or empty for none. Token changes
+// on every rewrite, so a drain deletes only the op it applied.
+type StawiKetoOp struct {
+	data.BaseModel
+	RoomID         string `gorm:"type:varchar(50);index"`
+	SubscriptionID string `gorm:"type:varchar(50);uniqueIndex:idx_stawi_keto_op_subscription"`
+	Role           string `gorm:"type:varchar(16)"`
+	Token          string `gorm:"type:varchar(50)"`
+	Attempts       int
+}
+
+// TableName returns the database table name for StawiKetoOp.
+func (*StawiKetoOp) TableName() string { return "stawi_keto_ops" }
 
 // StawiMemberState mirrors the chain's member state (finance.v1 RoomMemberState).
 type StawiMemberState int32

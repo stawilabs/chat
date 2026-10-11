@@ -81,19 +81,46 @@ func (s *MessageBusinessTestSuite) newChainFixture(t *testing.T, dep *definition
 	pending, err := f.bindings.GetByID(f.ctx, f.roomID)
 	require.NoError(t, err)
 	cf.genesisID = pending.GenesisID
-	cf.chain = business.NewStawiChain(business.StawiChainDeps{
-		Pool:     dbPool,
-		RoomRepo: repository.NewRoomRepository(f.ctx, dbPool, f.workMan),
-		SubRepo:  f.subRepo,
-		Bindings: f.bindings,
-		Calls:    f.calls,
-		Store:    cf.store,
-		Accounts: f.accounts,
-		Rooms:    f.rooms,
-		Authz:    s.AuthzMiddleware,
-		Drift:    cf.drift,
-	})
+	cf.chain = cf.newChain(nil)
 	return cf
+}
+
+// newChain builds the consumer over the fixture, with optional overrides.
+func (cf *chainFixture) newChain(override func(*business.StawiChainDeps)) *business.StawiChain {
+	deps := business.StawiChainDeps{
+		Pool:        cf.dbPool,
+		RoomRepo:    repository.NewRoomRepository(cf.ctx, cf.dbPool, cf.workMan),
+		SubRepo:     cf.subRepo,
+		Bindings:    cf.bindings,
+		Calls:       cf.calls,
+		Store:       cf.store,
+		Accounts:    cf.accounts,
+		Rooms:       cf.rooms,
+		Authz:       cf.authz,
+		Drift:       cf.drift,
+		DeadLetters: repository.NewDeadLetterRepository(cf.ctx, cf.dbPool, cf.workMan),
+	}
+	if override != nil {
+		override(&deps)
+	}
+	return business.NewStawiChain(deps)
+}
+
+// requireActivationRefused delivers an activation that must be refused: it
+// is acknowledged (no endless redelivery) and kept for an operator.
+func (cf *chainFixture) requireActivationRefused(t *testing.T, name string, payload []byte) {
+	t.Helper()
+	before := cf.refusedActivations(t)
+	require.NoError(t, cf.chain.Receive(cf.ctx, name, payload))
+	require.Equal(t, before+1, cf.refusedActivations(t), "the refused activation is recorded for an operator")
+}
+
+func (cf *chainFixture) refusedActivations(t *testing.T) int64 {
+	t.Helper()
+	var n int64
+	require.NoError(t, cf.dbPool.DB(cf.ctx, false).Table("dead_letter_events").
+		Where("original_queue = ?", "stawi.settlement.facts").Count(&n).Error)
+	return n
 }
 
 func hexAddr(b []byte) string { return business.HexAddress(b) }
@@ -265,7 +292,7 @@ func (s *MessageBusinessTestSuite) TestChainActivationBindsTheRoom() {
 			Meta: meta(cf.roomID), RoomId: cf.roomID, ChainId: testChainID,
 			CustodyAddress: carolAddr, GovernanceAddress: governor,
 		})
-		require.Error(t, cf.chain.Receive(cf.ctx, business.FactRoomActivated, b))
+		cf.requireActivationRefused(t, business.FactRoomActivated, b)
 		still, err := cf.bindings.GetByID(cf.ctx, cf.roomID)
 		require.NoError(t, err)
 		require.Equal(t, hexAddr(custody), still.CustodyAddress)
@@ -464,12 +491,7 @@ func (s *MessageBusinessTestSuite) TestStaleCallOutcomeComesOnlyFromItsOwnRoomsC
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		cf := s.newChainFixture(t, dep)
 		cf.deliver(t, f2(cf.activated()))
-		cf.chain = business.NewStawiChain(business.StawiChainDeps{
-			Pool: cf.dbPool, RoomRepo: repository.NewRoomRepository(cf.ctx, cf.dbPool, cf.workMan),
-			SubRepo: cf.subRepo, Bindings: cf.bindings, Calls: cf.calls, Store: cf.store,
-			Accounts: cf.accounts, Rooms: cf.rooms, Authz: cf.authz, Drift: cf.drift,
-			StaleCallAfter: 1,
-		})
+		cf.chain = cf.newChain(func(d *business.StawiChainDeps) { d.StaleCallAfter = 1 })
 		for _, id := range []string{"call-a", "call-b"} {
 			cf.rooms.AddCall(stawi.RoomCall{CallID: id, RoomID: cf.roomID, Kind: "INVITE",
 				SignerAddress: hexAddr(aliceAddr), Nonce: map[string]uint64{"call-a": 1, "call-b": 2}[id]})
@@ -613,7 +635,7 @@ func (s *MessageBusinessTestSuite) TestGenesisFailedReopensTheConversion() {
 		// The genesis is gone: an activation for it is refused, and another
 		// admin may now convert.
 		name, payload := cf.activated()
-		require.Error(t, cf.chain.Receive(cf.ctx, name, payload))
+		cf.requireActivationRefused(t, name, payload)
 		require.NoError(t, cf.rb.UpdateSubscriptionRole(cf.ctx, &chatv1.UpdateSubscriptionRoleRequest{
 			RoomId: cf.roomID, SubscriptionId: cf.bobSub, Roles: []string{"admin"},
 		}, cf.alice))
@@ -633,7 +655,7 @@ func (s *MessageBusinessTestSuite) TestActivationMustNameTheRoomsGenesis() {
 		} {
 			t.Run(name, func(t *testing.T) {
 				factName, payload := cf.activatedFor(fact[0], fact[1])
-				require.Error(t, cf.chain.Receive(cf.ctx, factName, payload))
+				cf.requireActivationRefused(t, factName, payload)
 				bound, err := cf.bindings.IsBound(cf.ctx, cf.roomID)
 				require.NoError(t, err)
 				require.False(t, bound)
