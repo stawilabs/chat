@@ -545,20 +545,20 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   }
 
   /// What the member must pay in before [prepared] can pay the loan off, from
-  /// their live book and the room's dues; null when it cannot be read.
+  /// the credit their live book says a payoff can spend; null when it cannot
+  /// be read.
   Future<PayoffTopUp?> _payoffTopUp(PreparedEngineCall prepared) async {
+    final asset = prepared.request.asset;
+    if (asset == null) return null;
     try {
       final identity = await ref.read(stawiIdentityProvider.future);
       final balances = await ref.read(
         stawiMemberBalancesProvider(widget.roomId).future,
       );
-      final products = await ref.read(
-        roomProductsProvider(widget.roomId).future,
-      );
       return payoffTopUpFor(
         payoff: prepared.call.amount,
+        asset: asset.sdkAsset,
         balances: balances,
-        products: products,
         myAccounts: identity.addresses,
       );
     } on Object {
@@ -567,7 +567,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   }
 
   /// Pays the top-up into the room and waits for it to land, so the payoff
-  /// that follows finds the cycle's dues paid and the credit there.
+  /// that follows finds the claimed dues paid and the credit there.
   Future<void> _payTopUp() async {
     final prepared = _prepared!;
     final topUp = _topUp!.topUp;
@@ -836,19 +836,25 @@ class _TopUpNotice extends StatelessWidget {
     if (t == null) {
       text =
           'Your credit in the room could not be read. A payoff is paid from '
-          'your credit after the rest of this cycle\'s dues; if it is '
-          'refused, pay those dues in first.';
+          'your credit after the dues and penalties a settle takes first; if '
+          'it is refused, pay those in first.';
     } else if (!t.needed) {
       return const SizedBox.shrink();
     } else if (toppedUp) {
       text = 'Top-up received. Sign to pay the loan off.';
     } else {
       String money(BigInt units) => _formatTopUp(request, units);
+      final claims = [
+        if (t.duesPayable > BigInt.zero) 'dues of ${money(t.duesPayable)}',
+        if (t.penaltiesOwed > BigInt.zero)
+          'penalties of ${money(t.penaltiesOwed)}',
+      ];
       text =
-          'Pay in ${money(t.topUp)} first. New money pays the rest of this '
-          'cycle\'s dues (${money(t.remainingDues)}) before the loan, and the '
-          'payoff takes up to ${money(t.payoff)}; your credit now is '
-          '${money(t.credit)}. Anything left over stays your credit.';
+          'Pay in ${money(t.topUp)} first. The payoff takes up to '
+          '${money(t.payoff.units)} and your credit a payoff can spend now is '
+          '${money(t.creditAvailable.units)}'
+          '${claims.isEmpty ? '' : ', after ${claims.join(' and ')} new money '
+                    'pays first'}. Anything left over stays your credit.';
     }
     return Padding(
       padding: const EdgeInsets.only(top: 12),
