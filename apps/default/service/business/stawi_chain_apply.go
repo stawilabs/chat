@@ -70,29 +70,53 @@ func (c *StawiChain) applyPass(ctx context.Context, room *models.Room) (bool, er
 		return false, err // profile is down: never skip, the delivery is retried
 	}
 
-	var stuck error
-	deferred := false
+	var outcome factResult
 	err = c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
 		facts, pendingErr := c.deps.Store.Pending(tx, roomID)
 		if pendingErr != nil {
 			return pendingErr
 		}
-		for i, fact := range facts {
-			result, factErr := c.applyOne(ctx, tx, room, fact, profiles, fmt.Sprintf("stawi_fact_%d", i))
-			if factErr != nil {
-				return factErr
-			}
-			deferred = deferred || result.deferred
-			if stuck == nil {
-				stuck = result.stuck
-			}
-		}
-		return nil
+		var passErr error
+		outcome, passErr = c.applyInOrder(ctx, tx, room, facts, profiles)
+		return passErr
 	})
 	if err != nil {
 		return false, err
 	}
-	return deferred, stuck
+	return outcome.deferred, outcome.stuck
+}
+
+// applyInOrder applies the room's waiting facts in chain order. A fact
+// waits, uncounted, while an earlier fact of its subject has not applied
+// (failed, deferred, quarantined or backing off), or while it is itself
+// quarantined or backing off.
+func (c *StawiChain) applyInOrder(
+	ctx context.Context, tx *gorm.DB, room *models.Room, facts []*models.StawiChainFact, profiles map[string]string,
+) (factResult, error) {
+	var outcome factResult
+	gate := newFactGate()
+	var waiting []string
+	now := time.Now()
+	for i, fact := range facts {
+		subject := factSubject(fact)
+		if gate.holds(subject) || !fact.Ready(now) {
+			gate.block(subject)
+			waiting = append(waiting, fact.GetID())
+			continue
+		}
+		result, err := c.applyOne(ctx, tx, room, fact, profiles, fmt.Sprintf("stawi_fact_%d", i))
+		if err != nil {
+			return outcome, err
+		}
+		if result.deferred || result.stuck != nil {
+			gate.block(subject)
+		}
+		outcome.deferred = outcome.deferred || result.deferred
+		if outcome.stuck == nil {
+			outcome.stuck = result.stuck
+		}
+	}
+	return outcome, c.deps.Store.TouchWaiting(tx, waiting)
 }
 
 // factResult is how one fact's application ended, short of a database error.
@@ -110,7 +134,13 @@ func (c *StawiChain) applyOne(
 	if err := tx.SavePoint(savepoint).Error; err != nil {
 		return factResult{}, err
 	}
-	applyErr := c.applyFact(ctx, tx, room, fact, profiles)
+	var applyErr error
+	if c.applyFault != nil {
+		applyErr = c.applyFault(fact)
+	}
+	if applyErr == nil {
+		applyErr = c.applyFact(ctx, tx, room, fact, profiles)
+	}
 	if applyErr == nil {
 		applyErr = c.deps.Store.MarkApplied(tx, fact)
 	}
@@ -124,7 +154,8 @@ func (c *StawiChain) applyOne(
 	if errors.Is(applyErr, errProfileNotLookedUp) {
 		return factResult{deferred: true}, nil // not a failure: the next pass looks it up
 	}
-	quarantined, err := c.deps.Store.RecordFailure(tx, fact, applyErr, c.deps.MaxFactAttempts)
+	quarantined, err := c.deps.Store.RecordFailure(tx, fact, applyErr, c.deps.MaxFactAttempts,
+		c.deps.FactRetryBackoff)
 	if err != nil {
 		return factResult{}, err
 	}
@@ -139,6 +170,56 @@ func (c *StawiChain) applyOne(
 	logger.Warn("stawi chain: fact not applied; it will be retried")
 	return factResult{stuck: fmt.Errorf("failed to apply %s %s: %w", fact.EventName, fact.FactKey, applyErr)}, nil
 }
+
+// roomWide is the subject of a fact whose subject cannot be told: it waits
+// for every earlier fact and holds back every later one.
+const roomWide = "*"
+
+// factSubject is what a fact orders against. Membership facts are ordered per
+// account: a member's facts apply in chain order, and one that has not
+// applied holds back that member's later facts. Accounts are independent —
+// each has its own member row, and a profile's subscription is recomputed
+// from all of its rows — so another member's facts (an exit) are not held
+// back. Call facts each stand alone.
+func factSubject(fact *models.StawiChainFact) string {
+	if fact.EventName != FactRoomMembershipObserved {
+		return "fact:" + fact.FactKey
+	}
+	var msg financev1.RoomMembershipObserved
+	if proto.Unmarshal(fact.Payload, &msg) != nil {
+		return roomWide
+	}
+	if address := membershipAddress(&msg); address != "" {
+		return "member:" + address
+	}
+	return "fact:" + fact.FactKey
+}
+
+// factGate tracks which subjects are held back in a pass.
+type factGate struct {
+	subjects map[string]bool
+	all      bool
+}
+
+func newFactGate() *factGate { return &factGate{subjects: map[string]bool{}} }
+
+func (g *factGate) holds(subject string) bool {
+	return g.all || g.subjects[subject] || (subject == roomWide && len(g.subjects) > 0)
+}
+
+func (g *factGate) block(subject string) {
+	if subject == roomWide {
+		g.all = true
+		return
+	}
+	g.subjects[subject] = true
+}
+
+// errMembershipOutOfSync fails a membership fact that does not follow from
+// the member's recorded state (an invitation of a member, a revocation of no
+// invitation): chat's record is behind the chain, so the fact is not dropped
+// but retried and, if it persists, quarantined for an operator.
+var errMembershipOutOfSync = errors.New("stawi chain: the membership fact does not follow from the member's state")
 
 // errProfileNotLookedUp defers a membership fact whose address the current
 // pass did not resolve (the fact arrived after the lookup).
@@ -299,8 +380,14 @@ func (c *StawiChain) applyMembership(
 		return err
 	}
 	pos := models.ChainPosition{Block: fact.BlockNumber, LogIndex: fact.LogIndex}
-	if !foldMembership(member, msg, pos) {
-		return nil // an older fact than the member's state already reflects
+	changed, err := foldMembership(member, msg, pos)
+	if err != nil {
+		return err
+	}
+	if !changed {
+		util.Log(ctx).WithFields(map[string]any{logKeyFact: fact.FactKey, "member": address}).
+			Debug("stawi chain: membership fact older than the member's recorded state; nothing to change")
+		return nil
 	}
 	if member.ProfileID == "" {
 		profileID, looked := profiles[member.Address]
@@ -318,46 +405,55 @@ func (c *StawiChain) applyMembership(
 	return c.syncProfile(ctx, tx, room, member.ProfileID, fact)
 }
 
-// foldMembership applies one membership fact to the member's record if it is
-// newer than what the record already reflects. It reports whether it changed.
+// foldMembership applies one membership fact to the member's record. A fact
+// at or before the position the record already reflects is a duplicate or a
+// replay and changes nothing (false, nil). A newer fact that does not follow
+// from the recorded state fails (errMembershipOutOfSync) rather than being
+// dropped. State changes carry the chain's new state and are applied as is.
 func foldMembership(member *models.StawiRoomMember, msg *financev1.RoomMembershipObserved,
 	pos models.ChainPosition,
-) bool {
+) (bool, error) {
 	switch msg.GetEvent() {
 	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITED:
-		if !pos.After(member.StatePosition()) ||
-			(member.State != models.StawiMemberStateNone && member.State != models.StawiMemberStateExited) {
-			return false
+		if !pos.After(member.StatePosition()) {
+			return false, nil
+		}
+		if member.State != models.StawiMemberStateNone && member.State != models.StawiMemberStateExited {
+			return false, fmt.Errorf("%w: invitation of a member in state %d", errMembershipOutOfSync, member.State)
 		}
 		member.State = models.StawiMemberStateInvited
 	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_INVITE_REVOKED:
-		if !pos.After(member.StatePosition()) || member.State != models.StawiMemberStateInvited {
-			return false
+		if !pos.After(member.StatePosition()) {
+			return false, nil
+		}
+		if member.State != models.StawiMemberStateInvited {
+			return false, fmt.Errorf("%w: revocation with no open invitation (state %d)", errMembershipOutOfSync,
+				member.State)
 		}
 		member.State = models.StawiMemberStateNone
 	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_MEMBER_STATE_CHANGED:
 		if !pos.After(member.StatePosition()) {
-			return false
+			return false, nil
 		}
 		member.State = models.StawiMemberState(msg.GetToState())
 	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROLE_CHANGED:
 		roleID := HexAddress(msg.GetRoleId())
 		if entry, ok := member.Role(roleID); ok && !pos.After(entry.Position) {
-			return false
+			return false, nil
 		}
 		member.SetRole(roleID, models.RoleEntry{Assigned: msg.GetRoleAssigned(), Position: pos})
-		return true
+		return true, nil
 	case financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_UNSPECIFIED,
 		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_ROOM_BINDING_SET,
 		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_JOIN_POLICY_SET,
 		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_SET,
 		financev1.RoomMembershipChainEvent_ROOM_MEMBERSHIP_CHAIN_EVENT_DELEGATE_CAPABILITY_REVOKED:
-		return false
+		return false, nil
 	default:
-		return false
+		return false, nil
 	}
 	member.StateBlock, member.StateLogIndex = pos.Block, pos.LogIndex
-	return true
+	return true, nil
 }
 
 // syncProfile brings a profile's subscription in line with all of its

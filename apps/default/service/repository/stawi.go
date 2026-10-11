@@ -268,13 +268,18 @@ type StawiChainStore interface {
 	// PendingNoLock reads the room's waiting facts without the lock, to plan
 	// work (profile lookups) that must not run under it.
 	PendingNoLock(ctx context.Context, roomID string) ([]*models.StawiChainFact, error)
-	// RecordFailure counts a failed application and quarantines the fact at
-	// the limit; it reports whether the fact is now quarantined.
-	RecordFailure(tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int) (bool, error)
+	// RecordFailure counts a failed application, schedules the next attempt
+	// after an exponential backoff from base, and quarantines the fact at the
+	// limit; it reports whether the fact is now quarantined.
+	RecordFailure(tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int, base time.Duration) (bool, error)
+	// TouchWaiting stamps facts that waited behind another, so the sweep
+	// serves other rooms first.
+	TouchWaiting(tx *gorm.DB, ids []string) error
 	// Redrive returns a room's quarantined facts to the queue (operator).
 	Redrive(ctx context.Context, roomID string) (int64, error)
-	// PruneApplied deletes applied facts older than before; membership rows,
-	// not facts, are what reconciliation reads.
+	// PruneApplied drops the payload of applied facts older than before; the
+	// fact's key stays, so a replay is still recognised. Membership rows, not
+	// facts, are what reconciliation reads.
 	PruneApplied(ctx context.Context, before time.Time) (int64, error)
 	// TryLease runs fn only if no other replica holds the named lease.
 	TryLease(ctx context.Context, name string, fn func(ctx context.Context)) (bool, error)
@@ -291,7 +296,8 @@ type StawiChainStore interface {
 	FailKeto(ctx context.Context, op *models.StawiKetoOp) error
 	// WithRoomLock runs fn in a transaction holding the room's lock.
 	WithRoomLock(ctx context.Context, roomID string, fn func(tx *gorm.DB) error) error
-	// Pending returns the room's unapplied facts in chain order.
+	// Pending returns the room's unapplied facts in chain order, quarantined
+	// ones included (they hold back the facts that follow them).
 	Pending(tx *gorm.DB, roomID string) ([]*models.StawiChainFact, error)
 	// MarkApplied marks a fact applied.
 	MarkApplied(tx *gorm.DB, fact *models.StawiChainFact) error
@@ -341,6 +347,7 @@ func (s *stawiChainStore) RoomsWithPending(ctx context.Context, limit int) ([]st
 	var rooms []string
 	err := s.pool.DB(ctx, false).Raw(`SELECT room_id FROM stawi_chain_facts
 		WHERE applied = false AND quarantined = false AND room_id <> ''
+		  AND (next_attempt_at IS NULL OR next_attempt_at <= now())
 		GROUP BY room_id
 		ORDER BY MIN(COALESCE(last_attempt_at, 'epoch'::timestamptz)) ASC, room_id ASC
 		LIMIT ?`, limit).Scan(&rooms).Error
@@ -352,10 +359,23 @@ func (s *stawiChainStore) PendingNoLock(ctx context.Context, roomID string) ([]*
 }
 
 func (s *stawiChainStore) RecordFailure(
-	tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int,
+	tx *gorm.DB, fact *models.StawiChainFact, cause error, limit int, base time.Duration,
 ) (bool, error) {
 	now := time.Now()
 	fact.Attempts++
+	const (
+		maxBackoff = time.Hour
+		maxShift   = 20
+	)
+	var backoff time.Duration
+	if base > 0 {
+		backoff = base << min(fact.Attempts-1, maxShift)
+		if backoff <= 0 || backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+	}
+	next := now.Add(backoff)
+	fact.NextAttemptAt = &next
 	quarantine := fact.Attempts >= limit
 	msg := cause.Error()
 	const maxErr = 2000
@@ -364,20 +384,28 @@ func (s *stawiChainStore) RecordFailure(
 	}
 	err := tx.Table("stawi_chain_facts").Where("id = ?", fact.GetID()).Updates(map[string]any{
 		"attempts": fact.Attempts, "last_error": msg, "last_attempt_at": now, "quarantined": quarantine,
+		"next_attempt_at": next,
 	}).Error
 	return quarantine, err
+}
+
+func (s *stawiChainStore) TouchWaiting(tx *gorm.DB, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return tx.Table("stawi_chain_facts").Where("id IN ?", ids).Update("last_attempt_at", time.Now()).Error
 }
 
 func (s *stawiChainStore) Redrive(ctx context.Context, roomID string) (int64, error) {
 	res := s.pool.DB(ctx, false).Table("stawi_chain_facts").
 		Where("room_id = ? AND quarantined = ? AND applied = ?", roomID, true, false).
-		Updates(map[string]any{"quarantined": false, "attempts": 0})
+		Updates(map[string]any{"quarantined": false, "attempts": 0, "next_attempt_at": nil})
 	return res.RowsAffected, res.Error
 }
 
 func (s *stawiChainStore) PruneApplied(ctx context.Context, before time.Time) (int64, error) {
-	res := s.pool.DB(ctx, false).Exec(
-		"DELETE FROM stawi_chain_facts WHERE applied = true AND applied_at < ?", before)
+	res := s.pool.DB(ctx, false).Exec(`UPDATE stawi_chain_facts SET payload = ''::bytea, last_error = ''
+		WHERE applied = true AND applied_at < ? AND octet_length(payload) > 0`, before)
 	return res.RowsAffected, res.Error
 }
 
@@ -444,7 +472,7 @@ func (s *stawiChainStore) WithRoomLock(ctx context.Context, roomID string, fn fu
 
 func (s *stawiChainStore) Pending(tx *gorm.DB, roomID string) ([]*models.StawiChainFact, error) {
 	var facts []*models.StawiChainFact
-	err := tx.Where("room_id = ? AND applied = ? AND quarantined = ?", roomID, false, false).
+	err := tx.Where("room_id = ? AND applied = ?", roomID, false).
 		Order("block_number ASC, log_index ASC, created_at ASC").Find(&facts).Error
 	return facts, err
 }

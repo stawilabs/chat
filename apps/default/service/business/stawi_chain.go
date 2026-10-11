@@ -39,6 +39,7 @@ const (
 
 const (
 	defaultMaxFactAttempts    = 5
+	defaultFactRetryBackoff   = 30 * time.Second
 	defaultReconcilePerPass   = 50
 	defaultFactRetention      = 30 * 24 * time.Hour
 	ketoDrainBatch            = 500
@@ -108,8 +109,10 @@ type StawiChainDeps struct {
 	// the reconciler asks settlement about it (default 10 minutes).
 	StaleCallAfter time.Duration
 	// MaxFactAttempts is how often a fact may fail before it is quarantined
-	// (default 5).
-	MaxFactAttempts int
+	// (default 5). Attempts are spaced by FactRetryBackoff, doubling each
+	// time (default 30s, at most an hour), however often it is redelivered.
+	MaxFactAttempts  int
+	FactRetryBackoff time.Duration
 	// ReconcileRoomsPerPass bounds one reconciler pass (default 50); passes
 	// rotate through the bound rooms.
 	ReconcileRoomsPerPass int
@@ -135,6 +138,10 @@ type StawiChain struct {
 
 	mu              sync.Mutex
 	reconcileCursor string
+
+	// Test seams (set only from tests in this package).
+	applyFault         func(*models.StawiChainFact) error
+	afterReconcileLock func()
 }
 
 // NewStawiChain creates the chain consumer.
@@ -144,6 +151,9 @@ func NewStawiChain(deps StawiChainDeps) *StawiChain {
 	}
 	if deps.MaxFactAttempts <= 0 {
 		deps.MaxFactAttempts = defaultMaxFactAttempts
+	}
+	if deps.FactRetryBackoff <= 0 {
+		deps.FactRetryBackoff = defaultFactRetryBackoff
 	}
 	if deps.ReconcileRoomsPerPass <= 0 {
 		deps.ReconcileRoomsPerPass = defaultReconcilePerPass

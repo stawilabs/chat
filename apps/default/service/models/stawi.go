@@ -129,7 +129,15 @@ type StawiChainFact struct {
 	Attempts      int
 	LastError     string `gorm:"type:text"`
 	LastAttemptAt *time.Time
-	Quarantined   bool `gorm:"index"`
+	// NextAttemptAt is when a failed fact may be tried again (backoff).
+	NextAttemptAt *time.Time `gorm:"index"`
+	Quarantined   bool       `gorm:"index"`
+}
+
+// Ready reports whether the fact may be attempted now: not quarantined and
+// not backing off.
+func (f *StawiChainFact) Ready(now time.Time) bool {
+	return !f.Quarantined && (f.NextAttemptAt == nil || !f.NextAttemptAt.After(now))
 }
 
 // TableName returns the database table name for StawiChainFact.

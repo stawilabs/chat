@@ -124,40 +124,56 @@ func (s *MessageBusinessTestSuite) TestOneProfileWithTwoAccountsKeepsOneSubscrip
 	})
 }
 
-// TestPoisonFactIsQuarantinedAndLaterFactsApply: a fact that cannot be
-// applied does not hold the room up: later facts (an exit) still apply, and
-// at the attempt limit the fact is quarantined until an operator re-drives it.
-func (s *MessageBusinessTestSuite) TestPoisonFactIsQuarantinedAndLaterFactsApply() {
+// TestAFailingFactBacksOffThenIsQuarantined: a fact that keeps failing is
+// retried on a time-based backoff (redeliveries in between do not count),
+// quarantined at the limit while other members' facts keep applying, and
+// re-driven by an operator once the cause is fixed.
+func (s *MessageBusinessTestSuite) TestAFailingFactBacksOffThenIsQuarantined() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		cf := s.newChainFixture(t, dep)
-		cf.chain = cf.newChain(func(d *business.StawiChainDeps) { d.MaxFactAttempts = 3 })
-		cf.deliver(t, f2(cf.activated()), f2(cf.stateChanged(cf.roomID, carolAddr, none, active, 90, 0)))
-
-		poison := &models.StawiChainFact{
-			FactKey: "poison:1", EventName: business.FactRoomMembershipObserved, RoomID: cf.roomID,
-			CustodyAddress: hexAddr(custody), ChainID: testChainID, BlockNumber: 91, Payload: []byte{0xff, 0xff},
+		cf.chain = cf.newChain(func(d *business.StawiChainDeps) {
+			d.MaxFactAttempts = 3
+			d.FactRetryBackoff = time.Hour
+		})
+		cf.deliver(t, f2(cf.activated()),
+			f2(cf.stateChanged(cf.roomID, bobAddr, none, active, 90, 0)),
+			f2(cf.stateChanged(cf.roomID, carolAddr, none, active, 90, 1)))
+		key := business.LogKey(testChainID, txHash(91, 0), 0)
+		healFact := cf.failFact(91, 0)
+		fact := func() models.StawiChainFact {
+			var stored models.StawiChainFact
+			require.NoError(t, cf.dbPool.DB(cf.ctx, false).Where("fact_key = ?", key).First(&stored).Error)
+			return stored
 		}
-		_, err := cf.store.Record(cf.ctx, poison)
-		require.NoError(t, err)
 
-		name, exit := cf.stateChanged(cf.roomID, carolAddr, active, exited, 92, 0)
-		require.Error(t, cf.chain.Receive(cf.ctx, name, exit), "the stuck fact is reported for redelivery")
-		require.False(t, cf.live(t, cf.carol.GetProfileId()), "the exit behind the poison fact applied")
+		name, exit := cf.stateChanged(cf.roomID, carolAddr, active, exited, 91, 0)
+		require.Error(t, cf.chain.Receive(cf.ctx, name, exit))
+		for range 3 { // redeliveries within the backoff do not count
+			_ = cf.chain.Receive(cf.ctx, name, exit)
+			require.NoError(t, cf.chain.ApplyRoom(cf.ctx, cf.roomID))
+		}
+		require.Equal(t, 1, fact().Attempts)
+		require.NotEmpty(t, fact().LastError)
 
-		require.Error(t, cf.chain.ApplyRoom(cf.ctx, cf.roomID))
-		require.NoError(t, cf.chain.ApplyRoom(cf.ctx, cf.roomID), "quarantined at the third attempt")
-		var stored models.StawiChainFact
-		require.NoError(t, cf.dbPool.DB(cf.ctx, false).Where("fact_key = ?", "poison:1").First(&stored).Error)
-		require.True(t, stored.Quarantined)
-		require.False(t, stored.Applied)
-		require.Equal(t, 3, stored.Attempts)
-		require.NotEmpty(t, stored.LastError)
+		// With the backoff elapsed, attempts count up to the quarantine.
+		for range 2 {
+			require.NoError(t, cf.dbPool.DB(cf.ctx, false).Exec(
+				"UPDATE stawi_chain_facts SET next_attempt_at = now() - interval '1 second' WHERE fact_key = ?",
+				key).Error)
+			_ = cf.chain.ApplyRoom(cf.ctx, cf.roomID)
+		}
+		require.True(t, fact().Quarantined)
+		require.Equal(t, 3, fact().Attempts)
+		require.True(t, cf.live(t, cf.carol.GetProfileId()), "the member's exit has not applied")
 
-		// An operator re-drives it (still poison: it counts again).
-		require.Error(t, cf.chain.Redrive(cf.ctx, cf.roomID))
-		require.NoError(t, cf.dbPool.DB(cf.ctx, false).Where("fact_key = ?", "poison:1").First(&stored).Error)
-		require.False(t, stored.Quarantined)
-		require.Equal(t, 1, stored.Attempts)
+		name, bobExit := cf.stateChanged(cf.roomID, bobAddr, active, exited, 92, 0)
+		require.NoError(t, cf.chain.Receive(cf.ctx, name, bobExit))
+		require.False(t, cf.live(t, cf.bob.GetProfileId()), "another member's exit still applies")
+
+		healFact()
+		require.NoError(t, cf.chain.Redrive(cf.ctx, cf.roomID))
+		require.True(t, fact().Applied)
+		require.False(t, cf.live(t, cf.carol.GetProfileId()))
 	})
 }
 
@@ -265,7 +281,7 @@ func (s *MessageBusinessTestSuite) TestWaitingRoomsAndStaleCallsAreServedLeastRe
 		var fact models.StawiChainFact
 		require.NoError(t, cf.dbPool.DB(cf.ctx, false).Where("fact_key = ?", "wait:"+tried).First(&fact).Error)
 		require.NoError(t, cf.dbPool.DB(cf.ctx, false).Transaction(func(tx *gorm.DB) error {
-			_, recErr := cf.store.RecordFailure(tx, &fact, errors.New("boom"), 10)
+			_, recErr := cf.store.RecordFailure(tx, &fact, errors.New("boom"), 10, 0)
 			return recErr
 		}))
 		rooms, err := cf.store.RoomsWithPending(cf.ctx, 10)

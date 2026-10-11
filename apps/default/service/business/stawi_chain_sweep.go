@@ -111,6 +111,7 @@ func (c *StawiChain) Reconcile(ctx context.Context) (ReconcileReport, error) {
 // ketoCheck is a subscription whose Keto tuples the reconciler verifies
 // after the room's lock is released.
 type ketoCheck struct {
+	profileID      string
 	subscriptionID string
 	want           desiredSubscription
 }
@@ -133,6 +134,9 @@ func (c *StawiChain) reconcileRoom(ctx context.Context, roomID string) (StawiDri
 	})
 	if err != nil {
 		return drift, err
+	}
+	if c.afterReconcileLock != nil {
+		c.afterReconcileLock()
 	}
 	if err = c.repairKeto(ctx, room, checks, &drift); err != nil {
 		return drift, err
@@ -205,17 +209,35 @@ func (c *StawiChain) reconcileLocked(
 }
 
 // repairKeto verifies, outside the lock, that each subscription holds exactly
-// its role's tuples, repairing through the op outbox.
+// its role's tuples. A repair is decided again under the room's lock from the
+// rows as they are then: the membership may have changed since the check (an
+// exit whose removal is pending), and a repair must never replace a newer op.
 func (c *StawiChain) repairKeto(ctx context.Context, room *models.Room, checks []ketoCheck, drift *StawiDrift) error {
 	for _, check := range checks {
 		if c.ketoHolds(ctx, room.GetID(), check.subscriptionID, check.want) {
 			continue
 		}
-		if err := c.deps.Store.EnqueueKeto(c.deps.Pool.DB(ctx, false), room, check.subscriptionID,
-			check.want.ketoRole()); err != nil {
+		repaired := false
+		err := c.deps.Store.WithRoomLock(ctx, room.GetID(), func(tx *gorm.DB) error {
+			members, err := c.deps.Store.ProfileMembers(tx, room.GetID(), check.profileID)
+			if err != nil {
+				return err
+			}
+			want := desiredForProfile(members)
+			sub, err := currentProfileSubscription(tx, room.GetID(), check.profileID, members)
+			if err != nil || sub == nil || sub.GetID() != check.subscriptionID || !want.matches(sub) ||
+				want.ketoRole() != check.want.ketoRole() {
+				return err // the row moved on since the check; its own op stands
+			}
+			repaired = true
+			return c.deps.Store.EnqueueKeto(tx, room, sub.GetID(), want.ketoRole())
+		})
+		if err != nil {
 			return err
 		}
-		drift.PermissionsRepaired++
+		if repaired {
+			drift.PermissionsRepaired++
+		}
 	}
 	if err := c.drainKeto(ctx, room.GetID()); err != nil {
 		util.Log(ctx).WithError(err).WithField(chatutil.KeyRoomID, room.GetID()).
@@ -266,7 +288,7 @@ func (c *StawiChain) reconcileProfile(
 	if !want.present || sub == nil {
 		return nil, "", nil
 	}
-	return &ketoCheck{subscriptionID: sub.GetID(), want: want}, sub.GetID(), nil
+	return &ketoCheck{profileID: profileID, subscriptionID: sub.GetID(), want: want}, sub.GetID(), nil
 }
 
 // removeStrays blocks live subscriptions the chain's membership does not

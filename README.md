@@ -186,6 +186,14 @@ bound only if chat prepared its genesis. A reconciler repairs drift between
 subscriptions/Keto and the chain's membership and emits
 `room.subscription_drift`.
 
+A member's facts apply in chain order; one that fails holds back that
+member's later facts (others' are independent), is retried on a doubling
+backoff and, after `MaxFactAttempts`, quarantined
+(`chat.stawi.facts.quarantined`). Re-driving quarantined facts is an internal
+method (`StawiChain.Redrive`) with no RPC or HTTP route; an operator runs it
+from inside the service. Refused activations are acknowledged and kept with
+the dead letters (`chat.stawi.activations.refused`).
+
 For a bound room `AddRoomSubscriptions`, `RemoveRoomSubscriptions`,
 `UpdateSubscriptionRole`, `DeleteRoom`, chat-native proposals and
 MOTION/VOTE payloads are refused (FailedPrecondition).
