@@ -149,14 +149,18 @@ func TestPrepareRoomGenesisNamesTheAdminAndFounders(t *testing.T) {
 	require.Equal(t, int64(1_900_000_000), genesis.ExpiresAt.Unix())
 }
 
-func TestPrepareRoomGenesisRefusesRuleValuesSettlementCannotTake(t *testing.T) {
+// The rule values the admin chose travel with the template: settlement applies
+// them before it compiles the constitution the founders sign.
+func TestPrepareRoomGenesisRelaysTheRuleValues(t *testing.T) {
 	fake := &fakeRoomService{}
+	values := map[string]string{"contribution_amount": "5000", "voting_period": "86400"}
 	_, err := newRooms(t, fake).PrepareRoomGenesis(context.Background(), stawi.PrepareGenesisRequest{
 		ChatRoomID: roomID, TemplateID: "chama-basic", FounderProfileIDs: []string{adminID},
-		RuleValues: map[string]string{"contribution_amount": "5000"}, RequestedBy: adminID,
+		RuleValues: values, RequestedBy: adminID,
 	})
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Nil(t, fake.prepared, "settlement is not called")
+	require.NoError(t, err)
+	require.Equal(t, "chama-basic", fake.prepared.GetTemplateId())
+	require.Equal(t, values, fake.prepared.GetRuleValues())
 }
 
 func TestSubmitRoomGenesisSignatureRelaysTheFoundersDeviceSignature(t *testing.T) {
