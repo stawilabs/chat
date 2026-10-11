@@ -84,7 +84,7 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 			Rooms: f.rooms, Accounts: f.accounts, RoomRepo: roomRepo, Bindings: f.bindings, CallRepo: f.calls,
 		}))
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
-		s.AuthzMiddleware)
+		s.AuthzMiddleware, business.WithStawiBindings(f.bindings))
 	return mb, rb
 }
 

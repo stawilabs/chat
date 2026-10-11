@@ -29,6 +29,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/business"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
@@ -57,6 +58,23 @@ type ChatServer struct {
 	chatv1connect.UnimplementedChatServiceHandler
 }
 
+// ServerOption configures optional ChatServer dependencies.
+type ServerOption func(*serverOptions)
+
+type serverOptions struct {
+	stawiRooms    stawi.Rooms
+	stawiAccounts stawi.AccountResolver
+}
+
+// WithStawi gives the server settlement's RoomService and the profile account
+// lookup, enabling Stawi room acts.
+func WithStawi(rooms stawi.Rooms, accounts stawi.AccountResolver) ServerOption {
+	return func(o *serverOptions) {
+		o.stawiRooms = rooms
+		o.stawiAccounts = accounts
+	}
+}
+
 // NewChatServer creates a new ChatServer with the business layers initialized.
 func NewChatServer(
 	ctx context.Context,
@@ -64,7 +82,15 @@ func NewChatServer(
 	notificationCli notificationv1connect.NotificationServiceClient,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
+	opts ...ServerOption,
 ) *ChatServer {
+	options := serverOptions{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&options)
+		}
+	}
+
 	workMan := service.WorkManager()
 	eventsMan := service.EventsManager()
 	dbPool := service.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
@@ -76,6 +102,7 @@ func NewChatServer(
 	callRepo := repository.NewRoomCallRepository(ctx, dbPool, workMan)
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 	deviceReplayRepo := repository.NewDeviceReplayRepository(ctx, dbPool, workMan)
+	stawiBindings := repository.NewStawiRoomRepository(ctx, dbPool, workMan)
 
 	rawPresenceCache, ok := service.GetRawCache("presence")
 	if !ok {
@@ -108,6 +135,15 @@ func NewChatServer(
 		subscriptionSvc,
 		authzMiddleware,
 		business.WithCallPolicy(callRepo, callPolicy),
+		// Always wired: without a settlement client Stawi acts are refused as
+		// unavailable, but a room the chain has is still guarded.
+		business.WithStawiRooms(business.StawiDeps{
+			Rooms:    options.stawiRooms,
+			Accounts: options.stawiAccounts,
+			RoomRepo: roomRepo,
+			Bindings: stawiBindings,
+			CallRepo: repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
+		}),
 	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
@@ -123,12 +159,14 @@ func NewChatServer(
 		messageBusiness,
 		profileCli,
 		authzMiddleware,
+		business.WithStawiBindings(stawiBindings),
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,
 		roomBusiness,
 		subscriptionSvc,
 		authzMiddleware,
+		business.WithProposalStawiBindings(stawiBindings),
 	)
 
 	return &ChatServer{

@@ -386,6 +386,10 @@ func (mb *messageBusiness) prepareEventForInsert(
 		return nil, ackEventError(reqEvt.GetId(), stawiErr)
 	}
 
+	if govErr := mb.refuseChatNativeGovernance(ctx, reqEvt); govErr != nil {
+		return nil, ackEventError(reqEvt.GetId(), govErr)
+	}
+
 	content, convertErr := mb.payloadConverter.FromProto(reqEvt.GetPayload())
 	if convertErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), connect.NewError(
@@ -429,6 +433,37 @@ func (mb *messageBusiness) prepareEventForInsert(
 		callPayload:  callPayload,
 		stawiPayload: stawiPayload,
 	}, nil
+}
+
+// refuseChatNativeGovernance refuses chat-native motions and votes in a Stawi
+// room the chain has: its proposals and votes are signed calls on chain.
+func (mb *messageBusiness) refuseChatNativeGovernance(ctx context.Context, reqEvt *chatv1.RoomEvent) error {
+	if mb.stawi == nil || !isChatNativeGovernance(reqEvt) {
+		return nil
+	}
+	return refuseIfChainManaged(ctx, mb.stawi.bindings, reqEvt.GetRoomId())
+}
+
+// isChatNativeGovernance reports whether an event is a chat-native motion or
+// vote, by its declared type, its populated payload or its event type.
+func isChatNativeGovernance(reqEvt *chatv1.RoomEvent) bool {
+	payload := reqEvt.GetPayload()
+	switch payload.GetData().(type) {
+	case *chatv1.Payload_Motion, *chatv1.Payload_Vote, *chatv1.Payload_MotionTally, *chatv1.Payload_VoteTally:
+		return true
+	}
+	if _, ok := chatNativeGovernanceTypes[payload.GetType()]; ok {
+		return true
+	}
+	return reqEvt.GetType() == chatv1.RoomEventType_ROOM_EVENT_TYPE_MOTION
+}
+
+//nolint:gochecknoglobals,exhaustive // immutable lookup table over the governance types only
+var chatNativeGovernanceTypes = map[chatv1.PayloadType]struct{}{
+	chatv1.PayloadType_PAYLOAD_TYPE_MOTION:       {},
+	chatv1.PayloadType_PAYLOAD_TYPE_VOTE:         {},
+	chatv1.PayloadType_PAYLOAD_TYPE_MOTION_TALLY: {},
+	chatv1.PayloadType_PAYLOAD_TYPE_VOTE_TALLY:   {},
 }
 
 // relayStawiActs relays the Stawi acts among events to settlement. It returns

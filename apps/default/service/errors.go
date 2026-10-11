@@ -151,6 +151,15 @@ var (
 		connect.CodePermissionDenied,
 		errors.New("you don't have permission to approve or reject proposals"),
 	)
+	// ErrStawiRoomChainManaged refuses the chat-native ways of changing a Stawi
+	// room that is on chain: its membership, roles, proposals and existence
+	// follow the chain only.
+	ErrStawiRoomChainManaged = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("this is a Stawi room: its members, roles, proposals and existence change only on chain; "+
+			"prepare the call through settlement, sign it on the device and send it as a STAWI_SIGNED_CALL payload"),
+	)
+
 	ErrProposalRequired = connect.NewError(
 		connect.CodeFailedPrecondition,
 		errors.New("this operation requires approval; a proposal has been created"),
