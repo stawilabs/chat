@@ -32,7 +32,7 @@ const String kChatRedirectUri = 'org.stawi.chat://sso/redirect';
 const AuthConfig kChatAuthConfig = AuthConfig(
   clientId: ApiConfig.oauth2ClientId,
   idpBaseUrl: ApiConfig.oauth2IssuerUrl,
-  apiBaseUrl: 'https://api.stawi.org',
+  apiBaseUrl: ApiConfig.apiBaseUrl,
   redirectScheme: 'org.stawi.chat',
   redirectUri: kChatRedirectUri,
   scopes: ['openid', 'profile', 'offline_access'],

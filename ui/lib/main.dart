@@ -13,6 +13,7 @@ import 'core/auth/runtime_provider.dart';
 import 'core/error/error_tracking_service.dart';
 import 'core/logging/app_logger.dart';
 import 'core/navigation/deep_link_handler.dart';
+import 'core/networking/api_config.dart';
 import 'core/security/lock_state_manager.dart';
 import 'core/startup/startup_metrics.dart';
 import 'core/startup/startup_service.dart';
@@ -36,6 +37,7 @@ void main() async {
   if (_sentryDsn.isNotEmpty) {
     await ErrorTrackingService.initialize(
       dsn: _sentryDsn,
+      environment: ApiConfig.environment.isEmpty ? null : ApiConfig.environment,
       tracesSampleRate: kReleaseMode ? 0.2 : 1.0,
       appRunner: () => _runApp(metrics),
     );
