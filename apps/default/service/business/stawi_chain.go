@@ -37,10 +37,15 @@ const (
 	defaultStaleCallAfter = 10 * time.Minute
 	sweepBatch            = 100
 	colStawiState         = "state"
+	logKeyFact            = "fact"
 )
 
+// ErrStawiUnrequestedBinding is returned when an activation names a room that
+// did not ask for it: chat has no such room, or no genesis was prepared from it.
+var ErrStawiUnrequestedBinding = errors.New("stawi: the room did not request this binding")
+
 // ErrStawiRebind is returned when an activation names a different custody for
-// a room that is already bound. The chain cannot move a room's identity; the
+// a room that is already bound, or a custody another room holds. The chain cannot move a room's identity; the
 // fact is refused and left for an operator.
 var ErrStawiRebind = errors.New("stawi: the room is already bound to another custody")
 
@@ -139,10 +144,9 @@ func (c *StawiChain) Receive(ctx context.Context, eventName string, payload []by
 		if !c.decode(ctx, eventName, payload, &msg) {
 			return nil
 		}
-		return c.receivePositioned(ctx, &models.StawiChainFact{
+		return c.receivePositioned(ctx, msg.GetRoomId(), &models.StawiChainFact{
 			FactKey:        logKey(msg.GetChainId(), msg.GetTxHash(), msg.GetLogIndex()),
 			EventName:      eventName,
-			RoomID:         msg.GetRoomId(),
 			CustodyAddress: HexAddress(msg.GetCustodyAddress()),
 			ChainID:        msg.GetChainId(),
 			BlockNumber:    msg.GetBlockNumber(),
@@ -154,32 +158,26 @@ func (c *StawiChain) Receive(ctx context.Context, eventName string, payload []by
 		if !c.decode(ctx, eventName, payload, &msg) {
 			return nil
 		}
-		roomID := msg.GetRoomId()
-		if roomID == "" {
-			if binding, err := c.deps.Bindings.GetByGovernance(ctx, HexAddress(msg.GetEmitter())); err == nil {
-				roomID = binding.GetID()
-			}
-		}
-		return c.receivePositioned(ctx, &models.StawiChainFact{
-			FactKey:     logKey(msg.GetChainId(), msg.GetTxHash(), msg.GetLogIndex()),
-			EventName:   eventName,
-			RoomID:      roomID,
-			ChainID:     msg.GetChainId(),
-			BlockNumber: msg.GetBlockNumber(),
-			LogIndex:    msg.GetLogIndex(),
-			Payload:     payload,
+		return c.receivePositioned(ctx, msg.GetRoomId(), &models.StawiChainFact{
+			FactKey:        logKey(msg.GetChainId(), msg.GetTxHash(), msg.GetLogIndex()),
+			EventName:      eventName,
+			CustodyAddress: HexAddress(msg.GetEmitter()),
+			ChainID:        msg.GetChainId(),
+			BlockNumber:    msg.GetBlockNumber(),
+			LogIndex:       msg.GetLogIndex(),
+			Payload:        payload,
 		})
 	case FactGovernanceCallFailed:
 		var msg financev1.GovernanceCallFailed
 		if !c.decode(ctx, eventName, payload, &msg) {
 			return nil
 		}
-		return c.receivePositioned(ctx, &models.StawiChainFact{
-			FactKey:   "failed:" + msg.GetMeta().GetEventId(),
-			EventName: eventName,
-			RoomID:    msg.GetCall().GetRoomId(),
-			ChainID:   msg.GetCall().GetChainId(),
-			Payload:   payload,
+		return c.receivePositioned(ctx, msg.GetCall().GetRoomId(), &models.StawiChainFact{
+			FactKey:        "failed:" + msg.GetMeta().GetEventId(),
+			EventName:      eventName,
+			CustodyAddress: HexAddress(msg.GetCall().GetVerifier()),
+			ChainID:        msg.GetCall().GetChainId(),
+			Payload:        payload,
 		})
 	default:
 		return nil
@@ -188,11 +186,11 @@ func (c *StawiChain) Receive(ctx context.Context, eventName string, payload []by
 
 func (c *StawiChain) decode(ctx context.Context, name string, payload []byte, msg proto.Message) bool {
 	if err := proto.Unmarshal(payload, msg); err != nil {
-		util.Log(ctx).WithError(err).WithField("fact", name).Error("stawi chain: dropping an undecodable fact")
+		util.Log(ctx).WithError(err).WithField(logKeyFact, name).Error("stawi chain: dropping an undecodable fact")
 		return false
 	}
 	if err := validateFact(msg); err != nil {
-		util.Log(ctx).WithError(err).WithField("fact", name).Error("stawi chain: dropping an invalid fact")
+		util.Log(ctx).WithError(err).WithField(logKeyFact, name).Error("stawi chain: dropping an invalid fact")
 		return false
 	}
 	return true
@@ -222,13 +220,27 @@ func logKey(chainID uint64, txHash []byte, logIndex uint64) string {
 }
 
 // receivePositioned records a fact in the inbox and applies its room's
-// pending facts. A fact whose room is not known yet waits in the inbox until
-// the room's activation names its custody.
-func (c *StawiChain) receivePositioned(ctx context.Context, fact *models.StawiChainFact) error {
-	if fact.RoomID == "" && fact.CustodyAddress != "" {
-		if binding, err := c.bindingByCustody(ctx, fact.CustodyAddress); err == nil {
-			fact.RoomID = binding.GetID()
-		}
+// pending facts. The room is the one bound to the contract that emitted the
+// log (CustodyAddress holds the custody for membership facts and the
+// GovernanceModule for governance facts) — the decoded chain log, never the
+// room_id settlement adds for convenience. A fact whose claimed room
+// disagrees with its emitter's is dropped; one whose emitter is not bound yet
+// waits until activation names it.
+func (c *StawiChain) receivePositioned(ctx context.Context, claimedRoomID string, fact *models.StawiChainFact) error {
+	if fact.CustodyAddress == "" {
+		util.Log(ctx).WithField(logKeyFact, fact.FactKey).Error("stawi chain: dropping a fact without an emitter")
+		return nil
+	}
+	if binding, err := c.bindingByEmitter(ctx, fact.CustodyAddress); err == nil {
+		fact.RoomID = binding.GetID()
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	if claimedRoomID != "" && fact.RoomID != "" && claimedRoomID != fact.RoomID {
+		util.Log(ctx).WithFields(map[string]any{
+			logKeyFact: fact.FactKey, "claimed_room": claimedRoomID, chatutil.KeyRoomID: fact.RoomID,
+		}).Error("stawi chain: dropping a fact whose room does not match its emitter")
+		return nil
 	}
 	if _, err := c.deps.Store.Record(ctx, fact); err != nil {
 		return fmt.Errorf("failed to record the fact: %w", err)
@@ -239,9 +251,15 @@ func (c *StawiChain) receivePositioned(ctx context.Context, fact *models.StawiCh
 	return c.ApplyRoom(ctx, fact.RoomID)
 }
 
-func (c *StawiChain) bindingByCustody(ctx context.Context, custody string) (*models.StawiRoom, error) {
+// bindingByEmitter finds the bound room whose custody or GovernanceModule is
+// the address.
+func (c *StawiChain) bindingByEmitter(ctx context.Context, address string) (*models.StawiRoom, error) {
+	address = strings.ToLower(address)
 	var row models.StawiRoom
-	err := c.deps.Pool.DB(ctx, false).Where("custody_address = ?", strings.ToLower(custody)).First(&row).Error
+	err := c.deps.Pool.DB(ctx, false).
+		Where("state = ? AND (custody_address = ? OR governance_address = ?)",
+			models.StawiRoomStateBound, address, address).
+		First(&row).Error
 	if err != nil {
 		return nil, err
 	}
@@ -253,86 +271,89 @@ func (c *StawiChain) bindingByCustody(ctx context.Context, custody string) (*mod
 // for the room's custody are then placed and applied.
 func (c *StawiChain) receiveActivation(ctx context.Context, msg *financev1.RoomActivated) error {
 	roomID := msg.GetRoomId()
-	room, err := c.ensureRoom(ctx, roomID)
+	room, err := c.deps.RoomRepo.GetByID(ctx, roomID)
 	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return fmt.Errorf("%w: chat has no room %s", ErrStawiUnrequestedBinding, roomID)
+		}
 		return err
 	}
 	custody := HexAddress(msg.GetCustodyAddress())
+	governance := HexAddress(msg.GetGovernanceAddress())
 
 	err = c.deps.Store.WithRoomLock(ctx, roomID, func(tx *gorm.DB) error {
-		var row models.StawiRoom
-		findErr := tx.Where("id = ?", roomID).First(&row).Error
-		found := findErr == nil
-		if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
-			return findErr
-		}
-		if found && row.IsBound() {
-			if row.CustodyAddress != custody {
-				return ErrStawiRebind
-			}
-			return nil // a duplicate activation
-		}
-
-		now := time.Now()
-		row.State = models.StawiRoomStateBound
-		row.ChainID = msg.GetChainId()
-		row.CustodyAddress = custody
-		row.GovernanceAddress = HexAddress(msg.GetGovernanceAddress())
-		row.PolicyEpoch = msg.GetPolicyEpoch()
-		row.BoundAt = &now
-		if found {
-			if saveErr := tx.Table("stawi_rooms").Where("id = ? AND state <> ?", roomID,
-				models.StawiRoomStateBound).Updates(map[string]any{
-				colStawiState: row.State, "chain_id": row.ChainID, "custody_address": row.CustodyAddress,
-				"governance_address": row.GovernanceAddress, "policy_epoch": row.PolicyEpoch,
-				"bound_at": now, "modified_at": now,
-			}).Error; saveErr != nil {
-				return saveErr
-			}
-		} else {
-			row.ID = roomID
-			row.TenantID, row.PartitionID, row.AccessID = room.TenantID, room.PartitionID, room.AccessID
-			if createErr := tx.Create(&row).Error; createErr != nil {
-				return createErr
-			}
-		}
-
-		return c.postEvent(ctx, tx, room, util.IDString(), row.GenesisEventID, outcomePayload(
-			&chatv1.StawiCallOutcomeContent{
-				GenesisId:     row.GenesisID,
-				State:         chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED,
-				SourceEventId: row.GenesisEventID,
-				Kind:          "ROOM_ACTIVATED",
-				ChainId:       msg.GetChainId(),
-			}))
+		return c.bind(ctx, tx, room, msg, custody, governance)
 	})
 	if err != nil {
 		return err
 	}
 
-	if err = c.deps.Store.AssignRoom(ctx, custody, roomID); err != nil {
-		return err
+	for _, emitter := range []string{custody, governance} {
+		if err = c.deps.Store.AssignRoom(ctx, emitter, roomID); err != nil {
+			return err
+		}
 	}
 	return c.ApplyRoom(ctx, roomID)
 }
 
-// ensureRoom returns the chat room an activation names, creating it when the
-// chain has a room chat has never seen (the chain is the authority).
-func (c *StawiChain) ensureRoom(ctx context.Context, roomID string) (*models.Room, error) {
-	room, err := c.deps.RoomRepo.GetByID(ctx, roomID)
-	if err == nil {
-		return room, nil
+// bind records the activation under the room's lock: only a room that asked
+// for it (a genesis prepared from it), never a rebinding, and only to a
+// custody no other room holds.
+func (c *StawiChain) bind(
+	ctx context.Context, tx *gorm.DB, room *models.Room, msg *financev1.RoomActivated, custody, governance string,
+) error {
+	roomID := room.GetID()
+	var row models.StawiRoom
+	findErr := tx.Where("id = ?", roomID).First(&row).Error
+	found := findErr == nil
+	if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+		return findErr
 	}
-	if !data.ErrorIsNoRows(err) {
-		return nil, err
+	if found && row.IsBound() {
+		if row.CustodyAddress != custody {
+			return ErrStawiRebind
+		}
+		return nil // a duplicate activation
 	}
-	room = &models.Room{RoomType: models.RoomTypeGroup, Name: "Stawi room"}
-	room.ID = roomID
-	if createErr := c.deps.Pool.DB(ctx, false).Clauses(clause.OnConflict{DoNothing: true}).
-		Create(room).Error; createErr != nil {
-		return nil, createErr
+	// Only a room whose owner or admin had chat prepare its genesis may
+	// be bound, and only to a custody no other room holds.
+	if !found || row.GenesisID == "" {
+		return fmt.Errorf("%w: no genesis was prepared from room %s", ErrStawiUnrequestedBinding, roomID)
 	}
-	return c.deps.RoomRepo.GetByID(ctx, roomID)
+	var holders int64
+	if countErr := tx.Table("stawi_rooms").Where("id <> ? AND (custody_address IN ? OR governance_address IN ?)",
+		roomID, []string{custody, governance}, []string{custody, governance}).
+		Count(&holders).Error; countErr != nil {
+		return countErr
+	}
+	if holders > 0 {
+		return ErrStawiRebind
+	}
+
+	now := time.Now()
+	row.State = models.StawiRoomStateBound
+	row.ChainID = msg.GetChainId()
+	row.CustodyAddress = custody
+	row.GovernanceAddress = governance
+	row.PolicyEpoch = msg.GetPolicyEpoch()
+	row.BoundAt = &now
+	if saveErr := tx.Table("stawi_rooms").Where("id = ? AND state <> ?", roomID,
+		models.StawiRoomStateBound).Updates(map[string]any{
+		colStawiState: row.State, "chain_id": row.ChainID, "custody_address": row.CustodyAddress,
+		"governance_address": row.GovernanceAddress, "policy_epoch": row.PolicyEpoch,
+		"bound_at": now, "modified_at": now,
+	}).Error; saveErr != nil {
+		return saveErr
+	}
+
+	return c.postEvent(ctx, tx, room, util.IDString(), row.GenesisEventID, outcomePayload(
+		&chatv1.StawiCallOutcomeContent{
+			GenesisId:     row.GenesisID,
+			State:         chatv1.StawiCallOutcomeState_STAWI_CALL_OUTCOME_STATE_OBSERVED,
+			SourceEventId: row.GenesisEventID,
+			Kind:          "ROOM_ACTIVATED",
+			ChainId:       msg.GetChainId(),
+		}))
 }
 
 // ApplyRoom applies the room's pending facts in chain order.

@@ -121,6 +121,13 @@ func (sr *stawiRelay) relayConversion(
 			errors.New("the room is already a Stawi room"))}
 	}
 
+	// Only the room's owner or an admin may line the room up for the chain:
+	// the genesis prepared here is what a later activation must match.
+	if !roleListContains(act.sender.Role, roleOwner) && !roleListContains(act.sender.Role, roleAdmin) {
+		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
+			errors.New("only the room's owner or an admin may convert it to a Stawi room"))}
+	}
+
 	// Another member's pending genesis is theirs until it expires.
 	if err := sr.bindings.CheckGenesisClaimable(ctx, act.event.RoomID, act.sender.ProfileID, time.Now()); err != nil {
 		return stawiRelayResult{ack: genesisClaimRefusal(err)}

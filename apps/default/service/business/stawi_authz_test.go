@@ -97,6 +97,9 @@ func (s *MessageBusinessTestSuite) TestPendingGenesisBelongsToItsRequester() {
 		require.NoError(t, err)
 		require.Equal(t, f.alice.GetProfileId(), first.RequestedBy)
 
+		require.NoError(t, f.rb.UpdateSubscriptionRole(f.ctx, &chatv1.UpdateSubscriptionRoleRequest{
+			RoomId: f.roomID, SubscriptionId: f.bobSub, Roles: []string{"admin"},
+		}, f.alice))
 		requireAckRefused(t, f.send(t, f.bob, conversion(f.bobSub)), connect.CodeFailedPrecondition)
 		require.Len(t, f.rooms.Prepared, 1, "settlement is not asked")
 		unchanged, err := f.bindings.GetByID(f.ctx, f.roomID)
@@ -110,7 +113,8 @@ func (s *MessageBusinessTestSuite) TestPendingGenesisBelongsToItsRequester() {
 		require.NoError(t, err)
 		require.NotEqual(t, first.GenesisID, replaced.GenesisID)
 
-		// An expired genesis may be replaced by any member.
+		// An expired genesis may be replaced by any of the room's admins.
+
 		f.rooms.GenesisTTL = -time.Minute
 		requireAckOK(t, f.send(t, f.alice, conversion(f.aliceSub)))
 		requireAckOK(t, f.send(t, f.bob, conversion(f.bobSub)))

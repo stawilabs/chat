@@ -213,13 +213,13 @@ func (s *MessageBusinessTestSuite) TestStawiConversionRelaysAndStoresTheGenesisC
 		f := s.newStawiFixture(t, dep)
 		before := f.activeSubscriptions(t)
 
-		eventID := requireAckOK(t, f.send(t, f.bob, conversion(f.aliceSub, f.bobSub)))
+		eventID := requireAckOK(t, f.send(t, f.alice, conversion(f.aliceSub, f.bobSub)))
 
 		require.Len(t, f.rooms.Prepared, 1)
 		prepared := f.rooms.Prepared[0]
 		require.Equal(t, f.roomID, prepared.ChatRoomID)
 		require.ElementsMatch(t, []string{f.alice.GetProfileId(), f.bob.GetProfileId()}, prepared.FounderProfileIDs)
-		require.Equal(t, f.bob.GetProfileId(), prepared.RequestedBy)
+		require.Equal(t, f.alice.GetProfileId(), prepared.RequestedBy)
 		require.Equal(t, stawi.JoinPolicyPrivate, prepared.JoinPolicy)
 
 		card := f.stored(t, eventID).GetPayload().GetStawiRoomConversion()

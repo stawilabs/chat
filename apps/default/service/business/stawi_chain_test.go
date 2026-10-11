@@ -75,6 +75,8 @@ func (s *MessageBusinessTestSuite) newChainFixture(t *testing.T, dep *definition
 	f.accounts.Own(hexAddr(aliceAddr), f.alice.GetProfileId())
 	f.accounts.Own(hexAddr(bobAddr), f.bob.GetProfileId())
 	f.accounts.Own(hexAddr(carolAddr), cf.carol.GetProfileId())
+	// The room's owner converts it, as every binding requires.
+	requireAckOK(t, f.send(t, f.alice, conversion(f.aliceSub, f.bobSub)))
 	cf.chain = business.NewStawiChain(business.StawiChainDeps{
 		Pool:     dbPool,
 		RoomRepo: repository.NewRoomRepository(f.ctx, dbPool, f.workMan),
@@ -230,7 +232,6 @@ func (cf *chainFixture) eventCount(t *testing.T) int {
 func (s *MessageBusinessTestSuite) TestChainActivationBindsTheRoom() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		cf := s.newChainFixture(t, dep)
-		requireAckOK(t, cf.send(t, cf.alice, conversion(cf.aliceSub, cf.bobSub)))
 		pending, err := cf.bindings.GetByID(cf.ctx, cf.roomID)
 		require.NoError(t, err)
 
