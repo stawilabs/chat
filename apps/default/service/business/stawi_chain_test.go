@@ -446,3 +446,40 @@ func (s *MessageBusinessTestSuite) TestReconcilerRepairsDrift() {
 		require.Zero(t, report.Repaired, "repair is stable")
 	})
 }
+
+// TestStaleCallOutcomeComesOnlyFromItsOwnRoomsCall: the reconciler settles a
+// relayed call from settlement's record only when that record is for the
+// call's room.
+func (s *MessageBusinessTestSuite) TestStaleCallOutcomeComesOnlyFromItsOwnRoomsCall() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		cf := s.newChainFixture(t, dep)
+		cf.deliver(t, f2(cf.activated()))
+		cf.chain = business.NewStawiChain(business.StawiChainDeps{
+			Pool: cf.dbPool, RoomRepo: repository.NewRoomRepository(cf.ctx, cf.dbPool, cf.workMan),
+			SubRepo: cf.subRepo, Bindings: cf.bindings, Calls: cf.calls, Store: cf.store,
+			Accounts: cf.accounts, Rooms: cf.rooms, Authz: cf.authz, Drift: cf.drift,
+			StaleCallAfter: 1,
+		})
+		for _, id := range []string{"call-a", "call-b"} {
+			cf.rooms.AddCall(stawi.RoomCall{CallID: id, RoomID: cf.roomID, Kind: "INVITE",
+				SignerAddress: hexAddr(aliceAddr), Nonce: map[string]uint64{"call-a": 1, "call-b": 2}[id]})
+			requireAckOK(t, cf.send(t, cf.alice, signedCall(id, "INVITE")))
+		}
+		// Settlement now reports call-a under another room (a mismatch), and
+		// call-b final for this room.
+		cf.rooms.AddCall(stawi.RoomCall{CallID: "call-a", RoomID: util.IDString(), Kind: "INVITE",
+			SignerAddress: hexAddr(aliceAddr), Nonce: 1, State: stawi.CallStateFinal})
+		cf.rooms.SetCallState("call-b", stawi.CallStateFinal, "")
+
+		report, err := cf.chain.Reconcile(cf.ctx)
+		require.NoError(t, err)
+		require.Equal(t, 1, report.CallsResolved)
+
+		a, err := cf.calls.GetByID(cf.ctx, "call-a")
+		require.NoError(t, err)
+		require.Equal(t, models.StawiCallStateSubmitted, a.State)
+		b, err := cf.calls.GetByID(cf.ctx, "call-b")
+		require.NoError(t, err)
+		require.Equal(t, models.StawiCallStateObserved, b.State)
+	})
+}

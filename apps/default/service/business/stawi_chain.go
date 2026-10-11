@@ -991,6 +991,14 @@ func (c *StawiChain) settleStaleCalls(ctx context.Context) (int, error) {
 		if getErr != nil {
 			continue
 		}
+		// Settle only from settlement's record of this very call: same id,
+		// same room, same signer and nonce as chat relayed.
+		if call.CallID != tracked.GetID() || call.RoomID != tracked.RoomID ||
+			!strings.EqualFold(call.SignerAddress, tracked.SignerAddress) || call.Nonce != tracked.Nonce {
+			util.Log(ctx).WithField("call_id", tracked.GetID()).
+				Error("stawi reconciler: settlement's call record does not match the relayed call")
+			continue
+		}
 		var state chatv1.StawiCallOutcomeState
 		var callState string
 		switch call.State {

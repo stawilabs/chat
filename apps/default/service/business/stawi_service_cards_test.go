@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/service/business"
+	"github.com/stawilabs/chat/apps/default/service/models"
 )
 
 const (
@@ -246,6 +247,55 @@ func (s *MessageBusinessTestSuite) TestServiceCardsGetTheMemberPathsValidation()
 		}
 		for _, evt := range f.history(t) {
 			require.Nil(t, evt.GetPayload().GetFinanceCard(), "nothing malformed was stored")
+		}
+	})
+}
+
+// TestServiceCardBatchIsCheckedPerEvent: one batch mixing an allowed card with
+// a card for a room in another tenancy, a type-spoofed card and an unbound
+// room: each event is gated on its own room and payload, so only the allowed
+// one is written.
+func (s *MessageBusinessTestSuite) TestServiceCardBatchIsCheckedPerEvent() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		f.placeRoom(t, f.roomID, cardTenant, cardPartition)
+		f.bind(t)
+		finance := util.IDString()
+		f.grantCardPost(t, finance)
+
+		foreign, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Name: "Foreign"}, f.alice)
+		require.NoError(t, err)
+		f.placeRoom(t, foreign.GetId(), "tenant-other", cardPartition)
+		foreignBinding := &models.StawiRoom{State: models.StawiRoomStateBound}
+		foreignBinding.ID = foreign.GetId()
+		require.NoError(t, f.bindings.Create(f.ctx, foreignBinding))
+
+		unbound, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Name: "Unbound"}, f.alice)
+		require.NoError(t, err)
+		f.placeRoom(t, unbound.GetId(), cardTenant, cardPartition)
+
+		good := financeCard(f.roomID).GetEvent()[0]
+		toForeign := financeCard(foreign.GetId()).GetEvent()[0]
+		spoofed := financeCard(f.roomID).GetEvent()[0]
+		spoofed.Payload.Type = chatv1.PayloadType_PAYLOAD_TYPE_ROOM_CHANGE
+		toUnbound := financeCard(unbound.GetId()).GetEvent()[0]
+
+		acks, err := f.mb.SendServiceEvents(serviceCtx(f.ctx, finance, true), &chatv1.SendEventRequest{
+			Event: []*chatv1.RoomEvent{good, toForeign, spoofed, toUnbound},
+		})
+		require.NoError(t, err)
+		require.Len(t, acks, 4)
+		requireAckOK(t, acks[0])
+		requireAckRefused(t, acks[1], connect.CodePermissionDenied)
+		requireAckRefused(t, acks[2], connect.CodeInvalidArgument)
+		requireAckRefused(t, acks[3], connect.CodeFailedPrecondition)
+
+		for _, roomID := range []string{foreign.GetId(), unbound.GetId()} {
+			events, histErr := f.mb.GetHistory(f.ctx, &chatv1.GetHistoryRequest{RoomId: roomID}, f.alice)
+			require.NoError(t, histErr)
+			for _, evt := range events {
+				require.Nil(t, evt.GetPayload().GetFinanceCard(), "nothing written to %s", roomID)
+			}
 		}
 	})
 }
