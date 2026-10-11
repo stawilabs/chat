@@ -15,12 +15,14 @@ import (
 
 type recordingReceiver struct {
 	names    []string
+	eventIDs []string
 	payloads [][]byte
 	err      error
 }
 
-func (r *recordingReceiver) Receive(_ context.Context, name string, payload []byte) error {
+func (r *recordingReceiver) ReceiveDelivery(_ context.Context, name, eventID string, payload []byte) error {
 	r.names = append(r.names, name)
+	r.eventIDs = append(r.eventIDs, eventID)
 	r.payloads = append(r.payloads, payload)
 	return r.err
 }
@@ -33,14 +35,20 @@ func TestStawiFactsHandlerRoutesByEventName(t *testing.T) {
 	handler := NewStawiFactsHandler(receiver)
 	ctx := context.Background()
 
-	require.NoError(t, handler.Handle(ctx, map[string]string{"event_name": "room.activated"}, []byte{1}))
 	require.NoError(t, handler.Handle(ctx,
-		map[string]string{frevents.EventHeaderName: "room.membership_observed"}, []byte{2}))
-	require.NoError(t, handler.Handle(ctx, map[string]string{}, []byte{3}), "a message without a name is skipped")
+		map[string]string{"event_name": "room.activated", "event_id": "e1"}, []byte{1}))
+	require.NoError(t, handler.Handle(ctx,
+		map[string]string{frevents.EventHeaderName: "room.membership_observed", "event_id": "e2"}, []byte{2}))
+	require.NoError(t, handler.Handle(ctx, map[string]string{"event_id": "e3"}, []byte{3}),
+		"a message without a name is skipped")
+	require.NoError(t, handler.Handle(ctx, map[string]string{"event_name": "room.activated"}, []byte{5}),
+		"a message without settlement's event id is skipped")
 	require.Equal(t, []string{"room.activated", "room.membership_observed"}, receiver.names)
+	require.Equal(t, []string{"e1", "e2"}, receiver.eventIDs)
 
 	receiver.err = errors.New("profile down")
-	require.Error(t, handler.Handle(ctx, map[string]string{"event_name": "room.activated"}, []byte{4}))
+	require.Error(t, handler.Handle(ctx, map[string]string{"event_name": "room.activated", "event_id": "e4"},
+		[]byte{4}))
 }
 
 // TestDriftPublisherEmitsRoomSubscriptionDrift publishes a repair report on

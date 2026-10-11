@@ -483,3 +483,25 @@ func (s *MessageBusinessTestSuite) TestStaleCallOutcomeComesOnlyFromItsOwnRoomsC
 		require.Equal(t, models.StawiCallStateObserved, b.State)
 	})
 }
+
+// TestChainDropsADeliveryWhoseHeaderDisagreesWithTheFact: a delivery is taken
+// only when the event id settlement's relay put in the header is the fact's
+// own; anything else is dropped unapplied.
+func (s *MessageBusinessTestSuite) TestChainDropsADeliveryWhoseHeaderDisagreesWithTheFact() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		cf := s.newChainFixture(t, dep)
+		var activated financev1.RoomActivated
+		name, payload := cf.activated()
+		require.NoError(t, proto.Unmarshal(payload, &activated))
+
+		require.NoError(t, cf.chain.ReceiveDelivery(cf.ctx, name, util.IDString(), payload))
+		bound, err := cf.bindings.IsBound(cf.ctx, cf.roomID)
+		require.NoError(t, err)
+		require.False(t, bound, "a mismatched delivery is dropped")
+
+		require.NoError(t, cf.chain.ReceiveDelivery(cf.ctx, name, activated.GetMeta().GetEventId(), payload))
+		bound, err = cf.bindings.IsBound(cf.ctx, cf.roomID)
+		require.NoError(t, err)
+		require.True(t, bound)
+	})
+}

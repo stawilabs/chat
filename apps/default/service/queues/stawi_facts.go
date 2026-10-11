@@ -13,15 +13,18 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/business"
 )
 
-// headerEventName is the header settlement's relay names each fact with.
-const headerEventName = "event_name"
+// Headers settlement's relay sets on every fact.
+const (
+	headerEventName = "event_name"
+	headerEventID   = "event_id"
+)
 
 // SubscriptionDriftEventName names the reconciler's drift report.
 const SubscriptionDriftEventName = "room.subscription_drift"
 
-// FactReceiver applies one settlement fact.
+// FactReceiver applies one settlement fact delivery.
 type FactReceiver interface {
-	Receive(ctx context.Context, eventName string, payload []byte) error
+	ReceiveDelivery(ctx context.Context, eventName, eventID string, payload []byte) error
 }
 
 type stawiFactsHandler struct {
@@ -29,9 +32,12 @@ type stawiFactsHandler struct {
 }
 
 // NewStawiFactsHandler subscribes chat's chain consumer to settlement's fact
-// stream (svc.stawi.settlement.events). Each message is a finance.v1 event
-// proto named by its event_name header. An error is returned, and the
-// message redelivered, only when the fact could not be applied.
+// stream (svc.stawi.settlement.events) — the only way facts reach chat; there
+// is no HTTP endpoint for them. Each message is a finance.v1 event proto with
+// the event_name and event_id headers settlement's relay sets; a message
+// without them is dropped, and the consumer checks event_id against the fact.
+// An error is returned, and the message redelivered, only when the fact could
+// not be applied.
 func NewStawiFactsHandler(receiver FactReceiver) queue.SubscribeWorker {
 	return &stawiFactsHandler{receiver: receiver}
 }
@@ -41,11 +47,13 @@ func (h *stawiFactsHandler) Handle(ctx context.Context, headers map[string]strin
 	if name == "" {
 		name = headers[frevents.EventHeaderName]
 	}
-	if name == "" {
-		util.Log(ctx).Warn("stawi facts: skipping a message without an event name")
+	eventID := headers[headerEventID]
+	if name == "" || eventID == "" {
+		util.Log(ctx).WithFields(map[string]any{headerEventName: name, headerEventID: eventID}).
+			Warn("stawi facts: skipping a message without settlement's event headers")
 		return nil
 	}
-	return h.receiver.Receive(ctx, name, payload)
+	return h.receiver.ReceiveDelivery(ctx, name, eventID, payload)
 }
 
 type stawiDriftPublisher struct {

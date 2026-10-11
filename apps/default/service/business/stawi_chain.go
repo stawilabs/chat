@@ -14,6 +14,7 @@ import (
 	"github.com/pitabwire/frame/v2/data"
 	"github.com/pitabwire/frame/v2/datastore/pool"
 	"github.com/pitabwire/util"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -126,6 +127,52 @@ func HexAddress(b []byte) string {
 		return ""
 	}
 	return "0x" + hex.EncodeToString(b)
+}
+
+// ReceiveDelivery takes one delivery from settlement's stream: the fact is
+// applied only if the event id the relay put in the header is the fact's
+// own; a delivery that disagrees is dropped.
+func (c *StawiChain) ReceiveDelivery(ctx context.Context, eventName, eventID string, payload []byte) error {
+	meta, err := factMeta(payload)
+	if err != nil {
+		util.Log(ctx).WithError(err).WithField(logKeyFact, eventName).Error("stawi chain: dropping an undecodable fact")
+		return nil
+	}
+	if got := meta.GetEventId(); got == "" || got != eventID {
+		util.Log(ctx).
+			WithFields(map[string]any{logKeyFact: eventName, "header_event_id": eventID, "fact_event_id": got}).
+			Error("stawi chain: dropping a delivery whose event id does not match its fact")
+		return nil
+	}
+	return c.Receive(ctx, eventName, payload)
+}
+
+// factMeta reads the EventMeta every finance.v1 event carries as field 1.
+func factMeta(payload []byte) (*financev1.EventMeta, error) {
+	for len(payload) > 0 {
+		num, typ, n := protowire.ConsumeTag(payload)
+		if n < 0 {
+			return nil, protowire.ParseError(n)
+		}
+		payload = payload[n:]
+		if num == 1 && typ == protowire.BytesType {
+			raw, m := protowire.ConsumeBytes(payload)
+			if m < 0 {
+				return nil, protowire.ParseError(m)
+			}
+			var meta financev1.EventMeta
+			if err := proto.Unmarshal(raw, &meta); err != nil {
+				return nil, err
+			}
+			return &meta, nil
+		}
+		m := protowire.ConsumeFieldValue(num, typ, payload)
+		if m < 0 {
+			return nil, protowire.ParseError(m)
+		}
+		payload = payload[m:]
+	}
+	return nil, errors.New("fact has no meta")
 }
 
 // Receive takes one fact from settlement's stream. It returns an error only
