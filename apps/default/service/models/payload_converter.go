@@ -423,6 +423,24 @@ func IsStawiPayload(payloadType chatv1.PayloadType) bool {
 	return ok
 }
 
+// StawiMemberType is the Stawi payload type the populated member of the
+// payload's oneof belongs to, whatever type the payload declares, or
+// PAYLOAD_TYPE_UNSPECIFIED when the populated member is not a Stawi one.
+func StawiMemberType(payload *chatv1.Payload) chatv1.PayloadType {
+	switch payload.GetData().(type) {
+	case *chatv1.Payload_StawiRoomConversion:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION
+	case *chatv1.Payload_StawiGenesisSignature:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
+	case *chatv1.Payload_StawiSignedCall:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL
+	case *chatv1.Payload_StawiCallOutcome:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+	default:
+		return chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED
+	}
+}
+
 // StawiContent returns the populated content of a Stawi payload, or nil when
 // the populated member is not the one the declared type names.
 func StawiContent(payload *chatv1.Payload) proto.Message {
