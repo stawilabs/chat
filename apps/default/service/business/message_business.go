@@ -375,6 +375,10 @@ func (mb *messageBusiness) prepareEventForInsert(
 		}
 	}
 
+	if spoofErr := refuseSpoofedContent(ctx, reqEvt, subscriptionID); spoofErr != nil {
+		return nil, ackEventError(reqEvt.GetId(), spoofErr)
+	}
+
 	if formErr := mb.prepareFormPayload(ctx, reqEvt, roomID, subscriptionID); formErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), formErr)
 	}

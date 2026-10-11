@@ -46,7 +46,8 @@ func (s *MessageBusinessTestSuite) TestForgedStawiOutcomeIsNeverStored() {
 				require.NoError(t, sendErr)
 				require.Len(t, acks, 1)
 				require.NotNil(t, acks[0].GetError())
-				require.Equal(t, int32(connect.CodeInvalidArgument), acks[0].GetError().GetCode())
+				require.Contains(t, []int32{int32(connect.CodePermissionDenied), int32(connect.CodeInvalidArgument)},
+					acks[0].GetError().GetCode())
 			})
 		}
 

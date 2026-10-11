@@ -34,61 +34,46 @@ func validFinanceCard() *chatv1.FinanceCardContent {
 	}
 }
 
-// TestServiceSenderPostsFinanceCard covers the posting side of the finance
-// card: the service account that renders finance facts into a group room
-// sends one through the ordinary event path, and it round-trips unchanged.
-func (s *MessageBusinessTestSuite) TestServiceSenderPostsFinanceCard() {
+// TestMembersCannotPostFinanceCards: a finance card reads as an official fact,
+// so it comes only through the service card path (SendServiceEvents); a room
+// member — even the room's owner — cannot post one through SendEvent.
+func (s *MessageBusinessTestSuite) TestMembersCannotPostFinanceCards() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
 		messageBusiness, roomBusiness := s.setupBusinessLayer(ctx, svc)
 
-		// The projection service owns the group room it renders into.
-		serviceSender := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		owner := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
 		metadata, mErr := structpb.NewStruct(map[string]any{"stawi.group_id": "grp-1"})
 		require.NoError(t, mErr)
-
 		room, err := roomBusiness.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 			Name:     "Group room",
 			Metadata: metadata,
-		}, serviceSender)
+		}, owner)
 		require.NoError(t, err)
 		require.Equal(t, "grp-1", room.GetMetadata().GetFields()["stawi.group_id"].GetStringValue(),
 			"room metadata is persisted so the fact stream can opt in on it")
 
-		s.WaitForMemberSubscription(ctx, svc, room.GetId(), serviceSender.GetProfileId(), t)
-		s.WaitForAuthzAccess(ctx, svc, serviceSender.GetProfileId(), room.GetId(), t)
+		s.WaitForMemberSubscription(ctx, svc, room.GetId(), owner.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, svc, owner.GetProfileId(), room.GetId(), t)
 
-		card := validFinanceCard()
 		acks, err := messageBusiness.SendEvents(ctx, &chatv1.SendEventRequest{
-			Event: []*chatv1.RoomEvent{financeCardEvent(room.GetId(), card)},
-		}, serviceSender)
+			Event: []*chatv1.RoomEvent{financeCardEvent(room.GetId(), validFinanceCard())},
+		}, owner)
 		require.NoError(t, err)
 		require.Len(t, acks, 1)
-		require.Nil(t, acks[0].GetError())
+		require.NotNil(t, acks[0].GetError())
+		require.Equal(t, int32(connect.CodePermissionDenied), acks[0].GetError().GetCode())
 
-		history, err := messageBusiness.GetHistory(ctx, &chatv1.GetHistoryRequest{
-			RoomId: room.GetId(),
-		}, serviceSender)
+		history, err := messageBusiness.GetHistory(ctx, &chatv1.GetHistoryRequest{RoomId: room.GetId()}, owner)
 		require.NoError(t, err)
-		require.NotEmpty(t, history)
-
-		var stored *chatv1.FinanceCardContent
 		for _, evt := range history {
-			if evt.GetPayload().GetType() == chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD {
-				stored = evt.GetPayload().GetFinanceCard()
-			}
+			require.Nil(t, evt.GetPayload().GetFinanceCard())
 		}
-		require.NotNil(t, stored, "the finance card is stored and served back")
-		require.Equal(t, card.GetCardId(), stored.GetCardId())
-		require.Equal(t, card.GetKind(), stored.GetKind())
-		require.Equal(t, card.GetTitle(), stored.GetTitle())
-		require.Equal(t, "prop-1", stored.GetData()["proposal_id"])
 	})
 }
 
-// TestFinanceCardRejectedWhenMalformed keeps a card that cannot be rendered
-// out of the room: the payload must be present, identified and typed as a
-// room event.
+// TestFinanceCardRejectedWhenMalformed: a member's card is refused whatever
+// its shape (malformed cards on the service path are covered there).
 func (s *MessageBusinessTestSuite) TestFinanceCardRejectedWhenMalformed() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
@@ -124,7 +109,7 @@ func (s *MessageBusinessTestSuite) TestFinanceCardRejectedWhenMalformed() {
 				require.NoError(t, sendErr)
 				require.Len(t, acks, 1)
 				require.NotNil(t, acks[0].GetError())
-				require.Equal(t, int32(connect.CodeInvalidArgument), acks[0].GetError().GetCode())
+				require.Equal(t, int32(connect.CodePermissionDenied), acks[0].GetError().GetCode())
 			})
 		}
 	})

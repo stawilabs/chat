@@ -1258,7 +1258,7 @@ func (rb *roomBusiness) sendRoomChangeEvent(
 		},
 	}
 
-	_, err := rb.messageBusiness.SendEvents(ctx, req, senderContact)
+	_, err := rb.messageBusiness.SendEvents(withServerOrigin(ctx), req, senderContact)
 	return err
 }
 
