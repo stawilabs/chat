@@ -538,6 +538,20 @@ func (*stubProfileClient) PropertyHistory(
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
 
+func (*stubProfileClient) GetContacts(
+	context.Context,
+	*connect.Request[profilev1.GetContactsRequest],
+) (*connect.Response[profilev1.GetContactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+func (*stubProfileClient) ResolveAccounts(
+	context.Context,
+	*connect.Request[profilev1.ResolveAccountsRequest],
+) (*connect.Response[profilev1.ResolveAccountsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
 // stubDeviceClient implements devicev1connect.DeviceServiceClient.
 // Search returns an error; all other methods return nil.
 type stubDeviceClient struct{}
