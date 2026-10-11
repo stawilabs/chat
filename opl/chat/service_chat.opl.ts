@@ -87,6 +87,7 @@ class service_chat implements Namespace {
 
     room_create: (ctx: Context): boolean =>
       this.related.admin.includes(ctx.subject) ||
+      this.related.member.includes(ctx.subject) ||
       this.related.owner.includes(ctx.subject) ||
       this.related.service.includes(ctx.subject) ||
       this.related.granted_room_create.includes(ctx.subject),
@@ -113,6 +114,7 @@ class service_chat implements Namespace {
 
     subscription_manage: (ctx: Context): boolean =>
       this.related.admin.includes(ctx.subject) ||
+      this.related.member.includes(ctx.subject) ||
       this.related.owner.includes(ctx.subject) ||
       this.related.service.includes(ctx.subject) ||
       this.related.granted_subscription_manage.includes(ctx.subject),
@@ -136,9 +138,3 @@ class service_chat implements Namespace {
       this.related.granted_stawi_card_post.includes(ctx.subject),
   }
 }
-
-// ---------------------------------------------------------------------------
-// Plane 3 -- Per-resource namespaces (chat_room, chat_message, etc.)
-// MOVED to proto/chat/v1/chat_resources.opl.ts so they are co-located with
-// the proto API definitions and reusable by other services.
-// ---------------------------------------------------------------------------

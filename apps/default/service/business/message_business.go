@@ -180,6 +180,12 @@ func (mb *messageBusiness) SendEvents(
 		"rooms_denied":  len(allowedRooms) - allowedCount,
 	}).Debug("SendEvents authz batch check")
 
+	// An invitee of a Stawi room holds a proposed subscription until the
+	// chain admits them, and the one act that admits them — accepting the
+	// invitation — is a signed call sent into the room. Those subscriptions
+	// may send exactly that act; the relay checks the call is theirs.
+	invitees := mb.inviteeSubscriptions(ctx, sentBy, uniqueRoomIDList, roomSubscriptionIDMap)
+
 	// Phase 1: Validate all events and prepare valid ones for bulk save
 	for i, reqEvt := range requestEvents {
 		// Assign ID if not provided; otherwise the client-supplied ID must be a
@@ -202,6 +208,9 @@ func (mb *messageBusiness) SendEvents(
 		roomID := reqEvt.GetRoomId()
 
 		subscriptionID, ok := roomSubscriptionIDMap[roomID]
+		if !ok {
+			subscriptionID, ok = admitInvitee(reqEvt, invitees, subscriptionMap, subscriptionIDAccessMap)
+		}
 		if !ok {
 			responses[i] = &chatv1.AckEvent{
 				EventId: []string{reqEvt.GetId()},

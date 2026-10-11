@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"connectrpc.com/connect"
@@ -19,6 +20,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
+	"github.com/stawilabs/chat/pkg/chatutil"
 )
 
 // stawiRelay relays the Stawi room acts members send to settlement. It is the
@@ -78,6 +80,102 @@ type stawiRelayResult struct {
 	ack     error
 }
 
+// acceptInvitationKind is settlement's name for the invitee's acceptance.
+const acceptInvitationKind = "ACCEPT_INVITATION"
+
+// isAcceptInvitation reports whether an event is a signed call accepting a
+// Stawi room invitation: the one act an invitee may send before the chain
+// makes them a member.
+func isAcceptInvitation(reqEvt *chatv1.RoomEvent) bool {
+	return isAcceptInvitationPayload(reqEvt.GetPayload())
+}
+
+func isAcceptInvitationPayload(p *chatv1.Payload) bool {
+	return p.GetType() == chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL &&
+		strings.EqualFold(p.GetStawiSignedCall().GetKind(), acceptInvitationKind)
+}
+
+// inviteeSubscriptions are the sender's proposed subscriptions of the Stawi
+// rooms among roomIDs where they hold no active one: the subscriptions chat
+// writes for an invitee from the chain's MemberInvited fact.
+func (mb *messageBusiness) inviteeSubscriptions(
+	ctx context.Context, sentBy *commonv1.ContactLink, roomIDs []string, active map[string]string,
+) map[string]*models.RoomSubscription {
+	out := map[string]*models.RoomSubscription{}
+	if mb.stawi == nil {
+		return out
+	}
+	for _, roomID := range roomIDs {
+		if _, ok := active[roomID]; ok {
+			continue
+		}
+		sub, err := mb.inviteeSubscription(ctx, sentBy, roomID)
+		if err != nil {
+			// Fail closed: the act is refused as from a non-member.
+			util.Log(ctx).WithError(err).WithField(chatutil.KeyRoomID, roomID).
+				Warn("stawi relay: could not look up an invitee subscription")
+			continue
+		}
+		if sub != nil {
+			out[roomID] = sub
+		}
+	}
+	return out
+}
+
+// inviteeSubscription is the sender's proposed subscription of a bound Stawi
+// room, or nil.
+func (mb *messageBusiness) inviteeSubscription(
+	ctx context.Context, sentBy *commonv1.ContactLink, roomID string,
+) (*models.RoomSubscription, error) {
+	// Active-only lookups do not see a proposed subscription.
+	subs, err := mb.subRepo.GetByRoomIDAndContactLinks(
+		ctx,
+		roomID,
+		&commonv1.ContactLink{ProfileId: sentBy.GetProfileId()},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subscriptions: %w", err)
+	}
+	sub := proposedOf(subs, sentBy.GetProfileId())
+	if sub == nil {
+		return nil, nil //nolint:nilnil // no invitee subscription is not an error
+	}
+	bound, err := mb.stawi.bindings.IsBound(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check the room binding: %w", err)
+	}
+	if !bound {
+		return nil, nil //nolint:nilnil // an unbound room has no invitees
+	}
+	return sub, nil
+}
+
+// admitInvitee lets an invitee's acceptance through the send path: the event
+// is sent as the invitee's proposed subscription, which may send it.
+func admitInvitee(
+	reqEvt *chatv1.RoomEvent, invitees map[string]*models.RoomSubscription,
+	subscriptionMap map[string]*models.RoomSubscription, access map[string]bool,
+) (string, bool) {
+	invitee, ok := invitees[reqEvt.GetRoomId()]
+	if !ok || !isAcceptInvitation(reqEvt) {
+		return "", false
+	}
+	subscriptionMap[invitee.GetID()] = invitee
+	access[invitee.GetID()] = true
+	return invitee.GetID(), true
+}
+
+// proposedOf is the profile's proposed subscription among subs, if any.
+func proposedOf(subs []*models.RoomSubscription, profileID string) *models.RoomSubscription {
+	for _, sub := range subs {
+		if sub.ProfileID == profileID && sub.SubscriptionState == models.RoomSubscriptionStateProposed {
+			return sub
+		}
+	}
+	return nil
+}
+
 // errStawiNotConfigured is the sender-facing refusal when settlement is absent.
 var errStawiNotConfigured = connect.NewError(connect.CodeUnavailable,
 	errors.New("stawi room acts are not available on this server"))
@@ -87,8 +185,11 @@ var errStawiNotConfigured = connect.NewError(connect.CodeUnavailable,
 // settlement, are returned to the sender and nothing is stored.
 func (sr *stawiRelay) relay(ctx context.Context, act *stawiAct) stawiRelayResult {
 	// The send path has already required an active subscription that Keto
-	// lets send into the room; the relay does not rely on it.
-	if act.sender == nil || !act.sender.IsActive() || act.sender.ProfileID == "" ||
+	// lets send into the room — or, for accepting an invitation, the
+	// invitee's proposed one; the relay does not rely on it.
+	senderMaySend := act.sender != nil && (act.sender.IsActive() ||
+		act.sender.SubscriptionState == models.RoomSubscriptionStateProposed && isAcceptInvitationPayload(act.payload))
+	if !senderMaySend || act.sender.ProfileID == "" ||
 		act.sender.RoomID != "" && act.sender.RoomID != act.event.RoomID {
 		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
 			errors.New("stawi room acts need an active member of the room"))}

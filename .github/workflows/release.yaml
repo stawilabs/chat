@@ -15,3 +15,12 @@ jobs:
     uses: antinvestor/common/.github/workflows/buf-push.yaml@main
     secrets:
       buf_token: ${{ secrets.BUF_TOKEN }}
+  # Merge opl/**/*.opl.ts (service_chat, chat_room, chat_message, chat_profile,
+  # chat_subscription) into the platform Keto's namespaces.ts. Needs the
+  # DEPLOY_REPO_TOKEN secret with push access to stawi-org/cloud.deployment.
+  opl-push:
+    permissions:
+      contents: read
+    uses: antinvestor/common/.github/workflows/opl-push.yml@main
+    secrets:
+      deploy_token: ${{ secrets.DEPLOY_REPO_TOKEN }}
