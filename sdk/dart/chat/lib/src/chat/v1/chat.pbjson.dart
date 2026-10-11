@@ -37,6 +37,23 @@ final $typed_data.Uint8List roomTypeDescriptor = $convert.base64Decode(
     'NUEAESEwoPUk9PTV9UWVBFX0dST1VQEAISFQoRUk9PTV9UWVBFX0NIQU5ORUwQAxIRCg1ST09N'
     'X1RZUEVfQk9UEAQ=');
 
+@$core.Deprecated('Use stawiRoomStateDescriptor instead')
+const StawiRoomState$json = {
+  '1': 'StawiRoomState',
+  '2': [
+    {'1': 'STAWI_ROOM_STATE_UNSPECIFIED', '2': 0},
+    {'1': 'STAWI_ROOM_STATE_PENDING', '2': 1},
+    {'1': 'STAWI_ROOM_STATE_BOUND', '2': 2},
+    {'1': 'STAWI_ROOM_STATE_FAILED', '2': 3},
+  ],
+};
+
+/// Descriptor for `StawiRoomState`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List stawiRoomStateDescriptor = $convert.base64Decode(
+    'Cg5TdGF3aVJvb21TdGF0ZRIgChxTVEFXSV9ST09NX1NUQVRFX1VOU1BFQ0lGSUVEEAASHAoYU1'
+    'RBV0lfUk9PTV9TVEFURV9QRU5ESU5HEAESGgoWU1RBV0lfUk9PTV9TVEFURV9CT1VORBACEhsK'
+    'F1NUQVdJX1JPT01fU1RBVEVfRkFJTEVEEAM=');
+
 @$core.Deprecated('Use notificationLevelDescriptor instead')
 const NotificationLevel$json = {
   '1': 'NotificationLevel',
@@ -236,6 +253,7 @@ const Room$json = {
     {'1': 'updated_at', '3': 8, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'updatedAt'},
     {'1': 'creator_id', '3': 9, '4': 1, '5': 9, '10': 'creatorId'},
     {'1': 'requires_approval', '3': 10, '4': 1, '5': 8, '10': 'requiresApproval'},
+    {'1': 'stawi', '3': 12, '4': 1, '5': 11, '6': '.chat.v1.StawiRoomBinding', '10': 'stawi'},
   ],
 };
 
@@ -248,7 +266,35 @@ final $typed_data.Uint8List roomDescriptor = $convert.base64Decode(
     'Zi5TdHJ1Y3RSCG1ldGFkYXRhEjkKCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idW'
     'YuVGltZXN0YW1wUgljcmVhdGVkQXQSOQoKdXBkYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90'
     'b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdBIdCgpjcmVhdG9yX2lkGAkgASgJUgljcmVhdG9ySW'
-    'QSKwoRcmVxdWlyZXNfYXBwcm92YWwYCiABKAhSEHJlcXVpcmVzQXBwcm92YWw=');
+    'QSKwoRcmVxdWlyZXNfYXBwcm92YWwYCiABKAhSEHJlcXVpcmVzQXBwcm92YWwSLwoFc3Rhd2kY'
+    'DCABKAsyGS5jaGF0LnYxLlN0YXdpUm9vbUJpbmRpbmdSBXN0YXdp');
+
+@$core.Deprecated('Use stawiRoomBindingDescriptor instead')
+const StawiRoomBinding$json = {
+  '1': 'StawiRoomBinding',
+  '2': [
+    {'1': 'state', '3': 1, '4': 1, '5': 14, '6': '.chat.v1.StawiRoomState', '10': 'state'},
+    {'1': 'genesis_id', '3': 2, '4': 1, '5': 9, '10': 'genesisId'},
+    {'1': 'genesis_event_id', '3': 3, '4': 1, '5': 9, '10': 'genesisEventId'},
+    {'1': 'genesis_expires_at', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'genesisExpiresAt'},
+    {'1': 'chain_id', '3': 5, '4': 1, '5': 4, '10': 'chainId'},
+    {'1': 'custody_address', '3': 6, '4': 1, '5': 9, '10': 'custodyAddress'},
+    {'1': 'governance_address', '3': 7, '4': 1, '5': 9, '10': 'governanceAddress'},
+    {'1': 'policy_epoch', '3': 8, '4': 1, '5': 4, '10': 'policyEpoch'},
+    {'1': 'bound_at', '3': 9, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'boundAt'},
+  ],
+};
+
+/// Descriptor for `StawiRoomBinding`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiRoomBindingDescriptor = $convert.base64Decode(
+    'ChBTdGF3aVJvb21CaW5kaW5nEi0KBXN0YXRlGAEgASgOMhcuY2hhdC52MS5TdGF3aVJvb21TdG'
+    'F0ZVIFc3RhdGUSHQoKZ2VuZXNpc19pZBgCIAEoCVIJZ2VuZXNpc0lkEigKEGdlbmVzaXNfZXZl'
+    'bnRfaWQYAyABKAlSDmdlbmVzaXNFdmVudElkEkgKEmdlbmVzaXNfZXhwaXJlc19hdBgEIAEoCz'
+    'IaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEGdlbmVzaXNFeHBpcmVzQXQSGQoIY2hhaW5f'
+    'aWQYBSABKARSB2NoYWluSWQSJwoPY3VzdG9keV9hZGRyZXNzGAYgASgJUg5jdXN0b2R5QWRkcm'
+    'VzcxItChJnb3Zlcm5hbmNlX2FkZHJlc3MYByABKAlSEWdvdmVybmFuY2VBZGRyZXNzEiEKDHBv'
+    'bGljeV9lcG9jaBgIIAEoBFILcG9saWN5RXBvY2gSNQoIYm91bmRfYXQYCSABKAsyGi5nb29nbG'
+    'UucHJvdG9idWYuVGltZXN0YW1wUgdib3VuZEF0');
 
 @$core.Deprecated('Use createRoomRequestDescriptor instead')
 const CreateRoomRequest$json = {
@@ -1006,6 +1052,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> ChatServic
   '.chat.v1.GetRoomRequest': GetRoomRequest$json,
   '.chat.v1.GetRoomResponse': GetRoomResponse$json,
   '.chat.v1.Room': Room$json,
+  '.chat.v1.StawiRoomBinding': StawiRoomBinding$json,
   '.chat.v1.CreateRoomRequest': CreateRoomRequest$json,
   '.common.v1.ContactLink': $8.ContactLink$json,
   '.chat.v1.CreateRoomResponse': CreateRoomResponse$json,

@@ -1,6 +1,6 @@
 name: stawi_api_chat
 description: Dart client library for Stawi Chat Service
-version: 1.55.0
+version: 1.56.0
 repository: https://github.com/stawilabs/chat
 homepage: https://github.com/stawilabs/chat
 issue_tracker: https://github.com/stawilabs/chat/issues

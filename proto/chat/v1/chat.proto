@@ -531,6 +531,43 @@ message Room {
   string creator_id = 9;
   // If true, changes to this room require approval from owners before execution
   bool requires_approval = 10;
+  // The room's Stawi binding: set once the room has been converted to a
+  // Stawi room (a genesis was prepared), unset for a plain chat room. Every
+  // member sees it, including one who joined after the conversion.
+  StawiRoomBinding stawi = 12;
+}
+
+// StawiRoomState is where a room's conversion to a Stawi room stands.
+enum StawiRoomState {
+  STAWI_ROOM_STATE_UNSPECIFIED = 0;
+  // A genesis was prepared and awaits founder signatures; the room is not yet
+  // on chain.
+  STAWI_ROOM_STATE_PENDING = 1;
+  // The chain has the room: membership, roles and deletion follow the chain.
+  STAWI_ROOM_STATE_BOUND = 2;
+  // The genesis never landed; the room may be converted again.
+  STAWI_ROOM_STATE_FAILED = 3;
+}
+
+// StawiRoomBinding binds a chat room to its on-chain custody. The chain room
+// id is the chat room id: one identifier names the room in chat, in finance
+// and on chain.
+message StawiRoomBinding {
+  StawiRoomState state = 1;
+  // The latest genesis prepared for the room.
+  string genesis_id = 2;
+  // The room event (stawi room conversion) that carries the genesis card.
+  string genesis_event_id = 3;
+  // When the pending genesis expires; unset once bound.
+  google.protobuf.Timestamp genesis_expires_at = 4;
+  // The following are set once the room is bound.
+  uint64 chain_id = 5;
+  // The room's RoomCustody contract address (0x-prefixed, lower case).
+  string custody_address = 6;
+  // The room's GovernanceModule address (0x-prefixed, lower case).
+  string governance_address = 7;
+  uint64 policy_epoch = 8;
+  google.protobuf.Timestamp bound_at = 9;
 }
 
 message CreateRoomRequest {

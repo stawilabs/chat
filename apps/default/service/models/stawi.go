@@ -4,7 +4,9 @@ import (
 	"strings"
 	"time"
 
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"github.com/pitabwire/frame/v2/data"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Stawi room binding states.
@@ -49,6 +51,44 @@ func (*StawiRoom) TableName() string { return "stawi_rooms" }
 
 // IsBound reports whether the chain has the room.
 func (r *StawiRoom) IsBound() bool { return r != nil && r.State == StawiRoomStateBound }
+
+// ToAPI returns the binding as the room read model carries it.
+func (r *StawiRoom) ToAPI() *chatv1.StawiRoomBinding {
+	if r == nil {
+		return nil
+	}
+	binding := &chatv1.StawiRoomBinding{
+		State:          stawiRoomStateToAPI(r.State),
+		GenesisId:      r.GenesisID,
+		GenesisEventId: r.GenesisEventID,
+	}
+	if r.State == StawiRoomStatePending && r.GenesisExpiresAt != nil {
+		binding.GenesisExpiresAt = timestamppb.New(*r.GenesisExpiresAt)
+	}
+	if r.IsBound() {
+		binding.ChainId = r.ChainID
+		binding.CustodyAddress = r.CustodyAddress
+		binding.GovernanceAddress = r.GovernanceAddress
+		binding.PolicyEpoch = r.PolicyEpoch
+		if r.BoundAt != nil {
+			binding.BoundAt = timestamppb.New(*r.BoundAt)
+		}
+	}
+	return binding
+}
+
+func stawiRoomStateToAPI(state string) chatv1.StawiRoomState {
+	switch state {
+	case StawiRoomStatePending:
+		return chatv1.StawiRoomState_STAWI_ROOM_STATE_PENDING
+	case StawiRoomStateBound:
+		return chatv1.StawiRoomState_STAWI_ROOM_STATE_BOUND
+	case StawiRoomStateFailed:
+		return chatv1.StawiRoomState_STAWI_ROOM_STATE_FAILED
+	default:
+		return chatv1.StawiRoomState_STAWI_ROOM_STATE_UNSPECIFIED
+	}
+}
 
 // FounderProfileIDs returns the founders of the room's latest genesis.
 func (r *StawiRoom) FounderProfileIDs() []string {

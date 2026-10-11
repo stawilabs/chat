@@ -48,6 +48,9 @@ type StawiRoomRepository interface {
 	GetByGovernance(ctx context.Context, governance string) (*models.StawiRoom, error)
 	// ListBound pages through bound rooms by id.
 	ListBound(ctx context.Context, afterID string, limit int) ([]*models.StawiRoom, error)
+	// GetByRoomIDs returns the bindings of the given rooms, keyed by room id,
+	// in one query. A room with no binding is absent from the map.
+	GetByRoomIDs(ctx context.Context, roomIDs []string) (map[string]*models.StawiRoom, error)
 }
 
 type stawiRoomRepository struct {
@@ -162,6 +165,24 @@ func (r *stawiRoomRepository) ListBound(ctx context.Context, afterID string, lim
 		Where("state = ? AND id > ?", models.StawiRoomStateBound, afterID).
 		Order("id ASC").Limit(limit).Find(&rows).Error
 	return rows, err
+}
+
+func (r *stawiRoomRepository) GetByRoomIDs(
+	ctx context.Context,
+	roomIDs []string,
+) (map[string]*models.StawiRoom, error) {
+	bindings := make(map[string]*models.StawiRoom, len(roomIDs))
+	if len(roomIDs) == 0 {
+		return bindings, nil
+	}
+	var rows []*models.StawiRoom
+	if err := r.Pool().DB(ctx, false).Where("id IN ?", roomIDs).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		bindings[row.GetID()] = row
+	}
+	return bindings, nil
 }
 
 // StawiRoomCallRepository tracks the signed calls chat relayed.

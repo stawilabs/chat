@@ -35,6 +35,26 @@ class RoomType extends $pb.ProtobufEnum {
   const RoomType._($core.int v, $core.String n) : super(v, n);
 }
 
+/// StawiRoomState is where a room's conversion to a Stawi room stands.
+class StawiRoomState extends $pb.ProtobufEnum {
+  static const StawiRoomState STAWI_ROOM_STATE_UNSPECIFIED = StawiRoomState._(0, _omitEnumNames ? '' : 'STAWI_ROOM_STATE_UNSPECIFIED');
+  static const StawiRoomState STAWI_ROOM_STATE_PENDING = StawiRoomState._(1, _omitEnumNames ? '' : 'STAWI_ROOM_STATE_PENDING');
+  static const StawiRoomState STAWI_ROOM_STATE_BOUND = StawiRoomState._(2, _omitEnumNames ? '' : 'STAWI_ROOM_STATE_BOUND');
+  static const StawiRoomState STAWI_ROOM_STATE_FAILED = StawiRoomState._(3, _omitEnumNames ? '' : 'STAWI_ROOM_STATE_FAILED');
+
+  static const $core.List<StawiRoomState> values = <StawiRoomState> [
+    STAWI_ROOM_STATE_UNSPECIFIED,
+    STAWI_ROOM_STATE_PENDING,
+    STAWI_ROOM_STATE_BOUND,
+    STAWI_ROOM_STATE_FAILED,
+  ];
+
+  static final $core.Map<$core.int, StawiRoomState> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static StawiRoomState? valueOf($core.int value) => _byValue[value];
+
+  const StawiRoomState._($core.int v, $core.String n) : super(v, n);
+}
+
 /// NotificationLevel controls how notifications are delivered for a room subscription.
 class NotificationLevel extends $pb.ProtobufEnum {
   static const NotificationLevel NOTIFICATION_LEVEL_UNSPECIFIED = NotificationLevel._(0, _omitEnumNames ? '' : 'NOTIFICATION_LEVEL_UNSPECIFIED');
