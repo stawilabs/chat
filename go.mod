@@ -12,8 +12,8 @@ require (
 	buf.build/gen/go/antinvestor/profile/protocolbuffers/go v1.36.12-20261010163034-301700166951.2
 	buf.build/gen/go/stawi/chat/connectrpc/go v1.21.0-20261011175708-653b7cfdd9b3.1
 	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.12-20261011175708-653b7cfdd9b3.2
-	buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-00000000000000-d05d809dce18.1
-	buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-00000000000000-d05d809dce18.2
+	buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-20261012015917-9abd43312234.1
+	buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-20261012015917-9abd43312234.2
 	buf.build/go/protovalidate v1.4.0
 	connectrpc.com/connect v1.21.0
 	connectrpc.com/otelconnect v0.10.0
