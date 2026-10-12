@@ -875,16 +875,17 @@ class _TopUpNotice extends StatelessWidget {
     } else {
       String money(BigInt units) => _formatTopUp(request, units);
       final claims = [
-        if (t.duesPayable > BigInt.zero) 'dues of ${money(t.duesPayable)}',
-        if (t.penaltiesOwed > BigInt.zero)
-          'penalties of ${money(t.penaltiesOwed)}',
+        if (t.duesPayable.units > BigInt.zero)
+          'dues of ${money(t.duesPayable.units)}',
+        if (t.penaltiesOwed.units > BigInt.zero)
+          'penalties of ${money(t.penaltiesOwed.units)}',
       ];
       text =
           'Pay in ${money(t.topUp)} first. The payoff takes up to '
-          '${money(t.payoff.units)} and your credit a payoff can spend now is '
-          '${money(t.creditAvailable.units)}'
-          '${claims.isEmpty ? '' : ', after ${claims.join(' and ')} new money '
-                    'pays first'}. Anything left over stays your credit.';
+          '${money(t.payoff.units)} and your credit in the room is '
+          '${money(t.credit.units)}'
+          '${claims.isEmpty ? '' : '; a settle takes ${claims.join(' and ')} '
+                    'from it first'}. Anything left over stays your credit.';
     }
     return Padding(
       padding: const EdgeInsets.only(top: 12),

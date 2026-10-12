@@ -20,10 +20,10 @@ buf.build/gen/go/stawi/chat/connectrpc/go v1.21.0-20261011175708-653b7cfdd9b3.1 
 buf.build/gen/go/stawi/chat/connectrpc/go v1.21.0-20261011175708-653b7cfdd9b3.1/go.mod h1:kA0ZHiMq0Aw9XV2KXLeix3KtNSLxNXKHXhqEswniVIU=
 buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.12-20261011175708-653b7cfdd9b3.2 h1:65c8M1zTbpPdF2hSvPK09w7RFU5V9WUkdG0RPNgjru8=
 buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.12-20261011175708-653b7cfdd9b3.2/go.mod h1:jzzcUiGX/luKs8GBmQ43wved0wGP09Yj9YB2kxiFNds=
-buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-00000000000000-d05d809dce18.1 h1:KiVA6szbc2YyxGGys0mXlElJFpw63oLRUHbtlKx9bEI=
-buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-00000000000000-d05d809dce18.1/go.mod h1:wvF2XC1Qs8QFj+z+8YOVVL0RZ1TktNrTo2/HR7C6FDg=
-buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-00000000000000-d05d809dce18.2 h1:V3OoZzUJHryaPviyhs43YWpLs/83adIXtBZ0S452x/Y=
-buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-00000000000000-d05d809dce18.2/go.mod h1:zXE/K3l3vYssWGgD3M68RceqUfrrK+1LDPGChtJFeF8=
+buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-20261012015917-9abd43312234.1 h1:dG8wFW/7v8BX376EGxj81psnQks1LUQ9Z0/IhdmTROA=
+buf.build/gen/go/stawi/finance/connectrpc/go v1.21.0-20261012015917-9abd43312234.1/go.mod h1:5zTIK/P93jUDrKrIeKcNQdxV8tHGRuJ0QHtws00KiCA=
+buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-20261012015917-9abd43312234.2 h1:Ekpnvg4oP4RbavMPjRNBSobK7M7s7Oy4BAlpo1aMO6g=
+buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-20261012015917-9abd43312234.2/go.mod h1:zXE/K3l3vYssWGgD3M68RceqUfrrK+1LDPGChtJFeF8=
 buf.build/go/protovalidate v1.4.0 h1:UjLrYbt5VX7+TMOs2+pG5FhZhIG1mSfK4EIopbb4LcM=
 buf.build/go/protovalidate v1.4.0/go.mod h1:8vJfzNT6NIG2qm3uFsJDXMlRmG+bQJzbcIn1Aa0vPGs=
 cel.dev/cel-go v0.32.0 h1:irvpFKr5EuGPyxeME03ERh0rii1TX+BDAnB9eL3IvNk=

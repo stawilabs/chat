@@ -645,10 +645,11 @@ void main() {
               memberId: 'mem1',
               profileId: 'p1',
               account: payoff.account,
-              // 15 USDC of credit, all claimed by the cycle's 10 USDC of
-              // dues and 5 USDC of penalties: none is left for the payoff.
+              // 5 USDC of credit against the cycle's 10 USDC of dues and
+              // 5 USDC of penalties: none is left for the payoff, and new
+              // money pays the 10 USDC the credit lacks for the claims first.
               book: finance.MemberBook(
-                credit: finance.Money(assetId: 'USDC.146', amount: '15000000'),
+                credit: finance.Money(assetId: 'USDC.146', amount: '5000000'),
                 duesPayable: finance.Money(
                   assetId: 'USDC.146',
                   amount: '10000000',
@@ -675,12 +676,13 @@ void main() {
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
 
-      // The payoff's 520 USDC ceiling, with no credit available for it.
+      // The payoff's 520 USDC ceiling plus the 10 USDC of claims the credit
+      // does not cover.
       expect(
         find.textContaining(
-          'Pay in 520.00 USDC first. The payoff takes up to 520.00 USDC and '
-          'your credit a payoff can spend now is 0.00 USDC, after dues of '
-          '10.00 USDC and penalties of 5.00 USDC new money pays first.',
+          'Pay in 530.00 USDC first. The payoff takes up to 520.00 USDC and '
+          'your credit in the room is 5.00 USDC; a settle takes dues of '
+          '10.00 USDC and penalties of 5.00 USDC from it first.',
         ),
         findsOneWidget,
       );
@@ -696,7 +698,7 @@ void main() {
         settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
       );
       expect(contribute.params.room, custody);
-      expect(contribute.params.amount, '520000000');
+      expect(contribute.params.amount, '530000000');
       expect(find.textContaining('Top-up received'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('engine-sign')));
