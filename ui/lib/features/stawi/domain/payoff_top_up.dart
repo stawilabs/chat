@@ -5,20 +5,23 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 ///
 /// A payoff spends the borrower's credit in the room, and a settle first takes
 /// penalties and the dues it claims (in a room with share-out cycles, the rest
-/// of the cycle in advance). Finance reads both from the chain
-/// (RulesEngine.creditClaims): MemberBook.dues_payable, and
-/// credit_available, the credit a payoff can spend once they are met. A payoff
-/// of X goes through once max(0, X − credit_available) is paid in.
+/// of the cycle in advance) out of that credit. Finance reads all three from
+/// the chain (RulesEngine.creditClaims): MemberBook.credit, penalties_owed and
+/// dues_payable. A payoff of X goes through once
+/// max(0, X + penalties_owed + dues_payable − credit) is paid in
+/// (stawi_finance_sdk payoffTopUp, Go rules.CreditClaims.TopUp).
+/// MemberBook.credit_available floors at zero, so X − credit_available
+/// understates the top-up whenever the claims exceed the credit.
 ///
-/// credit_available is not meaningful in a room whose rules sweep excess
-/// credit into an excess product: there a settle moves what is left into that
+/// The figure is not meaningful in a room whose rules sweep excess credit
+/// into an excess product: there a settle moves what is left into that
 /// product, so no top-up stays as credit for the payoff. Finance does not yet
 /// say whether a room's rules name one (no template does), so the figure is
 /// taken as it comes; the chain refuses a payoff the credit cannot cover.
 class PayoffTopUp {
   const PayoffTopUp({
     required this.payoff,
-    required this.creditAvailable,
+    required this.credit,
     required this.duesPayable,
     required this.penaltiesOwed,
   });
@@ -26,17 +29,25 @@ class PayoffTopUp {
   /// The most the payoff takes (settlement's quote, or the member's ceiling).
   final sdk.Amount payoff;
 
-  /// Credit a payoff can spend now (MemberBook.credit_available).
-  final sdk.Amount creditAvailable;
+  /// The member's credit in the room (MemberBook.credit).
+  final sdk.Amount credit;
 
   /// Dues a settle takes from credit first (MemberBook.dues_payable).
-  final BigInt duesPayable;
+  final sdk.Amount duesPayable;
 
-  /// Penalties a settle takes from credit first.
-  final BigInt penaltiesOwed;
+  /// Penalties a settle takes from credit first (MemberBook.penalties_owed).
+  final sdk.Amount penaltiesOwed;
 
-  /// What to pay in first; zero when the available credit covers the payoff.
-  BigInt get topUp => sdk.payoffTopUp(payoff, creditAvailable).units;
+  /// What to pay in first; zero when the credit covers the payoff and the
+  /// penalties and dues a settle takes first.
+  BigInt get topUp => sdk
+      .payoffTopUp(
+        payoff,
+        credit: credit,
+        penaltiesOwed: penaltiesOwed,
+        duesPayable: duesPayable,
+      )
+      .units;
 
   bool get needed => topUp > BigInt.zero;
 }
@@ -56,15 +67,16 @@ PayoffTopUp? payoffTopUpFor({
       .where((b) => b.hasBook() && myAccounts.any((a) => _same(a, b.account)))
       .firstOrNull;
   if (mine == null) return null;
-  final available = mine.book.creditAvailable;
-  if (available.assetId.isNotEmpty && available.assetId != asset.id) {
+  final book = mine.book;
+  final figures = [book.credit, book.penaltiesOwed, book.duesPayable];
+  if (figures.any((m) => m.assetId.isNotEmpty && m.assetId != asset.id)) {
     return null;
   }
   return PayoffTopUp(
     payoff: sdk.Amount(asset, payoff),
-    creditAvailable: sdk.Amount(asset, _units(available)),
-    duesPayable: _units(mine.book.duesPayable),
-    penaltiesOwed: _units(mine.book.penaltiesOwed),
+    credit: sdk.Amount(asset, _units(book.credit)),
+    penaltiesOwed: sdk.Amount(asset, _units(book.penaltiesOwed)),
+    duesPayable: sdk.Amount(asset, _units(book.duesPayable)),
   );
 }
 
