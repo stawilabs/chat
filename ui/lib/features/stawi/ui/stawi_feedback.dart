@@ -1,5 +1,7 @@
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderBase;
 
 import '../data/stawi_counterparty.dart';
 import '../data/stawi_identity.dart';
@@ -60,3 +62,34 @@ Future<T?> runStawiAction<T>(
 String shortHex(String hex) => hex.length <= 14
     ? hex
     : '${hex.substring(0, 6)}…${hex.substring(hex.length - 4)}';
+
+/// Reads [providers] again once the current event is done, keeping each
+/// one listened to until it has its new value.
+///
+/// flutter_riverpod 3.3.2-dev.2 asserts (and then never runs its scheduled
+/// work) when a refresh is scheduled while a disposal is pending, which is
+/// what invalidating a provider watched only by a screen under another route
+/// (its subscription paused) does. Waiting for the event to end lets pending
+/// disposals run, and the listener keeps the provider active through its
+/// refresh. The container outlives the widget, so this works after [ref]'s
+/// widget is gone.
+void invalidateSoon(WidgetRef ref, Iterable<ProviderBase<Object?>> providers) {
+  final ProviderContainer container;
+  try {
+    container = ProviderScope.containerOf(ref.context, listen: false);
+  } on Object {
+    return;
+  }
+  final all = providers.toList();
+  Future<void>.delayed(Duration.zero, () {
+    for (final p in all) {
+      if (!container.exists(p)) continue;
+      ProviderSubscription<Object?>? sub;
+      sub = container.listen<Object?>(p, (_, next) {
+        if (next is AsyncValue && next.isLoading) return;
+        sub?.close();
+      });
+      container.invalidate(p);
+    }
+  });
+}

@@ -37,12 +37,13 @@ final loanQuoteProvider = FutureProvider.autoDispose
 
 /// Reads the person's loans and savings again after a money action.
 void invalidateLoanMoney(WidgetRef ref, [LoanRef? loanRef]) {
-  if (loanRef != null) ref.invalidate(loanProvider(loanRef));
-  ref
-    ..invalidate(myBorrowedLoansProvider)
-    ..invalidate(myLentLoansProvider)
-    ..invalidate(myVaultProvider)
-    ..invalidate(stawiWalletBalanceProvider);
+  invalidateSoon(ref, [
+    if (loanRef != null) loanProvider(loanRef),
+    myBorrowedLoansProvider,
+    myLentLoansProvider,
+    myVaultProvider,
+    stawiWalletBalanceProvider,
+  ]);
 }
 
 /// After a loan the person borrows was accepted or taken ([callId], the
@@ -81,7 +82,7 @@ Future<void> followAndOfferAutoPay(
     ref,
     () => service.prepareStandingOrder(loan, on: true, title: autoPayTitle),
   );
-  if (call != null) ref.invalidate(standingOrderOnProvider(loan));
+  if (call != null) invalidateSoon(ref, [standingOrderOnProvider(loan)]);
 }
 
 /// One loan: its terms, its schedule and what the person may do with it.
@@ -242,7 +243,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           .read(stawiAccountServiceProvider)
           .prepareStandingOrder(loan, on: true, title: autoPayTitle),
     );
-    if (call != null) ref.invalidate(standingOrderOnProvider(loan));
+    if (call != null) invalidateSoon(ref, [standingOrderOnProvider(loan)]);
   });
 
   @override

@@ -31,6 +31,7 @@ import '../features/settings/ui/storage_settings_screen.dart';
 import '../features/settings/ui/theme_settings_screen.dart';
 import '../features/settings/ui/two_factor_setup_screen.dart';
 import '../features/stawi/ui/loan_detail_screen.dart';
+import '../features/stawi/ui/my_money_screen.dart';
 import '../features/stawi/ui/stawi_account_screen.dart';
 import '../features/stawi/ui/stawi_room_screen.dart';
 
@@ -202,6 +203,7 @@ GoRouter router(Ref ref) {
         path: '/settings/stawi',
         builder: (context, state) => StawiAccountScreen(),
       ),
+      GoRoute(path: '/money', builder: (context, state) => MyMoneyScreen()),
       GoRoute(
         path: '/loan',
         builder: (context, state) {

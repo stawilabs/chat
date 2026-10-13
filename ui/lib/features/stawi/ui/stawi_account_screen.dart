@@ -75,7 +75,7 @@ class _AccountViewState extends ConsumerState<_AccountView> {
   Future<void> _getTestFunds(StawiAsset asset) async {
     final amount = await showDialog<String>(
       context: context,
-      builder: (context) => _TestFundsDialog(asset: asset),
+      builder: (context) => TestFundsDialog(asset: asset),
     );
     if (amount == null || !mounted) return;
     setState(() => _busy = true);
@@ -327,16 +327,18 @@ class _ErrorView extends StatelessWidget {
   );
 }
 
-class _TestFundsDialog extends StatefulWidget {
-  const _TestFundsDialog({required this.asset});
+/// Asks how much test money of [asset] the testnet faucet should mint; pops
+/// the amount as typed.
+class TestFundsDialog extends StatefulWidget {
+  const TestFundsDialog({required this.asset, super.key});
 
   final StawiAsset asset;
 
   @override
-  State<_TestFundsDialog> createState() => _TestFundsDialogState();
+  State<TestFundsDialog> createState() => _TestFundsDialogState();
 }
 
-class _TestFundsDialogState extends State<_TestFundsDialog> {
+class _TestFundsDialogState extends State<TestFundsDialog> {
   final _controller = TextEditingController(text: '1000');
   String? _error;
 

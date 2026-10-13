@@ -205,7 +205,9 @@ class StandingOrderSwitch extends ConsumerWidget {
                 ref,
                 () => service.prepareStandingOrder(loan, on: value),
               );
-              if (call != null) ref.invalidate(standingOrderOnProvider(loan));
+              if (call != null) {
+                invalidateSoon(ref, [standingOrderOnProvider(loan)]);
+              }
             }
           : null,
     );
@@ -291,7 +293,8 @@ class AccountSetupBanner extends ConsumerWidget {
     if (ready.hasValue && !ready.isLoading && !ready.hasError) {
       return const SizedBox.shrink();
     }
-    if (ready.hasError && !ready.isLoading) {
+    // An error stays shown while the account is tried again.
+    if (ready.hasError) {
       return Card(
         key: bannerKey,
         child: ListTile(

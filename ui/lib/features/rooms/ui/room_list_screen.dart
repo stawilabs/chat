@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/error/app_error.dart';
+import '../../../core/navigation/navigation_helper.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/responsive/responsive_layout.dart';
 import '../../../core/responsive/three_panel_layout.dart';
@@ -339,6 +340,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   ),
                 ]
               : [
+                  IconButton(
+                    key: const Key('nav-my-money'),
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    tooltip: 'My money',
+                    onPressed: () =>
+                        NavigationHelper.navigateToMyMoney(context),
+                  ),
                   // More options menu
                   PopupMenuButton<String>(
                     icon: Icon(
@@ -590,6 +598,14 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
+      actions: [
+        IconButton(
+          key: const Key('nav-my-money'),
+          icon: const Icon(Icons.account_balance_wallet_outlined),
+          tooltip: 'My money',
+          onPressed: () => NavigationHelper.navigateToMyMoney(context),
+        ),
+      ],
     ),
     drawer: const AppDrawer(),
     floatingActionButton: FloatingActionButton(
