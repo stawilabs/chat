@@ -151,6 +151,22 @@ var (
 		connect.CodePermissionDenied,
 		errors.New("you don't have permission to approve or reject proposals"),
 	)
+	// ErrDirectRoomMembers refuses a DM that is not between its creator and
+	// exactly one other person on Stawi (a profile), never the creator themself.
+	ErrDirectRoomMembers = connect.NewError(connect.CodeInvalidArgument,
+		errors.New("a direct room is between you and exactly one other person on Stawi"))
+	// ErrBotRoomByPerson refuses a person's bot room: only a service creates one.
+	ErrBotRoomByPerson = connect.NewError(connect.CodeInvalidArgument, errors.New("a bot room is created by a service"))
+	// ErrDirectRoomMembership refuses a DM's membership change: its two members
+	// are fixed; no one joins it and its roles do not change.
+	ErrDirectRoomMembership = connect.NewError(
+		connect.CodeFailedPrecondition,
+		errors.New("a direct room's members are fixed"),
+	)
+	// ErrPersonalRoomNotStawi refuses a conversion of a DM or a bot room: neither
+	// is ever a Stawi room (person to person money is the personal loan book's).
+	ErrPersonalRoomNotStawi = connect.NewError(connect.CodeFailedPrecondition,
+		errors.New("a direct or bot room is never a Stawi room"))
 	// ErrStawiRoomChainManaged refuses the chat-native ways of changing a Stawi
 	// room that is on chain: its membership, roles, proposals and existence
 	// follow the chain only.

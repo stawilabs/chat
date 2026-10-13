@@ -15,6 +15,9 @@ type RoomRepository interface {
 	datastore.BaseRepository[*models.Room]
 	GetByTenantAndType(ctx context.Context, tenantID, roomType string) ([]*models.Room, error)
 	GetRoomsByProfileID(ctx context.Context, profileID string) ([]*models.Room, error)
+	// DirectRooms lists the personal rooms (DIRECT, BOT) keyed by key within
+	// the tenant and partitions given, oldest first, deleted rooms excluded.
+	DirectRooms(ctx context.Context, key, tenantID string, partitions []string) ([]*models.Room, error)
 }
 
 // RoomEventRepository defines the interface for room event data access operations.

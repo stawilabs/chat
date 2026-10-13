@@ -23,7 +23,24 @@ type Room struct {
 	Properties       data.JSONMap
 	IsPublic         bool
 	RequiresApproval bool
+	// DirectKey names a personal room's people: DirectKey(a, b) for a DM,
+	// BotKey(service, person) for a service's room with one person; empty for
+	// every other room. Several rooms may share a key (a DM recreated after
+	// someone left); the oldest whose active members are exactly its people
+	// is the one services resolve.
+	DirectKey string `gorm:"type:varchar(100);index:idx_rooms_direct_key"`
 }
+
+// DirectKey is the key of the DM between two profiles, in either order.
+func DirectKey(a, b string) string {
+	if b < a {
+		a, b = b, a
+	}
+	return "direct:" + a + ":" + b
+}
+
+// BotKey is the key of a service's room with one person.
+func BotKey(service, person string) string { return "bot:" + service + ":" + person }
 
 // ToAPI converts Room model to API representation.
 func (r *Room) ToAPI() *chatv1.Room {

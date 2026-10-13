@@ -70,6 +70,124 @@ func (s *RoomBusinessTestSuite) setupBusinessLayer(
 	return roomBusiness
 }
 
+// TestDirectRooms: a DM is between its creator and exactly one other person,
+// private and keyed by the pair; its members are fixed. A person never
+// creates a bot room, and an unspecified type is still a group.
+func (s *RoomBusinessTestSuite) TestDirectRooms() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		rb := s.setupBusinessLayer(ctx, svc)
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+		roomRepo := repository.NewRoomRepository(ctx, dbPool, svc.WorkManager())
+		subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, svc.WorkManager())
+		alice := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		bob := &commonv1.ContactLink{ProfileId: util.IDString()}
+
+		t.Run("a DM is two people, private, typed and keyed by the pair", func(t *testing.T) {
+			room, err := rb.CreateRoom(
+				ctx,
+				&chatv1.CreateRoomRequest{Name: "Bob", Type: chatv1.RoomType_ROOM_TYPE_DIRECT,
+					Members: []*commonv1.ContactLink{bob}},
+				alice,
+			)
+			require.NoError(t, err)
+			require.Equal(t, chatv1.RoomType_ROOM_TYPE_DIRECT, room.GetType())
+			require.True(t, room.GetIsPrivate(), "a DM is private whatever the request says")
+			s.WaitForMemberSubscription(ctx, svc, room.GetId(), bob.GetProfileId(), t)
+			s.WaitForMemberSubscription(ctx, svc, room.GetId(), alice.GetProfileId(), t)
+			stored, err := roomRepo.GetByID(ctx, room.GetId())
+			require.NoError(t, err)
+			require.Equal(t, models.DirectKey(alice.GetProfileId(), bob.GetProfileId()), stored.DirectKey)
+			require.Equal(t, models.DirectKey(bob.GetProfileId(), alice.GetProfileId()), stored.DirectKey,
+				"the key is the pair's, whoever created the DM")
+
+			found, err := roomRepo.DirectRooms(ctx, stored.DirectKey, stored.TenantID, []string{stored.PartitionID})
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			require.Equal(t, room.GetId(), found[0].GetID())
+		})
+
+		t.Run("a DM asked to be public is still private", func(t *testing.T) {
+			room, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+				Name:      "Public DM",
+				IsPrivate: false,
+				Type:      chatv1.RoomType_ROOM_TYPE_DIRECT,
+				Members:   []*commonv1.ContactLink{{ProfileId: util.IDString()}},
+			}, alice)
+			require.NoError(t, err)
+			require.True(t, room.GetIsPrivate())
+		})
+
+		t.Run("a DM names exactly one other person", func(t *testing.T) {
+			for name, members := range map[string][]*commonv1.ContactLink{
+				"none":    nil,
+				"two":     {bob, {ProfileId: util.IDString()}},
+				"oneself": {{ProfileId: alice.GetProfileId()}},
+				"no one":  {{}},
+			} {
+				_, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: "x " + name,
+					Type: chatv1.RoomType_ROOM_TYPE_DIRECT, Members: members}, alice)
+				require.ErrorIs(t, err, service.ErrDirectRoomMembers, name)
+			}
+		})
+
+		t.Run("a person does not create a bot room", func(t *testing.T) {
+			_, err := rb.CreateRoom(
+				ctx,
+				&chatv1.CreateRoomRequest{Name: "Bot", Type: chatv1.RoomType_ROOM_TYPE_BOT},
+				alice,
+			)
+			require.ErrorIs(t, err, service.ErrBotRoomByPerson)
+		})
+
+		t.Run("a DM gains no member and changes no role", func(t *testing.T) {
+			other := &commonv1.ContactLink{ProfileId: util.IDString()}
+			room, err := rb.CreateRoom(
+				ctx,
+				&chatv1.CreateRoomRequest{Name: "Bob 2", Type: chatv1.RoomType_ROOM_TYPE_DIRECT,
+					Members: []*commonv1.ContactLink{other}},
+				alice,
+			)
+			require.NoError(t, err)
+			s.WaitForAuthzAccess(ctx, svc, alice.GetProfileId(), room.GetId(), t)
+			s.WaitForMemberSubscription(ctx, svc, room.GetId(), other.GetProfileId(), t)
+
+			err = rb.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
+				RoomId: room.GetId(),
+				Members: []*chatv1.RoomSubscription{
+					{Member: &commonv1.ContactLink{ProfileId: util.IDString()}},
+				},
+			}, alice)
+			require.ErrorIs(t, err, service.ErrDirectRoomMembership)
+
+			subs, err := subRepo.GetByContactLinkAndRooms(ctx, &commonv1.ContactLink{ProfileId: other.GetProfileId()},
+				room.GetId())
+			require.NoError(t, err)
+			require.Len(t, subs, 1)
+			err = rb.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{RoomId: room.GetId(),
+				SubscriptionId: subs[0].GetID(), Roles: []string{"admin"}}, alice)
+			require.ErrorIs(t, err, service.ErrDirectRoomMembership)
+
+			active, err := subRepo.GetByRoomID(ctx, room.GetId(), nil)
+			require.NoError(t, err)
+			require.Len(t, active, 2, "the DM still has exactly its two people")
+		})
+
+		t.Run("unspecified and group stay groups", func(t *testing.T) {
+			room, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: "Group"}, alice)
+			require.NoError(t, err)
+			require.Equal(t, chatv1.RoomType_ROOM_TYPE_GROUP, room.GetType())
+			room, err = rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: "Group 2",
+				Type: chatv1.RoomType_ROOM_TYPE_GROUP}, alice)
+			require.NoError(t, err)
+			require.Equal(t, chatv1.RoomType_ROOM_TYPE_GROUP, room.GetType())
+			stored, err := roomRepo.GetByID(ctx, room.GetId())
+			require.NoError(t, err)
+			require.Empty(t, stored.DirectKey, "only personal rooms are keyed")
+		})
+	})
+}
+
 func (s *RoomBusinessTestSuite) TestCreateRoom() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)

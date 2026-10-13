@@ -7,6 +7,7 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
+	"github.com/pitabwire/frame/v2/data"
 	"github.com/pitabwire/frame/v2/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
@@ -121,4 +122,36 @@ func requireBoundBinding(t *testing.T, binding *chatv1.StawiRoomBinding, genesis
 	require.Equal(t, uint64(3), binding.GetPolicyEpoch())
 	require.Nil(t, binding.GetGenesisExpiresAt(), "a bound room has no pending expiry")
 	require.True(t, boundAt.Equal(binding.GetBoundAt().AsTime()))
+}
+
+// TestADirectRoomIsNeverConverted: a DM stays personal. Its owner's
+// conversion is refused before settlement is asked for a genesis, and no
+// genesis is claimed for the room.
+func (s *MessageBusinessTestSuite) TestADirectRoomIsNeverConverted() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+
+		dm, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Name: "Bob", Type: chatv1.RoomType_ROOM_TYPE_DIRECT, Members: []*commonv1.ContactLink{f.bob},
+		}, f.alice)
+		require.NoError(t, err)
+		f.roomID = dm.GetId()
+		for _, member := range []*commonv1.ContactLink{f.alice, f.bob} {
+			require.Eventually(t, func() bool {
+				subs, subErr := f.subRepo.GetByContactLinkAndRooms(f.ctx,
+					&commonv1.ContactLink{ProfileId: member.GetProfileId()}, f.roomID)
+				return subErr == nil && len(subs) == 1 && f.authz.CanRoomView(f.ctx, subs[0].GetID(), f.roomID) == nil
+			}, 30*time.Second, 100*time.Millisecond, "member %s of the DM", member.GetProfileId())
+		}
+		f.aliceSub = f.subscriptionOf(t, f.alice)
+		f.bobSub = f.subscriptionOf(t, f.bob)
+		prepared := len(f.rooms.Prepared)
+
+		requireAckRefused(t, f.send(t, f.alice, conversion(f.aliceSub, f.bobSub)), connect.CodeFailedPrecondition)
+
+		require.Len(t, f.rooms.Prepared, prepared, "settlement is never asked for a DM's genesis")
+		_, err = f.bindings.GetByID(f.ctx, f.roomID)
+		require.Error(t, err, "no genesis is claimed for a DM")
+		require.True(t, data.ErrorIsNoRows(err), err.Error())
+	})
 }

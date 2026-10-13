@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/stawilabs/chat/apps/default/service"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
@@ -223,6 +224,16 @@ func (sr *stawiRelay) relayConversion(
 			errors.New("the room is already a Stawi room"))}
 	}
 
+	// A DM or a bot room stays personal: person to person money is the
+	// personal loan book's, never a Stawi room's.
+	room, err := sr.roomRepo.GetByID(ctx, act.event.RoomID)
+	if err != nil {
+		return stawiRelayResult{ack: fmt.Errorf("failed to load the room: %w", err)}
+	}
+	if room.RoomType == models.RoomTypeDirect || room.RoomType == models.RoomTypeBot {
+		return stawiRelayResult{ack: service.ErrPersonalRoomNotStawi}
+	}
+
 	// Only the room's owner or an admin may line the room up for the chain:
 	// the genesis prepared here is what a later activation must match.
 	if !roleListContains(act.sender.Role, roleOwner) && !roleListContains(act.sender.Role, roleAdmin) {
@@ -231,7 +242,7 @@ func (sr *stawiRelay) relayConversion(
 	}
 
 	// Another member's pending genesis is theirs until it expires.
-	if err := sr.bindings.CheckGenesisClaimable(ctx, act.event.RoomID, act.sender.ProfileID, time.Now()); err != nil {
+	if err = sr.bindings.CheckGenesisClaimable(ctx, act.event.RoomID, act.sender.ProfileID, time.Now()); err != nil {
 		return stawiRelayResult{ack: genesisClaimRefusal(err)}
 	}
 
@@ -293,10 +304,6 @@ func (sr *stawiRelay) relayConversion(
 	// Record the genesis before the card is stored, so a founder who signs as
 	// soon as the card arrives finds it. A card that then fails to store leaves
 	// a pending genesis the sender's retry replaces.
-	room, err := sr.roomRepo.GetByID(ctx, act.event.RoomID)
-	if err != nil {
-		return stawiRelayResult{ack: fmt.Errorf("failed to load the room: %w", err)}
-	}
 	if err = sr.bindings.ClaimGenesis(ctx, room, models.StawiGenesisClaim{
 		GenesisID:   genesis.GenesisID,
 		EventID:     act.event.GetID(),

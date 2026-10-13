@@ -19,6 +19,7 @@ import (
 	"github.com/pitabwire/frame/v2/data"
 	frevents "github.com/pitabwire/frame/v2/events"
 	"github.com/pitabwire/util"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/stawilabs/chat/apps/default/service"
 	"github.com/stawilabs/chat/apps/default/service/authz"
@@ -30,7 +31,6 @@ import (
 
 // proposalExpiryHours is the number of hours before a proposal expires.
 const proposalExpiryHours = 72
-const defaultGroupType = models.RoomTypeGroup
 const defaultSearchLimit = 50
 const maxSearchLimit = 100
 
@@ -173,13 +173,19 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, service.ErrRoomIDInvalid
 	}
 
+	roomType, members, directKey, err := rb.roomTypeOf(ctx, req, createdBy)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the room
 	createdRoom := &models.Room{
-		RoomType:         defaultGroupType,
+		RoomType:         roomType,
 		Name:             req.GetName(),
 		Description:      req.GetDescription(),
-		IsPublic:         !req.GetIsPrivate(),
+		IsPublic:         !req.GetIsPrivate() && roomType != models.RoomTypeDirect,
 		RequiresApproval: req.GetRequiresApproval(),
+		DirectKey:        directKey,
 	}
 	// Room metadata is persisted so it survives the request: consumers of the
 	// durable room fact stream opt in through it (events.GroupMetadataKey).
@@ -202,33 +208,13 @@ func (rb *roomBusiness) CreateRoom(
 		return rb.withStawiBinding(ctx, existingRoom.ToAPI())
 	}
 
-	// Owner subscription
-	ownerSubscription := &chatv1.RoomSubscription{
-		Id:     util.IDString(),
-		RoomId: createdRoom.GetID(),
-		Member: &commonv1.ContactLink{
-			ProfileId: createdBy.GetProfileId(),
-			ContactId: createdBy.GetContactId(),
-		},
-		Roles: []string{roleOwner},
-	}
-
-	subscriptionList := []*chatv1.RoomSubscription{ownerSubscription}
-	for _, member := range req.GetMembers() {
-		if member != nil {
-			subscriptionList = append(subscriptionList, &chatv1.RoomSubscription{
-				Id:     util.IDString(),
-				RoomId: createdRoom.GetID(),
-				Member: member,
-			})
-		}
-	}
+	subscriptionList := createdRoomSubscriptions(createdRoom.GetID(), createdBy, members)
 
 	// Add creator as owner
 	err = rb.addRoomMembersWithRoles(
 		ctx,
 		createdRoom.GetID(),
-		subscriptionList, ownerSubscription.GetId(),
+		subscriptionList, subscriptionList[0].GetId(),
 		createdBy,
 	)
 	if err != nil {
@@ -258,6 +244,84 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
+}
+
+// createdRoomSubscriptions is a new room's subscriptions: its creator as
+// owner first, then each member.
+func createdRoomSubscriptions(
+	roomID string, createdBy *commonv1.ContactLink, members []*commonv1.ContactLink,
+) []*chatv1.RoomSubscription {
+	subscriptions := []*chatv1.RoomSubscription{{
+		Id:     util.IDString(),
+		RoomId: roomID,
+		Member: &commonv1.ContactLink{
+			ProfileId: createdBy.GetProfileId(),
+			ContactId: createdBy.GetContactId(),
+		},
+		Roles: []string{roleOwner},
+	}}
+	for _, member := range members {
+		if member != nil {
+			subscriptions = append(subscriptions, &chatv1.RoomSubscription{
+				Id:     util.IDString(),
+				RoomId: roomID,
+				Member: member,
+			})
+		}
+	}
+	return subscriptions
+}
+
+// roomTypeOf is the room a person asked for: a group (also for UNSPECIFIED),
+// a channel, or a DM with exactly one other person on Stawi. The DM's member
+// is resolved to their profile (validateContactProfile), so its key names two
+// profiles. A bot room is a service's (ResolvePersonalRoom).
+func (rb *roomBusiness) roomTypeOf(ctx context.Context, req *chatv1.CreateRoomRequest,
+	createdBy *commonv1.ContactLink) (string, []*commonv1.ContactLink, string, error) {
+	switch req.GetType() {
+	case chatv1.RoomType_ROOM_TYPE_UNSPECIFIED, chatv1.RoomType_ROOM_TYPE_GROUP:
+		return models.RoomTypeGroup, req.GetMembers(), "", nil
+	case chatv1.RoomType_ROOM_TYPE_CHANNEL:
+		return models.RoomTypeChannel, req.GetMembers(), "", nil
+	case chatv1.RoomType_ROOM_TYPE_BOT:
+		return "", nil, "", service.ErrBotRoomByPerson
+	case chatv1.RoomType_ROOM_TYPE_DIRECT:
+		var others []*commonv1.ContactLink
+		for _, m := range req.GetMembers() {
+			if m != nil {
+				others = append(others, m)
+			}
+		}
+		if len(others) != 1 {
+			return "", nil, "", service.ErrDirectRoomMembers
+		}
+		other := proto.CloneOf(others[0])
+		if err := rb.validateContactProfile(ctx, other); err != nil {
+			return "", nil, "", fmt.Errorf("%w: %w", service.ErrDirectRoomMembers, err)
+		}
+		if other.GetProfileId() == "" || other.GetProfileId() == createdBy.GetProfileId() {
+			return "", nil, "", service.ErrDirectRoomMembers
+		}
+		return models.RoomTypeDirect, []*commonv1.ContactLink{other},
+			models.DirectKey(createdBy.GetProfileId(), other.GetProfileId()), nil
+	}
+	return "", nil, "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown room type %s", req.GetType()))
+}
+
+// refuseIfDirect refuses a membership or role change in a DM: its two members
+// are fixed (leaving stays allowed).
+func (rb *roomBusiness) refuseIfDirect(ctx context.Context, roomID string) error {
+	room, err := rb.roomRepo.GetByID(ctx, roomID)
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return service.ErrRoomNotFound
+		}
+		return fmt.Errorf("failed to load the room: %w", err)
+	}
+	if room.RoomType == models.RoomTypeDirect {
+		return service.ErrDirectRoomMembership
+	}
+	return nil
 }
 
 // persistRoom inserts room and reports the room that already holds its id, if
@@ -589,6 +653,12 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 		return service.ErrRoomAddMembersDenied
 	}
 
+	// A DM's two members are fixed; this is said only to a member who could
+	// otherwise manage the room.
+	if dmErr := rb.refuseIfDirect(ctx, req.GetRoomId()); dmErr != nil {
+		return dmErr
+	}
+
 	// Check if room requires approval for changes
 	if needsApproval, approvalErr := rb.requiresApproval(ctx, req.GetRoomId()); approvalErr == nil && needsApproval {
 		if crErr := rb.createProposal(ctx, req.GetRoomId(), models.ProposalTypeAddSubscriptions,
@@ -699,6 +769,12 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 
 	if admin == nil {
 		return service.ErrRoomUpdateRoleDenied
+	}
+
+	// A DM's two members are fixed; this is said only to a member who could
+	// otherwise manage the room.
+	if dmErr := rb.refuseIfDirect(ctx, req.GetRoomId()); dmErr != nil {
+		return dmErr
 	}
 
 	// Check if room requires approval for changes
