@@ -453,7 +453,7 @@ void main() {
         ),
       )
       ..on(
-        finance.CreditService.listLoans,
+        finance.LoanService.listLoans,
         (req) => finance.ListLoansResponse(
           loans: [finance.Loan(loanId: 'loan1', roomId: req.roomId)],
         ),
@@ -474,7 +474,7 @@ void main() {
       rooms: finance.RoomServiceClient(transport),
       treasury: finance.TreasuryServiceClient(transport),
       governance: finance.GovernanceServiceClient(transport),
-      credit: finance.CreditServiceClient(transport),
+      loans: finance.LoanServiceClient(transport),
       savings: finance.SavingsServiceClient(transport),
       identity: () async => const StawiIdentity(profileId: 'p1', accounts: []),
     );

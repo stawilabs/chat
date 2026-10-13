@@ -14,21 +14,21 @@ class StawiFinanceService {
     required finance.GovernanceServiceClient governance,
     required Future<StawiIdentity> Function() identity,
     finance.SavingsServiceClient? savings,
-    finance.CreditServiceClient? credit,
+    finance.LoanServiceClient? loans,
   }) : _rooms = rooms,
        _treasury = treasury,
        _governance = governance,
        _identity = identity,
        _savings = savings,
-       _credit = credit;
+       _loans = loans;
 
   final finance.SavingsServiceClient? _savings;
-  final finance.CreditServiceClient? _credit;
+  final finance.LoanServiceClient? _loans;
 
   finance.SavingsServiceClient get _savingsClient =>
       _savings ?? (throw StateError('no savings client'));
-  finance.CreditServiceClient get _creditClient =>
-      _credit ?? (throw StateError('no credit client'));
+  finance.LoanServiceClient get _loansClient =>
+      _loans ?? (throw StateError('no loans client'));
 
   final finance.RoomServiceClient _rooms;
   final finance.TreasuryServiceClient _treasury;
@@ -77,21 +77,6 @@ class StawiFinanceService {
         finance.ListMemberBalancesRequest(roomId: roomId),
       );
 
-  /// The room's contribution periods, newest first as finance lists them.
-  Future<List<finance.Period>> periods(String roomId) async =>
-      (await _savingsClient.listPeriods(
-        finance.ListPeriodsRequest(roomId: roomId),
-      )).periods;
-
-  /// What the signed-in member owes, per period.
-  Future<List<finance.Obligation>> myObligations(String roomId) async {
-    final member = await myMembership(roomId);
-    if (member == null) return const [];
-    return (await _savingsClient.listObligations(
-      finance.ListObligationsRequest(roomId: roomId, memberId: member.memberId),
-    )).obligations;
-  }
-
   /// The room's share-outs.
   Future<List<finance.DistributionRecord>> distributions(String roomId) async =>
       (await _treasury.listDistributions(
@@ -109,7 +94,7 @@ class StawiFinanceService {
 
   /// The room's loans.
   Future<List<finance.Loan>> loans(String roomId) async =>
-      (await _creditClient.listLoans(
+      (await _loansClient.listLoans(
         finance.ListLoansRequest(roomId: roomId),
       )).loans;
 
@@ -167,7 +152,7 @@ final stawiFinanceServiceProvider = Provider<StawiFinanceService>((ref) {
     governance: ref.watch(financeGovernanceProvider),
     identity: () => ref.read(stawiIdentityProvider.future),
     savings: ref.watch(financeSavingsProvider),
-    credit: ref.watch(financeCreditProvider),
+    loans: ref.watch(financeLoansProvider),
   );
 });
 
@@ -183,17 +168,6 @@ final stawiStatementProvider = FutureProvider.autoDispose
     );
 
 /// Room-scoped finance reads for the money screens.
-final stawiPeriodsProvider = FutureProvider.autoDispose
-    .family<List<finance.Period>, String>(
-      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).periods(roomId),
-    );
-
-final stawiObligationsProvider = FutureProvider.autoDispose
-    .family<List<finance.Obligation>, String>(
-      (ref, roomId) =>
-          ref.watch(stawiFinanceServiceProvider).myObligations(roomId),
-    );
-
 final stawiDistributionsProvider = FutureProvider.autoDispose
     .family<List<finance.DistributionRecord>, String>(
       (ref, roomId) =>

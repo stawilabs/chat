@@ -234,10 +234,11 @@ Uint8List checkedContributionDigest({
 /// The digest to sign for a prepared engine call, and the call it binds (to
 /// show the member: a payoff's ceiling, for one). Checked with the SDK: the
 /// digest is the intent's own, the intent binds exactly the engine call
-/// settlement returned (verifyEngineCallIntent), and that call is the action,
-/// room, loan, product and amount the member asked for.
+/// settlement returned, and that call is the action, room, loan, product,
+/// amount and terms the member asked for (verifyEngineCallIntent compares
+/// every field with [AccountEngineRequest.expected]).
 /// The prepared target must also be the room's own engine for the action
-/// (its LoanEngine for loan actions, its RulesEngine otherwise) with an active
+/// (its LoanBook for loan actions, its RulesEngine otherwise) with an active
 /// grant: [engines] is finance's live Room.engines. Without them the call
 /// cannot be checked, so it is refused.
 ({Uint8List digest, EngineCall call}) checkedEngineCall({
@@ -265,38 +266,17 @@ Uint8List checkedContributionDigest({
       intent,
       prepared.call.engineTarget,
       prepared.call.engineCalldata,
+      expected: request.expected,
       engines: engines,
     );
   } on EngineCallException catch (e) {
     throw SigningRefused(switch (e.error) {
+      EngineCallError.requestMismatch =>
+        'settlement prepared something else: not the call you asked for',
       EngineCallError.notTheRoomsEngine =>
         'the call targets a contract that is not this room’s active engine',
       _ => 'the engine call does not check out (${e.error.name})',
     });
-  }
-  if (call.action != request.call.action) {
-    throw SigningRefused('settlement prepared ${call.action.functionName}');
-  }
-  if (!bytesEqual(call.room, request.custody)) {
-    throw const SigningRefused('the call is for another room');
-  }
-  if (request.call.takesLoan && call.loanId != BigInt.from(request.loanId)) {
-    throw const SigningRefused('the call names another loan');
-  }
-  if (request.amount.isNotEmpty &&
-      call.amount != BigInt.parse(request.amount)) {
-    throw SigningRefused(
-      'the call moves ${call.amount}, not the ${request.amount} you asked for (minor units)',
-    );
-  }
-  if (request.call.takesProduct &&
-      !bytesEqual(call.productId, request.productId!)) {
-    throw const SigningRefused('the call names another product');
-  }
-  if (request.call == AccountEngineCall.loanRequest &&
-      (call.instalments != request.instalments ||
-          call.replaces != BigInt.from(request.replaces))) {
-    throw const SigningRefused('the loan terms differ from your request');
   }
   return (digest: digest, call: call);
 }

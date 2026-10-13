@@ -1,11 +1,12 @@
 {
-  "description": "Go-produced vectors (pkg/rules MemberCall, pkg/evm/stawi) for StawiAccount.executeEngineCall: calldata is the member action's exact static ABI encoding (its first argument the room's custody); call_hash = keccak256(abi.encode(address target, bytes calldata)) is the ENGINE_CALL intent's authorization_id; committed is the intent amount (the pledge, or the payoff ceiling; else 0); digest is the intent digest (pkg/intent ENCODING.md) the device signs.",
+  "description": "Go-produced vectors (pkg/rules MemberCall, pkg/evm/stawi) for StawiAccount.executeEngineCall: calldata is the member action's exact static ABI encoding; call_hash = keccak256(abi.encode(address target, bytes calldata)) is the ENGINE_CALL intent's authorization_id; committed is the intent amount (the call's value word: a pledge, a payoff ceiling, an offer's, payment's or move's amount, an ask's or acceptance's max_repay; else 0); digest is the intent digest (pkg/intent ENCODING.md) the device signs. target_name is rules_engine, loan_book or vault; path room runs under destination ROOM_CUSTODY = the call's first argument (room), path personal under destination PERSONAL_VAULT = vault with no room, and names the counterparty the account checks (zero when the action names none).",
   "device_private_key": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
   "engine_calls": [
     {
       "name": "loan_request",
       "action": "request",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x3d1dd206",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -71,7 +72,8 @@
     {
       "name": "loan_request_top_up_max",
       "action": "request",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x3d1dd206",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -137,7 +139,8 @@
     {
       "name": "loan_approve",
       "action": "approve",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x095ea7b3",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -203,7 +206,8 @@
     {
       "name": "loan_pledge",
       "action": "pledge",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x57843783",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -269,7 +273,8 @@
     {
       "name": "loan_unpledge",
       "action": "unpledge",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0xc4839975",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -335,7 +340,8 @@
     {
       "name": "loan_cancel",
       "action": "cancel",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x98590ef9",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -401,7 +407,8 @@
     {
       "name": "loan_payoff",
       "action": "payoff",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x2e08c07e",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -467,7 +474,8 @@
     {
       "name": "loan_payoff_unbounded",
       "action": "payoff",
-      "on_loan_engine": true,
+      "target_name": "loan_book",
+      "path": "room",
       "selector": "0x2e08c07e",
       "target": "0x101112131415161718191a1b1c1d1e1f20212223",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -533,7 +541,8 @@
     {
       "name": "choose_amount",
       "action": "chooseAmount",
-      "on_loan_engine": false,
+      "target_name": "rules_engine",
+      "path": "room",
       "selector": "0x1b632ccb",
       "target": "0x303132333435363738393a3b3c3d3e3f40414243",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -599,7 +608,8 @@
     {
       "name": "withdraw_credit",
       "action": "withdrawCredit",
-      "on_loan_engine": false,
+      "target_name": "rules_engine",
+      "path": "room",
       "selector": "0x502b7469",
       "target": "0x303132333435363738393a3b3c3d3e3f40414243",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -665,7 +675,8 @@
     {
       "name": "withdraw_equity",
       "action": "withdrawEquity",
-      "on_loan_engine": false,
+      "target_name": "rules_engine",
+      "path": "room",
       "selector": "0x2c5b8a59",
       "target": "0x303132333435363738393a3b3c3d3e3f40414243",
       "room": "0x505152535455565758595a5b5c5d5e5f60616263",
@@ -727,6 +738,801 @@
       "digest": "0xe7d8d860c3c43bcb19058f94ef427c30945dea46f203ec59f79082ee06a7e1bc",
       "signature": "0x7959d0ed393c1e14d20e3a9624f40f9599aa7a7dd8d7fa2e95b22de7262e247b4b9bc47deb1db0c9352dd880d2ace1efac1138f318cc14eb4c8f0dab3b32d37e1c",
       "execute_calldata_hash": "0xa80d49c6d12fda430abeb26acfe61bd3f3148710225270feec1fadae1f732745"
+    },
+    {
+      "name": "borrow_self",
+      "action": "borrowSelf",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0xd8163f52",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 0,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "200000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "terms": {
+        "n": 4,
+        "every_days": 7,
+        "method": 0,
+        "rate_bps": 100,
+        "late_method": 0,
+        "late_bps": 0,
+        "late_flat": "0",
+        "default_after_days": 14
+      },
+      "counterparty": "0x0000000000000000000000000000000000000000",
+      "calldata": "0xd8163f520000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bebc2000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e",
+      "committed": "0",
+      "call_hash": "0xeeb6b717fe52ea690b700ace9af347cfe8ff6a7bb4002d4d0d66ee52cfde8201",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b0c",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xeeb6b717fe52ea690b700ace9af347cfe8ff6a7bb4002d4d0d66ee52cfde8201",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 16,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x7029be0e546fbf9e1b1a7ab02c63ec0971d99c6c5bd56bff47cb2969e5f6a8da",
+      "signature": "0x0d5628428f6175434da572a3bb5980f38e45e74c9900a9cc8acaabc1a6ca704a52a588cfaac41e302c2c663f9eaa5eecb9b3a1f16cb2bbdf7d0d3488b04630d91b",
+      "execute_calldata_hash": "0x2466926b5a71df475c8a9990ef2e4c457df2cd2b505cd3e5e0f18d2fefa2dd4b"
+    },
+    {
+      "name": "offer",
+      "action": "offer",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x1374497c",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 0,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "300000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "party": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "terms": {
+        "n": 4,
+        "every_days": 14,
+        "method": 1,
+        "rate_bps": 250,
+        "late_method": 1,
+        "late_bps": 0,
+        "late_flat": "1000000",
+        "default_after_days": 30
+      },
+      "expires_at": 1760000000,
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x1374497c000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011e1a3000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000fa0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000068e77800",
+      "committed": "300000000",
+      "call_hash": "0xb95ef1eb07dd21698a2c3f1332310c2a25714074a75d1e46b2fdc1cb704581c7",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b0d",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "300000000",
+        "mode": 1,
+        "authorization_id": "0xb95ef1eb07dd21698a2c3f1332310c2a25714074a75d1e46b2fdc1cb704581c7",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 17,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x74fde45988380014212d7e6d20b25aa752dcb2f6c0d7c99132fb6ec1d1ce479b",
+      "signature": "0x35c077374b01677a012552878ff96d90076da9bca75b5bde3ddcd0fdadb6d5c32db40bd14722b503b4c136ce5f20813cf1af25d641e5492d5121d37213f411a91c",
+      "execute_calldata_hash": "0x7676def1a65571d550d27139ecc5fedccea620262134df2727424194a4b0ed41"
+    },
+    {
+      "name": "ask",
+      "action": "ask",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x8187b3b2",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 0,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "300000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "party": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "terms": {
+        "n": 4,
+        "every_days": 14,
+        "method": 1,
+        "rate_bps": 250,
+        "late_method": 1,
+        "late_bps": 0,
+        "late_flat": "1000000",
+        "default_after_days": 30
+      },
+      "expires_at": 1760000000,
+      "max_repay": "637500000",
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x8187b3b2000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c30000000000000000000000000000000000000000000000000000000025ff7a600000000000000000000000000000000000000000000000000000000011e1a3000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000fa0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000068e77800",
+      "committed": "637500000",
+      "call_hash": "0xf0d614739527bb5b9bcb51cb7a324b00043056668d8aed2f4ee2a7ae20220ddc",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b0e",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "637500000",
+        "mode": 1,
+        "authorization_id": "0xf0d614739527bb5b9bcb51cb7a324b00043056668d8aed2f4ee2a7ae20220ddc",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 18,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x9c05b83a1674c7c0cfa03f6870d507d1b2c1962ecd300d8d70599a9fb4efeab2",
+      "signature": "0x071620eb1b2654809a65dcf0a87c31986bf739c804c3d91bd9e1fd8b7e9b18cc1aa925cc719681afcdeac32dea356fecef154c812937ac22e615c8c029fe7b531b",
+      "execute_calldata_hash": "0xeaef798a65d668c7bde9c7c217946517ab2ab0bf6f6a1b7dac048f0fc3d59448"
+    },
+    {
+      "name": "accept_offer",
+      "action": "acceptOffer",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x3c6fc817",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 1,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "0",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "max_repay": "637500000",
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x3c6fc817000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000025ff7a60",
+      "committed": "637500000",
+      "call_hash": "0xd11ef3534f9cb95d73c0d320f97ae791eac13cf1f4c497810cb38636074bbff0",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b0f",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "637500000",
+        "mode": 1,
+        "authorization_id": "0xd11ef3534f9cb95d73c0d320f97ae791eac13cf1f4c497810cb38636074bbff0",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 19,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xc6bddb89123e6d3cbd1e39f8d7a6dff0bf06bee8f72a557a1166ca9c1d4c0c90",
+      "signature": "0xcc19aa87a112ae42533aba7c1ec877ede4ebdc25ce9d3a04f913994dce078679051cca3878b0d9d4809b5e6cfd9acfd5d3f68e1d3c80b29414a3e78639ce60001c",
+      "execute_calldata_hash": "0xdaa688e318ccaa010f0bbb640c59f16a57daf329ea64bfcea0209ec214949151"
+    },
+    {
+      "name": "accept_ask",
+      "action": "acceptAsk",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x4424dcc2",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 1,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "300000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "party": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "pocket": "0x606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x4424dcc2000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000011e1a300606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+      "committed": "300000000",
+      "call_hash": "0x344deaa34b147f80befe467429b0ed6b0fa8cc2003642d5f5c1bba5a37021a1d",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b10",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "300000000",
+        "mode": 1,
+        "authorization_id": "0x344deaa34b147f80befe467429b0ed6b0fa8cc2003642d5f5c1bba5a37021a1d",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 20,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x79b4bffff13f95a77aaef3d465699a6375bdafb1da42790dd722620ad6968e50",
+      "signature": "0xef7f05e3a07e6ba5e5e09126ce4d045335c994e3e338293235fdcd859d53d2be0261ae889093fb322a57be7f802f951ee9d4dd5e83d9e074e76d18ad4596da891b",
+      "execute_calldata_hash": "0x8835904fb4e3f2146fb47dfcaa68fd32398219afc3aef58fea19aaca8f7eec35"
+    },
+    {
+      "name": "pay",
+      "action": "pay",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x5f065346",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 1,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "52000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x5f065346000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000003197500",
+      "committed": "52000000",
+      "call_hash": "0x417f3395e7973cc8e5b61e6e76c88c84b9b8f9f4e6210b6052a75ac7cf590559",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b11",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "52000000",
+        "mode": 1,
+        "authorization_id": "0x417f3395e7973cc8e5b61e6e76c88c84b9b8f9f4e6210b6052a75ac7cf590559",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 21,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x6493d7f3c8d57fd6ee65a765dd825b2c3f53e83207681eea9b3589ec354d2cba",
+      "signature": "0x3d853637285147fe43c3a53a05efa300956aef9e18833ebee85f3a42b5668f526d1b604e02cda610d73ad0a0d65f9f465361b44766803807b8d4212056ac33341b",
+      "execute_calldata_hash": "0x6fd2e187dbaf3ab8daa284afc589f071635743fd27dde30a36020feafa3344f7"
+    },
+    {
+      "name": "personal_cancel",
+      "action": "cancel",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x98590ef9",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 2,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "0",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x98590ef9000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c30000000000000000000000000000000000000000000000000000000000000002",
+      "committed": "0",
+      "call_hash": "0x5b7eb61b663f8f0d5dfd96fb6b589d2e9af330a3db7fc587b6fab66684772317",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b12",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x5b7eb61b663f8f0d5dfd96fb6b589d2e9af330a3db7fc587b6fab66684772317",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 22,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x42d969457deb3a07f8edcd2dbe5d1807ceeec9d8e314d0d42589c2348df5d394",
+      "signature": "0xd3921bfe6cc6d45c45af9a5cd5063d022212bb5c27435eea53468b07e0bea1de76a15bfd686fa934a89e613640472c25799533a72887050ce0017ad7b2d141cc1b",
+      "execute_calldata_hash": "0x4f3401e11404d807eb83359630ccdaa52a71e1973c4f9749203b8138a9320aca"
+    },
+    {
+      "name": "personal_payoff",
+      "action": "payoff",
+      "target_name": "loan_book",
+      "path": "personal",
+      "selector": "0x2e08c07e",
+      "target": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "loan_id": 1,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "counterparty": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "calldata": "0x2e08c07e000000000000000000000000b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c30000000000000000000000000000000000000000000000000000000000000001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "committed": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "call_hash": "0xd108ab671a5b4388ae77650889a8fa886a0daf223fd7c5d3b2764b313f8eb198",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b13",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+        "mode": 1,
+        "authorization_id": "0xd108ab671a5b4388ae77650889a8fa886a0daf223fd7c5d3b2764b313f8eb198",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 23,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x372c86ef38d93332c7299b76d70f9487bb9c50c4ddcbad21b9c41830154cb7c5",
+      "signature": "0xf9e74828a100ffc639533453ac3132f15c97e82e71f0d3bab0e552867c73964c33b362c2c79d99cae524ac57204dd08b71fa86f28b9a3f83168dad2b993d26eb1c",
+      "execute_calldata_hash": "0x221dadddf002a7e0caf615c406b7e2c28ff91015b1bc74265cdaa4726a7c8eb1"
+    },
+    {
+      "name": "vault_withdraw",
+      "action": "withdraw",
+      "target_name": "vault",
+      "path": "personal",
+      "selector": "0x040cf020",
+      "target": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "loan_id": 0,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "100000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "counterparty": "0x0000000000000000000000000000000000000000",
+      "calldata": "0x040cf02000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005f5e100",
+      "committed": "0",
+      "call_hash": "0x6c5ee87c1673fb08c9aa1a3c364442c8641ac3d4636e318620487d77c4463690",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b14",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x6c5ee87c1673fb08c9aa1a3c364442c8641ac3d4636e318620487d77c4463690",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 24,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x45ac4fab64bec077cbd46dd8d74a0af343152e42fa1ab24f1562aa4284f499aa",
+      "signature": "0xdf4001dd8d59ccb3fd93ad5b3d6a616728c884ef493c41a63cccde7ce39493e35ec24653146ab0f4b77f3c2aad3c730e4c3e82cf7f34a30b96c1a8b5c00d83ad1c",
+      "execute_calldata_hash": "0xda2545ce07247e5affa644fd5c91b0aa194888f60e61422cc8c2585709112ab9"
+    },
+    {
+      "name": "vault_create_goal",
+      "action": "createGoal",
+      "target_name": "vault",
+      "path": "personal",
+      "selector": "0x0efa5b95",
+      "target": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "loan_id": 0,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "0",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "goal_name_hash": "0x5bc534741144677435544dbab077ee677cce543955e026b74bd7a04ccb945123",
+      "goal_target": "500000000",
+      "goal_unlock_at": 1790000000,
+      "goal_loanable": true,
+      "counterparty": "0x0000000000000000000000000000000000000000",
+      "calldata": "0x0efa5b955bc534741144677435544dbab077ee677cce543955e026b74bd7a04ccb945123000000000000000000000000000000000000000000000000000000001dcd6500000000000000000000000000000000000000000000000000000000006ab13b800000000000000000000000000000000000000000000000000000000000000001",
+      "committed": "0",
+      "call_hash": "0xd3357baa89570049e32a6762fdc6e82cbd70e72d0f2f9d449bb56d4016c7af27",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b15",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xd3357baa89570049e32a6762fdc6e82cbd70e72d0f2f9d449bb56d4016c7af27",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 25,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x99ce1531f6a7b2d58346f70bb8fed1655f151afef611ec2747a81226e26bfbc9",
+      "signature": "0x9bb5e51a3c7ec443464266a3d931ac611646bdc59582fe714b1945afa5a4cc315f9d7b4299354e360a135c73eb15feac3d576aba8d2358f98b57bb26659ab5e31b",
+      "execute_calldata_hash": "0x995bdc8e89657b63530a775945091fa600a90ae5c44902e4c7c41ab535b5b93a"
+    },
+    {
+      "name": "vault_move",
+      "action": "move",
+      "target_name": "vault",
+      "path": "personal",
+      "selector": "0xd0c80526",
+      "target": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "loan_id": 0,
+      "product_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "amount": "100000000",
+      "instalments": 0,
+      "replaces": 0,
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "to_pocket": "0x606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+      "counterparty": "0x0000000000000000000000000000000000000000",
+      "calldata": "0xd0c805260000000000000000000000000000000000000000000000000000000000000000606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f0000000000000000000000000000000000000000000000000000000005f5e100",
+      "committed": "100000000",
+      "call_hash": "0x126c2ce9f3f96689a331820540684c3624ab8e446ccdac5e9ccabb374a297148",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b16",
+        "type": 24,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "100000000",
+        "mode": 1,
+        "authorization_id": "0x126c2ce9f3f96689a331820540684c3624ab8e446ccdac5e9ccabb374a297148",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 2,
+        "nonce": 26,
+        "credential_epoch": 1,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x067f90d20625c802043ac03b8a9bd234967e5778345ac348598adadba30331c0",
+      "signature": "0x65c2979c379838364928a37275a630077c313cab3f94d1b977417247b803dbaf564eb1986ca178ea3d365acf08dacfda09e587708932dcd4e5a50f026f45d9061c",
+      "execute_calldata_hash": "0x98f66f9326ab670d8df1f5e02064d4ad4d944610bdd1523b7f267c7c08d49e0f"
     }
   ]
 }

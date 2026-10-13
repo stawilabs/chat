@@ -420,23 +420,6 @@ void main() {
             ...overrides(),
             if (products != null)
               roomProductsProvider.overrideWith((ref, id) async => products),
-            stawiObligationsProvider.overrideWith(
-              (ref, id) async => [
-                finance.Obligation(
-                  amount: finance.Money(
-                    assetId: 'USDC.146',
-                    amount: '500000000',
-                  ),
-                  settled: finance.Money(
-                    assetId: 'USDC.146',
-                    amount: '200000000',
-                  ),
-                ),
-              ],
-            ),
-            stawiPeriodsProvider.overrideWith(
-              (ref, id) async => [finance.Period(periodIndex: Int64(3))],
-            ),
             stawiEntitlementsProvider.overrideWith(
               (ref, id) async => [
                 finance.Entitlement(
@@ -521,12 +504,8 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('shows dues and settles them through the rules engine', (
-      tester,
-    ) async {
+    testWidgets('settles dues through the rules engine', (tester) async {
       await pump(tester);
-      expect(find.text('200.00 USDC of 500.00 USDC'), findsOneWidget);
-      expect(find.text('Period 3'), findsOneWidget);
       await tester.tap(find.byKey(const Key('money-settle')));
       await tester.pumpAndSettle();
       expect(prepared().kind, settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE);

@@ -1,0 +1,209 @@
+{
+  "description": "Go-produced vectors (pkg/rules/rulespb) for finance.v1.PersonalLoanTerms \u003c-\u003e LoanTypes.PersonalTerms: proto is the proto3 JSON; chain is PersonalTerms(proto) (method and late method one less than the proto enums, late UNSPECIFIED is NONE), absent where it is refused (a method a personal loan does not take, a late_flat beyond uint128, interest beyond the principal); round_trip is PersonalTermsProto(chain).",
+  "terms": [
+    {
+      "name": "flat_late_unspecified",
+      "proto": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "method": "LOAN_INTEREST_METHOD_FLAT",
+        "rateBps": 100
+      },
+      "chain": {
+        "n": 4,
+        "every_days": 7,
+        "method": 0,
+        "rate_bps": 100,
+        "late_method": 0,
+        "late_bps": 0,
+        "late_flat": "0",
+        "default_after_days": 14
+      },
+      "round_trip": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "lateFlat": "0",
+        "latePenalty": "PENALTY_METHOD_NONE",
+        "method": "LOAN_INTEREST_METHOD_FLAT",
+        "rateBps": 100
+      }
+    },
+    {
+      "name": "flat_late_none",
+      "proto": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "lateFlat": "0",
+        "latePenalty": "PENALTY_METHOD_NONE",
+        "method": "LOAN_INTEREST_METHOD_FLAT",
+        "rateBps": 100
+      },
+      "chain": {
+        "n": 4,
+        "every_days": 7,
+        "method": 0,
+        "rate_bps": 100,
+        "late_method": 0,
+        "late_bps": 0,
+        "late_flat": "0",
+        "default_after_days": 14
+      },
+      "round_trip": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "lateFlat": "0",
+        "latePenalty": "PENALTY_METHOD_NONE",
+        "method": "LOAN_INTEREST_METHOD_FLAT",
+        "rateBps": 100
+      }
+    },
+    {
+      "name": "declining_late_flat",
+      "proto": {
+        "defaultAfterDays": 30,
+        "everyDays": 14,
+        "instalments": 4,
+        "lateFlat": "1000",
+        "latePenalty": "PENALTY_METHOD_FLAT",
+        "method": "LOAN_INTEREST_METHOD_DECLINING_EQUAL_PRINCIPAL",
+        "rateBps": 250
+      },
+      "chain": {
+        "n": 4,
+        "every_days": 14,
+        "method": 1,
+        "rate_bps": 250,
+        "late_method": 1,
+        "late_bps": 0,
+        "late_flat": "1000",
+        "default_after_days": 30
+      },
+      "round_trip": {
+        "defaultAfterDays": 30,
+        "everyDays": 14,
+        "instalments": 4,
+        "lateFlat": "1000",
+        "latePenalty": "PENALTY_METHOD_FLAT",
+        "method": "LOAN_INTEREST_METHOD_DECLINING_EQUAL_PRINCIPAL",
+        "rateBps": 250
+      }
+    },
+    {
+      "name": "amortized_late_percent",
+      "proto": {
+        "defaultAfterDays": 60,
+        "everyDays": 30,
+        "instalments": 12,
+        "lateBps": 500,
+        "lateFlat": "0",
+        "latePenalty": "PENALTY_METHOD_PERCENT_OF_SHORTFALL",
+        "method": "LOAN_INTEREST_METHOD_AMORTIZED",
+        "rateBps": 300
+      },
+      "chain": {
+        "n": 12,
+        "every_days": 30,
+        "method": 2,
+        "rate_bps": 300,
+        "late_method": 2,
+        "late_bps": 500,
+        "late_flat": "0",
+        "default_after_days": 60
+      },
+      "round_trip": {
+        "defaultAfterDays": 60,
+        "everyDays": 30,
+        "instalments": 12,
+        "lateBps": 500,
+        "lateFlat": "0",
+        "latePenalty": "PENALTY_METHOD_PERCENT_OF_SHORTFALL",
+        "method": "LOAN_INTEREST_METHOD_AMORTIZED",
+        "rateBps": 300
+      }
+    },
+    {
+      "name": "late_flat_uint128_max",
+      "proto": {
+        "defaultAfterDays": 2,
+        "everyDays": 30,
+        "instalments": 1,
+        "lateFlat": "340282366920938463463374607431768211455",
+        "latePenalty": "PENALTY_METHOD_FLAT",
+        "method": "LOAN_INTEREST_METHOD_FLAT"
+      },
+      "chain": {
+        "n": 1,
+        "every_days": 30,
+        "method": 0,
+        "rate_bps": 0,
+        "late_method": 1,
+        "late_bps": 0,
+        "late_flat": "340282366920938463463374607431768211455",
+        "default_after_days": 2
+      },
+      "round_trip": {
+        "defaultAfterDays": 2,
+        "everyDays": 30,
+        "instalments": 1,
+        "lateFlat": "340282366920938463463374607431768211455",
+        "latePenalty": "PENALTY_METHOD_FLAT",
+        "method": "LOAN_INTEREST_METHOD_FLAT"
+      }
+    },
+    {
+      "name": "late_flat_beyond_uint128",
+      "proto": {
+        "defaultAfterDays": 2,
+        "everyDays": 30,
+        "instalments": 1,
+        "lateFlat": "340282366920938463463374607431768211456",
+        "latePenalty": "PENALTY_METHOD_FLAT",
+        "method": "LOAN_INTEREST_METHOD_FLAT"
+      }
+    },
+    {
+      "name": "method_unspecified",
+      "proto": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "rateBps": 100
+      }
+    },
+    {
+      "name": "method_interest_only",
+      "proto": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "method": "LOAN_INTEREST_METHOD_INTEREST_ONLY",
+        "rateBps": 100
+      }
+    },
+    {
+      "name": "late_per_day",
+      "proto": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 4,
+        "latePenalty": "PENALTY_METHOD_PER_DAY_FLAT",
+        "method": "LOAN_INTEREST_METHOD_FLAT",
+        "rateBps": 100
+      }
+    },
+    {
+      "name": "interest_beyond_principal",
+      "proto": {
+        "defaultAfterDays": 14,
+        "everyDays": 7,
+        "instalments": 104,
+        "method": "LOAN_INTEREST_METHOD_FLAT",
+        "rateBps": 100
+      }
+    }
+  ]
+}

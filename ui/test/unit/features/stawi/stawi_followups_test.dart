@@ -138,7 +138,9 @@ void main() {
   });
 
   group('room engine check', () {
-    final vectors = GoEngineCallVector.load();
+    final vectors = GoEngineCallVector.load()
+        .where((v) => !v.personal)
+        .toList();
     late FakeConnectTransport transport;
 
     Future<PreparedEngineCall> prepare(
@@ -173,22 +175,22 @@ void main() {
 
     test('accepts the room’s own active engine for each action', () async {
       expect(
-        (await prepare(pledge, pledge.engines())).call.action.onLoanEngine,
-        isTrue,
+        (await prepare(pledge, pledge.engines())).call.action.target,
+        EngineTarget.loanBook,
       );
       expect(
-        (await prepare(equity, equity.engines())).call.action.onLoanEngine,
-        isFalse,
+        (await prepare(equity, equity.engines())).call.action.target,
+        EngineTarget.rulesEngine,
       );
     });
 
     test('refuses another engine, or one whose grant is not active', () async {
       for (final engines in [
-        // Right address, wrong engine: a pledge runs on the LoanEngine.
+        // Right address, wrong engine: a pledge runs on the LoanBook.
         RoomEngineTargets(
           rulesEngine: pledge.target,
           rulesCallable: true,
-          loanEngine: Uint8List(20),
+          loanBook: Uint8List(20),
           loanCallable: true,
         ),
         pledge.engines(callable: false),
@@ -229,7 +231,7 @@ void main() {
               address: Uint8List.fromList(List.filled(20, 1)),
               callable: true,
             ),
-            loanEngine: finance.RoomEngineBinding(
+            loanBook: finance.RoomEngineBinding(
               address: Uint8List.fromList(List.filled(20, 2)),
             ),
           ),
@@ -237,7 +239,7 @@ void main() {
       )!;
       expect(targets.rulesEngine, List.filled(20, 1));
       expect(targets.rulesCallable, isTrue);
-      expect(targets.loanEngine, List.filled(20, 2));
+      expect(targets.loanBook, List.filled(20, 2));
       expect(targets.loanCallable, isFalse);
     });
   });

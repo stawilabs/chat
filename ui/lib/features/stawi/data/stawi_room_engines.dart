@@ -14,8 +14,8 @@ RoomEngineTargets? engineTargetsOf(finance.Room room) {
   return RoomEngineTargets(
     rulesEngine: e.rulesEngine.address,
     rulesCallable: e.rulesEngine.callable,
-    loanEngine: e.loanEngine.address,
-    loanCallable: e.loanEngine.callable,
+    loanBook: e.loanBook.address,
+    loanCallable: e.loanBook.callable,
   );
 }
 

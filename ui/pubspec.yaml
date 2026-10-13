@@ -93,9 +93,9 @@ dependencies:
   shared_preferences: ^2.5.5
   sim_card_code: ^0.1.0
   sqlite3: ^3.3.1
-  stawi_api: ^0.5.1
+  stawi_api: ^0.6.0
   stawi_api_chat: ^1.55.0
-  stawi_finance_sdk: ^0.5.1
+  stawi_finance_sdk: ^0.6.0
   url_launcher: ^6.3.2
   uuid: ^4.5.3
   video_compress: ^3.1.4

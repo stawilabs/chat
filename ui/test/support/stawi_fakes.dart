@@ -232,6 +232,50 @@ class GoGenesisVector {
   );
 }
 
+/// Go-produced PersonalVault vectors (stawi_finance_sdk 0.6.0
+/// test/vectors/go_vault.json): deposits, standing-order grants and standing
+/// order ids.
+class GoVaultVectors {
+  GoVaultVectors(this.json);
+
+  factory GoVaultVectors.load() => GoVaultVectors(
+    jsonDecode(File('test/fixtures/stawi/go_vault.json').readAsStringSync())
+        as Map<String, dynamic>,
+  );
+
+  final Map<String, dynamic> json;
+
+  List<Map<String, dynamic>> _section(String name) => [
+    for (final v in json[name] as List) v as Map<String, dynamic>,
+  ];
+
+  List<Map<String, dynamic>> get deposits => _section('deposits');
+  List<Map<String, dynamic>> get standingGrants => _section('standing_grants');
+  List<Map<String, dynamic>> get standingOrders => _section('standing_orders');
+}
+
+/// One Go-produced RoomFactory.genesisHash case (stawi_finance_sdk 0.6.0
+/// test/vectors/go_room_genesis.json).
+class GoRoomGenesisVectors {
+  GoRoomGenesisVectors(this.json);
+
+  static List<GoRoomGenesisVectors> load() =>
+      ((jsonDecode(
+                    File(
+                      'test/fixtures/stawi/go_room_genesis.json',
+                    ).readAsStringSync(),
+                  )
+                  as Map<String, dynamic>)['cases']
+              as List)
+          .map((v) => GoRoomGenesisVectors(v as Map<String, dynamic>))
+          .toList();
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get genesisHash => hexToBytes(json['genesis_hash'] as String);
+}
+
 /// A uint64 decimal (possibly above Int64's signed range) as Int64 bits.
 Int64 _u64(String decimal) =>
     Int64.parseHex(BigInt.parse(decimal).toRadixString(16));
@@ -245,7 +289,7 @@ Future<Uint8List> refusingSessionProofs({
   'no live authenticated session for this profile on this device',
 );
 
-/// One Go-produced engine call (stawi_finance_sdk 0.3.0
+/// One Go-produced engine call (stawi_finance_sdk 0.6.0
 /// test/vectors/go_engine_calls.json): the call, its ENGINE_CALL intent, the
 /// intent digest and the device's signature over it.
 class GoEngineCallVector {
@@ -273,6 +317,12 @@ class GoEngineCallVector {
 
   String get name => json['name'] as String;
   String get action => json['action'] as String;
+
+  /// Whether the call runs on the personal path (the vault), not a room's.
+  bool get personal => json['path'] == 'personal';
+
+  /// The contract the call goes to: rules_engine, loan_book or vault.
+  String get targetName => json['target_name'] as String;
   Uint8List get target => hexToBytes(json['target'] as String);
   Uint8List get room => hexToBytes(json['room'] as String);
   Uint8List get calldata => hexToBytes(json['calldata'] as String);
@@ -341,12 +391,12 @@ class GoEngineCallVector {
   /// The room's engines with this call's target as the engine its action runs
   /// on (the other engine elsewhere).
   RoomEngineTargets engines({bool callable = true}) {
-    final onLoan = json['on_loan_engine'] as bool;
+    final onLoan = targetName == 'loan_book';
     final other = Uint8List.fromList(List.filled(20, 0xee));
     return RoomEngineTargets(
       rulesEngine: onLoan ? other : target,
       rulesCallable: callable,
-      loanEngine: onLoan ? target : other,
+      loanBook: onLoan ? target : other,
       loanCallable: callable,
     );
   }

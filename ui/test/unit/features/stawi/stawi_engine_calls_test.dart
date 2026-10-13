@@ -47,7 +47,7 @@ AccountEngineRequest requestFor(GoEngineCallVector v, {String? amount}) {
 }
 
 void main() {
-  final vectors = GoEngineCallVector.load();
+  final vectors = GoEngineCallVector.load().where((v) => !v.personal).toList();
   late FakeConnectTransport transport;
 
   setUp(() => transport = FakeConnectTransport());
@@ -160,6 +160,34 @@ void main() {
           reason: entry.key,
         );
       }
+    });
+
+    test('a room call prepared for another amount than asked is refused', () {
+      final v = GoEngineCallVector.load().firstWhere(
+        (v) => v.name == 'loan_request',
+      );
+      final request = AccountEngineRequest(
+        call: AccountEngineCall.loanRequest,
+        custody: v.room,
+        amount: '400000000', // the vector requests 500000000
+        productId: hexToBytes(v.json['product_id'] as String),
+        instalments: 4,
+      );
+      expect(
+        () => checkedEngineCall(
+          prepared: v.prepared(AccountEngineCall.loanRequest.kind),
+          request: request,
+          account: v.account,
+          engines: v.engines(),
+        ),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            contains('not the call you asked for'),
+          ),
+        ),
+      );
     });
 
     test('refuses an intent that does not bind the calldata', () async {

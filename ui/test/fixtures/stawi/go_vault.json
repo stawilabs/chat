@@ -1,0 +1,591 @@
+{
+  "description": "Go-produced vectors (pkg/evm/stawi) for the PersonalVault: id = StandingOrderID(book, pool, loan_id) = keccak256(abi.encode(\"STAWI_LOAN_STANDING_V1\", book, pool, loan_id)); a deposit is VaultDepositIntent(base, vault, pocket, amount): base as TRANSFER with destination {PERSONAL_VAULT, vault, bucket}, no room, the amount; bucket is \"\" for the free balance (pocket zero) or \"0x\" and the goal id in 64 lowercase hex digits; digest is the deposit intent's digest. A standing grant is a personal loan's standing order: LoanStandingParams (target the vault, selector receiveDeposit, authorization id StandingOrderID, period every_days x 86400, max_per_period rules.LargestInstalment(amount, terms), the policy asset) as the GRANT_STANDING op whose ManagementOpHash (keccak256(abi.encode(ManagementOp)), policy zero) is the AUTHORIZATION_GRANT intent's authorization_id; digest is that intent's digest.",
+  "standing_orders": [
+    {
+      "book": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "pool": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "loan_id": "7",
+      "id": "0xa1c79a816d026ebe43b87104cb4c0dd48665a2ee5748ca8056adaed664c6bbb2"
+    },
+    {
+      "book": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "pool": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "loan_id": "8",
+      "id": "0x35a7b563f1ff4b64bfc44172c316d5fb303fe908e4c324cd92b81de64f8eb7c5"
+    },
+    {
+      "book": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "loan_id": "7",
+      "id": "0x07f203e65a27010cbcc500bf9513e611857cc026a161a8201480eca252ed21d3"
+    },
+    {
+      "book": "0x303132333435363738393a3b3c3d3e3f40414243",
+      "pool": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "loan_id": "7",
+      "id": "0x0f605afe004d3e8cc6d9e07b814ee09271f6b932891b29556d32d3432643118f"
+    },
+    {
+      "book": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "pool": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "loan_id": "0",
+      "id": "0x23997157f19f2b8c6d091edb8e671570c7c7d7ac43b67265400638999f132f32"
+    },
+    {
+      "book": "0xff000102030405060708090a0b0c0d0e0f101112",
+      "pool": "0x0102030405060708090a0b0c0d0e0f1011121314",
+      "loan_id": "18446744073709551615",
+      "id": "0x51344caa44b4e156d8ce59d451cd72aaf87a02b850207c40b2221689571f8e0b"
+    }
+  ],
+  "deposits": [
+    {
+      "name": "free",
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pocket": "",
+      "bucket": "",
+      "amount": "50000000",
+      "base": {
+        "intent_id": "0x0102030405060708090a0b40",
+        "type": 1,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x505152535455565758595a5b5c5d5e5f60616263",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x505152535455565758595a5b5c5d5e5f60616263",
+          "bucket": "SAVINGS",
+          "kind": 2
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b40",
+        "type": 5,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "50000000",
+        "mode": 1,
+        "authorization_id": "0x",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x9264b4773671f42367be65b91256e762ffc90682b384a5071d53d09e710577bc"
+    },
+    {
+      "name": "goal",
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pocket": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "bucket": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "amount": "1",
+      "base": {
+        "intent_id": "0x0102030405060708090a0b41",
+        "type": 1,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x505152535455565758595a5b5c5d5e5f60616263",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x505152535455565758595a5b5c5d5e5f60616263",
+          "bucket": "SAVINGS",
+          "kind": 2
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b41",
+        "type": 5,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "1",
+        "mode": 1,
+        "authorization_id": "0x",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xea32dea4e83c348c53ab892fb71422941ee991e13d958b2cbe751bd9a3f5696c"
+    },
+    {
+      "name": "goal_low_digits",
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "pocket": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "bucket": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "amount": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "base": {
+        "intent_id": "0x0102030405060708090a0b42",
+        "type": 1,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x505152535455565758595a5b5c5d5e5f60616263",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x505152535455565758595a5b5c5d5e5f60616263",
+          "bucket": "SAVINGS",
+          "kind": 2
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b42",
+        "type": 5,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+          "bucket": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+          "kind": 9
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+        "mode": 1,
+        "authorization_id": "0x",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xe2222ed72ade73af5b1783749d9d7ad5fa986349d4a0c5c70e92f887a703164a"
+    }
+  ],
+  "standing_grants": [
+    {
+      "name": "self_flat_weekly",
+      "book": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "pool": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "loan_id": "1",
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+      "amount": "200000000",
+      "terms": {
+        "n": 4,
+        "every_days": 7,
+        "method": 0,
+        "rate_bps": 100,
+        "late_method": 0,
+        "late_bps": 0,
+        "late_flat": "0",
+        "default_after_days": 14
+      },
+      "largest_instalment": "52000000",
+      "grant": {
+        "authorization_id": "0x0b99dd19ca5c8fe4963ccd1db9b38c608eefd78d9ebbd19e8ae47695af12f128",
+        "target": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+        "selector": "0x3c2b7a7f",
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "max_per_period": "52000000",
+        "period_seconds": 604800,
+        "epoch_start": 1760000000,
+        "valid_after": 1760000000,
+        "valid_until": 1791536000
+      },
+      "op_hash": "0x9ab214d28e25c1052256a0c9ba8d570dc849bc8d03d78c721db93bac5bb27815",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b60",
+        "type": 16,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x9ab214d28e25c1052256a0c9ba8d570dc849bc8d03d78c721db93bac5bb27815",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x779f95a46c12e22b10808b6de26cece55e0047da7e6912a5aa661c2596a844c0"
+    },
+    {
+      "name": "p2p_declining_fortnightly",
+      "book": "0x101112131415161718191a1b1c1d1e1f20212223",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "loan_id": "7",
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+      "amount": "300000003",
+      "terms": {
+        "n": 4,
+        "every_days": 14,
+        "method": 1,
+        "rate_bps": 250,
+        "late_method": 1,
+        "late_bps": 0,
+        "late_flat": "1",
+        "default_after_days": 30
+      },
+      "largest_instalment": "82500000",
+      "grant": {
+        "authorization_id": "0x07f203e65a27010cbcc500bf9513e611857cc026a161a8201480eca252ed21d3",
+        "target": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+        "selector": "0x3c2b7a7f",
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "max_per_period": "82500000",
+        "period_seconds": 1209600,
+        "epoch_start": 1760000000,
+        "valid_after": 1760000000,
+        "valid_until": 1791536000
+      },
+      "op_hash": "0xc26185dcd44658b1c3c2fcf4494348b4e26333b2823174c57c9f2a6cd067c681",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b61",
+        "type": 16,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xc26185dcd44658b1c3c2fcf4494348b4e26333b2823174c57c9f2a6cd067c681",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xf62739bb5e1726f8a9d4402ef7433b20b0686bee70c905144d7c92377b764973"
+    },
+    {
+      "name": "p2p_amortized_monthly",
+      "book": "0x303132333435363738393a3b3c3d3e3f40414243",
+      "pool": "0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3",
+      "loan_id": "12",
+      "vault": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+      "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+      "amount": "1000000000",
+      "terms": {
+        "n": 12,
+        "every_days": 30,
+        "method": 2,
+        "rate_bps": 300,
+        "late_method": 2,
+        "late_bps": 500,
+        "late_flat": "0",
+        "default_after_days": 60
+      },
+      "largest_instalment": "100462086",
+      "grant": {
+        "authorization_id": "0xa924c611a08bf0a1abc4fd41f96e6cafafd7b9cf5e61761f122bc36610b9a3fb",
+        "target": "0x909192939495969798999a9b9c9d9e9fa0a1a2a3",
+        "selector": "0x3c2b7a7f",
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "max_per_period": "100462086",
+        "period_seconds": 2592000,
+        "epoch_start": 1760000000,
+        "valid_after": 1760000000,
+        "valid_until": 1791536000
+      },
+      "op_hash": "0x1df29e3fcd9b98b9232dae4c2b942174b96f63a554a3e2f22bf8b90e80133116",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0b62",
+        "type": 16,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x1df29e3fcd9b98b9232dae4c2b942174b96f63a554a3e2f22bf8b90e80133116",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x1303b13ce5acb8ee18bee40db15e2e76df07830d023fb73d62738c6055590b32"
+    }
+  ]
+}

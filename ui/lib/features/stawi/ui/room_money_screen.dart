@@ -22,8 +22,8 @@ import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
 import 'stawi_feedback.dart';
 
-/// A Stawi room's money, from finance's read model: savings periods and dues,
-/// share-outs, loans and members' balances, with the actions each allows.
+/// A Stawi room's money, from finance's read model: dues, share-outs, loans
+/// and members' balances, with the actions each allows.
 class RoomMoneyScreen extends StatelessWidget {
   const RoomMoneyScreen({
     required this.roomId,
@@ -132,22 +132,9 @@ class _SavingsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final assets = watchRoomAssets(ref, roomId);
-    String money(finance.Money m) => formatMoney(m, assets);
     return ListView(
       children: [
         const _Heading('My dues'),
-        _AsyncList<finance.Obligation>(
-          value: ref.watch(stawiObligationsProvider(roomId)),
-          empty: 'Nothing due',
-          item: (o) => ListTile(
-            title: Text('${money(o.settled)} of ${money(o.amount)}'),
-            subtitle: Text(
-              '${_stateName(o.state.name, 'OBLIGATION_STATE_')}'
-              '${o.hasDueAt() ? ' · due ${_dates.format(o.dueAt.toDateTime())}' : ''}',
-            ),
-          ),
-        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: OutlinedButton.icon(
@@ -184,19 +171,6 @@ class _SavingsTab extends ConsumerWidget {
                   child: Text(call.label),
                 ),
             ],
-          ),
-        ),
-        const _Heading('Periods'),
-        _AsyncList<finance.Period>(
-          value: ref.watch(stawiPeriodsProvider(roomId)),
-          empty: 'No periods yet',
-          item: (p) => ListTile(
-            title: Text('Period ${p.periodIndex}'),
-            subtitle: Text(
-              '${money(p.settledTotal)} of ${money(p.expectedTotal)}'
-              ' · ${p.obligationsSettled}/${p.obligationsSettled + p.obligationsOpen} paid',
-            ),
-            trailing: Text(_stateName(p.state.name, 'PERIOD_STATE_')),
           ),
         ),
       ],
