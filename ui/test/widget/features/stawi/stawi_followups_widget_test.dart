@@ -281,8 +281,8 @@ void main() {
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
       expect(prepare.params.productId, productId);
-      expect(find.textContaining('on the room’s own engine'), findsOneWidget);
-      expect(find.byKey(const Key('engine-sign')), findsOneWidget);
+      expect(find.byKey(const Key('money-review')), findsOneWidget);
+      expect(find.byKey(const Key('money-review-sign')), findsOneWidget);
     });
 
     testWidgets('offers only the dues a member may choose', (tester) async {
@@ -316,7 +316,7 @@ void main() {
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
       expect(find.textContaining('engines could not be read'), findsOneWidget);
-      expect(find.byKey(const Key('engine-sign')), findsNothing);
+      expect(find.byKey(const Key('money-review')), findsNothing);
       expect(transport.calls, isEmpty);
     });
   });

@@ -335,12 +335,12 @@ void main() {
     await tester.tap(find.byKey(const Key('contribute-submit')));
     await tester.pumpAndSettle();
     // Nothing is signed until the person confirms what was prepared.
-    expect(find.byKey(const Key('money-confirm')), findsOneWidget);
+    expect(find.byKey(const Key('money-review')), findsOneWidget);
     expect(
       transport.requestsTo(settlement.AccountService.submitAccountCall),
       isEmpty,
     );
-    await tester.tap(find.byKey(const Key('money-confirm-sign')));
+    await tester.tap(find.byKey(const Key('money-review-sign')));
     await tester.pumpAndSettle();
 
     final prepare = transport

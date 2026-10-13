@@ -7,7 +7,7 @@ import '../data/stawi_account_service.dart';
 import '../data/stawi_custody.dart';
 import '../data/stawi_finance_service.dart';
 import '../domain/stawi_money.dart';
-import 'money_confirm.dart';
+import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
 
 /// Pays into a Stawi room's savings straight from the member's account. The
@@ -42,23 +42,18 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
     if (custody == null) return;
     setState(() => _sending = true);
     final service = ref.read(stawiAccountServiceProvider);
-    final call = await runStawiAction(context, () async {
+    final call = await runMoneyAction(context, ref, () async {
       final asset = await ref.read(
         stawiRoomAssetProvider(widget.roomId).future,
       );
       if (asset == null) {
         throw const FormatException('The room’s asset could not be read');
       }
-      final amount = parseAmountInput(_amount.text, asset);
-      final prepared = await service.prepareContribution(
+      return service.prepareContribution(
         custody: custody,
-        amount: amount,
+        amount: parseAmountInput(_amount.text, asset),
         roomName: widget.roomName,
       );
-      if (!mounted || !await confirmMoney(context, prepared.review)) {
-        return null;
-      }
-      return service.submit(prepared);
     });
     if (!mounted) return;
     setState(() {

@@ -69,7 +69,7 @@ final class MoneyReview {
             ('From', other),
             ('Amount', money(amount)),
             ..._termLines(call.terms),
-            ('At most you will repay', money(call.maxRepay)),
+            ('At most you will repay', money(r.maxRepay ?? call.maxRepay)),
             ('Ask open until', _date(call.expiresAt)),
           ],
           notes: [
@@ -87,7 +87,7 @@ final class MoneyReview {
             ('From', other),
             ('Amount', money(shown)),
             if (offer != null) ..._termLines(offer.terms),
-            ('At most you will repay', money(call.maxRepay)),
+            ('At most you will repay', money(r.maxRepay ?? call.maxRepay)),
           ],
           signLabel: _sign,
           done: 'Loan accepted',
@@ -167,7 +167,15 @@ final class MoneyReview {
     return MoneyReview(
       title: r.summary,
       lines: [
-        if (amount != null) ('Amount', amount),
+        if (amount != null)
+          (
+            // A payoff asked without a ceiling shows the quoted ceiling that
+            // was checked, never the request's empty amount.
+            r.call == AccountEngineCall.loanPayoff && r.amount.isEmpty
+                ? 'Pays at most'
+                : 'Amount',
+            amount,
+          ),
         if (r.call.takesLoan) ('Loan', '#${r.loanId}'),
         if (call.instalments > 0) ('Instalments', '${call.instalments}'),
         if (feeLine != null) ('Stawi fee', feeLine),

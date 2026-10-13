@@ -571,13 +571,18 @@ void main() {
           .single;
       expect(prepare.params.loanId, Int64(1));
       expect(prepare.params.hasAmount(), isFalse);
-      expect(find.textContaining('Pays at most 520.00 USDC'), findsOneWidget);
+      // The credit could not be read, so the dialog says so before the review.
+      expect(find.byKey(const Key('payoff-top-up-notice')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('engine-continue')));
+      await tester.pumpAndSettle();
+      expect(find.text('Pays at most'), findsOneWidget);
+      expect(find.text('520.00 USDC'), findsOneWidget);
       expect(
         transport.requestsTo(settlement.AccountService.submitAccountCall),
         isEmpty,
       );
 
-      await tester.tap(find.byKey(const Key('engine-sign')));
+      await tester.tap(find.byKey(const Key('money-review-sign')));
       await tester.pumpAndSettle();
       final submit = transport
           .requestsTo(settlement.AccountService.submitAccountCall)
@@ -677,8 +682,11 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('engine-sign')), findsNothing);
+      expect(find.byKey(const Key('money-review')), findsNothing);
       await tester.tap(find.byKey(const Key('payoff-top-up')));
+      await tester.pumpAndSettle();
+      // The top-up is reviewed and signed like any other money.
+      await tester.tap(find.byKey(const Key('money-review-sign')));
       await tester.pumpAndSettle();
 
       final contribute = transport
@@ -692,7 +700,9 @@ void main() {
       expect(contribute.params.amount, '530000000');
       expect(find.textContaining('Top-up received'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('engine-sign')));
+      await tester.tap(find.byKey(const Key('engine-continue')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('money-review-sign')));
       await tester.pumpAndSettle();
       final submits = transport.requestsTo(
         settlement.AccountService.submitAccountCall,
@@ -718,7 +728,7 @@ void main() {
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Not signed'), findsOneWidget);
-      expect(find.byKey(const Key('engine-sign')), findsNothing);
+      expect(find.byKey(const Key('money-review')), findsNothing);
     });
 
     testWidgets('lists members with their balances and books', (tester) async {

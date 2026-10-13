@@ -5,8 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
-import 'package:stawi_finance_sdk/stawi_finance_sdk.dart'
-    show EngineCall, bytesToHex0x;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../auth/data/current_user_provider.dart';
 import '../data/stawi_account_service.dart';
@@ -20,6 +19,7 @@ import '../domain/account_engine_calls.dart';
 import '../domain/payoff_top_up.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
+import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
 
 /// A Stawi room's money, from finance's read model: dues, share-outs, loans
@@ -546,6 +546,14 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
       _request = prepared == null ? null : request;
       _topUp = topUp;
     });
+    // A payoff that needs paying in first stays here until it is paid in;
+    // everything else goes straight to the review.
+    final payInFirst =
+        widget.call == AccountEngineCall.loanPayoff &&
+        (topUp == null || topUp.needed);
+    if (prepared != null && !payInFirst) {
+      await _sign();
+    }
   }
 
   /// What the member must pay in before [prepared] can pay the loan off, from
@@ -580,24 +588,36 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     final topUp = _topUp!.topUp;
     setState(() => _busy = true);
     final service = ref.read(stawiAccountServiceProvider);
-    final landed = await runStawiAction(context, () async {
-      // The button that asked for the top-up names its amount; the device
-      // lock shows the same amount before signing.
-      final prepared = await service.prepareContribution(
-        custody: request.custody,
-        amount: topUp.toString(),
-      );
-      final submitted = await service.submit(prepared);
-      final last = await service.followAccountCall(submitted.callId).last;
-      if (last.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
-        throw StawiUnavailable(
-          last.failureReason.isNotEmpty
-              ? 'The top-up did not go through: ${last.failureReason}'
-              : 'The top-up did not go through; try again',
-        );
-      }
-      return last;
-    }, success: 'Topped up; you can sign the payoff now');
+    final landed =
+        await runMoneyAction(
+          context,
+          ref,
+          // The button that asked for the top-up names its amount; the review
+          // and the device lock show the same amount before signing.
+          () => service.prepareContribution(
+            custody: request.custody,
+            amount: topUp.toString(),
+          ),
+        ).then<settlement.AccountCall?>((submitted) async {
+          if (submitted == null) return null;
+          final last = await service.followAccountCall(submitted.callId).last;
+          if (last.state !=
+              settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
+            if (mounted) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    last.failureReason.isNotEmpty
+                        ? 'The top-up did not go through: ${last.failureReason}'
+                        : 'The top-up did not go through; try again',
+                  ),
+                ),
+              );
+            }
+            return null;
+          }
+          return last;
+        });
     if (!mounted) return;
     ref.invalidate(stawiMemberBalancesProvider(widget.roomId));
     setState(() {
@@ -606,19 +626,22 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     });
   }
 
+  /// Reviews what was prepared and, once confirmed, signs and submits it.
+  /// Cancelling the review signs nothing and returns to the form.
   Future<void> _sign() async {
     final prepared = _prepared!;
     setState(() => _busy = true);
-    final call = await runStawiAction(
-      context,
-      () => ref.read(stawiAccountServiceProvider).submit(prepared),
-      success: prepared.review.done,
-    );
+    final call = await reviewAndSubmit(context, ref, prepared);
     if (!mounted) return;
     if (call != null) {
       Navigator.of(context).pop();
     } else {
-      setState(() => _busy = false);
+      setState(() {
+        _busy = false;
+        _prepared = null;
+        _request = null;
+        _topUp = null;
+      });
     }
   }
 
@@ -732,13 +755,11 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                   decoration: const InputDecoration(labelText: 'Instalments'),
                 ),
             ] else ...[
-              _Review(call: prepared.call!, request: _request!),
-              if (widget.call == AccountEngineCall.loanPayoff)
-                _TopUpNotice(
-                  topUp: _topUp,
-                  toppedUp: _toppedUp,
-                  request: _request!,
-                ),
+              _TopUpNotice(
+                topUp: _topUp,
+                toppedUp: _toppedUp,
+                request: _request!,
+              ),
             ],
             if (_error != null)
               Padding(
@@ -774,52 +795,10 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
           )
         else
           FilledButton(
-            key: const Key('engine-sign'),
+            key: const Key('engine-continue'),
             onPressed: _busy ? null : _sign,
-            child: Text(_busy ? 'Signing…' : 'Sign and submit'),
+            child: Text(_busy ? 'Signing…' : 'Review'),
           ),
-      ],
-    );
-  }
-}
-
-/// What the account will do, decoded from the call settlement prepared and
-/// checked on this device.
-class _Review extends StatelessWidget {
-  const _Review({required this.call, required this.request});
-
-  final EngineCall call;
-  final AccountEngineRequest request;
-
-  @override
-  Widget build(BuildContext context) {
-    final quoted =
-        request.call == AccountEngineCall.loanPayoff && request.amount.isEmpty;
-    final asset = request.asset;
-    final shown = asset == null
-        ? '${call.amount}'
-        : formatUnits(call.amount, asset);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(request.summary, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        if (call.loanId > BigInt.zero) Text('Loan #${call.loanId}'),
-        if (call.amount > BigInt.zero)
-          Text(
-            quoted
-                ? 'Pays at most $shown (settlement’s quote, with headroom; '
-                      'only what the loan takes is paid)'
-                : 'Amount $shown',
-            key: const Key('engine-review-amount'),
-          ),
-        if (call.instalments > 0) Text('${call.instalments} instalments'),
-        const SizedBox(height: 8),
-        Text(
-          'Checked on this device: this is the call you asked for, on this '
-          'room, from your account, on the room’s own engine.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
       ],
     );
   }
