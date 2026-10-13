@@ -18,6 +18,27 @@ type RoomRepository interface {
 	// DirectRooms lists the personal rooms (DIRECT, BOT) keyed by key within
 	// the tenant and partitions given, oldest first, deleted rooms excluded.
 	DirectRooms(ctx context.Context, key, tenantID string, partitions []string) ([]*models.Room, error)
+	// WithDirectKeyLock runs fn in one primary transaction holding an
+	// advisory lock on key: resolutions of one key are serialised, and fn
+	// reads and writes the key's rooms through the store it is given.
+	WithDirectKeyLock(ctx context.Context, key, tenantID string, partitions []string,
+		fn func(KeyedRoomStore) error) error
+}
+
+// KeyedRoomStore is what a personal room's resolution reads and writes while
+// it holds its key's lock: the primary database, inside the lock's
+// transaction, scoped to the key and the tenancy the lock was taken for.
+type KeyedRoomStore interface {
+	// Rooms lists the key's rooms in the tenancy, oldest first, deleted rooms
+	// excluded.
+	Rooms() ([]*models.Room, error)
+	// ActiveSubscriptions lists a room's active subscriptions.
+	ActiveSubscriptions(roomID string) ([]*models.RoomSubscription, error)
+	// Insert writes a new room of the key and its subscriptions.
+	Insert(room *models.Room, subscriptions []*models.RoomSubscription) error
+	// InsertServerEvent writes an event the server posts and its outbox row,
+	// so it is delivered only if the transaction commits.
+	InsertServerEvent(event *models.RoomEvent, outbox *models.RoomOutbox) error
 }
 
 // RoomEventRepository defines the interface for room event data access operations.

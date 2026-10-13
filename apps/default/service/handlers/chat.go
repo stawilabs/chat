@@ -114,21 +114,9 @@ func NewChatServer(
 
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
-	callPolicy := business.DefaultCallPolicyConfig()
-	switch cfg := service.Config().(type) {
-	case aconfig.ChatConfig:
-		callPolicy = business.CallPolicyConfig{
-			DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
-			MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
-			MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
-		}
-	case *aconfig.ChatConfig:
-		callPolicy = business.CallPolicyConfig{
-			DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
-			MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
-			MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
-		}
-	}
+	callPolicy := callPolicyOf(service.Config())
+	serviceChecker := authorizer.NewFunctionChecker(
+		service.SecurityManager().GetAuthorizer(ctx), business.ServiceNamespace)
 	messageBusiness := business.NewMessageBusiness(
 		eventsMan,
 		eventRepo,
@@ -146,8 +134,7 @@ func NewChatServer(
 			Bindings: stawiBindings,
 			CallRepo: repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
 		}),
-		business.WithServiceCards(authorizer.NewFunctionChecker( // stawi_card_post gate
-			service.SecurityManager().GetAuthorizer(ctx), business.ServiceNamespace)),
+		business.WithServiceCards(serviceChecker), // stawi_card_post gate
 	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
@@ -164,6 +151,7 @@ func NewChatServer(
 		profileCli,
 		authzMiddleware,
 		business.WithStawiBindings(stawiBindings),
+		business.WithPersonalRooms(serviceChecker), // stawi_room_resolve gate
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,
@@ -182,6 +170,25 @@ func NewChatServer(
 		MessageBusiness:    messageBusiness,
 		ProposalManagement: proposalManagement,
 		DeviceReplayRepo:   deviceReplayRepo,
+	}
+}
+
+// callPolicyOf is the call policy chat's configuration sets, or the default.
+func callPolicyOf(config any) business.CallPolicyConfig {
+	var cfg *aconfig.ChatConfig
+	switch c := config.(type) {
+	case aconfig.ChatConfig:
+		cfg = &c
+	case *aconfig.ChatConfig:
+		cfg = c
+	}
+	if cfg == nil {
+		return business.DefaultCallPolicyConfig()
+	}
+	return business.CallPolicyConfig{
+		DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
+		MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
+		MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
 	}
 }
 
@@ -388,6 +395,22 @@ func (ps *ChatServer) CreateRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.CreateRoomRequest],
 ) (*connect.Response[chatv1.CreateRoomResponse], error) {
+	// A service principal (no contact) does not create rooms of its own: it
+	// resolves a person's DM or its room with a person, separately authorized.
+	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetContactID() == "" &&
+		claims.IsInternalSystem() {
+		if req.Msg == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("request cannot be nil"))
+		}
+		timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+		defer cancel()
+		room, err := ps.RoomBusiness.ResolvePersonalRoom(timeoutCtx, req.Msg)
+		if err != nil {
+			return nil, ps.toAPIError(ctx, err)
+		}
+		return connect.NewResponse(&chatv1.CreateRoomResponse{Room: room}), nil
+	}
+
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err

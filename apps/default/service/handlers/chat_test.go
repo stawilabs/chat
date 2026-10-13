@@ -1148,3 +1148,40 @@ func (s *ChatServerTestSuite) TestLive_MixedValidAndInvalid() {
 		s.NotNil(resp.Msg.GetError())
 	})
 }
+
+// TestCreateRoomRoutesAServicePrincipalToResolution: a service principal's
+// CreateRoom (internal-system claims, no contact) is a personal-room
+// resolution; a person's is a room they create.
+func (s *ChatServerTestSuite) TestCreateRoomRoutesAServicePrincipalToResolution() {
+	t := s.T()
+	var resolved, created []*chatv1.CreateRoomRequest
+	chatServer := &handlers.ChatServer{RoomBusiness: &mockRoomBusiness{
+		resolvePersonalRoomFn: func(_ context.Context, req *chatv1.CreateRoomRequest) (*chatv1.Room, error) {
+			resolved = append(resolved, req)
+			return &chatv1.Room{Id: "dm-1", Type: chatv1.RoomType_ROOM_TYPE_DIRECT}, nil
+		},
+		createRoomFn: func(_ context.Context, req *chatv1.CreateRoomRequest, _ *commonv1.ContactLink) (*chatv1.Room, error) {
+			created = append(created, req)
+			return &chatv1.Room{Id: "room-1"}, nil
+		},
+	}}
+	dm := &chatv1.CreateRoomRequest{Type: chatv1.RoomType_ROOM_TYPE_DIRECT, Members: []*commonv1.ContactLink{
+		{ProfileId: util.IDString()}, {ProfileId: util.IDString()},
+	}}
+
+	svcClaims := &security.AuthenticationClaims{TenantID: testTenantID, PartitionID: testPartitionID,
+		Roles: []string{security.ConstantSystemInternalRole}}
+	svcClaims.Subject = util.IDString()
+	resp, err := chatServer.CreateRoom(svcClaims.ClaimsToContext(context.Background()), connect.NewRequest(dm))
+	require.NoError(t, err)
+	require.Equal(t, "dm-1", resp.Msg.GetRoom().GetId())
+	require.Len(t, resolved, 1)
+	require.Empty(t, created)
+
+	personCtx := s.WithAuthClaims(context.Background(), testTenantID, testPartitionID, util.IDString())
+	resp, err = chatServer.CreateRoom(personCtx, connect.NewRequest(&chatv1.CreateRoomRequest{Name: "Group"}))
+	require.NoError(t, err)
+	require.Equal(t, "room-1", resp.Msg.GetRoom().GetId())
+	require.Len(t, resolved, 1, "a person's call is not a resolution")
+	require.Len(t, created, 1)
+}

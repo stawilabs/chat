@@ -46,6 +46,9 @@ type roomBusiness struct {
 	profileCli       profilev1connect.ProfileServiceClient
 	authzMiddleware  authz.Middleware
 	stawiBindings    repository.StawiRoomRepository
+	// roomResolveChecker gates ResolvePersonalRoom (stawi_room_resolve);
+	// nil refuses every service resolution.
+	roomResolveChecker FunctionPermissionChecker
 }
 
 // RoomBusinessOption configures optional room business behaviour.

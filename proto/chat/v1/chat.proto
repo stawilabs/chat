@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Stawi Labs
+// Copyright 2023-2026 Ant Investor Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -89,8 +89,13 @@ service ChatService {
       "proposal_view",
       "proposal_manage",
       // Post display-only cards (FINANCE_CARD, TEXT) into a Stawi room the
-      // chain has, without being a member. Service principals only.
-      "stawi_card_post"
+      // chain has, or a person's DM or bot room, without being a member.
+      // Service principals only.
+      "stawi_card_post",
+      // Find or create a person's DM with another person, or a service's
+      // room with one person, without being a member (CreateRoom with type
+      // DIRECT or BOT). Service principals only.
+      "stawi_room_resolve"
     ]
     role_bindings: [
       {
@@ -169,7 +174,8 @@ service ChatService {
           "subscription_manage",
           "proposal_view",
           "proposal_manage",
-          "stawi_card_post"
+          "stawi_card_post",
+          "stawi_room_resolve"
         ]
       }
     ]

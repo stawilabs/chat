@@ -23,6 +23,7 @@ x-service-permissions:
   - proposal_view
   - proposal_manage
   - stawi_card_post
+  - stawi_room_resolve
 paths:
   /chat.v1.ChatService/AddRoomSubscriptions:
     post:

@@ -33,6 +33,17 @@ type mockRoomBusiness struct {
 	searchRoomSubsFn          func(ctx context.Context, req *chatv1.SearchRoomSubscriptionsRequest, searchedBy *commonv1.ContactLink) ([]*chatv1.RoomSubscription, error)
 	getSubForContactFn        func(ctx context.Context, roomID string, contact *commonv1.ContactLink) (*models.RoomSubscription, error)
 	updateSubSettingsFn       func(ctx context.Context, req *chatv1.UpdateSubscriptionSettingsRequest, updatedBy *commonv1.ContactLink) (*chatv1.SubscriptionSettings, error)
+	resolvePersonalRoomFn     func(ctx context.Context, req *chatv1.CreateRoomRequest) (*chatv1.Room, error)
+}
+
+func (m *mockRoomBusiness) ResolvePersonalRoom(
+	ctx context.Context,
+	req *chatv1.CreateRoomRequest,
+) (*chatv1.Room, error) {
+	if m.resolvePersonalRoomFn != nil {
+		return m.resolvePersonalRoomFn(ctx, req)
+	}
+	return nil, errors.New("not implemented")
 }
 
 func (m *mockRoomBusiness) CreateRoom(

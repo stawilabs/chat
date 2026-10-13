@@ -37,6 +37,7 @@ type stawiFixture struct {
 	bindings repository.StawiRoomRepository
 	calls    repository.StawiRoomCallRepository
 	subRepo  repository.RoomSubscriptionRepository
+	roomRepo repository.RoomRepository
 	dbPool   pool.Pool
 	workMan  workerpool.Manager
 	authz    authz.Middleware
@@ -97,7 +98,9 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 		}),
 		business.WithServiceCards(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
-		s.AuthzMiddleware, business.WithStawiBindings(f.bindings))
+		s.AuthzMiddleware, business.WithStawiBindings(f.bindings),
+		business.WithPersonalRooms(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
+	f.roomRepo = roomRepo
 	return mb, rb
 }
 

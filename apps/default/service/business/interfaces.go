@@ -18,6 +18,12 @@ type RoomBusiness interface {
 		createdBy *commonv1.ContactLink,
 	) (*chatv1.Room, error)
 
+	// ResolvePersonalRoom answers a service principal's CreateRoom of a DIRECT
+	// room (two people) or a BOT room (one person and the caller): the oldest
+	// room of those people, in the caller's tenancy, whose active members are
+	// exactly them, else a new one. The caller must hold stawi_room_resolve.
+	ResolvePersonalRoom(ctx context.Context, req *chatv1.CreateRoomRequest) (*chatv1.Room, error)
+
 	// GetRoom retrieves a room by ID with proper authorization checks
 	GetRoom(ctx context.Context, roomID string, searchedBy *commonv1.ContactLink) (*chatv1.Room, error)
 

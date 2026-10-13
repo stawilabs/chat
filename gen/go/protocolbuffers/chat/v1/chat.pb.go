@@ -3509,7 +3509,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x0eProposalAction\x12\x1f\n" +
 	"\x1bPROPOSAL_ACTION_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17PROPOSAL_ACTION_APPROVE\x10\x01\x12\x1a\n" +
-	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xcc7\n" +
+	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xf47\n" +
 	"\vChatService\x12\xa1\x02\n" +
 	"\tSendEvent\x12\x19.chat.v1.SendEventRequest\x1a\x1a.chat.v1.SendEventResponse\"\xdc\x01\xbaG\xc8\x01\n" +
 	"\bMessages\x12\x17Send an event to a room\x1a\x97\x01Sends one or more events to chat rooms. Supports text, attachments, reactions, and system messages. Idempotent when idempotency_key header is provided.*\tsendEvent\x82\xb5\x18\f\n" +
@@ -3585,10 +3585,10 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x10ListReplayEvents\x12 .chat.v1.ListReplayEventsRequest\x1a!.chat.v1.ListReplayEventsResponse\"\x8d\x02\xbaG\xf6\x01\n" +
 	"\rDevice Replay\x12!List replay events after a cursor\x1a\xaf\x01Returns a paginated list of replay events for a device starting after a given cursor up to an upper bound. Used by the gateway to stream missed events to reconnecting clients.*\x10listReplayEvents\x82\xb5\x18\f\n" +
 	"\n" +
-	"event_view\x90\x02\x01\x1a\xe1\x06\x82\xb5\x18\xdc\x06\n" +
+	"event_view\x90\x02\x01\x1a\x89\a\x82\xb5\x18\x84\a\n" +
 	"\fservice_chat\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x1a\x94\x01\b\x01\x12\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x12\x12stawi_room_resolve\x1a\x94\x01\b\x01\x12\n" +
 	"event_view\x12\n" +
 	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x1a\x87\x01\b\x02\x12\n" +
 	"event_view\x12\n" +
@@ -3597,9 +3597,9 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"event_send\x12\troom_view\x12\x11subscription_view\x12\rproposal_view\x1a;\b\x04\x12\n" +
 	"event_view\x12\troom_view\x12\x11subscription_view\x12\rproposal_view\x1aZ\b\x05\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\x11subscription_view\x12\x13subscription_manage\x1a\xa5\x01\b\x06\x12\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\x11subscription_view\x12\x13subscription_manage\x1a\xb9\x01\b\x06\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_postB\xd1\x06\xbaG\xb9\x05\x12\x8d\x05\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x12\x12stawi_room_resolveB\xd1\x06\xbaG\xb9\x05\x12\x8d\x05\n" +
 	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"?\n" +
 	"\n" +
 	"Stawi Labs\x12!https://github.com/stawilabs/chat\x1a\x0einfo@stawi.org*I\n" +
