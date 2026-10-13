@@ -1,31 +1,46 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: chat/v1/gateway.proto
-//
-// @dart = 2.12
+// Generated from chat/v1/gateway.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
 
-import '../../common/v1/common.pbjson.dart' as $8;
-import '../../google/protobuf/struct.pbjson.dart' as $4;
-import '../../google/protobuf/timestamp.pbjson.dart' as $2;
-import 'definitions.pbjson.dart' as $9;
-import 'payload_type.pbjson.dart' as $7;
+import '../../common/v1/common.pbjson.dart' as $2;
+import '../../google/protobuf/struct.pbjson.dart' as $3;
+import '../../google/protobuf/timestamp.pbjson.dart' as $0;
+import 'definitions.pbjson.dart' as $1;
+import 'payload_type.pbjson.dart' as $4;
 
 @$core.Deprecated('Use streamHelloDescriptor instead')
 const StreamHello$json = {
   '1': 'StreamHello',
   '2': [
     {'1': 'resume_token', '3': 1, '4': 1, '5': 9, '10': 'resumeToken'},
-    {'1': 'capabilities', '3': 2, '4': 3, '5': 11, '6': '.chat.v1.StreamHello.CapabilitiesEntry', '10': 'capabilities'},
-    {'1': 'client_time', '3': 3, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'clientTime'},
+    {
+      '1': 'capabilities',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.StreamHello.CapabilitiesEntry',
+      '10': 'capabilities'
+    },
+    {
+      '1': 'client_time',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'clientTime'
+    },
   ],
   '3': [StreamHello_CapabilitiesEntry$json],
 };
@@ -52,8 +67,24 @@ final $typed_data.Uint8List streamHelloDescriptor = $convert.base64Decode(
 const StreamRequest$json = {
   '1': 'StreamRequest',
   '2': [
-    {'1': 'hello', '3': 1, '4': 1, '5': 11, '6': '.chat.v1.StreamHello', '9': 0, '10': 'hello'},
-    {'1': 'command', '3': 12, '4': 1, '5': 11, '6': '.chat.v1.ClientCommand', '9': 0, '10': 'command'},
+    {
+      '1': 'hello',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StreamHello',
+      '9': 0,
+      '10': 'hello'
+    },
+    {
+      '1': 'command',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ClientCommand',
+      '9': 0,
+      '10': 'command'
+    },
   ],
   '8': [
     {'1': 'payload'},
@@ -71,13 +102,68 @@ const StreamResponse$json = {
   '1': 'StreamResponse',
   '2': [
     {'1': 'id', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'id'},
-    {'1': 'timestamp', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'timestamp'},
-    {'1': 'message', '3': 10, '4': 1, '5': 11, '6': '.chat.v1.RoomEvent', '9': 0, '10': 'message'},
-    {'1': 'presence_event', '3': 12, '4': 1, '5': 11, '6': '.chat.v1.PresenceEvent', '9': 0, '10': 'presenceEvent'},
-    {'1': 'receipt_event', '3': 13, '4': 1, '5': 11, '6': '.chat.v1.ReceiptEvent', '9': 0, '10': 'receiptEvent'},
-    {'1': 'read_event', '3': 15, '4': 1, '5': 11, '6': '.chat.v1.ReadMarker', '9': 0, '10': 'readEvent'},
-    {'1': 'typing_event', '3': 17, '4': 1, '5': 11, '6': '.chat.v1.TypingEvent', '9': 0, '10': 'typingEvent'},
-    {'1': 'error', '3': 20, '4': 1, '5': 11, '6': '.common.v1.ErrorDetail', '9': 0, '10': 'error'},
+    {
+      '1': 'timestamp',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'timestamp'
+    },
+    {
+      '1': 'message',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.RoomEvent',
+      '9': 0,
+      '10': 'message'
+    },
+    {
+      '1': 'presence_event',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.PresenceEvent',
+      '9': 0,
+      '10': 'presenceEvent'
+    },
+    {
+      '1': 'receipt_event',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ReceiptEvent',
+      '9': 0,
+      '10': 'receiptEvent'
+    },
+    {
+      '1': 'read_event',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ReadMarker',
+      '9': 0,
+      '10': 'readEvent'
+    },
+    {
+      '1': 'typing_event',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.TypingEvent',
+      '9': 0,
+      '10': 'typingEvent'
+    },
+    {
+      '1': 'error',
+      '3': 20,
+      '4': 1,
+      '5': 11,
+      '6': '.common.v1.ErrorDetail',
+      '9': 0,
+      '10': 'error'
+    },
   ],
   '8': [
     {'1': 'payload'},
@@ -99,71 +185,80 @@ final $typed_data.Uint8List streamResponseDescriptor = $convert.base64Decode(
 const $core.Map<$core.String, $core.dynamic> GatewayServiceBase$json = {
   '1': 'GatewayService',
   '2': [
-    {'1': 'Stream', '2': '.chat.v1.StreamRequest', '3': '.chat.v1.StreamResponse', '4': {}, '5': true, '6': true},
+    {
+      '1': 'Stream',
+      '2': '.chat.v1.StreamRequest',
+      '3': '.chat.v1.StreamResponse',
+      '4': {},
+      '5': true,
+      '6': true
+    },
   ],
   '3': {},
 };
 
 @$core.Deprecated('Use gatewayServiceDescriptor instead')
-const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>> GatewayServiceBase$messageJson = {
+const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
+    GatewayServiceBase$messageJson = {
   '.chat.v1.StreamRequest': StreamRequest$json,
   '.chat.v1.StreamHello': StreamHello$json,
   '.chat.v1.StreamHello.CapabilitiesEntry': StreamHello_CapabilitiesEntry$json,
-  '.google.protobuf.Timestamp': $2.Timestamp$json,
-  '.chat.v1.ClientCommand': $9.ClientCommand$json,
-  '.chat.v1.ReceiptEvent': $9.ReceiptEvent$json,
-  '.chat.v1.AckEvent': $9.AckEvent$json,
-  '.common.v1.ErrorDetail': $8.ErrorDetail$json,
-  '.common.v1.ErrorDetail.MetaEntry': $8.ErrorDetail_MetaEntry$json,
-  '.chat.v1.TypingEvent': $9.TypingEvent$json,
-  '.chat.v1.PresenceEvent': $9.PresenceEvent$json,
-  '.common.v1.ContactLink': $8.ContactLink$json,
-  '.google.protobuf.Struct': $4.Struct$json,
-  '.google.protobuf.Struct.FieldsEntry': $4.Struct_FieldsEntry$json,
-  '.google.protobuf.Value': $4.Value$json,
-  '.google.protobuf.ListValue': $4.ListValue$json,
-  '.chat.v1.ReadMarker': $9.ReadMarker$json,
-  '.chat.v1.RoomEvent': $9.RoomEvent$json,
-  '.chat.v1.Payload': $7.Payload$json,
-  '.chat.v1.RoomChangeContent': $7.RoomChangeContent$json,
-  '.chat.v1.ModerationContent': $7.ModerationContent$json,
-  '.chat.v1.TextContent': $7.TextContent$json,
-  '.chat.v1.TextAnnotation': $7.TextAnnotation$json,
-  '.chat.v1.AttachmentContent': $7.AttachmentContent$json,
-  '.chat.v1.AttachmentPreview': $7.AttachmentPreview$json,
-  '.chat.v1.ReactionContent': $7.ReactionContent$json,
-  '.chat.v1.EncryptedContent': $7.EncryptedContent$json,
-  '.chat.v1.CallContent': $7.CallContent$json,
-  '.chat.v1.MotionContent': $7.MotionContent$json,
-  '.chat.v1.PassingRule': $7.PassingRule$json,
-  '.chat.v1.VoteChoice': $7.VoteChoice$json,
-  '.chat.v1.VoteCast': $7.VoteCast$json,
-  '.chat.v1.MotionTally': $7.MotionTally$json,
-  '.chat.v1.VoteTally': $7.VoteTally$json,
-  '.chat.v1.FormRequestContent': $7.FormRequestContent$json,
-  '.chat.v1.FormSchema': $7.FormSchema$json,
-  '.chat.v1.FormStep': $7.FormStep$json,
-  '.chat.v1.FormSection': $7.FormSection$json,
-  '.chat.v1.FormField': $7.FormField$json,
-  '.chat.v1.FormValidationRule': $7.FormValidationRule$json,
-  '.chat.v1.FormConditionGroup': $7.FormConditionGroup$json,
-  '.chat.v1.FormConditionClause': $7.FormConditionClause$json,
-  '.chat.v1.FormOption': $7.FormOption$json,
-  '.chat.v1.FormFormattingHint': $7.FormFormattingHint$json,
-  '.chat.v1.FormReviewHint': $7.FormReviewHint$json,
-  '.chat.v1.FormSubmissionSnapshot': $7.FormSubmissionSnapshot$json,
-  '.chat.v1.FormReviewSection': $7.FormReviewSection$json,
-  '.chat.v1.FormReviewItem': $7.FormReviewItem$json,
-  '.chat.v1.FormPermissions': $7.FormPermissions$json,
-  '.chat.v1.FormSubmissionResultContent': $7.FormSubmissionResultContent$json,
-  '.chat.v1.FinanceCardContent': $7.FinanceCardContent$json,
-  '.chat.v1.FinanceCardContent.DataEntry': $7.FinanceCardContent_DataEntry$json,
-  '.chat.v1.StawiRoomConversionContent': $7.StawiRoomConversionContent$json,
-  '.chat.v1.StawiRoomConversionContent.RuleValuesEntry': $7.StawiRoomConversionContent_RuleValuesEntry$json,
-  '.chat.v1.StawiGenesis': $7.StawiGenesis$json,
-  '.chat.v1.StawiGenesisSignatureContent': $7.StawiGenesisSignatureContent$json,
-  '.chat.v1.StawiSignedCallContent': $7.StawiSignedCallContent$json,
-  '.chat.v1.StawiCallOutcomeContent': $7.StawiCallOutcomeContent$json,
+  '.google.protobuf.Timestamp': $0.Timestamp$json,
+  '.chat.v1.ClientCommand': $1.ClientCommand$json,
+  '.chat.v1.ReceiptEvent': $1.ReceiptEvent$json,
+  '.chat.v1.AckEvent': $1.AckEvent$json,
+  '.common.v1.ErrorDetail': $2.ErrorDetail$json,
+  '.common.v1.ErrorDetail.MetaEntry': $2.ErrorDetail_MetaEntry$json,
+  '.chat.v1.TypingEvent': $1.TypingEvent$json,
+  '.chat.v1.PresenceEvent': $1.PresenceEvent$json,
+  '.common.v1.ContactLink': $2.ContactLink$json,
+  '.google.protobuf.Struct': $3.Struct$json,
+  '.google.protobuf.Struct.FieldsEntry': $3.Struct_FieldsEntry$json,
+  '.google.protobuf.Value': $3.Value$json,
+  '.google.protobuf.ListValue': $3.ListValue$json,
+  '.chat.v1.ReadMarker': $1.ReadMarker$json,
+  '.chat.v1.RoomEvent': $1.RoomEvent$json,
+  '.chat.v1.Payload': $4.Payload$json,
+  '.chat.v1.RoomChangeContent': $4.RoomChangeContent$json,
+  '.chat.v1.ModerationContent': $4.ModerationContent$json,
+  '.chat.v1.TextContent': $4.TextContent$json,
+  '.chat.v1.TextAnnotation': $4.TextAnnotation$json,
+  '.chat.v1.AttachmentContent': $4.AttachmentContent$json,
+  '.chat.v1.AttachmentPreview': $4.AttachmentPreview$json,
+  '.chat.v1.ReactionContent': $4.ReactionContent$json,
+  '.chat.v1.EncryptedContent': $4.EncryptedContent$json,
+  '.chat.v1.CallContent': $4.CallContent$json,
+  '.chat.v1.MotionContent': $4.MotionContent$json,
+  '.chat.v1.PassingRule': $4.PassingRule$json,
+  '.chat.v1.VoteChoice': $4.VoteChoice$json,
+  '.chat.v1.VoteCast': $4.VoteCast$json,
+  '.chat.v1.MotionTally': $4.MotionTally$json,
+  '.chat.v1.VoteTally': $4.VoteTally$json,
+  '.chat.v1.FormRequestContent': $4.FormRequestContent$json,
+  '.chat.v1.FormSchema': $4.FormSchema$json,
+  '.chat.v1.FormStep': $4.FormStep$json,
+  '.chat.v1.FormSection': $4.FormSection$json,
+  '.chat.v1.FormField': $4.FormField$json,
+  '.chat.v1.FormValidationRule': $4.FormValidationRule$json,
+  '.chat.v1.FormConditionGroup': $4.FormConditionGroup$json,
+  '.chat.v1.FormConditionClause': $4.FormConditionClause$json,
+  '.chat.v1.FormOption': $4.FormOption$json,
+  '.chat.v1.FormFormattingHint': $4.FormFormattingHint$json,
+  '.chat.v1.FormReviewHint': $4.FormReviewHint$json,
+  '.chat.v1.FormSubmissionSnapshot': $4.FormSubmissionSnapshot$json,
+  '.chat.v1.FormReviewSection': $4.FormReviewSection$json,
+  '.chat.v1.FormReviewItem': $4.FormReviewItem$json,
+  '.chat.v1.FormPermissions': $4.FormPermissions$json,
+  '.chat.v1.FormSubmissionResultContent': $4.FormSubmissionResultContent$json,
+  '.chat.v1.FinanceCardContent': $4.FinanceCardContent$json,
+  '.chat.v1.FinanceCardContent.DataEntry': $4.FinanceCardContent_DataEntry$json,
+  '.chat.v1.StawiRoomConversionContent': $4.StawiRoomConversionContent$json,
+  '.chat.v1.StawiRoomConversionContent.RuleValuesEntry':
+      $4.StawiRoomConversionContent_RuleValuesEntry$json,
+  '.chat.v1.StawiGenesis': $4.StawiGenesis$json,
+  '.chat.v1.StawiGenesisSignatureContent': $4.StawiGenesisSignatureContent$json,
+  '.chat.v1.StawiSignedCallContent': $4.StawiSignedCallContent$json,
+  '.chat.v1.StawiCallOutcomeContent': $4.StawiCallOutcomeContent$json,
   '.chat.v1.StreamResponse': StreamResponse$json,
 };
 
@@ -180,4 +275,3 @@ final $typed_data.Uint8List gatewayServiceDescriptor = $convert.base64Decode(
     'bmVjdBoTCAESD2dhdGV3YXlfY29ubmVjdBoTCAISD2dhdGV3YXlfY29ubmVjdBoTCAMSD2dhdG'
     'V3YXlfY29ubmVjdBoTCAQSD2dhdGV3YXlfY29ubmVjdBoTCAUSD2dhdGV3YXlfY29ubmVjdBoT'
     'CAYSD2dhdGV3YXlfY29ubmVjdA==');
-

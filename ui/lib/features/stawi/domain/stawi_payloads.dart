@@ -183,7 +183,7 @@ class StawiConversionView {
   }) => StawiPayloadCodec._json(
     pb.StawiRoomConversionContent(
       templateId: templateId,
-      ruleValues: ruleValues,
+      ruleValues: ruleValues.entries,
       founderSubscriptionIds: founderSubscriptionIds,
       joinPolicy: joinPolicy.proto,
     ),

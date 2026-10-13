@@ -524,7 +524,7 @@ class SyncEngine with WidgetsBindingObserver {
             'e2ee': 'vodozemac-0.4',
             'calls': 'webrtc',
             'offline': 'true',
-          },
+          }.entries,
           clientTime: pb.Timestamp.fromDateTime(DateTime.now()),
         );
         final helloRequest = pb.StreamRequest(hello: hello);

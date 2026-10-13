@@ -162,7 +162,7 @@ void main() {
             cardId: 'k1',
             kind: 'PROPOSAL',
             title: 'New proposal',
-            data: {'proposal_id': 'prop1'},
+            data: {'proposal_id': 'prop1'}.entries,
           ),
         ),
       )!;

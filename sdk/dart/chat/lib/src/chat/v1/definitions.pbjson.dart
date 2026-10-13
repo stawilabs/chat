@@ -1,13 +1,14 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: chat/v1/definitions.proto
-//
-// @dart = 2.12
+// Generated from chat/v1/definitions.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -66,12 +67,42 @@ const RoomEvent$json = {
     {'1': 'id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'id'},
     {'1': 'room_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
     {'1': 'subscription_id', '3': 3, '4': 1, '5': 9, '10': 'subscriptionId'},
-    {'1': 'type', '3': 4, '4': 1, '5': 14, '6': '.chat.v1.RoomEventType', '10': 'type'},
-    {'1': 'sent_at', '3': 7, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'sentAt'},
+    {
+      '1': 'type',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.RoomEventType',
+      '10': 'type'
+    },
+    {
+      '1': 'sent_at',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sentAt'
+    },
     {'1': 'edited', '3': 8, '4': 1, '5': 8, '10': 'edited'},
     {'1': 'redacted', '3': 9, '4': 1, '5': 8, '10': 'redacted'},
-    {'1': 'parent_id', '3': 10, '4': 1, '5': 9, '8': {}, '9': 0, '10': 'parentId', '17': true},
-    {'1': 'payload', '3': 15, '4': 1, '5': 11, '6': '.chat.v1.Payload', '10': 'payload'},
+    {
+      '1': 'parent_id',
+      '3': 10,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '9': 0,
+      '10': 'parentId',
+      '17': true
+    },
+    {
+      '1': 'payload',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.Payload',
+      '10': 'payload'
+    },
   ],
   '8': [
     {'1': '_parent_id'},
@@ -96,8 +127,24 @@ const AckEvent$json = {
     {'1': 'room_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
     {'1': 'event_id', '3': 2, '4': 3, '5': 9, '8': {}, '10': 'eventId'},
     {'1': 'subscription_id', '3': 3, '4': 1, '5': 9, '10': 'subscriptionId'},
-    {'1': 'ack_at', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'ackAt'},
-    {'1': 'error', '3': 7, '4': 1, '5': 11, '6': '.common.v1.ErrorDetail', '9': 0, '10': 'error', '17': true},
+    {
+      '1': 'ack_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'ackAt'
+    },
+    {
+      '1': 'error',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.common.v1.ErrorDetail',
+      '9': 0,
+      '10': 'error',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_error'},
@@ -134,8 +181,24 @@ final $typed_data.Uint8List receiptEventDescriptor = $convert.base64Decode(
 const ReadMarker$json = {
   '1': 'ReadMarker',
   '2': [
-    {'1': 'room_id', '3': 1, '4': 1, '5': 9, '8': {}, '9': 0, '10': 'roomId', '17': true},
-    {'1': 'up_to_event_id', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'upToEventId'},
+    {
+      '1': 'room_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '9': 0,
+      '10': 'roomId',
+      '17': true
+    },
+    {
+      '1': 'up_to_event_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'upToEventId'
+    },
     {'1': 'subscription_id', '3': 5, '4': 1, '5': 9, '10': 'subscriptionId'},
   ],
   '8': [
@@ -154,10 +217,31 @@ final $typed_data.Uint8List readMarkerDescriptor = $convert.base64Decode(
 const PresenceEvent$json = {
   '1': 'PresenceEvent',
   '2': [
-    {'1': 'source', '3': 1, '4': 1, '5': 11, '6': '.common.v1.ContactLink', '10': 'source'},
-    {'1': 'status', '3': 2, '4': 1, '5': 14, '6': '.chat.v1.PresenceStatus', '10': 'status'},
+    {
+      '1': 'source',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.common.v1.ContactLink',
+      '10': 'source'
+    },
+    {
+      '1': 'status',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.PresenceStatus',
+      '10': 'status'
+    },
     {'1': 'status_msg', '3': 3, '4': 1, '5': 9, '10': 'statusMsg'},
-    {'1': 'last_active', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'lastActive'},
+    {
+      '1': 'last_active',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'lastActive'
+    },
   ],
 };
 
@@ -175,7 +259,14 @@ const TypingEvent$json = {
     {'1': 'room_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
     {'1': 'subscription_id', '3': 1, '4': 1, '5': 9, '10': 'subscriptionId'},
     {'1': 'typing', '3': 3, '4': 1, '5': 8, '10': 'typing'},
-    {'1': 'since', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'since'},
+    {
+      '1': 'since',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'since'
+    },
   ],
 };
 
@@ -190,12 +281,60 @@ final $typed_data.Uint8List typingEventDescriptor = $convert.base64Decode(
 const ClientCommand$json = {
   '1': 'ClientCommand',
   '2': [
-    {'1': 'ack', '3': 3, '4': 1, '5': 11, '6': '.chat.v1.AckEvent', '9': 0, '10': 'ack'},
-    {'1': 'typing', '3': 4, '4': 1, '5': 11, '6': '.chat.v1.TypingEvent', '9': 0, '10': 'typing'},
-    {'1': 'receipt', '3': 2, '4': 1, '5': 11, '6': '.chat.v1.ReceiptEvent', '9': 0, '10': 'receipt'},
-    {'1': 'presence', '3': 5, '4': 1, '5': 11, '6': '.chat.v1.PresenceEvent', '9': 0, '10': 'presence'},
-    {'1': 'read_marker', '3': 8, '4': 1, '5': 11, '6': '.chat.v1.ReadMarker', '9': 0, '10': 'readMarker'},
-    {'1': 'event', '3': 10, '4': 1, '5': 11, '6': '.chat.v1.RoomEvent', '9': 0, '10': 'event'},
+    {
+      '1': 'ack',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.AckEvent',
+      '9': 0,
+      '10': 'ack'
+    },
+    {
+      '1': 'typing',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.TypingEvent',
+      '9': 0,
+      '10': 'typing'
+    },
+    {
+      '1': 'receipt',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ReceiptEvent',
+      '9': 0,
+      '10': 'receipt'
+    },
+    {
+      '1': 'presence',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.PresenceEvent',
+      '9': 0,
+      '10': 'presence'
+    },
+    {
+      '1': 'read_marker',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ReadMarker',
+      '9': 0,
+      '10': 'readMarker'
+    },
+    {
+      '1': 'event',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.RoomEvent',
+      '9': 0,
+      '10': 'event'
+    },
   ],
   '8': [
     {'1': 'state'},
@@ -210,4 +349,3 @@ final $typed_data.Uint8List clientCommandDescriptor = $convert.base64Decode(
     'UgASgLMhYuY2hhdC52MS5QcmVzZW5jZUV2ZW50SABSCHByZXNlbmNlEjYKC3JlYWRfbWFya2Vy'
     'GAggASgLMhMuY2hhdC52MS5SZWFkTWFya2VySABSCnJlYWRNYXJrZXISKgoFZXZlbnQYCiABKA'
     'syEi5jaGF0LnYxLlJvb21FdmVudEgAUgVldmVudEIHCgVzdGF0ZQ==');
-
