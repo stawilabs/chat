@@ -117,6 +117,7 @@ final class MoneyReview {
         return MoneyReview(
           title: 'Pay off the loan',
           lines: [('Pays at most', money(amount))],
+          notes: const ['Only what the loan takes is paid'],
           signLabel: _sign,
           done: 'Loan paid off',
         );
