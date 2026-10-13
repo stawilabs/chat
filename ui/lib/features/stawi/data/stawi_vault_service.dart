@@ -99,3 +99,27 @@ final myVaultStatementProvider = FutureProvider.autoDispose
           .watch(stawiVaultServiceProvider)
           .statement(pocket: pocketHex.isEmpty ? null : hexToBytes(pocketHex)),
     );
+
+/// The 32 bytes naming [p]: all zero for free savings.
+Uint8List pocketId(finance.SavingsPocket p) =>
+    p.pocket.length == 32 ? Uint8List.fromList(p.pocket) : Uint8List(32);
+
+/// Whether [p] is free savings (the zero pocket).
+bool isFreeSavings(finance.SavingsPocket p) =>
+    !p.isGoal && pocketId(p).every((b) => b == 0);
+
+/// What a pocket is called: "Free savings", the goal's name, or
+/// "Goal 6061…7e7f" for a goal not named yet.
+String pocketName(finance.SavingsPocket p) {
+  if (isFreeSavings(p)) return 'Free savings';
+  if (p.name.isNotEmpty) return p.name;
+  final hex = bytesToHex(pocketId(p));
+  return 'Goal ${hex.substring(0, 4)}…${hex.substring(hex.length - 4)}';
+}
+
+/// Integer minor units of [m]; zero when empty or unreadable.
+BigInt moneyUnits(finance.Money m) => BigInt.tryParse(m.amount) ?? BigInt.zero;
+
+/// Whether money in [p] may be lent: free savings, or a goal marked
+/// loanable.
+bool canLendFrom(finance.SavingsPocket p) => isFreeSavings(p) || p.loanable;

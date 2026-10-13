@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:go_router/go_router.dart';
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart'
+    show bytesToHex0x, hexToBytes;
+
+import '../../features/stawi/domain/personal_calls.dart' show LoanRef;
 
 /// Helper utility for consistent navigation patterns across the app
 class NavigationHelper {
@@ -83,6 +87,44 @@ class NavigationHelper {
     required String roomName,
   }) {
     context.push('/room/$roomId/stawi?name=${Uri.encodeComponent(roomName)}');
+  }
+
+  /// Navigate to one loan: `/loan?book=<hex>&pool=<hex>&id=<n>`, with the
+  /// other person's name and a group loan's room when known.
+  static void navigateToLoan(
+    BuildContext context, {
+    required LoanRef ref,
+    String? counterpartyName,
+    String? roomId,
+  }) {
+    final query = {
+      'book': bytesToHex0x(ref.loanBook).toLowerCase(),
+      'pool': bytesToHex0x(ref.pool).toLowerCase(),
+      'id': ref.loanId.toString(),
+      'name': ?counterpartyName,
+      'room': ?roomId,
+    };
+    context.push(Uri(path: '/loan', queryParameters: query).toString());
+  }
+
+  /// The loan a /loan link names; null when it names none.
+  static LoanRef? loanRefFrom(Map<String, String> query) {
+    try {
+      final book = hexToBytes(query['book'] ?? '');
+      final pool = hexToBytes(query['pool'] ?? '');
+      final id = BigInt.parse(query['id'] ?? '');
+      if (book.length != 20 || pool.length != 20 || id <= BigInt.zero) {
+        return null;
+      }
+      return LoanRef(loanBook: book, pool: pool, loanId: id);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Navigate to My money: wallet, savings, loans and record.
+  static void navigateToMyMoney(BuildContext context) {
+    context.push('/money');
   }
 
   /// Navigate to the Stawi account screen (device key, deployment)

@@ -631,6 +631,25 @@ class GoEngineCallVector {
     );
   }
 
+  /// This vector's prepared call with [call] in place of its own: the
+  /// calldata, the intent's amount and authorization id, and the digest made
+  /// to match, so only the device's own checks can refuse it.
+  settlement.PrepareAccountCallResponse preparedFor(
+    EngineCall call,
+    settlement.AccountCallKind kind,
+  ) {
+    final calldata = call.calldata;
+    final i = intent
+      ..amount = call.committed.toString()
+      ..authorizationId = engineCallHash(target, calldata);
+    final d = sdkIntentOf(i).digest();
+    return prepared(kind)
+      ..intentDigest = d
+      ..financialIntent = i
+      ..call.intentDigest = d
+      ..call.engineCalldata = calldata;
+  }
+
   /// What settlement's PrepareAccountCall returns for this call.
   settlement.PrepareAccountCallResponse prepared(
     settlement.AccountCallKind kind,

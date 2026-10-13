@@ -212,33 +212,106 @@ class StandingOrderSwitch extends ConsumerWidget {
   }
 }
 
-/// A borrower's credit record, own and others', in one paragraph.
+/// A borrower's credit record: their loans from others and from their own
+/// savings. Someone else's is one paragraph ("Bob's record: 2 loans from
+/// others (2 on time); …"); the person's own ([mine]) is two lines.
 class RecordSummary extends ConsumerWidget {
-  const RecordSummary({required this.borrower, required this.name, super.key});
+  const RecordSummary({
+    required this.borrower,
+    required this.name,
+    this.mine = false,
+    super.key,
+  });
 
   final Uint8List borrower;
   final String name;
+  final bool mine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final record = ref.watch(creditRecordProvider(bytesToHex0x(borrower)));
-    final assets = watchLoanAssets(ref);
     return record.when(
       loading: () => const SizedBox.shrink(),
       error: (e, _) =>
           Text(stawiErrorMessage(e), key: const Key('record-summary')),
-      data: (r) => Text(
-        '${_describe('$name with Stawi', r.own, assets)} '
-        '${_describe('Elsewhere', r.others, assets)}',
-        key: const Key('record-summary'),
-      ),
+      data: (r) => mine
+          ? Column(
+              key: const Key('record-summary'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('From my own savings: ${_line(r.own)}'),
+                Text('From others: ${_line(r.others)}'),
+              ],
+            )
+          : Text(
+              "$name's record: ${_phrase(r.others, 'from others')}; "
+              '${_phrase(r.own, 'from their own savings')}.',
+              key: const Key('record-summary'),
+            ),
     );
   }
 
-  static String _describe(String who, finance.CreditRecord r, StawiAssets a) {
-    if (r.loans == 0) return '$who: no loans yet.';
-    final repaid = r.hasRepaid() ? ', repaid ${formatMoney(r.repaid, a)}' : '';
-    return '$who: ${r.loans} ${r.loans == 1 ? 'loan' : 'loans'}, '
-        '${r.onTime} on time, ${r.late} late, ${r.defaults} in default$repaid.';
+  static String _loans(int n) => switch (n) {
+    0 => 'no loans',
+    1 => '1 loan',
+    _ => '$n loans',
+  };
+
+  static String _how(finance.CreditRecord r) => [
+    '${r.onTime} on time',
+    if (r.late > 0) '${r.late} late',
+    if (r.defaults > 0) '${r.defaults} in default',
+  ].join(', ');
+
+  /// "3 loans, 3 on time".
+  static String _line(finance.CreditRecord r) =>
+      r.loans == 0 ? 'no loans yet' : '${_loans(r.loans)}, ${_how(r)}';
+
+  /// "2 loans from others (2 on time)".
+  static String _phrase(finance.CreditRecord r, String where) => r.loans == 0
+      ? 'no loans $where'
+      : '${_loans(r.loans)} $where (${_how(r)})';
+}
+
+/// Shown on money screens while the person's Stawi account is being set up
+/// (the first money screen starts it), or when setting it up failed, with a
+/// way to try again. Nothing once the account is ready.
+class AccountSetupBanner extends ConsumerWidget {
+  const AccountSetupBanner({
+    this.bannerKey = const Key('account-setup'),
+    super.key,
+  });
+
+  /// The key of the banner while it shows.
+  final Key bannerKey;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ready = ref.watch(stawiAccountReadyProvider);
+    if (ready.hasValue && !ready.isLoading && !ready.hasError) {
+      return const SizedBox.shrink();
+    }
+    if (ready.hasError && !ready.isLoading) {
+      return Card(
+        key: bannerKey,
+        child: ListTile(
+          leading: const Icon(Icons.error_outline),
+          title: Text(stawiErrorMessage(ready.error!)),
+          trailing: TextButton(
+            key: const Key('account-setup-retry'),
+            onPressed: () => ref.invalidate(stawiAccountReadyProvider),
+            child: const Text('Try again'),
+          ),
+        ),
+      );
+    }
+    return Card(
+      key: bannerKey,
+      child: const ListTile(
+        leading: Icon(Icons.hourglass_top),
+        title: Text('Setting up your Stawi account…'),
+        subtitle: Text('This takes a minute the first time.'),
+      ),
+    );
   }
 }

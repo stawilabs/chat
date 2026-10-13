@@ -18,6 +18,7 @@ import 'device_key_store.dart';
 import 'stawi_clients.dart';
 import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
+import 'stawi_loan_service.dart';
 import 'stawi_vault_service.dart';
 
 /// Issues the authentication service's genesis session proof (P26): proof
@@ -90,9 +91,13 @@ class StawiAccountService {
     required GenesisSessionProofs proofs,
     required Future<StawiIdentity> Function() identity,
     Future<PersonalTargets> Function()? targets,
+    Future<finance.GetLoanResponse> Function(LoanRef ref)? loan,
     Duration readyEvery = const Duration(seconds: 3),
     int readyAttempts = 60,
+    Duration followEvery = const Duration(seconds: 3),
   }) : _readyEvery = readyEvery,
+       _followEvery = followEvery,
+       _loan = loan,
        _readyAttempts = readyAttempts,
        _accounts = accounts,
        _keys = keys,
@@ -113,6 +118,12 @@ class StawiAccountService {
   /// How [ensureReady] polls when a money call finds the account not ready.
   final Duration _readyEvery;
   final int _readyAttempts;
+
+  /// Finance's GetLoan, read while a loan is followed until it is active.
+  final Future<finance.GetLoanResponse> Function(LoanRef ref)? _loan;
+
+  /// How [followUntilActive] reads the call and the loan.
+  final Duration _followEvery;
 
   /// The account and this device's key. Reads only: nothing is signed, so
   /// the device lock is not asked.
@@ -378,6 +389,7 @@ class StawiAccountService {
   Future<PreparedMoneyCall> prepareStandingOrder(
     finance.Loan loan, {
     required bool on,
+    String? title,
   }) async {
     final account = await ensureReady();
     final kind = on
@@ -429,6 +441,7 @@ class StawiAccountService {
         on: on,
         asset: asset,
         perInstalment: perInstalment,
+        title: title,
       ),
     );
   }
@@ -601,6 +614,52 @@ class StawiAccountService {
     }
   }
 
+  /// Follows a loan the person just made or accepted until it is active
+  /// (FUNDED) or has ended: first the account call [callId], when given,
+  /// until it is final, then finance's GetLoan of [ref] every [every], at
+  /// most [attempts] reads each. Returns the last loan read, which is not
+  /// active when the chain was slower than that; a call that failed or
+  /// expired is a [StawiUnavailable]. A loan finance names otherwise than
+  /// [ref] is refused: nothing is granted against another loan.
+  Future<finance.Loan> followUntilActive(
+    LoanRef ref, {
+    String? callId,
+    Duration? every,
+    int attempts = 40,
+  }) async {
+    every ??= _followEvery;
+    final read = _loan;
+    if (read == null) {
+      throw const StawiUnavailable('Loans cannot be read just now');
+    }
+    if (callId != null) {
+      settlement.AccountCall? last;
+      await for (final call in followAccountCall(
+        callId,
+        every: every,
+        attempts: attempts,
+      )) {
+        last = call;
+      }
+      final state = last?.state;
+      if (state == settlement.AccountCallState.ACCOUNT_CALL_STATE_FAILED ||
+          state == settlement.AccountCallState.ACCOUNT_CALL_STATE_EXPIRED) {
+        final why = last?.failureReason ?? '';
+        throw StawiUnavailable(
+          why.isEmpty ? 'It did not go through; try again' : 'Not done: $why',
+        );
+      }
+    }
+    for (var i = 1; ; i++) {
+      final loan = (await read(ref)).loan;
+      if (LoanRef.of(loan) != ref) {
+        throw const StawiUnavailable('Finance answered with another loan');
+      }
+      if (_loanSettled(loan.state) || i >= attempts) return loan;
+      await Future<void>.delayed(every);
+    }
+  }
+
   /// The deployment's asset and whether its testnet faucet is on.
   Future<settlement.GetAssetResponse> testAsset() =>
       _accounts.getAsset(settlement.GetAssetRequest());
@@ -684,6 +743,17 @@ bool accountCallSettled(settlement.AccountCallState state) => switch (state) {
   _ => false,
 };
 
+/// Whether a loan is active or will never become active.
+bool _loanSettled(finance.LoanState state) => switch (state) {
+  finance.LoanState.LOAN_STATE_FUNDED ||
+  finance.LoanState.LOAN_STATE_PAID ||
+  finance.LoanState.LOAN_STATE_DEFAULTED ||
+  finance.LoanState.LOAN_STATE_WRITTEN_OFF ||
+  finance.LoanState.LOAN_STATE_REJECTED ||
+  finance.LoanState.LOAN_STATE_CANCELLED => true,
+  _ => false,
+};
+
 /// Parses a device key id typed or pasted by the member.
 Uint8List parseKeyAddress(String text) {
   final bytes = hexToBytes(text.trim());
@@ -700,6 +770,7 @@ final stawiAccountServiceProvider = Provider<StawiAccountService>((ref) {
     proofs: ref.watch(genesisSessionProofsProvider),
     identity: () => ref.read(stawiIdentityProvider.future),
     targets: () => ref.read(stawiVaultServiceProvider).targets(),
+    loan: (loanRef) => ref.read(stawiLoanServiceProvider).loan(loanRef),
   );
 });
 

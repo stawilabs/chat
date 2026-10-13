@@ -43,8 +43,8 @@ final class MoneyReview {
           lines: [
             ('From', pocket),
             ('Amount', money(amount)),
-            ..._termLines(call.terms),
-            ('You repay', money(_total(amount, call.terms))),
+            ...personalTermLines(call.terms),
+            ('You repay', money(expectedToRepay(amount, call.terms))),
           ],
           signLabel: _sign,
           done: 'Loan taken from your savings',
@@ -56,7 +56,7 @@ final class MoneyReview {
             ('To', other),
             ('From', pocket),
             ('Amount', money(amount)),
-            ..._termLines(call.terms),
+            ...personalTermLines(call.terms),
             ('Offer open until', _date(call.expiresAt)),
           ],
           signLabel: _sign,
@@ -68,11 +68,13 @@ final class MoneyReview {
           lines: [
             ('From', other),
             ('Amount', money(amount)),
-            ..._termLines(call.terms),
+            ...personalTermLines(call.terms),
+            ('Expected to repay', money(expectedToRepay(amount, call.terms))),
             ('At most you will repay', money(r.maxRepay ?? call.maxRepay)),
             ('Ask open until', _date(call.expiresAt)),
           ],
           notes: [
+            _ceilingNote,
             'Asking shares your loan record with $other until they lend, decline, or the ask ends.',
           ],
           signLabel: _sign,
@@ -86,9 +88,16 @@ final class MoneyReview {
           lines: [
             ('From', other),
             ('Amount', money(shown)),
-            if (offer != null) ..._termLines(offer.terms),
+            if (offer != null) ...[
+              ...personalTermLines(offer.terms),
+              (
+                'Expected to repay',
+                money(expectedToRepay(offer.amount, offer.terms)),
+              ),
+            ],
             ('At most you will repay', money(r.maxRepay ?? call.maxRepay)),
           ],
+          notes: const [_ceilingNote],
           signLabel: _sign,
           done: 'Loan accepted',
         );
@@ -204,8 +213,9 @@ final class MoneyReview {
     required bool on,
     required StawiAsset asset,
     required BigInt perInstalment,
+    String? title,
   }) => MoneyReview(
-    title: on ? 'Pay automatically' : 'Stop paying automatically',
+    title: title ?? (on ? 'Pay automatically' : 'Stop paying automatically'),
     lines: [
       ('Loan', '#${BigInt.parse(loan.onchainLoanId.toStringUnsigned())}'),
     ],
@@ -265,6 +275,12 @@ final class MoneyReview {
   final String done;
 }
 
+/// Why the signed ceiling is not the price.
+const String _ceilingNote =
+    'Expected to repay is what the loan costs when every instalment is paid '
+    'on time. At most you will repay is the ceiling you sign: the difference '
+    'covers late charges, owed only if an instalment is late.';
+
 String _short(String hex) => hex.length <= 14
     ? hex
     : '${hex.substring(0, 6)}…${hex.substring(hex.length - 4)}';
@@ -284,12 +300,12 @@ String _every(int days) => switch (days) {
   _ => '$days days',
 };
 
-List<(String, String)> _termLines(sdk.PersonalTerms t) => [
+List<(String, String)> personalTermLines(sdk.PersonalTerms t) => [
   ('Instalments', '${t.n} every ${_every(t.everyDays)}'),
   ('Interest', '${formatBps(t.rateBps)} each instalment'),
 ];
 
 /// Principal plus interest: half of [sdk.maxRepayable], which allows the
 /// same again for late charges.
-BigInt _total(BigInt amount, sdk.PersonalTerms t) =>
+BigInt expectedToRepay(BigInt amount, sdk.PersonalTerms t) =>
     sdk.maxRepayable(amount, t) ~/ BigInt.two;
