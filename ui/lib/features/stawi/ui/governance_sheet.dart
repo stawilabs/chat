@@ -144,8 +144,13 @@ class GovernanceDialog extends ConsumerStatefulWidget {
     required this.action,
     this.onchainProposalId,
     this.revealClosesAt,
+    this.proposalFixed = false,
     super.key,
   });
+
+  /// The proposal is the one [onchainProposalId] names and cannot be
+  /// changed (a vote opened from what it decides, such as a loan).
+  final bool proposalFixed;
 
   final String roomId;
   final GovernanceAction action;
@@ -421,11 +426,9 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
             prepared,
             amount: _exitUnits,
           ),
-          GovernanceAction.proposeInvite =>
-            (prepared) => checkProposedInviteExpiry(
-              prepared,
-              expiresAt: _proposedExpiry!,
-            ),
+          GovernanceAction.proposeInvite => (
+            prepared,
+          ) => checkProposedInviteExpiry(prepared, expiresAt: _proposedExpiry!),
           _ => null,
         },
       ),
@@ -542,6 +545,8 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
               TextField(
                 key: const Key('governance-number'),
                 controller: _number,
+                readOnly: widget.proposalFixed,
+                enabled: !widget.proposalFixed,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(labelText: _action.numberLabel),
                 onChanged: _action == GovernanceAction.executeInvite

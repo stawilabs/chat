@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
@@ -46,6 +47,35 @@ class StawiFinanceService {
         .where((m) => m.profileId == me.profileId)
         .firstOrNull;
   }
+
+  /// The signed-in member's own dues in [roomId], read off the chain at one
+  /// block (finance GetMemberDues); null when they are not a member there.
+  /// Unavailable when the chain could not be read: never zero.
+  Future<finance.GetMemberDuesResponse?> myDues(String roomId) async {
+    final member = await myMembership(roomId);
+    if (member == null) return null;
+    return _savingsClient.getMemberDues(
+      finance.GetMemberDuesRequest(roomId: roomId, memberId: member.memberId),
+    );
+  }
+
+  /// The room's vote on the loan ([loanBook], [pool], [loanId]) still to be
+  /// decided: indexed (CREATED) or open; null when none is.
+  Future<finance.Proposal?> loanVote(
+    String roomId, {
+    required List<int> loanBook,
+    required List<int> pool,
+    required Int64 loanId,
+  }) async => (await _governance.listProposals(
+    finance.ListProposalsRequest(
+      roomId: roomId,
+      loan: finance.LoanRef(loanBook: loanBook, pool: pool, loanId: loanId),
+      states: const [
+        finance.ProposalState.PROPOSAL_STATE_CREATED,
+        finance.ProposalState.PROPOSAL_STATE_OPEN,
+      ],
+    ),
+  )).proposals.firstOrNull;
 
   /// The signed-in member's statement in [roomId].
   Future<finance.Statement> myStatement(String roomId) async {
@@ -223,3 +253,26 @@ final stawiRoomAssetsProvider = FutureProvider.autoDispose
 StawiAssets watchRoomAssets(WidgetRef ref, String roomId) =>
     ref.watch(stawiRoomAssetsProvider(roomId)).asData?.value ??
     StawiAssets.empty;
+
+/// The signed-in member's own dues in a room; null when not a member.
+final stawiMyDuesProvider = FutureProvider.autoDispose
+    .family<finance.GetMemberDuesResponse?, String>(
+      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).myDues(roomId),
+      // An unreadable chain is said so at once, with a way to read it again.
+      retry: (_, _) => null,
+    );
+
+/// A group loan's vote still to be decided, keyed by (room, loan); null when
+/// the vote has not opened (or the loan has none).
+final stawiLoanVoteProvider = FutureProvider.autoDispose
+    .family<finance.Proposal?, ({String roomId, finance.Loan loan})>(
+      (ref, key) => ref
+          .watch(stawiFinanceServiceProvider)
+          .loanVote(
+            key.roomId,
+            loanBook: key.loan.loanBook,
+            pool: key.loan.pool,
+            loanId: key.loan.onchainLoanId,
+          ),
+      retry: (_, _) => null,
+    );

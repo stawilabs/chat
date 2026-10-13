@@ -18,6 +18,7 @@ import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart' show LoanRef;
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
+import 'governance_sheet.dart';
 import 'group_loan_request_screen.dart';
 import 'loan_widgets.dart';
 import 'money_review_sheet.dart';
@@ -266,24 +267,94 @@ class _LoanTypes extends ConsumerWidget {
       );
 }
 
-/// Whether the person may approve the room's loans: a member holding one of
-/// the constitution's roles. Finance does not expose a role's capability
-/// bits, so a role holder is offered Approve; the LoanBook itself refuses an
-/// approval from anyone who is not a credit officer.
-bool _isOfficer(WidgetRef ref, String roomId) {
-  final me = ref.watch(stawiIdentityProvider).asData?.value;
-  final members = ref.watch(stawiMembersProvider(roomId)).asData?.value;
-  final roles = ref.watch(stawiRolesProvider(roomId)).asData?.value;
-  if (me == null || members == null || roles == null) return false;
-  final ids = {for (final r in roles) r.roleId};
-  final member = members
+/// Whether the person may approve the room's loans, as far as it is known.
+enum _Approver { loading, unknown, officer, member }
+
+/// An officer is a member whose chain-granted roles hold CAP_LEND (finance's
+/// Member.capabilities, the mask the LoanBook checks). Unknown when the
+/// members could not be read: then neither Approve nor Guarantee is offered.
+_Approver _approver(WidgetRef ref, String roomId) {
+  final me = ref.watch(stawiIdentityProvider);
+  final members = ref.watch(stawiMembersProvider(roomId));
+  if (members.hasError || me.hasError) return _Approver.unknown;
+  final who = me.asData?.value;
+  final list = members.asData?.value;
+  if (who == null || list == null) return _Approver.loading;
+  final member = list
       .where(
         (m) =>
-            m.profileId == me.profileId ||
-            me.addresses.any((a) => bytesEqual(a, m.accountAddress)),
+            m.profileId == who.profileId ||
+            who.addresses.any((a) => bytesEqual(a, m.accountAddress)),
       )
       .firstOrNull;
-  return member != null && member.roleIds.any(ids.contains);
+  return member != null &&
+          member.capabilities.contains(
+            finance.RoomCapability.ROOM_CAPABILITY_LEND,
+          )
+      ? _Approver.officer
+      : _Approver.member;
+}
+
+/// The vote on a loan the room decides by vote: opened with its proposal,
+/// which the person cannot change; said so while it has not opened.
+class _LoanVote extends ConsumerWidget {
+  const _LoanVote({required this.roomId, required this.loan});
+
+  final String roomId;
+  final finance.Loan loan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = (roomId: roomId, loan: loan);
+    final id = loan.onchainLoanId;
+    return ref
+        .watch(stawiLoanVoteProvider(key))
+        .when(
+          loading: () => const Text('Finding the vote…'),
+          error: (e, _) => Row(
+            children: [
+              Expanded(child: Text(stawiErrorMessage(e))),
+              TextButton(
+                key: Key('loan-$id-vote-retry'),
+                onPressed: () => ref.invalidate(stawiLoanVoteProvider(key)),
+                child: const Text('Try again'),
+              ),
+            ],
+          ),
+          data: (proposal) {
+            final number = proposal?.onchainProposalId.toInt() ?? 0;
+            if (proposal == null || number <= 0) {
+              return Text(
+                "The vote hasn't opened yet",
+                key: Key('loan-$id-vote-pending'),
+              );
+            }
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                key: Key('loan-$id-vote'),
+                icon: const Icon(Icons.how_to_vote_outlined),
+                label: const Text('Review and vote'),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => GovernanceDialog(
+                    roomId: roomId,
+                    action:
+                        proposal.ballot == finance.BallotMode.BALLOT_MODE_SECRET
+                        ? GovernanceAction.secretVote
+                        : GovernanceAction.vote,
+                    onchainProposalId: number,
+                    proposalFixed: true,
+                    revealClosesAt: proposal.hasRevealClosesAt()
+                        ? proposal.revealClosesAt.toDateTime()
+                        : null,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+  }
 }
 
 /// Runs an engine call on [loan] (approve, pledge, cancel) through the
@@ -439,7 +510,7 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
         .where((p) => bytesEqual(p.productId, loan.productId))
         .firstOrNull;
     final byVote = product != null && product.officerApprovals == 0;
-    final officer = _isOfficer(ref, widget.roomId);
+    final approver = _approver(ref, widget.roomId);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Padding(
@@ -464,12 +535,24 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
             const SizedBox(height: 8),
             if (_settling) const _Settling(key: Key('pending-settling')),
             if (byVote) ...[
-              const Text(
-                "Decided by a room vote. Vote from the loan's vote card in "
-                'the chat.',
-                key: Key('loan-vote-note'),
+              const Text('Decided by a room vote'),
+              _LoanVote(roomId: widget.roomId, loan: loan),
+            ],
+            if (approver == _Approver.unknown)
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Who may approve could not be read just now'),
+                  ),
+                  TextButton(
+                    key: Key('loan-$id-roles-retry'),
+                    onPressed: () =>
+                        ref.invalidate(stawiMembersProvider(widget.roomId)),
+                    child: const Text('Try again'),
+                  ),
+                ],
               ),
-            ] else if (officer)
+            if (approver == _Approver.officer && !byVote)
               Align(
                 alignment: Alignment.centerLeft,
                 child: FilledButton(
@@ -489,7 +572,7 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
                   child: const Text('Approve'),
                 ),
               ),
-            if (!officer)
+            if (approver == _Approver.member)
               Row(
                 children: [
                   Expanded(

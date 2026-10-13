@@ -1,12 +1,9 @@
 import 'dart:typed_data';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
-import 'package:stawi/features/stawi/domain/dues_calendar.dart';
 import 'package:stawi/features/stawi/ui/protocol_fee_line.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
-import 'package:stawi_api/well_known.dart' as wkt;
 
 import '../../../support/stawi_fakes.dart';
 
@@ -175,116 +172,6 @@ void main() {
 
     test('a fee that could not be read is never shown as none', () {
       expect(protocolFeeText(null), 'Stawi fee: could not be read just now');
-    });
-  });
-
-  group('the next dues date', () {
-    DateTime at(int y, int m, int d) => DateTime.utc(y, m, d);
-    wkt.Timestamp ts(DateTime t) =>
-        wkt.Timestamp(seconds: Int64(t.millisecondsSinceEpoch ~/ 1000));
-
-    finance.RoomDuesProduct dues({
-      int every = 1,
-      int first = 0,
-      int last = 0,
-      int offset = 0,
-      bool active = true,
-    }) => finance.RoomDuesProduct(
-      everyPeriods: every,
-      firstPeriod: first,
-      lastPeriod: last,
-      dueOffsetSeconds: offset,
-      active: active,
-    );
-
-    /// The next due date, or null when nothing more falls due; fails the
-    /// test when it could not be worked out.
-    DateTime? next(finance.ListRoomProductsResponse r, DateTime now) {
-      final n = nextDuesDate(r, now);
-      expect(n.unknown, isFalse);
-      return n.at;
-    }
-
-    finance.ListRoomProductsResponse room(
-      finance.RoomCalendar c,
-      List<finance.RoomDuesProduct> products,
-    ) => finance.ListRoomProductsResponse(
-      rulesConfigured: true,
-      calendar: c,
-      duesProducts: products,
-    );
-
-    test('monthly periods keep the anchor day, clamped to short months', () {
-      final c = finance.RoomCalendar(
-        unit: finance.PeriodUnit.PERIOD_UNIT_MONTH,
-        length: 1,
-        anchor: ts(at(2026, 1, 31)),
-      );
-      expect(periodStart(c, 1), at(2026, 2, 28).millisecondsSinceEpoch ~/ 1000);
-      expect(periodStart(c, 2), at(2026, 3, 31).millisecondsSinceEpoch ~/ 1000);
-      expect(
-        periodStart(c, 13),
-        at(2027, 2, 28).millisecondsSinceEpoch ~/ 1000,
-      );
-    });
-
-    test('the next due after now, with the due offset', () {
-      final c = finance.RoomCalendar(
-        unit: finance.PeriodUnit.PERIOD_UNIT_MONTH,
-        length: 1,
-        anchor: ts(at(2026, 1, 1)),
-        currentPeriod: 9,
-      );
-      // Period 9 is October; its due (5 days in) has passed on the 13th.
-      expect(
-        next(room(c, [dues(offset: 5 * 86400)]), at(2026, 10, 13)),
-        at(2026, 11, 6),
-      );
-      expect(
-        next(room(c, [dues(offset: 20 * 86400)]), at(2026, 10, 13)),
-        at(2026, 10, 21),
-      );
-    });
-
-    test('a calendar behind the clock: could not be worked out', () {
-      // The calendar says period 1 while the clock is weeks later: both
-      // candidates have passed, so no date is made up.
-      final c = finance.RoomCalendar(
-        unit: finance.PeriodUnit.PERIOD_UNIT_WEEK,
-        length: 1,
-        anchor: ts(at(2026, 10, 5)),
-        currentPeriod: 1,
-      );
-      final n = nextDuesDate(room(c, [dues()]), at(2026, 12, 1));
-      expect(n.unknown, isTrue);
-      expect(n.at, isNull);
-      // An ended product beside it still leaves it unknown.
-      expect(
-        nextDuesDate(room(c, [dues(), dues(last: 1)]), at(2026, 12, 1)).unknown,
-        isTrue,
-      );
-    });
-
-    test('every other period, the earliest product, ended products', () {
-      final c = finance.RoomCalendar(
-        unit: finance.PeriodUnit.PERIOD_UNIT_WEEK,
-        length: 1,
-        anchor: ts(at(2026, 10, 5)),
-        currentPeriod: 1,
-      );
-      final now = at(2026, 10, 13);
-      // Due in even weeks from week 0: week 2 begins on 19 October.
-      expect(next(room(c, [dues(every: 2)]), now), at(2026, 10, 19));
-      expect(
-        next(room(c, [dues(every: 2), dues(first: 3)]), now),
-        at(2026, 10, 19),
-      );
-      expect(next(room(c, [dues(last: 1)]), now), isNull);
-      expect(next(room(c, [dues(active: false)]), now), isNull);
-      expect(
-        next(finance.ListRoomProductsResponse(rulesConfigured: false), now),
-        isNull,
-      );
     });
   });
 }

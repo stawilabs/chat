@@ -16,9 +16,7 @@ import '../data/stawi_room_engines.dart';
 import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
-import '../domain/dues_calendar.dart';
 import '../domain/payoff_top_up.dart';
-import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
 import 'money_review_sheet.dart';
 import 'room_loans_tab.dart';
@@ -189,13 +187,11 @@ class _SavingsTab extends ConsumerWidget {
   }
 }
 
-/// The room's next due date: the room's, not the member's own (finance
-/// does not say when this member next owes, nor how much).
-const String _nextLabel = "The room's next due date";
-
-/// The member's own dues in the room: what they owe now (their live book on
-/// the RulesEngine) and when dues next fall due (the room's calendar and dues
-/// products). Either part that cannot be read says so; nothing reads as zero.
+/// The member's own dues in the room, read off the chain at one block
+/// (finance GetMemberDues): per product what is owed now, when it next falls
+/// due and what is to be paid by then; penalties owed and their standing.
+/// What cannot be read says so and offers to read it again; nothing reads as
+/// zero.
 class MyDuesSummary extends ConsumerWidget {
   const MyDuesSummary({required this.roomId, super.key});
 
@@ -203,12 +199,9 @@ class MyDuesSummary extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balances = ref.watch(stawiMemberBalancesProvider(roomId));
-    final products = ref.watch(roomProductsProvider(roomId));
-    final me = ref.watch(stawiIdentityProvider).asData?.value;
-    final now = ref.watch(stawiClockProvider)();
-    final assets = watchRoomAssets(ref, roomId);
-    Widget row(String label, String value, Key key) => Padding(
+    final dues = ref.watch(stawiMyDuesProvider(roomId));
+    final roomAssets = watchRoomAssets(ref, roomId);
+    Widget row(String label, String value, {Key? key}) => Padding(
       key: key,
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -218,71 +211,79 @@ class MyDuesSummary extends ConsumerWidget {
         ],
       ),
     );
-    Widget retry(
-      VoidCallback onPressed, {
-      Key key = const Key('my-dues-retry'),
-    }) => TextButton(
-      key: key,
-      onPressed: onPressed,
-      child: const Text('Try again'),
-    );
-
-    final owed = balances.when<List<Widget>>(
-      loading: () => [row('Owed now', '…', const Key('my-dues-owed'))],
+    final children = dues.when<List<Widget>>(
+      loading: () => [row('Owed now', '…', key: const Key('my-dues-owed'))],
       error: (e, _) => [
         row(
-          'Owed now',
+          'My dues',
           'could not be read just now',
-          const Key('my-dues-owed'),
+          key: const Key('my-dues-unavailable'),
         ),
-        retry(() => ref.invalidate(stawiMemberBalancesProvider(roomId))),
+        TextButton(
+          key: const Key('my-dues-retry'),
+          onPressed: () => ref.invalidate(stawiMyDuesProvider(roomId)),
+          child: const Text('Try again'),
+        ),
       ],
       data: (r) {
-        final mine = me == null
-            ? null
-            : r.balances
-                  .where(
-                    (b) =>
-                        b.profileId == me.profileId ||
-                        me.addresses.any((a) => bytesEqual(a, b.account)),
-                  )
-                  .firstOrNull;
-        if (mine == null) {
-          return [
-            const Text(
+        if (r == null) {
+          return const [
+            Text(
               'You are not a member of this room on chain yet',
               key: Key('my-dues-owed'),
             ),
           ];
         }
-        if (!mine.hasBook()) {
-          return [
-            row(
-              'Owed now',
-              'could not be read just now',
-              const Key('my-dues-owed'),
-            ),
-            retry(() => ref.invalidate(stawiMemberBalancesProvider(roomId))),
+        final d = r.dues;
+        if (!d.rulesConfigured) {
+          return const [
+            Text('This room has no dues yet', key: Key('my-dues-owed')),
           ];
         }
-        final book = mine.book;
-        final dues = BigInt.tryParse(book.duesOwed.amount) ?? BigInt.zero;
-        final penalties =
-            BigInt.tryParse(book.penaltiesOwed.amount) ?? BigInt.zero;
-        final assetId = book.duesOwed.assetId.isNotEmpty
-            ? book.duesOwed.assetId
-            : book.penaltiesOwed.assetId;
-        final total = formatMoney(
-          finance.Money(amount: '${dues + penalties}', assetId: assetId),
-          assets,
+        final assets = roomAssets.withAll(r.assets);
+        final tz = Duration(
+          seconds: d.hasCalendar() ? d.calendar.tzOffsetSeconds : 0,
         );
+        String money(finance.Money m) => formatMoney(m, assets);
+        BigInt units(finance.Money m) =>
+            BigInt.tryParse(m.amount) ?? BigInt.zero;
         return [
-          row('Owed now', total, const Key('my-dues-owed')),
-          if (penalties > BigInt.zero)
-            Text(
-              'Including ${formatMoney(finance.Money(amount: '$penalties', assetId: assetId), assets)} of penalties',
+          for (final p in d.products)
+            Padding(
+              key: Key('my-dues-${bytesToHex0x(p.productId)}'),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    productLabel(p.name, p.productId),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  row('Owed now', money(p.owedNow)),
+                  if (p.hasNextDueAt()) ...[
+                    // The date in the room's own time zone.
+                    row(
+                      'Next due ${_dates.format(p.nextDueAt.toDateTime().add(tz))}',
+                      money(p.nextDueAmount),
+                    ),
+                    row(
+                      'To pay by then',
+                      units(p.owedAtNextDue) == BigInt.zero &&
+                              units(p.nextDueAmount) > BigInt.zero
+                          ? 'Paid ahead'
+                          : money(p.owedAtNextDue),
+                    ),
+                  ] else
+                    const Text('Nothing more falls due'),
+                ],
+              ),
             ),
-          Text(switch (book.standing) {
+          row(
+            'Penalties owed',
+            money(d.penaltiesOwed),
+            key: const Key('my-dues-penalties'),
+          ),
+          Text(switch (d.standing) {
             finance.MemberDuesStanding.MEMBER_DUES_STANDING_CURRENT =>
               'You are up to date',
             finance.MemberDuesStanding.MEMBER_DUES_STANDING_IN_ARREARS =>
@@ -294,51 +295,12 @@ class MyDuesSummary extends ConsumerWidget {
         ];
       },
     );
-
-    final next = products.when<List<Widget>>(
-      loading: () => [row(_nextLabel, '…', const Key('my-dues-next'))],
-      error: (e, _) => [
-        row(
-          _nextLabel,
-          'could not be read just now',
-          const Key('my-dues-next'),
-        ),
-        retry(
-          () => ref.invalidate(roomProductsProvider(roomId)),
-          key: const Key('my-dues-next-retry'),
-        ),
-      ],
-      data: (p) {
-        if (!p.rulesConfigured) {
-          return [
-            row(_nextLabel, 'no dues set yet', const Key('my-dues-next')),
-          ];
-        }
-        final next = nextDuesDate(p, now);
-        final at = next.at;
-        return [
-          row(
-            _nextLabel,
-            // The date in the room's own time zone, as its calendar keeps it.
-            at != null
-                ? _dates.format(
-                    at.add(Duration(seconds: p.calendar.tzOffsetSeconds)),
-                  )
-                : next.unknown
-                ? 'could not be worked out'
-                : 'nothing more falls due',
-            const Key('my-dues-next'),
-          ),
-        ];
-      },
-    );
-
     return Padding(
       key: const Key('my-dues'),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [...owed, ...next],
+        children: children,
       ),
     );
   }

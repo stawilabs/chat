@@ -78,7 +78,11 @@ void main() {
 
   late FakeConnectTransport transport;
   late RecordingSigningGate gate;
-  late List<String> roles;
+  // The person's chain-granted capabilities; whether members can be read;
+  // the loan votes finance lists.
+  late List<finance.RoomCapability> caps;
+  late bool membersFail;
+  late List<finance.Proposal> votes;
   late finance.RoomLoanProduct product;
   // Whether submitted calls read FINAL yet; how often the room's loans and
   // its fee were read.
@@ -89,7 +93,12 @@ void main() {
 
   setUp(() async {
     gate = RecordingSigningGate();
-    roles = ['treasurer'];
+    caps = [
+      finance.RoomCapability.ROOM_CAPABILITY_INVITE,
+      finance.RoomCapability.ROOM_CAPABILITY_LEND,
+    ];
+    membersFail = false;
+    votes = [];
     product = normal;
     finalNow = true;
     loanReads = 0;
@@ -208,6 +217,32 @@ void main() {
           ),
         ),
       );
+    transport
+      ..on(finance.RoomService.listMembers, (req) {
+        if (membersFail) {
+          throw connect.ConnectException(connect.Code.unavailable, 'down');
+        }
+        return finance.ListMembersResponse(
+          members: [
+            finance.Member(
+              memberId: 'mem1',
+              profileId: 'p1',
+              accountAddress: me,
+              roleIds: const ['officer'],
+              capabilities: caps,
+            ),
+            finance.Member(
+              memberId: 'mem2',
+              profileId: 'p2',
+              accountAddress: amina,
+            ),
+          ],
+        );
+      })
+      ..on(
+        finance.GovernanceService.listProposals,
+        (req) => finance.ListProposalsResponse(proposals: votes),
+      );
     await serveDeployedAccount(transport, request.devicePrivateKey);
   });
 
@@ -255,23 +290,15 @@ void main() {
             loanReads++;
             return loans;
           }),
-          stawiMembersProvider.overrideWith(
-            (ref, id) async => [
-              finance.Member(
-                profileId: 'p1',
-                accountAddress: me,
-                roleIds: roles,
-              ),
-              finance.Member(profileId: 'p2', accountAddress: amina),
-            ],
-          ),
-          stawiRolesProvider.overrideWith(
-            (ref, id) async => [
-              finance.RoleCapabilities(
-                roleId: 'treasurer',
-                displayName: 'Treasurer',
-              ),
-            ],
+          stawiFinanceServiceProvider.overrideWithValue(
+            StawiFinanceService(
+              rooms: finance.RoomServiceClient(transport),
+              treasury: finance.TreasuryServiceClient(transport),
+              governance: finance.GovernanceServiceClient(transport),
+              savings: finance.SavingsServiceClient(transport),
+              loans: finance.LoanServiceClient(transport),
+              identity: identity,
+            ),
           ),
           roomMembersProvider.overrideWith(
             (ref, id) async => [
@@ -527,12 +554,73 @@ void main() {
     },
   );
 
-  testWidgets('a request decided by a room vote points to its vote card', (
+  group('a request the room decides by vote', () {
+    setUp(() {
+      product = finance.RoomLoanProduct()
+        ..mergeFromMessage(normal)
+        ..officerApprovals = 0;
+    });
+
+    final pending = [
+      groupLoan(
+        id: 3,
+        borrower: amina,
+        state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+      ),
+    ];
+
+    testWidgets('opens its vote with the proposal finance names, fixed', (
+      tester,
+    ) async {
+      votes = [
+        finance.Proposal(
+          proposalId: 'prop0000000000000001',
+          onchainProposalId: Int64(12),
+          ballot: finance.BallotMode.BALLOT_MODE_OPEN,
+          state: finance.ProposalState.PROPOSAL_STATE_CREATED,
+        ),
+      ];
+      await open(tester, loans: pending);
+      expect(find.text('Decided by a room vote'), findsOneWidget);
+      expect(find.byKey(const Key('loan-3-approve')), findsNothing);
+      final asked = transport
+          .requestsTo(finance.GovernanceService.listProposals)
+          .single;
+      expect(asked.roomId, roomId);
+      expect(asked.loan.loanBook, book);
+      expect(asked.loan.pool, custody);
+      expect(asked.loan.loanId, Int64(3));
+      expect(
+        asked.states,
+        containsAll([
+          finance.ProposalState.PROPOSAL_STATE_CREATED,
+          finance.ProposalState.PROPOSAL_STATE_OPEN,
+        ]),
+      );
+
+      await tapAndSettle(tester, find.byKey(const Key('loan-3-vote')));
+      final number = tester.widget<TextField>(
+        find.byKey(const Key('governance-number')),
+      );
+      expect(number.controller!.text, '12');
+      expect(number.enabled, isFalse);
+      expect(number.readOnly, isTrue);
+    });
+
+    testWidgets("says the vote hasn't opened yet when there is none", (
+      tester,
+    ) async {
+      await open(tester, loans: pending);
+      expect(find.text("The vote hasn't opened yet"), findsOneWidget);
+      expect(find.byKey(const Key('loan-3-vote')), findsNothing);
+      expect(find.byKey(const Key('governance-number')), findsNothing);
+    });
+  });
+
+  testWidgets('Approve only for CAP_LEND: a member without it guarantees', (
     tester,
   ) async {
-    product = finance.RoomLoanProduct()
-      ..mergeFromMessage(normal)
-      ..officerApprovals = 0;
+    caps = [finance.RoomCapability.ROOM_CAPABILITY_INVITE];
     await open(
       tester,
       loans: [
@@ -543,20 +631,39 @@ void main() {
         ),
       ],
     );
-    expect(
-      find.text(
-        "Decided by a room vote. Vote from the loan's vote card in the chat.",
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Review and vote'), findsNothing);
     expect(find.byKey(const Key('loan-3-approve')), findsNothing);
+    expect(find.byKey(const Key('loan-3-guarantee')), findsOneWidget);
   });
 
-  testWidgets('a member without a role guarantees part of a request', (
+  testWidgets('members that cannot be read: neither button, a retry', (
     tester,
   ) async {
-    roles = [];
+    membersFail = true;
+    await open(
+      tester,
+      loans: [
+        groupLoan(
+          id: 3,
+          borrower: amina,
+          state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+        ),
+      ],
+    );
+    expect(find.byKey(const Key('loan-3-approve')), findsNothing);
+    expect(find.byKey(const Key('loan-3-guarantee')), findsNothing);
+    expect(
+      find.text('Who may approve could not be read just now'),
+      findsOneWidget,
+    );
+    membersFail = false;
+    await tapAndSettle(tester, find.byKey(const Key('loan-3-roles-retry')));
+    expect(find.byKey(const Key('loan-3-approve')), findsOneWidget);
+  });
+
+  testWidgets('a member without CAP_LEND guarantees part of a request', (
+    tester,
+  ) async {
+    caps = [finance.RoomCapability.ROOM_CAPABILITY_INVITE];
     await open(
       tester,
       loans: [
@@ -688,7 +795,7 @@ void main() {
     });
 
     testWidgets('a pledge', (tester) async {
-      roles = [];
+      caps = [finance.RoomCapability.ROOM_CAPABILITY_INVITE];
       await open(
         tester,
         loans: [
