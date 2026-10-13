@@ -9,11 +9,15 @@ import '../../messages/domain/room_event.dart';
 import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_subscription_service.dart';
 import '../data/stawi_finance_service.dart';
+import '../data/stawi_identity.dart';
+import '../data/stawi_loan_service.dart';
 import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
+import '../domain/loan_view.dart';
 import '../domain/stawi_money.dart';
 import '../domain/stawi_payloads.dart';
 import 'governance_sheet.dart';
+import 'loan_detail_screen.dart';
 import 'stawi_feedback.dart';
 
 /// The timeline widget for a Stawi event.
@@ -388,7 +392,22 @@ class FinanceCardBubble extends ConsumerWidget {
 
   final RoomEvent event;
 
-  static const _hidden = {'action', 'payload_hash', 'asset_id'};
+  /// Data a card carries for the app, not for the person: ids, the loan's
+  /// address and number, and the record's raw counts.
+  static const _hidden = {
+    'action',
+    'payload_hash',
+    'asset_id',
+    'loan_book',
+    'pool',
+    'loan_id',
+    'kind',
+    'event',
+    'instalment',
+    'record_loans',
+    'record_late',
+    'record_defaults',
+  };
 
   /// A data value as shown: an amount in its asset when the card names one.
   static String _shown(
@@ -426,11 +445,17 @@ class FinanceCardBubble extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Icon(_iconFor(card.kind), color: theme.colorScheme.primary),
+                    Icon(
+                      iconForCard(card.kind),
+                      key: const Key('finance-card-icon'),
+                      color: alarmingCard(card.kind)
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        card.title,
+                        cardTitle(card),
                         style: theme.textTheme.titleSmall,
                       ),
                     ),
@@ -447,6 +472,10 @@ class FinanceCardBubble extends ConsumerWidget {
                     entry.key.replaceAll('_', ' '),
                     _shown(card, entry.key, entry.value, assets),
                   ),
+                if (card.opensLoan) ...[
+                  const SizedBox(height: 8),
+                  _OpenLoanButton(card: card, roomId: event.roomId),
+                ],
                 if (offersVote) ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
@@ -464,14 +493,6 @@ class FinanceCardBubble extends ConsumerWidget {
       ),
     );
   }
-
-  static IconData _iconFor(String kind) => switch (kind) {
-    'PROPOSAL' || 'PROPOSAL_OPEN' => Icons.how_to_vote_outlined,
-    'MOTION_TALLY' => Icons.poll_outlined,
-    'CONTRIBUTION' || 'CONTRIBUTION_MISSED' => Icons.savings_outlined,
-    _ when kind.startsWith('LOAN') => Icons.request_quote_outlined,
-    _ => Icons.account_balance_outlined,
-  };
 
   static Future<void> _openVote(
     BuildContext context,
@@ -502,6 +523,66 @@ class FinanceCardBubble extends ConsumerWidget {
         revealClosesAt: proposal.hasRevealClosesAt()
             ? proposal.revealClosesAt.toDateTime()
             : null,
+      ),
+    );
+  }
+}
+
+/// A finance card's icon by its kind.
+IconData iconForCard(String kind) => switch (kind) {
+  'PROPOSAL' || 'PROPOSAL_OPEN' => Icons.how_to_vote_outlined,
+  'MOTION_TALLY' => Icons.poll_outlined,
+  'LOAN_OFFERED' => Icons.volunteer_activism_outlined,
+  'LOAN_REQUESTED' => Icons.request_quote_outlined,
+  'LOAN_PAID_OUT' => Icons.payments_outlined,
+  'LOAN_PAYMENT' => Icons.check_circle_outline,
+  'LOAN_LATE' => Icons.schedule,
+  'LOAN_DEFAULTED' => Icons.report_gmailerrorred,
+  'LOAN_RECOVERED' => Icons.restore,
+  'LOAN_REPAID' => Icons.verified_outlined,
+  'CONTRIBUTION' || 'CONTRIBUTION_MISSED' => Icons.savings_outlined,
+  'CONTRIBUTION_FAILED' => Icons.event_busy,
+  _ when kind.startsWith('LOAN') => Icons.request_quote_outlined,
+  _ => Icons.account_balance_outlined,
+};
+
+/// Whether a card's kind is shown in the error colour: something went wrong
+/// with the person's money.
+bool alarmingCard(String kind) =>
+    const {'LOAN_LATE', 'LOAN_DEFAULTED', 'CONTRIBUTION_FAILED'}.contains(kind);
+
+/// A card's title as shown: finance's, except a missed contribution, which
+/// reads "Contribution missed".
+String cardTitle(FinanceCardView card) =>
+    card.kind == 'CONTRIBUTION_FAILED' ? 'Contribution missed' : card.title;
+
+/// Opens the loan a card names. On an offer or an ask, the person it waits
+/// for (the borrower of an offer, the lender of an ask) sees Review instead;
+/// both open the loan's page, where it is decided.
+class _OpenLoanButton extends ConsumerWidget {
+  const _OpenLoanButton({required this.card, required this.roomId});
+
+  final FinanceCardView card;
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loanRef = card.loanRef!;
+    var review = false;
+    if (card.kind == 'LOAN_OFFERED' || card.kind == 'LOAN_REQUESTED') {
+      final loan = ref.watch(loanProvider(loanRef)).asData?.value.loan;
+      final mine = ref.watch(stawiIdentityProvider).asData?.value.addresses;
+      review =
+          loan != null && mine != null && LoanView(loan, mine: mine).awaitsMe;
+    }
+    return OutlinedButton.icon(
+      key: const Key('finance-card-open-loan'),
+      icon: Icon(review ? Icons.rate_review_outlined : Icons.open_in_new),
+      label: Text(review ? 'Review' : 'Open loan'),
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => LoanDetailScreen(ref: loanRef, roomId: roomId),
+        ),
       ),
     );
   }

@@ -544,6 +544,61 @@ void main() {
       });
     });
 
+    group('finance cards', () {
+      RoomEvent card(String kind, String title) => createEvent(
+        type: RoomEventType.financeCard,
+        content: {'cardId': 'k1', 'kind': kind, 'title': title, 'data': {}},
+      );
+
+      test('are titled by what happened, with the card title as body', () {
+        const titles = {
+          'LOAN_OFFERED': 'Loan offer',
+          'LOAN_REQUESTED': 'Loan request',
+          'LOAN_PAID_OUT': 'Loan paid out',
+          'LOAN_PAYMENT': 'Payment received',
+          'LOAN_LATE': 'Instalment late',
+          'LOAN_DEFAULTED': 'Loan in default',
+          'LOAN_RECOVERED': 'Recovered',
+          'LOAN_REPAID': 'Loan repaid',
+          'CONTRIBUTION_FAILED': 'Contribution missed',
+          'PROPOSAL': 'Stawi update',
+          '': 'Stawi update',
+        };
+        for (final MapEntry(key: kind, value: title) in titles.entries) {
+          final result = formatter.format(
+            event: card(kind, 'Bob offers you 300.00 USDC'),
+            senderName: 'Stawi',
+            roomName: 'Chama',
+          );
+          expect(result.title, title, reason: kind);
+          expect(result.body, 'Bob offers you 300.00 USDC', reason: kind);
+        }
+      });
+
+      test('say nothing of the card in privacy mode', () {
+        final result = formatter.format(
+          event: card('LOAN_LATE', 'Instalment 2 is late'),
+          senderName: 'Stawi',
+          hideContent: true,
+        );
+        expect(result.title, 'Stawi');
+        expect(result.body, 'Stawi update');
+      });
+
+      test('never call the grace day free', () {
+        for (final kind in [
+          'LOAN_LATE',
+          'LOAN_DEFAULTED',
+          'CONTRIBUTION_FAILED',
+        ]) {
+          expect(
+            financeCardNotificationTitle(kind).toLowerCase(),
+            isNot(contains('free')),
+          );
+        }
+      });
+    });
+
     group('edge cases', () {
       test('handles null content values', () {
         final event = createEvent(

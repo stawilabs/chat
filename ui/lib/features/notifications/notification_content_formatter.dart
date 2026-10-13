@@ -32,6 +32,20 @@ class NotificationContent {
       'isGroupMessage: $isGroupMessage)';
 }
 
+/// A finance card notification's title, by the card's kind: what happened.
+String financeCardNotificationTitle(String kind) => switch (kind) {
+  'LOAN_OFFERED' => 'Loan offer',
+  'LOAN_REQUESTED' => 'Loan request',
+  'LOAN_PAID_OUT' => 'Loan paid out',
+  'LOAN_PAYMENT' => 'Payment received',
+  'LOAN_LATE' => 'Instalment late',
+  'LOAN_DEFAULTED' => 'Loan in default',
+  'LOAN_RECOVERED' => 'Recovered',
+  'LOAN_REPAID' => 'Loan repaid',
+  'CONTRIBUTION_FAILED' => 'Contribution missed',
+  _ => 'Stawi update',
+};
+
 /// Service for formatting notification content based on message type
 ///
 /// Handles different message types:
@@ -66,6 +80,17 @@ class NotificationContentFormatter {
       return NotificationContent(
         title: title,
         body: _getPrivateBody(event.type),
+        isGroupMessage: isGroupMessage,
+      );
+    }
+
+    // A finance card is titled by what happened; its body is the card's
+    // own title.
+    if (event.type == RoomEventType.financeCard) {
+      final card = FinanceCardView.fromContent(event.content);
+      return NotificationContent(
+        title: financeCardNotificationTitle(card.kind),
+        body: _truncate(card.title, maxNotificationTextLength),
         isGroupMessage: isGroupMessage,
       );
     }

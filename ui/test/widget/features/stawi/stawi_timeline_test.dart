@@ -12,9 +12,15 @@ import 'package:stawi/features/rooms/data/room_subscription_service.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
+import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
+import 'package:stawi/features/stawi/domain/personal_calls.dart';
+import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
+import 'package:stawi/features/stawi/ui/loan_detail_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_timeline.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
@@ -157,6 +163,221 @@ void main() {
     expect(find.text('2,500.00 USDC'), findsOneWidget);
     expect(find.text('USDC.146'), findsNothing);
     expect(find.byKey(const Key('finance-card-vote')), findsOneWidget);
+  });
+
+  group('loan cards', () {
+    const book = '0x101112131415161718191a1b1c1d1e1f20212223';
+    const pool = '0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3';
+
+    RoomEvent loanCard({
+      String kind = 'LOAN_OFFERED',
+      String title = 'Bob offers you a loan of 300.00 USDC',
+      Map<String, dynamic>? data,
+    }) => RoomEvent(
+      id: 'card-$kind',
+      roomId: roomId,
+      senderId: '',
+      type: RoomEventType.financeCard,
+      createdAt: 0,
+      content: {
+        'cardId': 'k-$kind',
+        'kind': kind,
+        'title': title,
+        'body': '',
+        'data':
+            data ??
+            {
+              'loan_book': book,
+              'pool': pool,
+              'loan_id': '7',
+              'kind': 'PERSON_TO_PERSON',
+              'event': 'LoanOffered',
+              'instalment': '0',
+              'action': 'open_loan',
+              'record_loans': '2',
+              'record_late': '0',
+              'record_defaults': '0',
+            },
+      },
+    );
+
+    testWidgets('an offer shows its icon, hides the ids and opens the loan', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        host(StawiTimelineItem(event: loanCard(), isMe: false)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Bob offers you a loan of 300.00 USDC'), findsOneWidget);
+      expect(find.byIcon(Icons.volunteer_activism_outlined), findsOneWidget);
+      for (final hidden in [
+        book,
+        pool,
+        '7',
+        'PERSON_TO_PERSON',
+        'LoanOffered',
+        'open_loan',
+        'loan book',
+        'record loans',
+      ]) {
+        expect(find.textContaining(hidden), findsNothing, reason: hidden);
+      }
+      final open = find.byKey(const Key('finance-card-open-loan'));
+      expect(open, findsOneWidget);
+      expect(find.text('Open loan'), findsOneWidget);
+
+      await tester.tap(open);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      final screen = tester.widget<LoanDetailScreen>(
+        find.byType(LoanDetailScreen),
+      );
+      expect(
+        screen.ref,
+        LoanRef(
+          loanBook: hexToBytes(book),
+          pool: hexToBytes(pool),
+          loanId: BigInt.from(7),
+        ),
+      );
+      expect(screen.roomId, roomId);
+    });
+
+    testWidgets('the borrower an offer waits for sees Review', (tester) async {
+      final me = Uint8List.fromList(List.filled(20, 0x0e));
+      final bob = hexToBytes(pool);
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: loanCard(), isMe: false),
+          overrides: [
+            stawiIdentityProvider.overrideWith(
+              (ref) async => identityWith('p1', me),
+            ),
+            loanProvider.overrideWith(
+              (ref, loanRef) async => finance.GetLoanResponse(
+                loan: finance.Loan(
+                  loanBook: hexToBytes(book),
+                  pool: bob,
+                  lender: bob,
+                  offeredBy: bob,
+                  borrowerAccount: me,
+                  onchainLoanId: Int64(7),
+                  kind: finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+                  state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('finance-card-open-loan')),
+          matching: find.text('Review'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Open loan'), findsNothing);
+    });
+
+    testWidgets('a card whose pool is malformed offers no loan to open', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(
+            event: loanCard(
+              data: {
+                'loan_book': book,
+                'pool': '0xb0b1',
+                'loan_id': '7',
+                'action': 'open_loan',
+              },
+            ),
+            isMe: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('finance-card-open-loan')), findsNothing);
+    });
+
+    testWidgets('a missed contribution has its own card', (tester) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(
+            event: loanCard(
+              kind: 'CONTRIBUTION_FAILED',
+              title: 'Your contribution could not be taken',
+              data: const {},
+            ),
+            isMe: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Contribution missed'), findsOneWidget);
+      expect(find.text('Your contribution could not be taken'), findsNothing);
+      final icon = tester.widget<Icon>(
+        find.byKey(const Key('finance-card-icon')),
+      );
+      expect(icon.icon, Icons.event_busy);
+      final context = tester.element(
+        find.byKey(const Key('finance-card-icon')),
+      );
+      expect(icon.color, Theme.of(context).colorScheme.error);
+    });
+
+    testWidgets('a late instalment is in the error colour', (tester) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(
+            event: loanCard(kind: 'LOAN_LATE', title: 'Instalment 2 is late'),
+            isMe: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final icon = tester.widget<Icon>(
+        find.byKey(const Key('finance-card-icon')),
+      );
+      expect(icon.icon, Icons.schedule);
+      final context = tester.element(
+        find.byKey(const Key('finance-card-icon')),
+      );
+      expect(icon.color, Theme.of(context).colorScheme.error);
+    });
+
+    test('a loan reference needs all three, well formed', () {
+      FinanceCardView card(Map<String, dynamic> data) =>
+          FinanceCardView.fromContent({'kind': 'LOAN_PAYMENT', 'data': data});
+      expect(
+        card({'loan_book': book, 'pool': pool, 'loan_id': '7'}).loanRef,
+        isNotNull,
+      );
+      expect(card({'loan_book': book, 'pool': pool}).loanRef, isNull);
+      expect(
+        card({'loan_book': book, 'pool': pool, 'loan_id': '0'}).loanRef,
+        isNull,
+      );
+      expect(
+        card({
+          'loan_book': book,
+          'pool': pool,
+          'loan_id': '18446744073709551616',
+        }).loanRef,
+        isNull,
+      );
+      expect(
+        card({'loan_book': 'nope', 'pool': pool, 'loan_id': '7'}).loanRef,
+        isNull,
+      );
+      expect(
+        card({'loan_book': book, 'pool': pool, 'loan_id': '7'}).opensLoan,
+        isFalse,
+      );
+    });
   });
 
   group('GenesisCard', () {

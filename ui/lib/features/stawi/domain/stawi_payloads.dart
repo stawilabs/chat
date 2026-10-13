@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show hexToBytes;
 
 import '../../messages/domain/room_event.dart';
+import 'personal_calls.dart' show LoanRef;
 
 /// Converts the chat.v1 Stawi payloads to and from the content map a
 /// [RoomEvent] stores. The map is the payload's proto3 JSON, so it round-trips
@@ -348,7 +350,38 @@ class FinanceCardView {
   final String title;
   final String body;
   final Map<String, String> data;
+
+  /// The loan the card is about (data `loan_book`, `pool`, `loan_id`): null
+  /// unless all three are there and well formed (two 20-byte addresses in
+  /// 0x hex and a uint64 loan number above zero).
+  LoanRef? get loanRef {
+    final book = data['loan_book'] ?? '';
+    final pool = data['pool'] ?? '';
+    final id = data['loan_id'] ?? '';
+    if (!_address.hasMatch(book) ||
+        !_address.hasMatch(pool) ||
+        !_loanId.hasMatch(id)) {
+      return null;
+    }
+    final loanId = BigInt.parse(id);
+    // A loan number is a uint64 (finance's onchain_loan_id).
+    if (loanId.bitLength > 64) return null;
+    return LoanRef(
+      loanBook: hexToBytes(book),
+      pool: hexToBytes(pool),
+      loanId: loanId,
+    );
+  }
+
+  /// Whether the card names a loan it can open.
+  bool get isLoan => loanRef != null;
+
+  /// Whether the card offers to open its loan (data `action: open_loan`).
+  bool get opensLoan => data['action'] == 'open_loan' && isLoan;
 }
+
+final RegExp _address = RegExp(r'^0x[0-9a-fA-F]{40}$');
+final RegExp _loanId = RegExp(r'^[1-9][0-9]{0,19}$');
 
 /// Where a member's Stawi act stands, as the room shows it.
 enum StawiActState {
