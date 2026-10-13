@@ -1,0 +1,593 @@
+import 'dart:typed_data';
+
+import 'package:connectrpc/connect.dart' as connect;
+import 'package:fixnum/fixnum.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
+import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_custody.dart';
+import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
+import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
+import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
+import 'package:stawi/features/stawi/ui/group_loan_request_screen.dart';
+import 'package:stawi/features/stawi/ui/room_loans_tab.dart';
+import 'package:stawi/features/stawi/ui/room_money_screen.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_api/settlement_v1.dart' as settlement;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
+
+import '../../../support/stawi_fakes.dart';
+
+const roomId = 'room00000000000000aa';
+const _contribute = settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE;
+
+void main() {
+  final vectors = {
+    for (final v in GoEngineCallVector.load().where((v) => !v.personal))
+      v.name: v,
+  };
+  final request = vectors['loan_request']!;
+  final me = request.account;
+  final custody = request.room;
+  final productId = hexToBytes(request.json['product_id'] as String);
+  final amina = Uint8List.fromList(List.filled(20, 0xa1));
+  final book = Uint8List.fromList(List.filled(20, 0x10));
+
+  finance.Money usd(int units) =>
+      finance.Money(assetId: 'USDC.146', amount: '$units');
+
+  final normal = finance.RoomLoanProduct(
+    name: 'normal',
+    productId: productId,
+    minAmount: usd(1000000),
+    maxAmount: usd(900000000),
+    equityMultipleBps: 30000,
+    minInstalments: 1,
+    maxInstalments: 12,
+    periodsPerInstalment: 1,
+    interestMethod: finance
+        .LoanInterestMethod
+        .LOAN_INTEREST_METHOD_DECLINING_EQUAL_PRINCIPAL,
+    rateBps: 200,
+    rateBasis: finance.LoanRateBasis.LOAN_RATE_BASIS_PER_PERIOD,
+    feeBps: 100,
+    feeTiming: finance.LoanFeeTiming.LOAN_FEE_TIMING_DEDUCTED,
+    officerApprovals: 2,
+  );
+
+  finance.Loan groupLoan({
+    required int id,
+    required List<int> borrower,
+    required finance.LoanState state,
+    int amount = 300000000,
+  }) => finance.Loan(
+    loanId: 'loan$id',
+    onchainLoanId: Int64(id),
+    kind: finance.LoanKind.LOAN_KIND_GROUP,
+    state: state,
+    loanBook: book,
+    pool: custody,
+    productId: productId,
+    borrowerAccount: borrower,
+    requested: usd(amount),
+  );
+
+  late FakeConnectTransport transport;
+  late RecordingSigningGate gate;
+  late List<String> roles;
+  late finance.RoomLoanProduct product;
+  late Object Function() quote;
+
+  setUp(() async {
+    gate = RecordingSigningGate();
+    roles = ['treasurer'];
+    product = normal;
+    quote = () => finance.QuoteLoanResponse(
+      instalments: [
+        for (var i = 0; i < 4; i++)
+          finance.LoanInstalment(
+            index: i,
+            principal: usd(125000000),
+            interest: usd(2500000),
+            fee: usd(0),
+            paid: usd(0),
+          ),
+      ],
+      totalRepayable: usd(510000000),
+      paidOut: usd(495000000),
+      totalFees: usd(5000000),
+      protocolFeeBps: 1000,
+      protocolFeeOnInterest: usd(1500000),
+    );
+    transport = FakeConnectTransport()
+      ..on(finance.LoanService.quoteLoan, (req) {
+        final q = quote();
+        if (q is Exception) throw q;
+        return q as finance.QuoteLoanResponse;
+      })
+      ..on(
+        finance.LoanService.getLoan,
+        (req) => finance.GetLoanResponse(
+          loan: groupLoan(
+            id: req.onchainLoanId.toInt(),
+            borrower: me,
+            state: finance.LoanState.LOAN_STATE_FUNDED,
+          ),
+          instalments: [
+            finance.LoanInstalment(
+              index: 0,
+              principal: usd(75000000),
+              interest: usd(2500000),
+              fee: usd(0),
+              paid: usd(77500000),
+            ),
+            finance.LoanInstalment(
+              index: 1,
+              principal: usd(75000000),
+              interest: usd(2500000),
+              fee: usd(0),
+              paid: usd(0),
+            ),
+          ],
+        ),
+      )
+      ..on(
+        finance.LoanService.getCreditRecord,
+        (req) => finance.GetCreditRecordResponse(
+          own: finance.CreditRecord(),
+          others: finance.CreditRecord(loans: 2, onTime: 2),
+        ),
+      )
+      ..on(
+        settlement.AccountService.getAsset,
+        (req) => settlement.GetAssetResponse(asset: usdcInfo),
+      )
+      ..on(settlement.AccountService.prepareAccountCall, (req) {
+        switch (req.kind) {
+          case _contribute:
+            return settlement.PrepareAccountCallResponse(
+              callId: 'acct00000000000000c1',
+              intentDigest: keccak256(Uint8List.fromList([7])),
+              financialIntent: finance.FinancialIntent(
+                type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
+                destination: finance.ValueLocation(
+                  kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+                  address: req.params.room,
+                ),
+                amount: req.params.amount,
+              ),
+              call: settlement.AccountCall(
+                callId: 'acct00000000000000c1',
+                address: req.address,
+                kind: req.kind,
+              ),
+            );
+          case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_REQUEST:
+            return request.prepared(req.kind);
+          case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_APPROVE:
+            return vectors['loan_approve']!.prepared(req.kind);
+          case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_PLEDGE:
+            return vectors['loan_pledge']!.prepared(req.kind);
+          default:
+            throw connect.ConnectException(connect.Code.unimplemented, '');
+        }
+      })
+      ..on(
+        settlement.AccountService.submitAccountCall,
+        (req) => settlement.SubmitAccountCallResponse(
+          call: settlement.AccountCall(callId: req.callId),
+        ),
+      )
+      ..on(
+        settlement.AccountService.getAccountCall,
+        (req) => settlement.GetAccountCallResponse(
+          call: settlement.AccountCall(
+            callId: req.callId,
+            state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+          ),
+        ),
+      );
+    await serveDeployedAccount(transport, request.devicePrivateKey);
+  });
+
+  Future<void> settle(WidgetTester tester) async {
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> tapAndSettle(WidgetTester tester, Finder f) async {
+    await tester.ensureVisible(f);
+    await tester.tap(f);
+    await settle(tester);
+  }
+
+  Future<void> open(
+    WidgetTester tester, {
+    List<finance.Loan> loans = const [],
+  }) async {
+    tester.view
+      ..physicalSize = const Size(1080, 5000)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    Future<StawiIdentity> identity() async => identityWith('p1', me);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiIdentityProvider.overrideWith((ref) => identity()),
+          stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
+          stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
+          roomProductsProvider.overrideWith(
+            (ref, id) async => finance.ListRoomProductsResponse(
+              rulesConfigured: true,
+              calendar: finance.RoomCalendar(
+                unit: finance.PeriodUnit.PERIOD_UNIT_MONTH,
+                length: 1,
+              ),
+              loanProducts: [product],
+            ),
+          ),
+          roomProtocolFeeProvider.overrideWith(
+            (ref, id) async => finance.RoomProtocolFee(incomeFeeBps: 1000),
+          ),
+          stawiLoansProvider.overrideWith((ref, id) async => loans),
+          stawiMembersProvider.overrideWith(
+            (ref, id) async => [
+              finance.Member(
+                profileId: 'p1',
+                accountAddress: me,
+                roleIds: roles,
+              ),
+              finance.Member(profileId: 'p2', accountAddress: amina),
+            ],
+          ),
+          stawiRolesProvider.overrideWith(
+            (ref, id) async => [
+              finance.RoleCapabilities(
+                roleId: 'treasurer',
+                displayName: 'Treasurer',
+              ),
+            ],
+          ),
+          roomMembersProvider.overrideWith(
+            (ref, id) async => [
+              RoomSubscriptionInfo(
+                id: 'sub-2',
+                profileId: 'p2',
+                contactId: null,
+                name: 'Amina',
+                avatarUrl: null,
+                role: 'member',
+                joinedAt: 1,
+              ),
+            ],
+          ),
+          stawiMemberBalancesProvider.overrideWith(
+            (ref, id) async => finance.ListMemberBalancesResponse(),
+          ),
+          roomCustodyProvider.overrideWith((ref, id) async => custody),
+          roomEnginesProvider.overrideWith(
+            (ref, id) async => request.engines(),
+          ),
+          stawiLoanServiceProvider.overrideWithValue(
+            StawiLoanService(
+              loans: finance.LoanServiceClient(transport),
+              identity: identity,
+            ),
+          ),
+          stawiAccountServiceProvider.overrideWithValue(
+            StawiAccountService(
+              accounts: settlement.AccountServiceClient(transport),
+              keys: DeviceKeyStore(
+                vaultWith('p1', request.devicePrivateKey),
+                gate: gate,
+              ),
+              proofs: refusingSessionProofs,
+              identity: identity,
+              followEvery: const Duration(milliseconds: 10),
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: RoomMoneyScreen(
+            roomId: roomId,
+            roomName: 'Chama',
+            initialTab: RoomMoneyScreen.loansTab,
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+  }
+
+  List<settlement.PrepareAccountCallRequest> prepared() =>
+      transport.requestsTo(settlement.AccountService.prepareAccountCall);
+
+  List<settlement.SubmitAccountCallRequest> submitted() =>
+      transport.requestsTo(settlement.AccountService.submitAccountCall);
+
+  Finder inReview(String text) => find.descendant(
+    of: find.byKey(const Key('money-review')),
+    matching: find.text(text),
+  );
+
+  test('the vectors are one member account on one room', () {
+    expect(vectors['loan_approve']!.account, me);
+    expect(vectors['loan_pledge']!.account, me);
+    expect(vectors['loan_approve']!.room, custody);
+  });
+
+  testWidgets('lists the loan types in plain words, each to request', (
+    tester,
+  ) async {
+    await open(tester);
+    final types = find.byKey(const Key('loans-types'));
+    expect(
+      find.descendant(
+        of: types,
+        matching: find.text(
+          'Normal loan — borrow up to 3× your savings, at most 900.00 USDC; '
+          'repay over 1 to 12 months; 2% interest a month on what you still '
+          'owe; fee 1% taken from the payout; approved by 2 officers.',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(Key('loan-type-request-${bytesToHex0x(productId)}')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Stawi fee 10% of interest, fees and penalties'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a request is quoted with the Stawi fee, reviewed and signed', (
+    tester,
+  ) async {
+    await open(tester);
+    await tapAndSettle(
+      tester,
+      find.byKey(Key('loan-type-request-${bytesToHex0x(productId)}')),
+    );
+    expect(find.byType(GroupLoanRequestScreen), findsOneWidget);
+    expect(find.text(groupRecordNote), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('group-loan-amount')), '500');
+    await tester.enterText(
+      find.byKey(const Key('group-loan-instalments')),
+      '4',
+    );
+    await settle(tester);
+
+    final q = transport.requestsTo(finance.LoanService.quoteLoan).last;
+    expect(q.kind, finance.LoanKind.LOAN_KIND_GROUP);
+    expect(q.roomId, roomId);
+    expect(q.productId, productId);
+    expect(q.amount, '500000000');
+    expect(q.instalments, 4);
+    final quoted = find.byKey(const Key('group-quote'));
+    expect(
+      find.descendant(
+        of: quoted,
+        matching: find.text('Stawi fee 10% of interest, fees and penalties'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Of the interest and fees, 1.50 USDC goes to Stawi'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        '1: 125.00 USDC principal · 2.50 USDC interest · 0.00 USDC fee',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('group-quote-total')),
+        matching: find.text('510.00 USDC'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('group-quote-paid-out')),
+        matching: find.text('495.00 USDC'),
+      ),
+      findsOneWidget,
+    );
+
+    await tapAndSettle(tester, find.byKey(const Key('group-loan-submit')));
+    final p = prepared().single;
+    expect(p.kind, settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_REQUEST);
+    expect(p.params.productId, productId);
+    expect(p.params.amount, '500000000');
+    expect(p.params.instalments, 4);
+    expect(inReview('Request a loan of 500.00 USDC'), findsOneWidget);
+    expect(inReview('Stawi fee'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('money-review')),
+        matching: find.textContaining('an estimate'),
+      ),
+      findsOneWidget,
+    );
+    await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+    expect(bytesToHex0x(submitted().single.authorization), request.signature);
+    expect(gate.reasons, ['Request a loan of 500.00 USDC']);
+    expect(find.byType(GroupLoanRequestScreen), findsNothing);
+  });
+
+  testWidgets('a quote that cannot be read offers to try again', (
+    tester,
+  ) async {
+    quote = () => connect.ConnectException(
+      connect.Code.unavailable,
+      'the protocol fee could not be read',
+    );
+    await open(tester);
+    await tapAndSettle(
+      tester,
+      find.byKey(Key('loan-type-request-${bytesToHex0x(productId)}')),
+    );
+    await tester.enterText(find.byKey(const Key('group-loan-amount')), '500');
+    await tester.enterText(
+      find.byKey(const Key('group-loan-instalments')),
+      '4',
+    );
+    await settle(tester);
+    expect(find.byKey(const Key('group-quote-retry')), findsOneWidget);
+    expect(find.textContaining('Stawi fee 0%'), findsNothing);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('group-loan-submit')))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets(
+    "an officer sees a request with the borrower's record, approves",
+    (tester) async {
+      await open(
+        tester,
+        loans: [
+          groupLoan(
+            id: 3,
+            borrower: amina,
+            state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+          ),
+        ],
+      );
+      final pending = find.byKey(const Key('pending-loan-3'));
+      expect(
+        find.descendant(
+          of: pending,
+          matching: find.text('Amina asks for 300.00 USDC'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: pending,
+          matching: find.text(
+            "Amina's record: 2 loans from others (2 on time); no loans from "
+            'their own savings.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        transport
+            .requestsTo(finance.LoanService.getCreditRecord)
+            .single
+            .borrower,
+        amina,
+      );
+      expect(find.byKey(const Key('loan-3-guarantee')), findsNothing);
+      await tapAndSettle(tester, find.byKey(const Key('loan-3-approve')));
+      expect(
+        prepared().single.kind,
+        settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_APPROVE,
+      );
+      expect(prepared().single.params.loanId, Int64(3));
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      expect(
+        bytesToHex0x(submitted().single.authorization),
+        vectors['loan_approve']!.signature,
+      );
+    },
+  );
+
+  testWidgets('a request decided by a room vote offers the vote', (
+    tester,
+  ) async {
+    product = finance.RoomLoanProduct()
+      ..mergeFromMessage(normal)
+      ..officerApprovals = 0;
+    await open(
+      tester,
+      loans: [
+        groupLoan(
+          id: 3,
+          borrower: amina,
+          state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+        ),
+      ],
+    );
+    expect(find.text('Decided by a room vote'), findsOneWidget);
+    expect(find.byKey(const Key('loan-3-vote')), findsOneWidget);
+    expect(find.text('Review and vote'), findsOneWidget);
+    expect(find.byKey(const Key('loan-3-approve')), findsNothing);
+  });
+
+  testWidgets('a member without a role guarantees part of a request', (
+    tester,
+  ) async {
+    roles = [];
+    await open(
+      tester,
+      loans: [
+        groupLoan(
+          id: 3,
+          borrower: amina,
+          state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+        ),
+      ],
+    );
+    expect(find.byKey(const Key('loan-3-approve')), findsNothing);
+    await tester.enterText(
+      find.byKey(const Key('loan-3-guarantee-amount')),
+      '150',
+    );
+    await tapAndSettle(tester, find.byKey(const Key('loan-3-guarantee')));
+    final p = prepared().single;
+    expect(p.kind, settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_PLEDGE);
+    expect(p.params.amount, '150000000');
+    expect(inReview('Pledge 150.00 USDC to loan #3'), findsOneWidget);
+  });
+
+  testWidgets('my active loan: its schedule, and an instalment is a '
+      'contribution', (tester) async {
+    await open(
+      tester,
+      loans: [
+        groupLoan(
+          id: 1,
+          borrower: me,
+          state: finance.LoanState.LOAN_STATE_FUNDED,
+        ),
+      ],
+    );
+    final mine = find.byKey(const Key('loans-mine'));
+    expect(
+      find.descendant(
+        of: mine,
+        matching: find.byKey(const Key('loan-1-schedule')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('schedule-paid-0')), findsOneWidget);
+    await tapAndSettle(tester, find.byKey(const Key('loan-1-pay')));
+    expect(inReview('Contribute 77.50 USDC to Chama'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('money-review')),
+        matching: find.text(groupInstalmentNote),
+      ),
+      findsOneWidget,
+    );
+    await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+    final p = prepared().single;
+    expect(p.kind, _contribute);
+    expect(p.params.room, custody);
+    expect(p.params.amount, '77500000');
+    expect(submitted(), hasLength(1));
+  });
+}

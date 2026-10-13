@@ -97,7 +97,7 @@ void main() {
 
   test('the loan picker label', () {
     expect(
-      loanProductTerms(
+      plainLoanType(
         finance.RoomLoanProduct(
           maxAmount: usdcMoney('900000000'),
           rateBps: 300,
@@ -105,10 +105,13 @@ void main() {
           minInstalments: 1,
           maxInstalments: 6,
           feeBps: 50,
+          officerApprovals: 1,
         ),
         usdcAssets,
+        RoomCalendarLabel.periods,
       ),
-      'up to 900.00 USDC · 3% per period · 1–6 instalments · fee 0.5%',
+      'Product — borrow up to 900.00 USDC; repay over 1 to 6 periods; 3% '
+      'interest a period; fee 0.5%; approved by 1 officer.',
     );
   });
 

@@ -264,7 +264,10 @@ void main() {
       final transport = await pump(tester, products);
       expect(find.text('Emergency loan'), findsOneWidget);
       expect(
-        find.text('up to 900.00 USDC · 3% per period · 1–6 instalments'),
+        find.text(
+          'Emergency loan — borrow up to 900.00 USDC; repay over 1 to 6 '
+          'periods; 3% interest a period; decided by a room vote.',
+        ),
         findsOneWidget,
       );
       expect(find.text('Product 0xabcdef01'), findsOneWidget);

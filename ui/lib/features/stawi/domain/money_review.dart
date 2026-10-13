@@ -235,8 +235,9 @@ final class MoneyReview {
     required String roomName,
     required StawiAsset asset,
     String? note,
+    String? title,
   }) => MoneyReview(
-    title: 'Pay ${formatUnits(amount, asset)} into $roomName',
+    title: title ?? 'Pay ${formatUnits(amount, asset)} into $roomName',
     lines: [('To', roomName), ('Amount', formatUnits(amount, asset))],
     notes: [note ?? 'The room\'s rules apply it: dues and penalties first.'],
     signLabel: _sign,

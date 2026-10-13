@@ -16,10 +16,12 @@ import '../data/stawi_room_engines.dart';
 import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
+import '../domain/dues_calendar.dart';
 import '../domain/payoff_top_up.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
 import 'money_review_sheet.dart';
+import 'room_loans_tab.dart';
 import 'stawi_feedback.dart';
 
 /// A Stawi room's money, from finance's read model: dues, share-outs, loans
@@ -28,15 +30,23 @@ class RoomMoneyScreen extends StatelessWidget {
   const RoomMoneyScreen({
     required this.roomId,
     required this.roomName,
+    this.initialTab = 0,
     super.key,
   });
 
   final String roomId;
   final String roomName;
 
+  /// The tab it opens on: 0 Savings, 1 Share-outs, 2 Loans, 3 Members.
+  final int initialTab;
+
+  /// The Loans tab.
+  static const int loansTab = 2;
+
   @override
   Widget build(BuildContext context) => DefaultTabController(
     length: 4,
+    initialIndex: initialTab,
     child: Scaffold(
       appBar: AppBar(
         title: Text('Money · $roomName'),
@@ -54,7 +64,7 @@ class RoomMoneyScreen extends StatelessWidget {
         children: [
           _SavingsTab(roomId: roomId),
           _ShareOutsTab(roomId: roomId),
-          _LoansTab(roomId: roomId),
+          RoomLoansTab(roomId: roomId, roomName: roomName),
           _MembersTab(roomId: roomId),
         ],
       ),
@@ -135,6 +145,7 @@ class _SavingsTab extends ConsumerWidget {
     return ListView(
       children: [
         const _Heading('My dues'),
+        MyDuesSummary(roomId: roomId),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: OutlinedButton.icon(
@@ -174,6 +185,148 @@ class _SavingsTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The member's own dues in the room: what they owe now (their live book on
+/// the RulesEngine) and when dues next fall due (the room's calendar and dues
+/// products). Either part that cannot be read says so; nothing reads as zero.
+class MyDuesSummary extends ConsumerWidget {
+  const MyDuesSummary({required this.roomId, super.key});
+
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balances = ref.watch(stawiMemberBalancesProvider(roomId));
+    final products = ref.watch(roomProductsProvider(roomId));
+    final me = ref.watch(stawiIdentityProvider).asData?.value;
+    final now = ref.watch(stawiClockProvider)();
+    final assets = watchRoomAssets(ref, roomId);
+    Widget row(String label, String value, Key key) => Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          Flexible(child: Text(value, textAlign: TextAlign.end)),
+        ],
+      ),
+    );
+    Widget retry(VoidCallback onPressed) => TextButton(
+      key: const Key('my-dues-retry'),
+      onPressed: onPressed,
+      child: const Text('Try again'),
+    );
+
+    final owed = balances.when<List<Widget>>(
+      loading: () => [row('Owed now', '…', const Key('my-dues-owed'))],
+      error: (e, _) => [
+        row(
+          'Owed now',
+          'could not be read just now',
+          const Key('my-dues-owed'),
+        ),
+        retry(() => ref.invalidate(stawiMemberBalancesProvider(roomId))),
+      ],
+      data: (r) {
+        final mine = me == null
+            ? null
+            : r.balances
+                  .where(
+                    (b) =>
+                        b.profileId == me.profileId ||
+                        me.addresses.any((a) => bytesEqual(a, b.account)),
+                  )
+                  .firstOrNull;
+        if (mine == null) {
+          return [
+            const Text(
+              'You are not a member of this room on chain yet',
+              key: Key('my-dues-owed'),
+            ),
+          ];
+        }
+        if (!mine.hasBook()) {
+          return [
+            row(
+              'Owed now',
+              'could not be read just now',
+              const Key('my-dues-owed'),
+            ),
+            retry(() => ref.invalidate(stawiMemberBalancesProvider(roomId))),
+          ];
+        }
+        final book = mine.book;
+        final dues = BigInt.tryParse(book.duesOwed.amount) ?? BigInt.zero;
+        final penalties =
+            BigInt.tryParse(book.penaltiesOwed.amount) ?? BigInt.zero;
+        final assetId = book.duesOwed.assetId.isNotEmpty
+            ? book.duesOwed.assetId
+            : book.penaltiesOwed.assetId;
+        final total = formatMoney(
+          finance.Money(amount: '${dues + penalties}', assetId: assetId),
+          assets,
+        );
+        return [
+          row('Owed now', total, const Key('my-dues-owed')),
+          if (penalties > BigInt.zero)
+            Text(
+              'Including ${formatMoney(finance.Money(amount: '$penalties', assetId: assetId), assets)} of penalties',
+            ),
+          Text(switch (book.standing) {
+            finance.MemberDuesStanding.MEMBER_DUES_STANDING_CURRENT =>
+              'You are up to date',
+            finance.MemberDuesStanding.MEMBER_DUES_STANDING_IN_ARREARS =>
+              'You are behind with your dues',
+            finance.MemberDuesStanding.MEMBER_DUES_STANDING_NO_RULES =>
+              'This room has no dues yet',
+            _ => '',
+          }, key: const Key('my-dues-standing')),
+        ];
+      },
+    );
+
+    final next = products.when<List<Widget>>(
+      loading: () => [row('Next due', '…', const Key('my-dues-next'))],
+      error: (e, _) => [
+        row(
+          'Next due',
+          'could not be read just now',
+          const Key('my-dues-next'),
+        ),
+        retry(() => ref.invalidate(roomProductsProvider(roomId))),
+      ],
+      data: (p) {
+        if (!p.rulesConfigured) {
+          return [
+            row('Next due', 'no dues set yet', const Key('my-dues-next')),
+          ];
+        }
+        final at = nextDuesDate(p, now);
+        return [
+          row(
+            'Next due',
+            // The date in the room's own time zone, as its calendar keeps it.
+            at == null
+                ? 'nothing more falls due'
+                : _dates.format(
+                    at.add(Duration(seconds: p.calendar.tzOffsetSeconds)),
+                  ),
+            const Key('my-dues-next'),
+          ),
+        ];
+      },
+    );
+
+    return Padding(
+      key: const Key('my-dues'),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [...owed, ...next],
+      ),
     );
   }
 }
@@ -225,94 +378,6 @@ class _ShareOutsTab extends ConsumerWidget {
             ),
             trailing: Text(_stateName(d.state.name, 'DISTRIBUTION_STATE_')),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoansTab extends ConsumerWidget {
-  const _LoansTab({required this.roomId});
-
-  final String roomId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mine =
-        ref.watch(stawiIdentityProvider).asData?.value.addresses ??
-        const <Uint8List>[];
-    final assets = watchRoomAssets(ref, roomId);
-    void open(AccountEngineCall call, {finance.Loan? loan}) => showDialog<void>(
-      context: context,
-      builder: (_) =>
-          AccountEngineDialog(roomId: roomId, call: call, loan: loan),
-    );
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: OutlinedButton.icon(
-            key: const Key('engine-loanRequest'),
-            icon: const Icon(Icons.request_quote_outlined),
-            label: const Text('Request a loan'),
-            onPressed: () => open(AccountEngineCall.loanRequest),
-          ),
-        ),
-        const _Heading('Loans'),
-        _AsyncList<finance.Loan>(
-          value: ref.watch(stawiLoansProvider(roomId)),
-          empty: 'No loans in this room',
-          item: (loan) {
-            final isMine = mine.any((a) => bytesEqual(a, loan.borrowerAccount));
-            return ExpansionTile(
-              key: Key('loan-${loan.onchainLoanId}'),
-              title: Text(
-                'Loan #${loan.onchainLoanId} · ${formatMoney(loan.requested, assets)}'
-                '${isMine ? ' (mine)' : ''}',
-              ),
-              subtitle: Text(
-                '${_stateName(loan.state.name, 'LOAN_STATE_')}'
-                ' · outstanding '
-                '${formatMoney(loan.outstandingPrincipal, assets)}',
-              ),
-              children: [
-                _Breakdown(
-                  {
-                    'Paid out': loan.paidOut,
-                    'Pledged': loan.pledged,
-                    'Repaid principal': loan.repaidPrincipal,
-                    'Repaid interest': loan.repaidInterest,
-                    'Repaid fees': loan.repaidFees,
-                    'Repaid penalties': loan.repaidPenalties,
-                    'Recovered': loan.recovered,
-                  },
-                  assets: assets,
-                  instalments: loan.instalments,
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final call
-                        in isMine
-                            ? [
-                                AccountEngineCall.loanPayoff,
-                                AccountEngineCall.loanCancel,
-                              ]
-                            : [
-                                AccountEngineCall.loanApprove,
-                                AccountEngineCall.loanPledge,
-                                AccountEngineCall.loanUnpledge,
-                              ])
-                      TextButton(
-                        key: Key('loan-${loan.onchainLoanId}-${call.name}'),
-                        onPressed: () => open(call, loan: loan),
-                        child: Text(call.label),
-                      ),
-                  ],
-                ),
-              ],
-            );
-          },
         ),
       ],
     );
@@ -665,7 +730,13 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                       (
                         id: Uint8List.fromList(p.productId),
                         label: productLabel(p.name, p.productId),
-                        terms: loanProductTerms(p, assets),
+                        terms: plainLoanType(
+                          p,
+                          assets,
+                          RoomCalendarLabel.of(
+                            products.hasCalendar() ? products.calendar : null,
+                          ),
+                        ),
                       ),
                   ]
                 : [

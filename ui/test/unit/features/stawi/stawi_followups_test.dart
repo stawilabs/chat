@@ -112,16 +112,16 @@ void main() {
       );
       expect(await device(voting).pendingReveals(roomId), hasLength(1));
       expect(
-        (await device(
-          voting,
-        ).pendingReveals(roomId)).single.vote.revealClosesAt,
+        (await device(voting).pendingReveals(roomId))
+            .single
+            .vote
+            .revealClosesAt,
         DateTime.utc(2026, 10, 20),
       );
 
       await expectLater(
-        device(
-          MemoryDeviceKeyVault(),
-        ).revealSecretVote(roomId: roomId, onchainProposalId: 5),
+        device(MemoryDeviceKeyVault())
+            .revealSecretVote(roomId: roomId, onchainProposalId: 5),
         throwsA(
           isA<StawiUnavailable>().having(
             (e) => e.message,
@@ -131,9 +131,8 @@ void main() {
         ),
       );
 
-      await device(
-        voting,
-      ).revealSecretVote(roomId: roomId, onchainProposalId: 5);
+      await device(voting)
+          .revealSecretVote(roomId: roomId, onchainProposalId: 5);
       expect(await device(voting).pendingReveals(roomId), isEmpty);
     });
   });
@@ -266,10 +265,10 @@ void main() {
         minInstalments: 1,
         maxInstalments: 6,
       );
-      final terms = loanProductTerms(loan, usdcAssets);
+      final terms = plainLoanType(loan, usdcAssets, RoomCalendarLabel.periods);
       expect(terms, contains('up to 50,000.00 USDC'));
-      expect(terms, contains('2.5% per period'));
-      expect(terms, contains('1–6 instalments'));
+      expect(terms, contains('2.5% interest a period'));
+      expect(terms, contains('repay over 1 to 6 periods'));
 
       final dues = finance.RoomDuesProduct(
         amount: finance.Money(assetId: 'USDC.146', amount: '1000000'),

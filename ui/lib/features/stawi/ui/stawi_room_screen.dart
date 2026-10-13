@@ -6,6 +6,7 @@ import 'contribute_screen.dart';
 import 'convert_room_screen.dart';
 import 'governance_sheet.dart';
 import 'pending_reveals_card.dart';
+import 'protocol_fee_line.dart';
 import 'room_money_screen.dart';
 import 'statement_screen.dart';
 import 'stawi_account_screen.dart';
@@ -35,6 +36,12 @@ class StawiRoomScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             _PhaseCard(phase: phase),
+            if (phase == StawiRoomPhase.active)
+              Padding(
+                key: const Key('stawi-fee'),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: RoomProtocolFeeLine(roomId: roomId),
+              ),
             const SizedBox(height: 16),
             ..._actions(context, phase),
             const Divider(height: 32),
@@ -98,6 +105,21 @@ class StawiRoomScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) =>
                     ContributeScreen(roomId: roomId, roomName: roomName),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const Key('stawi-loans'),
+            icon: const Icon(Icons.request_quote_outlined),
+            label: const Text('Loans'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => RoomMoneyScreen(
+                  roomId: roomId,
+                  roomName: roomName,
+                  initialTab: RoomMoneyScreen.loansTab,
+                ),
               ),
             ),
           ),

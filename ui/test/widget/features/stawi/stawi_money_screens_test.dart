@@ -14,6 +14,7 @@ import 'package:stawi/features/stawi/data/stawi_binding.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/governance_requests.dart';
@@ -24,6 +25,7 @@ import 'package:stawi/features/stawi/ui/room_money_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_room_screen.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
+import 'package:stawi_api/well_known.dart' as wkt;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
 import '../../../support/stawi_fakes.dart';
@@ -427,8 +429,22 @@ void main() {
         ProviderScope(
           overrides: [
             ...overrides(),
-            if (products != null)
-              roomProductsProvider.overrideWith((ref, id) async => products),
+            roomProductsProvider.overrideWith(
+              (ref, id) async => products ?? finance.ListRoomProductsResponse(),
+            ),
+            roomProtocolFeeProvider.overrideWith(
+              (ref, id) async => finance.RoomProtocolFee(incomeFeeBps: 1000),
+            ),
+            stawiMembersProvider.overrideWith((ref, id) async => []),
+            stawiClockProvider.overrideWithValue(
+              () => DateTime.utc(2026, 10, 13),
+            ),
+            stawiLoanServiceProvider.overrideWithValue(
+              StawiLoanService(
+                loans: finance.LoanServiceClient(transport),
+                identity: () async => identityWith('p1', payoff.account),
+              ),
+            ),
             stawiEntitlementsProvider.overrideWith(
               (ref, id) async => [
                 finance.Entitlement(
@@ -445,6 +461,10 @@ void main() {
                 finance.Loan(
                   loanId: 'loan1',
                   onchainLoanId: Int64(1),
+                  kind: finance.LoanKind.LOAN_KIND_GROUP,
+                  state: finance.LoanState.LOAN_STATE_FUNDED,
+                  loanBook: List.filled(20, 0x10),
+                  pool: custody,
                   borrowerAccount: payoff.account,
                   requested: finance.Money(
                     assetId: 'USDC.146',
@@ -555,11 +575,9 @@ void main() {
       await pump(tester);
       await tester.tap(find.text('Loans'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Loan #1'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('loan-1')));
-      await tester.pumpAndSettle();
-      expect(find.text('12.50 USDC'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('loan-1-loanPayoff')));
+      expect(find.byKey(const Key('my-loan-1')), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const Key('loan-1-payoff')));
+      await tester.tap(find.byKey(const Key('loan-1-payoff')));
       await tester.pumpAndSettle();
 
       // No loan-number input: the loan is the one tapped.
@@ -665,9 +683,8 @@ void main() {
       );
       await tester.tap(find.text('Loans'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('loan-1')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('loan-1-loanPayoff')));
+      await tester.ensureVisible(find.byKey(const Key('loan-1-payoff')));
+      await tester.tap(find.byKey(const Key('loan-1-payoff')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
@@ -709,6 +726,105 @@ void main() {
       );
       expect(submits, hasLength(2));
       expect(bytesToHex0x(submits.last.authorization), payoff.signature);
+    });
+
+    testWidgets('My dues: owed now and the next due date', (tester) async {
+      await pump(
+        tester,
+        balances: finance.ListMemberBalancesResponse(
+          booksAvailable: true,
+          balances: [
+            finance.MemberBalance(
+              memberId: 'mem1',
+              profileId: 'p1',
+              account: payoff.account,
+              book: finance.MemberBook(
+                duesOwed: finance.Money(
+                  assetId: 'USDC.146',
+                  amount: '20000000',
+                ),
+                penaltiesOwed: finance.Money(
+                  assetId: 'USDC.146',
+                  amount: '1000000',
+                ),
+                standing:
+                    finance.MemberDuesStanding.MEMBER_DUES_STANDING_IN_ARREARS,
+              ),
+            ),
+          ],
+        ),
+        products: finance.ListRoomProductsResponse(
+          rulesConfigured: true,
+          calendar: finance.RoomCalendar(
+            unit: finance.PeriodUnit.PERIOD_UNIT_MONTH,
+            length: 1,
+            anchor: wkt.Timestamp.fromDateTime(DateTime.utc(2026)),
+            currentPeriod: 9,
+          ),
+          duesProducts: [
+            finance.RoomDuesProduct(
+              everyPeriods: 1,
+              active: true,
+              dueOffsetSeconds: 5 * 86400,
+            ),
+          ],
+        ),
+      );
+      final dues = find.byKey(const Key('my-dues'));
+      expect(
+        find.descendant(of: dues, matching: find.text('21.00 USDC')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: dues,
+          matching: find.text('Including 1.00 USDC of penalties'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('You are behind with your dues'), findsOneWidget);
+      expect(
+        find.descendant(of: dues, matching: find.text('Nov 6, 2026')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('My dues says what could not be read, never zero', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        balances: finance.ListMemberBalancesResponse(
+          booksAvailable: false,
+          balances: [
+            finance.MemberBalance(
+              memberId: 'mem1',
+              profileId: 'p1',
+              account: payoff.account,
+            ),
+          ],
+        ),
+      );
+      final owed = find.byKey(const Key('my-dues-owed'));
+      expect(
+        find.descendant(
+          of: owed,
+          matching: find.text('could not be read just now'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('my-dues-retry')), findsOneWidget);
+      expect(
+        find.descendant(of: owed, matching: find.textContaining('0.00')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('my-dues-next')),
+          matching: find.text('no dues set yet'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a refused check stops before signing', (tester) async {

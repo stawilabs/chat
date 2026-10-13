@@ -12,6 +12,7 @@ import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
@@ -374,6 +375,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('stawi-contribute')), findsOneWidget);
     expect(find.byKey(const Key('stawi-statement')), findsOneWidget);
+  });
+
+  testWidgets('an active Stawi room states the Stawi fee and opens its loans', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiRoomPhaseProvider.overrideWith(
+            (ref, id) => const AsyncValue.data(StawiRoomPhase.active),
+          ),
+          roomProtocolFeeProvider.overrideWith(
+            (ref, id) async => finance.RoomProtocolFee(incomeFeeBps: 1000),
+          ),
+          stawiPendingRevealsProvider.overrideWith((ref, id) async => []),
+        ],
+        child: const MaterialApp(
+          home: StawiRoomScreen(roomId: roomId, roomName: 'Chama'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('stawi-fee')),
+        matching: find.text('Stawi fee 10% of interest, fees and penalties'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('stawi-loans')), findsOneWidget);
+  });
+
+  testWidgets('a Stawi fee that cannot be read is said so, not shown as none', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiRoomPhaseProvider.overrideWith(
+            (ref, id) => const AsyncValue.data(StawiRoomPhase.active),
+          ),
+          roomProtocolFeeProvider.overrideWith((ref, id) async => null),
+          stawiPendingRevealsProvider.overrideWith((ref, id) async => []),
+        ],
+        child: const MaterialApp(
+          home: StawiRoomScreen(roomId: roomId, roomName: 'Chama'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Stawi fee: could not be read just now'), findsOneWidget);
   });
 
   testWidgets('ConvertRoomScreen sends the chosen template and founders', (

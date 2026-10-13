@@ -489,6 +489,7 @@ class StawiAccountService {
     required String amount,
     String roomName = 'this room',
     String? note,
+    String? title,
   }) async {
     if (custody.length != 20) {
       throw const FormatException('A room custody is a 20-byte address');
@@ -519,6 +520,7 @@ class StawiAccountService {
         roomName: roomName,
         asset: await _asset(),
         note: note,
+        title: title,
       ),
     );
   }
