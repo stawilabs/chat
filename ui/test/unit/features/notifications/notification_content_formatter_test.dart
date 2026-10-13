@@ -290,38 +290,6 @@ void main() {
       });
     });
 
-    group('motion message formatting', () {
-      test('shows motion title', () {
-        final event = createEvent(
-          type: RoomEventType.motion,
-          content: {'title': 'Budget approval'},
-        );
-
-        final result = formatter.format(event: event, senderName: 'Alice');
-
-        expect(result.body, equals('Motion: Budget approval'));
-      });
-
-      test('uses subject field as fallback', () {
-        final event = createEvent(
-          type: RoomEventType.motion,
-          content: {'subject': 'New policy'},
-        );
-
-        final result = formatter.format(event: event, senderName: 'Alice');
-
-        expect(result.body, equals('Motion: New policy'));
-      });
-
-      test('shows generic message without title', () {
-        final event = createEvent(type: RoomEventType.motion, content: {});
-
-        final result = formatter.format(event: event, senderName: 'Alice');
-
-        expect(result.body, equals('New motion proposed'));
-      });
-    });
-
     group('vote message formatting', () {
       test('shows vote choice', () {
         final event = createEvent(
@@ -343,54 +311,23 @@ void main() {
       });
     });
 
-    group('transaction message formatting', () {
-      test('shows amount with currency', () {
-        final event = createEvent(
-          type: RoomEventType.transaction,
-          content: {'amount': 100, 'currency': 'KES'},
-        );
+    group('legacy off-chain event types', () {
+      for (final type in [
+        RoomEventType.motion,
+        RoomEventType.transaction,
+        RoomEventType.groupConfig,
+      ]) {
+        test('${type.name} reads as no longer supported', () {
+          final event = createEvent(
+            type: type,
+            content: {'title': 'Budget', 'amount': 100},
+          );
 
-        final result = formatter.format(event: event, senderName: 'Alice');
+          final result = formatter.format(event: event, senderName: 'Alice');
 
-        expect(result.body, equals('Transaction: KES 100'));
-      });
-
-      test('shows amount with description', () {
-        final event = createEvent(
-          type: RoomEventType.transaction,
-          content: {
-            'amount': 500,
-            'currency': 'USD',
-            'description': 'Monthly contribution',
-          },
-        );
-
-        final result = formatter.format(event: event, senderName: 'Alice');
-
-        expect(
-          result.body,
-          equals('Transaction: USD 500 - Monthly contribution'),
-        );
-      });
-
-      test('shows description only', () {
-        final event = createEvent(
-          type: RoomEventType.transaction,
-          content: {'description': 'Payment received'},
-        );
-
-        final result = formatter.format(event: event, senderName: 'Alice');
-
-        expect(result.body, equals('Transaction: Payment received'));
-      });
-
-      test('shows generic message without details', () {
-        final event = createEvent(type: RoomEventType.transaction, content: {});
-
-        final result = formatter.format(event: event, senderName: 'Alice');
-
-        expect(result.body, equals('New transaction'));
-      });
+          expect(result.body, equals('Message no longer supported'));
+        });
+      }
     });
 
     group('call message formatting', () {
@@ -511,7 +448,7 @@ void main() {
         expect(result.body, equals('New reaction'));
       });
 
-      test('hides transaction amount', () {
+      test('hides legacy transaction amount', () {
         final event = createEvent(
           type: RoomEventType.transaction,
           content: {'amount': 1000000, 'currency': 'USD'},
@@ -523,7 +460,7 @@ void main() {
           hideContent: true,
         );
 
-        expect(result.body, equals('New transaction'));
+        expect(result.body, equals('Message no longer supported'));
         expect(result.body, isNot(contains('1000000')));
       });
 

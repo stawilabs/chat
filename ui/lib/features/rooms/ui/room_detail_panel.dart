@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/navigation/navigation_helper.dart';
-import '../../advanced/domain/group_finance_config.dart';
-import '../../advanced/services/group_config_service.dart';
-import '../../advanced/ui/group_finance_config_screen.dart';
 import '../../messages/domain/room_event.dart';
 import '../../notifications/mute_service.dart';
 import '../data/detail_panel_providers.dart';
@@ -14,7 +11,7 @@ import '../data/room_service.dart';
 import '../domain/room.dart';
 import 'member_action_sheet.dart';
 
-/// Room detail panel showing room information, motions, transactions, and media
+/// Room detail panel showing room information and media
 /// Displayed in the right panel on desktop layouts
 class RoomDetailPanel extends ConsumerStatefulWidget {
   const RoomDetailPanel({
@@ -36,7 +33,7 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -76,23 +73,13 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
           isScrollable: true,
           tabs: const [
             Tab(text: 'Info', icon: Icon(Icons.info_outline, size: 18)),
-            Tab(text: 'Motions', icon: Icon(Icons.how_to_vote, size: 18)),
-            Tab(
-              text: 'Transactions',
-              icon: Icon(Icons.account_balance, size: 18),
-            ),
             Tab(text: 'Media', icon: Icon(Icons.photo_library, size: 18)),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildInfoTab(),
-          _buildMotionsTab(),
-          _buildTransactionsTab(),
-          _buildMediaTab(),
-        ],
+        children: [_buildInfoTab(), _buildMediaTab()],
       ),
     );
   }
@@ -128,14 +115,6 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
                   roomId: widget.roomId,
                   roomName: widget.roomName,
                 );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.account_balance_wallet),
-              title: const Text('Finance Settings'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _openFinanceSettings();
               },
             ),
             ListTile(
@@ -203,48 +182,6 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
         ),
       ),
     );
-  }
-
-  Future<void> _openFinanceSettings() async {
-    // Read existing config from room metadata
-    GroupFinanceConfig? existing;
-    try {
-      final room = await ref.read(roomByIdProvider(widget.roomId).future);
-      final configJson = room?.metadata?['financeConfig'];
-      if (configJson is Map<String, dynamic>) {
-        existing = GroupFinanceConfig.fromJson(configJson);
-      }
-    } catch (_) {
-      // No existing config
-    }
-
-    if (!mounted) return;
-    final result = await Navigator.of(context).push<GroupFinanceConfig>(
-      MaterialPageRoute(
-        builder: (_) => GroupFinanceConfigScreen(initialConfig: existing),
-      ),
-    );
-
-    if (result != null && mounted) {
-      try {
-        final service = await ref.read(groupConfigServiceProvider.future);
-        await service.sendGroupConfig(widget.roomId, result);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Finance settings updated')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to update finance settings: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
   }
 
   /// Show the mute duration picker dialog
@@ -372,9 +309,8 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
             children: [
               CircleAvatar(
                 radius: 48,
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.2),
+                backgroundColor: Theme.of(context).colorScheme.primary
+                    .withValues(alpha: 0.2),
                 child: Text(
                   widget.roomName.isNotEmpty
                       ? widget.roomName[0].toUpperCase()
@@ -447,136 +383,6 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
         const SizedBox(height: 8),
         _buildMembersList(membersAsync),
       ],
-    );
-  }
-
-  Widget _buildMotionsTab() {
-    final motionsAsync = ref.watch(activeMotionsProvider(widget.roomId));
-
-    return motionsAsync.when(
-      data: (motions) {
-        if (motions.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.how_to_vote,
-            title: 'No active motions',
-            subtitle: 'Admins can create motions for voting',
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: motions.length,
-          itemBuilder: (context, index) {
-            final motion = motions[index];
-            final content = motion.content;
-            final title = content['title'] ?? 'Motion';
-            final description = content['description'] ?? '';
-            final deadline = content['deadline'] != null
-                ? DateTime.fromMillisecondsSinceEpoch(
-                    content['deadline'] as int,
-                  )
-                : null;
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.how_to_vote)),
-                title: Text(title.toString()),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (description.toString().isNotEmpty)
-                      Text(
-                        description.toString(),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    if (deadline != null)
-                      Text(
-                        'Ends: ${_formatDate(deadline)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                  ],
-                ),
-                isThreeLine: description.toString().isNotEmpty,
-                onTap: () {
-                  // Navigate to motion details
-                  _showMotionDetails(context, motion.content);
-                },
-              ),
-            );
-          },
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error loading motions: $e')),
-    );
-  }
-
-  Widget _buildTransactionsTab() {
-    final transactionsAsync = ref.watch(
-      roomTransactionsProvider(widget.roomId),
-    );
-
-    return transactionsAsync.when(
-      data: (transactions) {
-        if (transactions.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.account_balance,
-            title: 'No transactions yet',
-            subtitle: 'Group transactions will appear here',
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: transactions.length,
-          itemBuilder: (context, index) {
-            final transaction = transactions[index];
-            final content = transaction.content;
-            final amount = content['amount'] ?? 0;
-            final currency = content['currency'] ?? 'KES';
-            final description = content['description'] ?? 'Transaction';
-            final transactionType = content['type'] ?? 'payment';
-
-            final isCredit =
-                transactionType == 'deposit' || transactionType == 'credit';
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isCredit
-                      ? Colors.green.shade100
-                      : Colors.red.shade100,
-                  child: Icon(
-                    isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-                    color: isCredit ? Colors.green : Colors.red,
-                  ),
-                ),
-                title: Text(description.toString()),
-                subtitle: Text(
-                  _formatDate(
-                    DateTime.fromMillisecondsSinceEpoch(transaction.createdAt),
-                  ),
-                ),
-                trailing: Text(
-                  '${isCredit ? '+' : '-'}$currency $amount',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isCredit ? Colors.green : Colors.red,
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error loading transactions: $e')),
     );
   }
 
@@ -742,9 +548,8 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.primary
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -830,36 +635,11 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
     return colors[index];
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-
-    if (diff.inDays == 0) {
-      return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (diff.inDays == 1) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      return days[date.weekday - 1];
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
-  String _formatDateFromValue(Object? value) {
-    if (value is DateTime) return _formatDate(value);
-    if (value is int) {
-      return _formatDate(DateTime.fromMillisecondsSinceEpoch(value));
-    }
-    return 'N/A';
-  }
-
   Future<void> _leaveRoom(BuildContext context, WidgetRef ref) async {
     try {
       // Show loading indicator
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Leaving room...')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Leaving room...')));
 
       // Leave room (marks as left locally, queues for server sync)
       final service = await ref.read(roomServiceProvider.future);
@@ -879,36 +659,6 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
         );
       }
     }
-  }
-
-  void _showMotionDetails(BuildContext context, Map<String, dynamic> motion) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Motion Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Title: ${motion['title'] ?? 'N/A'}'),
-            const SizedBox(height: 8),
-            Text('Description: ${motion['description'] ?? 'N/A'}'),
-            const SizedBox(height: 8),
-            Text('Created: ${_formatDateFromValue(motion['createdAt'])}'),
-            if (motion['deadline'] != null) ...[
-              const SizedBox(height: 8),
-              Text('Deadline: ${_formatDateFromValue(motion['deadline'])}'),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 }
 

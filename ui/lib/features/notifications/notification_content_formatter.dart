@@ -56,8 +56,6 @@ String financeCardNotificationTitle(String kind) => switch (kind) {
 /// - Audio/Voice: Shows duration if available
 /// - File: Shows filename
 /// - Reaction: Shows emoji
-/// - Motion: Shows motion title
-/// - Transaction: Shows transaction description
 class NotificationContentFormatter {
   /// Format a room event into notification content
   ///
@@ -125,12 +123,8 @@ class NotificationContentFormatter {
         return 'New file';
       case RoomEventType.reaction:
         return 'New reaction';
-      case RoomEventType.motion:
-        return 'New motion';
       case RoomEventType.vote:
         return 'New vote';
-      case RoomEventType.transaction:
-        return 'New transaction';
       case RoomEventType.formRequest:
         return 'New form';
       case RoomEventType.formSubmissionResult:
@@ -150,8 +144,10 @@ class NotificationContentFormatter {
       case RoomEventType.groupCallMuteUpdate:
       case RoomEventType.groupCallStageUpdate:
         return 'Group call activity';
+      case RoomEventType.motion:
+      case RoomEventType.transaction:
       case RoomEventType.groupConfig:
-        return 'Finance settings updated';
+        return 'Message no longer supported';
       case RoomEventType.roomKey:
         return 'Security update';
       case RoomEventType.roomChange:
@@ -196,14 +192,8 @@ class NotificationContentFormatter {
         case RoomEventType.reaction:
           return (_formatReactionMessage(event.content), null);
 
-        case RoomEventType.motion:
-          return (_formatMotionMessage(event.content), null);
-
         case RoomEventType.vote:
           return (_formatVoteMessage(event.content), null);
-
-        case RoomEventType.transaction:
-          return (_formatTransactionMessage(event.content), null);
 
         case RoomEventType.formRequest:
           final schema = event.content['schema'] as Map?;
@@ -248,8 +238,10 @@ class NotificationContentFormatter {
         case RoomEventType.groupCallEnd:
           return ('Group call ended', null);
 
+        case RoomEventType.motion:
+        case RoomEventType.transaction:
         case RoomEventType.groupConfig:
-          return ('Finance settings updated', null);
+          return ('Message no longer supported', null);
 
         case RoomEventType.roomChange:
           final body =
@@ -341,15 +333,6 @@ class NotificationContentFormatter {
     return 'Reacted to a message';
   }
 
-  /// Format motion message
-  String _formatMotionMessage(Map<String, dynamic> content) {
-    final title = content['title'] as String? ?? content['subject'] as String?;
-    if (title != null && title.isNotEmpty) {
-      return 'Motion: ${_truncate(title, maxNotificationTextLength - 8)}';
-    }
-    return 'New motion proposed';
-  }
-
   /// Format vote message
   String _formatVoteMessage(Map<String, dynamic> content) {
     final vote = content['vote'] as String? ?? content['choice'] as String?;
@@ -357,27 +340,6 @@ class NotificationContentFormatter {
       return 'Voted: $vote';
     }
     return 'Cast a vote';
-  }
-
-  /// Format transaction message
-  String _formatTransactionMessage(Map<String, dynamic> content) {
-    final amount = content['amount'];
-    final currency = content['currency'] as String? ?? '';
-    final description = content['description'] as String?;
-
-    if (amount != null) {
-      final amountStr = '$currency $amount'.trim();
-      if (description != null && description.isNotEmpty) {
-        return 'Transaction: $amountStr - ${_truncate(description, 50)}';
-      }
-      return 'Transaction: $amountStr';
-    }
-
-    if (description != null && description.isNotEmpty) {
-      return 'Transaction: ${_truncate(description, maxNotificationTextLength - 13)}';
-    }
-
-    return 'New transaction';
   }
 
   /// Extract image URL for thumbnail display

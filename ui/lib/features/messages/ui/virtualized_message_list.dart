@@ -6,9 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
-import '../../advanced/ui/group_config_bubble.dart';
-import '../../advanced/ui/motion_bubble.dart';
-import '../../advanced/ui/transaction_bubble.dart';
 import '../../forms/ui/form_message_card.dart';
 import '../../stawi/ui/stawi_timeline.dart';
 import '../data/message_forwarding_service.dart';
@@ -17,6 +14,7 @@ import '../domain/room_event.dart';
 import 'date_header.dart';
 import 'message_bubble.dart';
 import 'system_event_bubble.dart';
+import 'widgets/legacy_event_line.dart';
 
 /// Configuration for the virtualized message list
 class VirtualizedMessageListConfig {
@@ -432,9 +430,8 @@ class _VirtualizedMessageListState extends ConsumerState<VirtualizedMessageList>
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.primaryContainer
+                .withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -454,9 +451,8 @@ class _VirtualizedMessageListState extends ConsumerState<VirtualizedMessageList>
         const SizedBox(height: 8),
         Text(
           'Start the conversation!',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
       ],
@@ -603,17 +599,15 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
   ) {
     switch (widget.message.type) {
       case RoomEventType.motion:
-        return MotionBubble(event: widget.message, isMe: isMe);
       case RoomEventType.transaction:
-        return TransactionBubble(event: widget.message, isMe: isMe);
+      case RoomEventType.groupConfig:
+        return const LegacyEventLine();
       case RoomEventType.formRequest:
         return FormMessageCard(message: widget.message, isMe: isMe);
       case RoomEventType.formSubmissionResult:
         return const SizedBox.shrink();
       case RoomEventType.vote:
         return VoteBubble(event: widget.message, isMe: isMe);
-      case RoomEventType.groupConfig:
-        return GroupConfigBubble(event: widget.message);
       case RoomEventType.roomChange:
         return SystemEventBubble(event: widget.message);
       case RoomEventType.roomKey:
