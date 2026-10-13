@@ -7,11 +7,11 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/db/database.dart';
 import '../../../core/navigation/navigation_helper.dart';
+import '../../../core/networking/connectivity_service.dart';
 import '../../calls/services/call_manager.dart';
 import '../../calls/ui/call_screen.dart';
 import '../../contacts/services/block_service.dart';
 import '../../contacts/services/report_service.dart';
-import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_service.dart';
 import '../data/profile_providers.dart';
 
@@ -742,10 +742,13 @@ class ProfileScreen extends ConsumerWidget {
       );
 
       // Create or find direct message room with this user
-      final roomListNotifier = ref.read(roomListProvider.notifier);
-      final room = await roomListNotifier.createRoom(
+      final roomService = await ref.read(roomServiceProvider.future);
+      final online = await ref
+          .read(isConnectedProvider.future)
+          .catchError((_) => false);
+      final room = await roomService.openDirectRoom(
+        online: online,
         name: profile.name ?? 'Direct Message',
-        type: 'direct',
         isPrivate: true,
         contactIds: [profile.id],
         metadata: {'directMessage': true, 'participantId': profile.id},

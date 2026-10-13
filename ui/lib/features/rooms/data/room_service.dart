@@ -11,6 +11,7 @@ import '../../../core/sync/pending_job.dart';
 import '../../../core/sync/pending_job_repository.dart';
 import '../../../core/sync/sync_engine.dart';
 import '../domain/room.dart' as domain;
+import 'direct_room_opener.dart';
 import 'room_repository.dart';
 import 'room_subscription_repository.dart';
 import 'room_subscription_service.dart';
@@ -137,6 +138,44 @@ class RoomService {
     _onJobCreated?.call();
 
     return room;
+  }
+
+  /// Opens the direct room with one person.
+  ///
+  /// Online, chat is asked first (about 10 seconds at most) and the chat opens
+  /// on the server's room, which is the pair's existing DM when there is one.
+  /// Offline, or on timeout, a local placeholder is created and adopted later.
+  Future<domain.Room> openDirectRoom({
+    required bool online,
+    required String name,
+    required List<String> contactIds,
+    bool isPrivate = false,
+    Map<String, dynamic>? metadata,
+  }) async {
+    if (online) {
+      final room = await openDirectRoomOnline(
+        roomRepo: _roomRepo,
+        call: _chatClient.createRoom,
+        name: name,
+        contactIds: contactIds,
+        isPrivate: isPrivate,
+        metadata: metadata,
+      );
+      if (room != null) {
+        // Best effort; members also sync when the chat opens.
+        try {
+          await syncRoomMembers(room.id);
+        } catch (_) {}
+        return room;
+      }
+    }
+    return createRoom(
+      name: name,
+      type: 'direct',
+      isPrivate: isPrivate,
+      contactIds: contactIds,
+      metadata: metadata,
+    );
   }
 
   /// Find an existing direct room with a profile, or create a new one

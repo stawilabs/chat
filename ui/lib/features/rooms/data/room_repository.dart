@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../../../core/db/database.dart';
 import '../domain/room.dart' as domain;
 import '../domain/room_with_last_message.dart';
+import 'room_id_remap.dart';
 
 /// Repository for chat room operations
 ///
@@ -159,11 +160,25 @@ class RoomRepository {
         ],
         updates: {_database.roomSubscriptions},
       );
+      // Drafts are one per room: the server room's own draft wins.
+      await _database.customUpdate(
+        'DELETE FROM drafts WHERE room_id = ? AND EXISTS '
+        '(SELECT 1 FROM drafts WHERE room_id = ?)',
+        variables: [
+          Variable.withString(localId),
+          Variable.withString(serverId),
+        ],
+        updates: {_database.drafts},
+      );
       for (final table in const [
         'room_subscriptions',
         'room_events',
         'transactions',
         'invite_links',
+        'drafts',
+        'form_message_drafts',
+        'read_receipts',
+        'transfer_jobs',
       ]) {
         await _database.customUpdate(
           'UPDATE $table SET room_id = ? WHERE room_id = ?',
@@ -171,7 +186,7 @@ class RoomRepository {
             Variable.withString(serverId),
             Variable.withString(localId),
           ],
-          updates: {_database.roomSubscriptions, _database.roomEvents},
+          updates: _database.allTables.toSet(),
         );
       }
       await _database.customUpdate(
@@ -198,17 +213,16 @@ class RoomRepository {
           }
         }
         if (!changed) continue;
-        await (_database.update(
-          _database.pendingJobs,
-        )..where((t) => t.id.equals(job.id))).write(
-          PendingJobsCompanion(payload: Value(jsonEncode(decoded))),
-        );
+        await (_database.update(_database.pendingJobs)
+              ..where((t) => t.id.equals(job.id)))
+            .write(PendingJobsCompanion(payload: Value(jsonEncode(decoded))));
       }
 
       await (_database.delete(
         _database.rooms,
       )..where((t) => t.id.equals(localId))).go();
     });
+    announceRoomIdRemap(localId, serverId);
   }
 
   /// Update disappearing messages timeout for a room

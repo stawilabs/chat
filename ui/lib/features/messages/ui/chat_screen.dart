@@ -15,6 +15,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../calls/services/call_manager.dart';
 import '../../notifications/notification_service.dart';
 import '../../notifications/ui/notification_permission_dialog.dart';
+import '../../rooms/data/room_id_remap.dart';
 import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_repository.dart';
 import '../../rooms/data/room_subscription_service.dart';
@@ -490,137 +491,142 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       },
     );
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: _buildAppBar(context),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppTheme.chatBackgroundDark
-                      : AppTheme.chatBackgroundLight,
-                  image: _isEncryptionEnabled
-                      ? null
-                      : DecorationImage(
-                          image: AssetImage(
-                            // Use light pattern on dark theme, dark pattern on light theme
-                            Theme.of(context).brightness == Brightness.dark
-                                ? 'assets/chat_pattern.webp' // Light pattern for dark background
-                                : 'assets/chat_pattern_black.webp', // Dark pattern for light background
-                          ),
-                          repeat: ImageRepeat.repeat,
-                          fit: BoxFit.none,
-                          opacity:
+    return RoomIdRemapListener(
+      roomId: widget.roomId,
+      roomName: widget.roomName,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: _buildAppBar(context),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.chatBackgroundDark
+                        : AppTheme.chatBackgroundLight,
+                    image: _isEncryptionEnabled
+                        ? null
+                        : DecorationImage(
+                            image: AssetImage(
+                              // Use light pattern on dark theme, dark pattern on light theme
                               Theme.of(context).brightness == Brightness.dark
-                              ? 0.08 // 8% for dark theme (6-10% range)
-                              : 0.05, // 5% for light theme
+                                  ? 'assets/chat_pattern.webp' // Light pattern for dark background
+                                  : 'assets/chat_pattern_black.webp', // Dark pattern for light background
+                            ),
+                            repeat: ImageRepeat.repeat,
+                            fit: BoxFit.none,
+                            opacity:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? 0.08 // 8% for dark theme (6-10% range)
+                                : 0.05, // 5% for light theme
+                          ),
+                  ),
+                  child: Stack(
+                    children: [
+                      messagesAsync.when(
+                        data: (messages) => _buildMessageList(
+                          messages,
+                          currentSubscriptionId:
+                              currentSubscriptionIdAsync.value,
+                          isGroupChat: isGroupChat,
                         ),
-                ),
-                child: Stack(
-                  children: [
-                    messagesAsync.when(
-                      data: (messages) => _buildMessageList(
-                        messages,
-                        currentSubscriptionId: currentSubscriptionIdAsync.value,
-                        isGroupChat: isGroupChat,
+                        loading: _buildLoadingState,
+                        error: _buildErrorState,
                       ),
-                      loading: _buildLoadingState,
-                      error: _buildErrorState,
-                    ),
-                    // Enhanced typing indicator overlay
-                    Consumer(
-                      builder: (context, ref, child) {
-                        final typingUsers = ref.watch(
-                          typingProvider(widget.roomId),
-                        );
-                        final isAnyoneTyping = typingUsers.isNotEmpty;
+                      // Enhanced typing indicator overlay
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final typingUsers = ref.watch(
+                            typingProvider(widget.roomId),
+                          );
+                          final isAnyoneTyping = typingUsers.isNotEmpty;
 
-                        return isAnyoneTyping
-                            ? Positioned(
-                                bottom: 80,
-                                left: 16,
-                                right: 16,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.surface,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.1,
+                          return isAnyoneTyping
+                              ? Positioned(
+                                  bottom: 80,
+                                  left: 16,
+                                  right: 16,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
                                         ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color?>(
-                                                AppTheme.primaryGreen,
-                                              ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color?>(
+                                                  AppTheme.primaryGreen,
+                                                ),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          'Someone is typing...',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                              ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            'Someone is typing...',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              )
-                            : const SizedBox.shrink();
-                      },
-                    ),
-                    // Scroll-to-bottom FAB with new message count
-                    if (_showScrollToBottom)
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: _buildScrollToBottomButton(),
+                                )
+                              : const SizedBox.shrink();
+                        },
                       ),
-                  ],
+                      // Scroll-to-bottom FAB with new message count
+                      if (_showScrollToBottom)
+                        Positioned(
+                          bottom: 16,
+                          right: 16,
+                          child: _buildScrollToBottomButton(),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            InputBar(
-              roomId: widget.roomId,
-              onSendMessage: _sendMessage,
-              onAttachment: _showAttachmentOptions,
-              onCamera: _takeAndSendPhoto,
-              onVoiceRecordingComplete: _onVoiceRecordingComplete,
-              isEncryptionEnabled: _isEncryptionEnabled,
-              replyingToMessageId: _replyingToMessageId,
-              replyingToText: _replyingToText,
-              onCancelReply: _cancelReply,
-            ),
-          ],
+              InputBar(
+                roomId: widget.roomId,
+                onSendMessage: _sendMessage,
+                onAttachment: _showAttachmentOptions,
+                onCamera: _takeAndSendPhoto,
+                onVoiceRecordingComplete: _onVoiceRecordingComplete,
+                isEncryptionEnabled: _isEncryptionEnabled,
+                replyingToMessageId: _replyingToMessageId,
+                replyingToText: _replyingToText,
+                onCancelReply: _cancelReply,
+              ),
+            ],
+          ),
         ),
       ),
     );
