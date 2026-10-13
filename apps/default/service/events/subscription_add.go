@@ -26,6 +26,7 @@ const (
 
 type roomSubscriptionAddQueue struct {
 	*roomChangeEventEmitter
+	roomRepo         repository.RoomRepository
 	subscriptionRepo repository.RoomSubscriptionRepository
 }
 
@@ -41,6 +42,7 @@ func NewSubscriptionAddQueue(
 			payloadConverter: models.NewPayloadConverter(),
 			eventsManager:    eventsManager,
 		},
+		roomRepo:         repository.NewRoomRepository(ctx, dbPool, workMan),
 		subscriptionRepo: repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan),
 	}
 }
@@ -74,6 +76,21 @@ func (csq *roomSubscriptionAddQueue) Execute(ctx context.Context, payload any) e
 		return err
 	}
 
+	// A DM's or a bot room's members are fixed when it is created (room
+	// business adds them synchronously); no queued add may join anyone to one.
+	personal, err := csq.isPersonalRoom(ctx, action.GetRoomId())
+	if err != nil {
+		return err
+	}
+	if personal {
+		util.Log(ctx).WithFields(map[string]any{
+			chatutil.KeyRoomID: action.GetRoomId(),
+			"refused_targets":  len(action.GetTargets()),
+			"type":             csq.Name(),
+		}).Warn("subscription add refused: a direct or bot room's members are fixed")
+		return nil
+	}
+
 	for _, subscription := range action.GetTargets() {
 		roomID := action.GetRoomId()
 		logger := util.Log(ctx).WithFields(map[string]any{
@@ -94,6 +111,19 @@ func (csq *roomSubscriptionAddQueue) Execute(ctx context.Context, payload any) e
 	}
 
 	return nil
+}
+
+// isPersonalRoom reports whether roomID is a DM or a bot room. A room that no
+// longer exists is not one; the add then proceeds as it always has.
+func (csq *roomSubscriptionAddQueue) isPersonalRoom(ctx context.Context, roomID string) (bool, error) {
+	room, err := csq.roomRepo.GetByID(ctx, roomID)
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to load room %s: %w", roomID, err)
+	}
+	return room.RoomType == models.RoomTypeDirect || room.RoomType == models.RoomTypeBot, nil
 }
 
 func (csq *roomSubscriptionAddQueue) addSubscription(

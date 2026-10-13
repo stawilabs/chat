@@ -22,6 +22,7 @@ import (
 
 type mockProfileClient struct {
 	getByContactFunc func(context.Context, *connect.Request[profilev1.GetByContactRequest]) (*connect.Response[profilev1.GetByContactResponse], error)
+	getByIDFunc      func(context.Context, *connect.Request[profilev1.GetByIdRequest]) (*connect.Response[profilev1.GetByIdResponse], error)
 }
 
 func (m *mockProfileClient) GetByContact(
@@ -99,9 +100,12 @@ func (m *mockProfileClient) DeleteRelationship(
 
 //nolint:staticcheck,revive // Method name required by interface
 func (m *mockProfileClient) GetById(
-	context.Context,
-	*connect.Request[profilev1.GetByIdRequest],
+	ctx context.Context,
+	req *connect.Request[profilev1.GetByIdRequest],
 ) (*connect.Response[profilev1.GetByIdResponse], error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, req)
+	}
 	return nil, errors.New("not implemented")
 }
 

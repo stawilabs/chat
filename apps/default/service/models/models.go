@@ -28,7 +28,7 @@ type Room struct {
 	// every other room. Several rooms may share a key (a DM recreated after
 	// someone left); the oldest whose active members are exactly its people
 	// is the one services resolve.
-	DirectKey string `gorm:"type:varchar(100);index:idx_rooms_direct_key"`
+	DirectKey string `gorm:"type:varchar(100);not null;default:''"`
 }
 
 // DirectKey is the key of the DM between two profiles, in either order.

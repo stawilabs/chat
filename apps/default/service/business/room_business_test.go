@@ -2,12 +2,17 @@ package business_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	"connectrpc.com/connect"
 	"github.com/pitabwire/frame/v2"
 	"github.com/pitabwire/frame/v2/data"
 	"github.com/pitabwire/frame/v2/datastore"
@@ -184,6 +189,125 @@ func (s *RoomBusinessTestSuite) TestDirectRooms() {
 			stored, err := roomRepo.GetByID(ctx, room.GetId())
 			require.NoError(t, err)
 			require.Empty(t, stored.DirectKey, "only personal rooms are keyed")
+		})
+	})
+}
+
+// TestPersonalRoomsAreHardened: a bot room's members are fixed too; a
+// personal room never takes a supplied id; a DM partner must be a well-formed
+// profile id that exists; a DM whose partner could not be subscribed is not
+// left behind; and every room has a non-null key.
+func (s *RoomBusinessTestSuite) TestPersonalRoomsAreHardened() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+		alice := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		known := util.IDString()
+		partnerContact := util.IDString()
+		partnerProfile := util.IDString()
+		var partnerLookups atomic.Int32
+		profiles := &mockProfileClient{
+			getByContactFunc: func(_ context.Context, req *connect.Request[profilev1.GetByContactRequest],
+			) (*connect.Response[profilev1.GetByContactResponse], error) {
+				switch req.Msg.GetContact() {
+				case alice.GetContactId():
+					return connect.NewResponse(&profilev1.GetByContactResponse{
+						Data: &profilev1.ProfileObject{Id: alice.GetProfileId()}}), nil
+				case partnerContact:
+					// The partner resolves when the DM is typed, then fails when
+					// they are subscribed.
+					if partnerLookups.Add(1) == 1 {
+						return connect.NewResponse(&profilev1.GetByContactResponse{
+							Data: &profilev1.ProfileObject{Id: partnerProfile}}), nil
+					}
+					return nil, connect.NewError(connect.CodeUnavailable, errors.New("profile service down"))
+				}
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("no such contact"))
+			},
+			getByIDFunc: func(_ context.Context, req *connect.Request[profilev1.GetByIdRequest],
+			) (*connect.Response[profilev1.GetByIdResponse], error) {
+				if req.Msg.GetId() == known {
+					return connect.NewResponse(&profilev1.GetByIdResponse{
+						Data: &profilev1.ProfileObject{Id: known}}), nil
+				}
+				return nil, connect.NewError(connect.CodeNotFound, errors.New("no such profile"))
+			},
+		}
+		rb := s.setupBusinessLayerWithProfileClient(ctx, svc, profiles)
+		dm := func(name string, partner *commonv1.ContactLink) (*chatv1.Room, error) {
+			return rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: name, Type: chatv1.RoomType_ROOM_TYPE_DIRECT,
+				Members: []*commonv1.ContactLink{partner}}, alice)
+		}
+
+		t.Run("a bot room gains no member and changes no role", func(t *testing.T) {
+			room, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: "Soon a bot room"}, alice)
+			require.NoError(t, err)
+			s.WaitForAuthzAccess(ctx, svc, alice.GetProfileId(), room.GetId(), t)
+			require.NoError(t, dbPool.DB(ctx, false).Table("rooms").Where("id = ?", room.GetId()).
+				Update("room_type", models.RoomTypeBot).Error)
+
+			err = rb.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
+				RoomId:  room.GetId(),
+				Members: []*chatv1.RoomSubscription{{Member: &commonv1.ContactLink{ProfileId: known}}},
+			}, alice)
+			require.ErrorIs(t, err, service.ErrDirectRoomMembership)
+			subs, err := repository.NewRoomSubscriptionRepository(ctx, dbPool, svc.WorkManager()).
+				GetByContactLinkAndRooms(ctx, &commonv1.ContactLink{ProfileId: alice.GetProfileId()}, room.GetId())
+			require.NoError(t, err)
+			require.Len(t, subs, 1)
+			err = rb.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{RoomId: room.GetId(),
+				SubscriptionId: subs[0].GetID(), Roles: []string{"admin"}}, alice)
+			require.ErrorIs(t, err, service.ErrDirectRoomMembership)
+		})
+
+		t.Run("a personal room never takes a supplied id", func(t *testing.T) {
+			group, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: "Existing"}, alice)
+			require.NoError(t, err)
+			for _, roomType := range []chatv1.RoomType{chatv1.RoomType_ROOM_TYPE_DIRECT, chatv1.RoomType_ROOM_TYPE_BOT} {
+				room, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Id: group.GetId(), Name: "By id",
+					Type: roomType, Members: []*commonv1.ContactLink{{ProfileId: known}}}, alice)
+				require.ErrorIs(t, err, service.ErrPersonalRoomID, roomType.String())
+				require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+				require.Nil(t, room, "naming an existing room's id never answers with it")
+			}
+		})
+
+		t.Run("a DM partner is a well-formed profile id", func(t *testing.T) {
+			for name, id := range map[string]string{
+				"separator": known[:5] + ":" + known[6:],
+				"too long":  strings.Repeat("a", 47),
+			} {
+				_, err := dm("x "+name, &commonv1.ContactLink{ProfileId: id})
+				require.ErrorIs(t, err, service.ErrDirectRoomMembers, name)
+			}
+		})
+
+		t.Run("a DM partner named by profile id must exist", func(t *testing.T) {
+			_, err := dm("Nobody", &commonv1.ContactLink{ProfileId: util.IDString()})
+			require.ErrorIs(t, err, service.ErrDirectRoomMembers)
+
+			room, err := dm("Known", &commonv1.ContactLink{ProfileId: known})
+			require.NoError(t, err)
+			require.Equal(t, chatv1.RoomType_ROOM_TYPE_DIRECT, room.GetType())
+		})
+
+		t.Run("a DM whose partner was not subscribed is not left behind", func(t *testing.T) {
+			_, err := dm("Half made", &commonv1.ContactLink{ContactId: partnerContact})
+			require.ErrorIs(t, err, service.ErrDirectRoomMembers)
+			var live int64
+			require.NoError(t, dbPool.DB(ctx, false).Table("rooms").
+				Where("direct_key = ? AND deleted_at IS NULL", models.DirectKey(alice.GetProfileId(), partnerProfile)).
+				Count(&live).Error)
+			require.Zero(t, live, "no half-made keyed DM remains")
+		})
+
+		t.Run("direct_key is not null", func(t *testing.T) {
+			var nullable string
+			require.NoError(t, dbPool.DB(ctx, false).Raw(
+				"SELECT is_nullable FROM information_schema.columns WHERE table_name = 'rooms' AND column_name = 'direct_key'",
+			).
+				Scan(&nullable).Error)
+			require.Equal(t, "NO", nullable)
 		})
 	})
 }

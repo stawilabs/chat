@@ -172,6 +172,11 @@ func (rb *roomBusiness) CreateRoom(
 	if suppliedID != "" && !chatutil.IsValidRoomID(suppliedID) {
 		return nil, service.ErrRoomIDInvalid
 	}
+	// A personal room is found by its people, never by a supplied id: naming
+	// an existing room's id must not answer with that room.
+	if suppliedID != "" && isPersonalRoomType(req.GetType()) {
+		return nil, service.ErrPersonalRoomID
+	}
 
 	roomType, members, directKey, err := rb.roomTypeOf(ctx, req, createdBy)
 	if err != nil {
@@ -217,24 +222,8 @@ func (rb *roomBusiness) CreateRoom(
 		subscriptionList, subscriptionList[0].GetId(),
 		createdBy,
 	)
-	if err != nil {
-		partErr, ok := service.IsPartialBatchError(err)
-		if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) {
-			// Full failure — and a room whose creator could not be made its
-			// owner is one: it would exist with members and nobody able to
-			// administer it, and the creator could not even see it. Delete
-			// the room and refuse.
-			_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
-			return nil, fmt.Errorf("failed to create room: %w", err)
-		}
-
-		// Partial failure: some members succeeded (including at least the owner).
-		// Return the room with a warning about the failed members.
-		util.Log(ctx).WithFields(map[string]any{
-			chatutil.KeyRoomID: createdRoom.GetID(),
-			"failed":           partErr.Failed,
-			"succeeded":        partErr.Succeeded,
-		}).Warn("partial failure adding members during room creation")
+	if err = rb.settleCreatedMembers(ctx, createdRoom, err); err != nil {
+		return nil, err
 	}
 
 	util.Log(ctx).WithField(chatutil.KeyRoomID, createdRoom.GetID()).
@@ -244,6 +233,68 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
+}
+
+// settleCreatedMembers decides a new room's fate after its members were
+// added (addErr). A room whose creator could not be made its owner is deleted
+// and refused: it would exist with members and nobody able to administer it.
+// A personal room is all or nothing: one whose other member failed is deleted
+// too, so no half-made keyed DM is left for resolution to find. Otherwise a
+// partial failure keeps the room with the members that succeeded.
+func (rb *roomBusiness) settleCreatedMembers(ctx context.Context, room *models.Room, addErr error) error {
+	if addErr == nil {
+		return nil
+	}
+	partErr, ok := service.IsPartialBatchError(addErr)
+	if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) || room.DirectKey != "" {
+		_ = rb.roomRepo.Delete(ctx, room.GetID())
+		if room.DirectKey != "" {
+			return fmt.Errorf("%w: %w", service.ErrDirectRoomMembers, addErr)
+		}
+		return fmt.Errorf("failed to create room: %w", addErr)
+	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		chatutil.KeyRoomID: room.GetID(),
+		"failed":           partErr.Failed,
+		"succeeded":        partErr.Succeeded,
+	}).Warn("partial failure adding members during room creation")
+	return nil
+}
+
+// isPersonalRoomType reports whether t is a DM or a bot room.
+func isPersonalRoomType(t chatv1.RoomType) bool {
+	return t == chatv1.RoomType_ROOM_TYPE_DIRECT || t == chatv1.RoomType_ROOM_TYPE_BOT
+}
+
+// maxPersonalKeyIDLength is the longest profile id a personal room's key
+// takes: "direct:" + two ids + ":" fits the 100-character direct_key column.
+const maxPersonalKeyIDLength = 46
+
+// validPersonalKeyID reports whether id can name a person in a personal
+// room's key: non-empty, short enough, and free of the key's separator.
+func validPersonalKeyID(id string) bool {
+	return id != "" && len(id) <= maxPersonalKeyIDLength && !strings.Contains(id, ":")
+}
+
+// checkProfileExists refuses a DM partner named only by a profile id that the
+// profile service does not know. Without a profile client (development and
+// tests) the id is taken as given.
+func (rb *roomBusiness) checkProfileExists(ctx context.Context, profileID string) error {
+	if rb.profileCli == nil {
+		return nil
+	}
+	resp, err := rb.profileCli.GetById(ctx, connect.NewRequest(&profilev1.GetByIdRequest{Id: profileID}))
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return fmt.Errorf("%w: no profile %s", service.ErrDirectRoomMembers, profileID)
+		}
+		return fmt.Errorf("failed to check profile %s: %w", profileID, err)
+	}
+	if resp.Msg.GetData().GetId() != profileID {
+		return fmt.Errorf("%w: no profile %s", service.ErrDirectRoomMembers, profileID)
+	}
+	return nil
 }
 
 // createdRoomSubscriptions is a new room's subscriptions: its creator as
@@ -296,11 +347,18 @@ func (rb *roomBusiness) roomTypeOf(ctx context.Context, req *chatv1.CreateRoomRe
 			return "", nil, "", service.ErrDirectRoomMembers
 		}
 		other := proto.CloneOf(others[0])
+		hadContact := other.GetContactId() != ""
 		if err := rb.validateContactProfile(ctx, other); err != nil {
 			return "", nil, "", fmt.Errorf("%w: %w", service.ErrDirectRoomMembers, err)
 		}
-		if other.GetProfileId() == "" || other.GetProfileId() == createdBy.GetProfileId() {
+		if !validPersonalKeyID(other.GetProfileId()) || !validPersonalKeyID(createdBy.GetProfileId()) ||
+			other.GetProfileId() == createdBy.GetProfileId() {
 			return "", nil, "", service.ErrDirectRoomMembers
+		}
+		if !hadContact {
+			if err := rb.checkProfileExists(ctx, other.GetProfileId()); err != nil {
+				return "", nil, "", err
+			}
 		}
 		return models.RoomTypeDirect, []*commonv1.ContactLink{other},
 			models.DirectKey(createdBy.GetProfileId(), other.GetProfileId()), nil
@@ -308,8 +366,8 @@ func (rb *roomBusiness) roomTypeOf(ctx context.Context, req *chatv1.CreateRoomRe
 	return "", nil, "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown room type %s", req.GetType()))
 }
 
-// refuseIfDirect refuses a membership or role change in a DM: its two members
-// are fixed (leaving stays allowed).
+// refuseIfDirect refuses a membership or role change in a DM or a bot room:
+// their members are fixed (leaving stays allowed).
 func (rb *roomBusiness) refuseIfDirect(ctx context.Context, roomID string) error {
 	room, err := rb.roomRepo.GetByID(ctx, roomID)
 	if err != nil {
@@ -318,7 +376,7 @@ func (rb *roomBusiness) refuseIfDirect(ctx context.Context, roomID string) error
 		}
 		return fmt.Errorf("failed to load the room: %w", err)
 	}
-	if room.RoomType == models.RoomTypeDirect {
+	if room.RoomType == models.RoomTypeDirect || room.RoomType == models.RoomTypeBot {
 		return service.ErrDirectRoomMembership
 	}
 	return nil

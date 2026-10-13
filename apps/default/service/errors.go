@@ -155,10 +155,14 @@ var (
 	// exactly one other person on Stawi (a profile), never the creator themself.
 	ErrDirectRoomMembers = connect.NewError(connect.CodeInvalidArgument,
 		errors.New("a direct room is between you and exactly one other person on Stawi"))
+	// ErrPersonalRoomID refuses a supplied id on a DM or a bot room: a personal
+	// room is found by its people, never by an id the caller names.
+	ErrPersonalRoomID = connect.NewError(connect.CodeInvalidArgument,
+		errors.New("a direct or bot room's id is chosen by chat"))
 	// ErrBotRoomByPerson refuses a person's bot room: only a service creates one.
 	ErrBotRoomByPerson = connect.NewError(connect.CodeInvalidArgument, errors.New("a bot room is created by a service"))
-	// ErrDirectRoomMembership refuses a DM's membership change: its two members
-	// are fixed; no one joins it and its roles do not change.
+	// ErrDirectRoomMembership refuses a membership change in a DM or a bot room:
+	// their members are fixed; no one joins and roles do not change.
 	ErrDirectRoomMembership = connect.NewError(
 		connect.CodeFailedPrecondition,
 		errors.New("a direct room's members are fixed"),
