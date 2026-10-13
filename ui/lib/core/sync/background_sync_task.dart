@@ -7,6 +7,7 @@ import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import '../../features/messages/data/message_repository.dart';
 import '../../features/messages/domain/room_event.dart' as domain;
 import '../../features/notifications/badge_service.dart';
+import '../../features/rooms/data/room_repository.dart';
 import '../../features/stawi/domain/stawi_payloads.dart';
 import '../auth/background_auth_helper.dart';
 import '../db/database.dart';
@@ -18,6 +19,7 @@ import '../settings/settings_service.dart';
 import 'chat_event_codec.dart';
 import 'pending_job.dart' as domain_job;
 import 'pending_job_repository.dart';
+import 'room_type_wire.dart';
 
 class BackgroundSyncTask {
   /// Main entry point for background sync
@@ -554,8 +556,12 @@ class BackgroundSyncTask {
         .map((id) => pb.ContactLink(contactId: id))
         .toList();
 
+    final localType = payload['type'] as String? ?? 'group';
     final request = pb.CreateRoomRequest(
-      id: payload['id'] as String,
+      // A DIRECT room is the server's to identify (it returns the pair's
+      // existing DM), so the server refuses a client-chosen id for it.
+      id: localType == 'direct' ? null : payload['id'] as String,
+      type: roomTypeToWire(localType),
       name: payload['name'] as String? ?? '',
       description: payload['description'] as String? ?? '',
       isPrivate: payload['isPrivate'] as bool? ?? false,
@@ -576,6 +582,13 @@ class BackgroundSyncTask {
         'Room created in background',
         data: {'localId': payload['id'], 'serverId': roomId},
       );
+
+      // For a direct room the server may hand back the pair's existing DM:
+      // point the local room at it.
+      final localId = payload['id'] as String;
+      if (roomId != localId) {
+        await RoomRepository(database).adoptServerRoomId(localId, roomId);
+      }
 
       // CRITICAL: Sync room members immediately after room creation
       // This ensures the current user's subscription ID is available

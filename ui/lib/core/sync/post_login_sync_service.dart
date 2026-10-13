@@ -9,6 +9,7 @@ import '../../features/rooms/data/room_sync_manager.dart';
 import '../../features/rooms/domain/room.dart' as domain;
 import '../logging/app_logger.dart';
 import '../networking/client.dart';
+import 'room_type_wire.dart';
 
 /// Service for synchronizing user data immediately after login
 ///
@@ -172,20 +173,11 @@ class PostLoginSyncService {
 
   /// Process a single room from the API response
   Future<void> _processRoom(pb_chat.Room pbRoom) async {
-    // Extract room type from metadata if available
-    var roomType = '';
-    if (pbRoom.hasMetadata()) {
-      final typeValue = pbRoom.metadata.fields['room_type'];
-      if (typeValue != null && typeValue.hasStringValue()) {
-        roomType = typeValue.stringValue;
-      }
-    }
-
     // Convert protobuf room to domain model
     final room = domain.Room(
       id: pbRoom.id,
       name: pbRoom.name,
-      type: roomType,
+      type: roomTypeFromWire(pbRoom.type),
       // Leave lastEventId/lastEventIndex as defaults - will be updated by sync engine
     );
 

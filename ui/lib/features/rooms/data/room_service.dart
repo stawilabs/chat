@@ -114,6 +114,7 @@ class RoomService {
     // Queue for server sync - server handles all member types
     await _jobRepo.addJob(JobType.createRoom, {
       'id': roomId,
+      'type': type,
       'name': name,
       'description': description ?? '',
       'isPrivate': isPrivate,

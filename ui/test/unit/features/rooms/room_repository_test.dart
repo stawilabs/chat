@@ -472,5 +472,58 @@ void main() {
         expect(result.metadata!['boolean'], equals(true));
       });
     });
+
+    group('adoptServerRoomId', () {
+      test('a local DM follows the room the server returned', () async {
+        await repository.insertRoom(
+          const Room(id: 'local-dm', name: '', type: 'direct'),
+        );
+        await testDb
+            .into(testDb.roomSubscriptions)
+            .insert(
+              RoomSubscriptionsCompanion.insert(
+                id: 'provisional_local-dm',
+                roomId: 'local-dm',
+              ),
+            );
+        await messageRepository.insertMessage(
+          const RoomEvent(
+            id: 'event-1',
+            roomId: 'local-dm',
+            senderId: 'provisional_local-dm',
+            type: RoomEventType.text,
+            content: {'text': 'hi'},
+            createdAt: 1,
+          ),
+        );
+
+        await repository.adoptServerRoomId('local-dm', 'server-dm');
+
+        expect(await repository.getRoomById('local-dm'), isNull);
+        final adopted = await repository.getRoomById('server-dm');
+        expect(adopted, isNotNull);
+        expect(adopted!.type, 'direct');
+        final events = await testDb.select(testDb.roomEvents).get();
+        expect(events.single.roomId, 'server-dm');
+        expect(events.single.senderId, 'provisional_server-dm');
+        final subs = await testDb.select(testDb.roomSubscriptions).get();
+        expect(subs.single.id, 'provisional_server-dm');
+        expect(subs.single.roomId, 'server-dm');
+      });
+
+      test('an existing server row is kept', () async {
+        await repository.insertRoom(
+          const Room(id: 'local-dm', name: '', type: 'direct'),
+        );
+        await repository.insertRoom(
+          const Room(id: 'server-dm', name: 'Ann', type: 'direct'),
+        );
+
+        await repository.adoptServerRoomId('local-dm', 'server-dm');
+
+        expect(await repository.getRoomById('local-dm'), isNull);
+        expect((await repository.getRoomById('server-dm'))!.name, 'Ann');
+      });
+    });
   });
 }
