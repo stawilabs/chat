@@ -449,6 +449,138 @@ class GetRoomRequest extends $pb.GeneratedMessage {
   void clearRoomId() => clearField(1);
 }
 
+class GetDirectPartnerAccountRequest extends $pb.GeneratedMessage {
+  factory GetDirectPartnerAccountRequest({
+    $core.String? roomId,
+  }) {
+    final $result = create();
+    if (roomId != null) {
+      $result.roomId = roomId;
+    }
+    return $result;
+  }
+  GetDirectPartnerAccountRequest._() : super();
+  factory GetDirectPartnerAccountRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetDirectPartnerAccountRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetDirectPartnerAccountRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'roomId')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetDirectPartnerAccountRequest clone() => GetDirectPartnerAccountRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetDirectPartnerAccountRequest copyWith(void Function(GetDirectPartnerAccountRequest) updates) => super.copyWith((message) => updates(message as GetDirectPartnerAccountRequest)) as GetDirectPartnerAccountRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetDirectPartnerAccountRequest create() => GetDirectPartnerAccountRequest._();
+  GetDirectPartnerAccountRequest createEmptyInstance() => create();
+  static $pb.PbList<GetDirectPartnerAccountRequest> createRepeated() => $pb.PbList<GetDirectPartnerAccountRequest>();
+  @$core.pragma('dart2js:noInline')
+  static GetDirectPartnerAccountRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetDirectPartnerAccountRequest>(create);
+  static GetDirectPartnerAccountRequest? _defaultInstance;
+
+  /// The DIRECT room the caller shares with the partner.
+  @$pb.TagNumber(1)
+  $core.String get roomId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set roomId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasRoomId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRoomId() => clearField(1);
+}
+
+class GetDirectPartnerAccountResponse extends $pb.GeneratedMessage {
+  factory GetDirectPartnerAccountResponse({
+    $core.String? profileId,
+    $core.List<$core.int>? account,
+    $core.bool? deployed,
+  }) {
+    final $result = create();
+    if (profileId != null) {
+      $result.profileId = profileId;
+    }
+    if (account != null) {
+      $result.account = account;
+    }
+    if (deployed != null) {
+      $result.deployed = deployed;
+    }
+    return $result;
+  }
+  GetDirectPartnerAccountResponse._() : super();
+  factory GetDirectPartnerAccountResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetDirectPartnerAccountResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetDirectPartnerAccountResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'profileId')
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'account', $pb.PbFieldType.OY)
+    ..aOB(3, _omitFieldNames ? '' : 'deployed')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetDirectPartnerAccountResponse clone() => GetDirectPartnerAccountResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetDirectPartnerAccountResponse copyWith(void Function(GetDirectPartnerAccountResponse) updates) => super.copyWith((message) => updates(message as GetDirectPartnerAccountResponse)) as GetDirectPartnerAccountResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetDirectPartnerAccountResponse create() => GetDirectPartnerAccountResponse._();
+  GetDirectPartnerAccountResponse createEmptyInstance() => create();
+  static $pb.PbList<GetDirectPartnerAccountResponse> createRepeated() => $pb.PbList<GetDirectPartnerAccountResponse>();
+  @$core.pragma('dart2js:noInline')
+  static GetDirectPartnerAccountResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetDirectPartnerAccountResponse>(create);
+  static GetDirectPartnerAccountResponse? _defaultInstance;
+
+  /// The other person in the DM.
+  @$pb.TagNumber(1)
+  $core.String get profileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set profileId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasProfileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfileId() => clearField(1);
+
+  /// The partner's primary Stawi account; empty when they have none.
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get account => $_getN(1);
+  @$pb.TagNumber(2)
+  set account($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasAccount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccount() => clearField(2);
+
+  /// Whether the account is deployed on chain.
+  @$pb.TagNumber(3)
+  $core.bool get deployed => $_getBF(2);
+  @$pb.TagNumber(3)
+  set deployed($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasDeployed() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDeployed() => clearField(3);
+}
+
 class GetRoomResponse extends $pb.GeneratedMessage {
   factory GetRoomResponse({
     Room? room,
@@ -3799,6 +3931,9 @@ class ChatServiceApi {
   ;
   $async.Future<UpdateSubscriptionRoleResponse> updateSubscriptionRole($pb.ClientContext? ctx, UpdateSubscriptionRoleRequest request) =>
     _client.invoke<UpdateSubscriptionRoleResponse>(ctx, 'ChatService', 'UpdateSubscriptionRole', request, UpdateSubscriptionRoleResponse())
+  ;
+  $async.Future<GetDirectPartnerAccountResponse> getDirectPartnerAccount($pb.ClientContext? ctx, GetDirectPartnerAccountRequest request) =>
+    _client.invoke<GetDirectPartnerAccountResponse>(ctx, 'ChatService', 'GetDirectPartnerAccount', request, GetDirectPartnerAccountResponse())
   ;
   $async.Future<SearchRoomSubscriptionsResponse> searchRoomSubscriptions($pb.ClientContext? ctx, SearchRoomSubscriptionsRequest request) =>
     _client.invoke<SearchRoomSubscriptionsResponse>(ctx, 'ChatService', 'SearchRoomSubscriptions', request, SearchRoomSubscriptionsResponse())

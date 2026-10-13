@@ -123,8 +123,8 @@ func runService(ctx context.Context) error {
 	auth := sm.GetAuthorizer(ctx)
 	authzMiddleware := authz.NewMiddleware(auth)
 
-	stawiChain, stawiServer := setupStawi(ctx, &cfg, dbPool, workMan, queueMan, profileCli, authzMiddleware)
-	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware, stawiServer)
+	stawiChain, stawiServerOpts := setupStawi(ctx, &cfg, dbPool, workMan, queueMan, profileCli, authzMiddleware)
+	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware, stawiServerOpts...)
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 	deadLetterRepo := repository.NewDeadLetterRepository(ctx, dbPool, workMan)
 
@@ -281,29 +281,35 @@ func stawiOptions(cfg aconfig.ChatConfig, chain *business.StawiChain) []frame.Op
 	return opts
 }
 
-// setupSettlementRooms connects to settlement's RoomService as chat's
-// service principal (workload identity, OAuth2 and retries from cfg). An empty
-// endpoint is a development posture: Stawi room acts are then refused as
-// unavailable, while bound rooms stay guarded and facts are applied.
-func setupSettlementRooms(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, error) {
+// setupSettlement connects to settlement's RoomService and AccountService as
+// chat's service principal (workload identity, OAuth2 and retries from cfg).
+// An empty endpoint is a development posture: Stawi room acts and DM partner
+// account lookups are then refused as unavailable, while bound rooms stay
+// guarded and facts are applied.
+func setupSettlement(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, stawi.ProfileAccounts, error) {
 	if cfg.SettlementServiceURI == "" {
 		util.Log(ctx).Warn("main -- no settlement endpoint; Stawi room acts are refused")
-		return nil, nil //nolint:nilnil // no endpoint is a development posture, not an error
+		return nil, nil, nil
 	}
-	cli, err := connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
+	target := common.ServiceTarget{
 		Endpoint:              cfg.SettlementServiceURI,
 		WorkloadAPITargetPath: cfg.SettlementServiceWorkloadAPITargetPath,
 		ServiceID:             servicecatalog.ServiceStawiSettlement,
-	}, settlementv1connect.NewRoomServiceClient)
-	if err != nil {
-		return nil, err
 	}
-	return settlement.NewRooms(cli), nil
+	roomsCli, err := connection.NewServiceClient(ctx, &cfg, target, settlementv1connect.NewRoomServiceClient)
+	if err != nil {
+		return nil, nil, err
+	}
+	accountsCli, err := connection.NewServiceClient(ctx, &cfg, target, settlementv1connect.NewAccountServiceClient)
+	if err != nil {
+		return nil, nil, err
+	}
+	return settlement.NewRooms(roomsCli), settlement.NewProfileAccounts(accountsCli), nil
 }
 
-// setupStawi wires Stawi rooms: settlement relays room acts, profile maps
-// chain addresses to profiles (client/accounts over the profile client), and
-// the chain consumer applies settlement's facts.
+// setupStawi wires Stawi rooms: settlement relays room acts and answers DM
+// partner accounts, profile maps chain addresses to profiles (client/accounts
+// over the profile client), and the chain consumer applies settlement's facts.
 func setupStawi(
 	ctx context.Context,
 	cfg *aconfig.ChatConfig,
@@ -312,14 +318,17 @@ func setupStawi(
 	queueMan queue.Manager,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
-) (*business.StawiChain, handlers.ServerOption) {
-	rooms, err := setupSettlementRooms(ctx, *cfg)
+) (*business.StawiChain, []handlers.ServerOption) {
+	rooms, profileAccounts, err := setupSettlement(ctx, *cfg)
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- could not set up the settlement client")
 	}
 	accountResolver := accounts.New(profileCli)
 	chain := newStawiChain(ctx, dbPool, workMan, queueMan, cfg, rooms, accountResolver, authzMiddleware)
-	return chain, handlers.WithStawi(rooms, accountResolver)
+	return chain, []handlers.ServerOption{
+		handlers.WithStawi(rooms, accountResolver),
+		handlers.WithProfileAccounts(profileAccounts),
+	}
 }
 
 // newStawiChain builds the chain consumer that applies settlement's facts.

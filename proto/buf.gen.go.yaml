@@ -1,5 +1,6 @@
-# Regenerates the vendored Go protobuf module in gen/go/protocolbuffers, which
-# go.work uses in place of the published buf.build/gen/go/stawi/chat module.
+# Regenerates the vendored Go modules in gen/go/protocolbuffers (messages) and
+# gen/go/connectrpc (Connect clients and handlers), which go.work uses in place
+# of the published buf.build/gen/go/stawi/chat modules.
 # Run from this directory after changing a proto:
 #
 #   buf generate --template buf.gen.go.yaml
@@ -28,4 +29,7 @@ managed:
 plugins:
   - local: protoc-gen-go
     out: ../gen/go/protocolbuffers
+    opt: paths=source_relative
+  - local: protoc-gen-connect-go
+    out: ../gen/go/connectrpc
     opt: paths=source_relative

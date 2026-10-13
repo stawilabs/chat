@@ -27,6 +27,14 @@ type RoomBusiness interface {
 	// GetRoom retrieves a room by ID with proper authorization checks
 	GetRoom(ctx context.Context, roomID string, searchedBy *commonv1.ContactLink) (*chatv1.Room, error)
 
+	// GetDirectPartnerAccount answers the Stawi account of the other person
+	// in the caller's DM: the caller must be an active member of a DIRECT
+	// room holding exactly two active members. Any other room is refused
+	// PermissionDenied without saying why; a settlement outage is Unavailable.
+	GetDirectPartnerAccount(
+		ctx context.Context, roomID string, caller *commonv1.ContactLink,
+	) (*chatv1.GetDirectPartnerAccountResponse, error)
+
 	// UpdateRoom updates room details (name, description, etc.)
 	UpdateRoom(
 		ctx context.Context,

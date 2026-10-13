@@ -182,3 +182,18 @@ func HexAddress(b []byte) string {
 	}
 	return "0x" + hex.EncodeToString(b)
 }
+
+// ProfileAccount is a profile's primary Stawi account as settlement reports
+// it. An empty Account means the profile has none.
+type ProfileAccount struct {
+	Account []byte
+	// Deployed is whether the account has code at the head.
+	Deployed bool
+}
+
+// ProfileAccounts is settlement's AccountService.GetProfileAccount as chat
+// uses it: chat calls it as its own service principal, and only after it has
+// itself checked the relationship that entitles a person to the address.
+type ProfileAccounts interface {
+	GetProfileAccount(ctx context.Context, profileID string) (*ProfileAccount, error)
+}

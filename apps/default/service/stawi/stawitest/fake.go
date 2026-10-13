@@ -228,3 +228,43 @@ func (a *Accounts) Resolve(_ context.Context, addresses []string) (map[string]st
 	}
 	return out, nil
 }
+
+// ProfileAccounts is a fake settlement GetProfileAccount: a profile without a
+// registered account answers empty, as settlement does.
+type ProfileAccounts struct {
+	mu       sync.Mutex
+	accounts map[string]stawi.ProfileAccount
+	err      error
+	// Asked records every profile looked up.
+	Asked []string
+}
+
+// NewProfileAccounts returns a fake lookup that knows no accounts.
+func NewProfileAccounts() *ProfileAccounts {
+	return &ProfileAccounts{accounts: map[string]stawi.ProfileAccount{}}
+}
+
+// Set records profileID's primary account.
+func (p *ProfileAccounts) Set(profileID string, account []byte, deployed bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.accounts[profileID] = stawi.ProfileAccount{Account: account, Deployed: deployed}
+}
+
+// Fail makes every lookup fail with err (nil restores it).
+func (p *ProfileAccounts) Fail(err error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.err = err
+}
+
+func (p *ProfileAccounts) GetProfileAccount(_ context.Context, profileID string) (*stawi.ProfileAccount, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Asked = append(p.Asked, profileID)
+	if p.err != nil {
+		return nil, p.err
+	}
+	account := p.accounts[profileID]
+	return &account, nil
+}

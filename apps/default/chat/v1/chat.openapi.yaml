@@ -24,6 +24,7 @@ x-service-permissions:
   - proposal_manage
   - stawi_card_post
   - stawi_room_resolve
+  - direct_partner_account_view
 paths:
   /chat.v1.ChatService/AddRoomSubscriptions:
     post:
@@ -151,6 +152,116 @@ paths:
                 $ref: '#/components/schemas/chat.v1.DeleteRoomResponse'
       x-required-permissions:
         - room_delete
+  /chat.v1.ChatService/GetDirectPartnerAccount:
+    get:
+      tags:
+        - Rooms
+        - chat.v1.ChatService
+      summary: Read the Stawi account of the other person in a DM
+      description: Returns the profile and primary Stawi account of the other active member of a DIRECT room the caller is an active member of. An empty account means the partner has none yet.
+      operationId: getDirectPartnerAccount
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+        - name: message
+          in: query
+          description: The URL-encoded message query parameter contains the JSON or binary serialized request message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.GetDirectPartnerAccountRequest'
+        - name: encoding
+          in: query
+          description: Define which encoding or 'Message-Codec' to use
+          required: true
+          schema:
+            $ref: '#/components/schemas/encoding'
+          example: json
+        - name: base64
+          in: query
+          description: Specifies if the message query param is base64 encoded, which may be required for binary data
+          schema:
+            $ref: '#/components/schemas/base64'
+          example: false
+        - name: compression
+          in: query
+          description: Which compression algorithm to use for this request
+          schema:
+            $ref: '#/components/schemas/compression'
+          example: gzip
+        - name: connect
+          in: query
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect'
+          example: v1
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.GetDirectPartnerAccountResponse'
+      x-required-permissions:
+        - direct_partner_account_view
+    post:
+      tags:
+        - Rooms
+        - chat.v1.ChatService
+      summary: Read the Stawi account of the other person in a DM
+      description: Returns the profile and primary Stawi account of the other active member of a DIRECT room the caller is an active member of. An empty account means the partner has none yet.
+      operationId: getDirectPartnerAccount2
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat.v1.GetDirectPartnerAccountRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.GetDirectPartnerAccountResponse'
+      x-required-permissions:
+        - direct_partner_account_view
   /chat.v1.ChatService/GetEvent:
     get:
       tags:
@@ -2534,6 +2645,36 @@ components:
           type: string
           title: message
       title: FormValidationRule
+    chat.v1.GetDirectPartnerAccountRequest:
+      type: object
+      properties:
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: The DIRECT room the caller shares with the partner.
+      title: GetDirectPartnerAccountRequest
+      additionalProperties: false
+    chat.v1.GetDirectPartnerAccountResponse:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+          description: The other person in the DM.
+        account:
+          type: string
+          title: account
+          format: byte
+          description: The partner's primary Stawi account; empty when they have none.
+        deployed:
+          type: boolean
+          title: deployed
+          description: Whether the account is deployed on chain.
+      title: GetDirectPartnerAccountResponse
+      additionalProperties: false
     chat.v1.GetEventRequest:
       type: object
       properties:

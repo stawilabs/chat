@@ -57,6 +57,7 @@ class service_chat implements Namespace {
     granted_proposal_manage: (profile_user | service_chat)[]
     granted_stawi_card_post: (profile_user | service_chat)[]
     granted_stawi_room_resolve: (profile_user | service_chat)[]
+    granted_direct_partner_account_view: (profile_user | service_chat)[]
   }
 
   permits = {
@@ -141,5 +142,13 @@ class service_chat implements Namespace {
     stawi_room_resolve: (ctx: Context): boolean =>
       this.related.service.includes(ctx.subject) ||
       this.related.granted_stawi_room_resolve.includes(ctx.subject),
+
+    direct_partner_account_view: (ctx: Context): boolean =>
+      this.related.admin.includes(ctx.subject) ||
+      this.related.member.includes(ctx.subject) ||
+      this.related.operator.includes(ctx.subject) ||
+      this.related.owner.includes(ctx.subject) ||
+      this.related.viewer.includes(ctx.subject) ||
+      this.related.granted_direct_partner_account_view.includes(ctx.subject),
   }
 }

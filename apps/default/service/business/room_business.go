@@ -26,6 +26,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
@@ -50,6 +51,9 @@ type roomBusiness struct {
 	// roomResolveChecker gates ResolvePersonalRoom (stawi_room_resolve);
 	// nil refuses every service resolution.
 	roomResolveChecker FunctionPermissionChecker
+	// profileAccounts answers GetDirectPartnerAccount's settlement lookup;
+	// nil answers every entitled lookup Unavailable.
+	profileAccounts stawi.ProfileAccounts
 }
 
 // RoomBusinessOption configures optional room business behaviour.

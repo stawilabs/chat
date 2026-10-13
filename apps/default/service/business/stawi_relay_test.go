@@ -34,6 +34,7 @@ type stawiFixture struct {
 	rb       business.RoomBusiness
 	rooms    *stawitest.Rooms
 	accounts *stawitest.Accounts
+	partners *stawitest.ProfileAccounts
 	bindings repository.StawiRoomRepository
 	calls    repository.StawiRoomCallRepository
 	subRepo  repository.RoomSubscriptionRepository
@@ -56,6 +57,7 @@ func (s *MessageBusinessTestSuite) newStawiFixture(t *testing.T, dep *definition
 		ctx:      ctx,
 		rooms:    stawitest.NewRooms(),
 		accounts: stawitest.NewAccounts(),
+		partners: stawitest.NewProfileAccounts(),
 		alice:    &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
 		bob:      &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
 	}
@@ -99,7 +101,8 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 		business.WithServiceCards(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
 		s.AuthzMiddleware, business.WithStawiBindings(f.bindings),
-		business.WithPersonalRooms(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
+		business.WithPersonalRooms(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)),
+		business.WithProfileAccounts(f.partners))
 	f.roomRepo = roomRepo
 	return mb, rb
 }

@@ -36,6 +36,12 @@ type mockRoomBusiness struct {
 	resolvePersonalRoomFn     func(ctx context.Context, req *chatv1.CreateRoomRequest) (*chatv1.Room, error)
 }
 
+func (m *mockRoomBusiness) GetDirectPartnerAccount(
+	_ context.Context, _ string, _ *commonv1.ContactLink,
+) (*chatv1.GetDirectPartnerAccountResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *mockRoomBusiness) ResolvePersonalRoom(
 	ctx context.Context,
 	req *chatv1.CreateRoomRequest,

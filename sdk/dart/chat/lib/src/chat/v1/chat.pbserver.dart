@@ -32,6 +32,7 @@ abstract class ChatServiceBase extends $pb.GeneratedService {
   $async.Future<$10.AddRoomSubscriptionsResponse> addRoomSubscriptions($pb.ServerContext ctx, $10.AddRoomSubscriptionsRequest request);
   $async.Future<$10.RemoveRoomSubscriptionsResponse> removeRoomSubscriptions($pb.ServerContext ctx, $10.RemoveRoomSubscriptionsRequest request);
   $async.Future<$10.UpdateSubscriptionRoleResponse> updateSubscriptionRole($pb.ServerContext ctx, $10.UpdateSubscriptionRoleRequest request);
+  $async.Future<$10.GetDirectPartnerAccountResponse> getDirectPartnerAccount($pb.ServerContext ctx, $10.GetDirectPartnerAccountRequest request);
   $async.Future<$10.SearchRoomSubscriptionsResponse> searchRoomSubscriptions($pb.ServerContext ctx, $10.SearchRoomSubscriptionsRequest request);
   $async.Future<$10.GetSubscriptionSettingsResponse> getSubscriptionSettings($pb.ServerContext ctx, $10.GetSubscriptionSettingsRequest request);
   $async.Future<$10.UpdateSubscriptionSettingsResponse> updateSubscriptionSettings($pb.ServerContext ctx, $10.UpdateSubscriptionSettingsRequest request);
@@ -55,6 +56,7 @@ abstract class ChatServiceBase extends $pb.GeneratedService {
       case 'AddRoomSubscriptions': return $10.AddRoomSubscriptionsRequest();
       case 'RemoveRoomSubscriptions': return $10.RemoveRoomSubscriptionsRequest();
       case 'UpdateSubscriptionRole': return $10.UpdateSubscriptionRoleRequest();
+      case 'GetDirectPartnerAccount': return $10.GetDirectPartnerAccountRequest();
       case 'SearchRoomSubscriptions': return $10.SearchRoomSubscriptionsRequest();
       case 'GetSubscriptionSettings': return $10.GetSubscriptionSettingsRequest();
       case 'UpdateSubscriptionSettings': return $10.UpdateSubscriptionSettingsRequest();
@@ -81,6 +83,7 @@ abstract class ChatServiceBase extends $pb.GeneratedService {
       case 'AddRoomSubscriptions': return this.addRoomSubscriptions(ctx, request as $10.AddRoomSubscriptionsRequest);
       case 'RemoveRoomSubscriptions': return this.removeRoomSubscriptions(ctx, request as $10.RemoveRoomSubscriptionsRequest);
       case 'UpdateSubscriptionRole': return this.updateSubscriptionRole(ctx, request as $10.UpdateSubscriptionRoleRequest);
+      case 'GetDirectPartnerAccount': return this.getDirectPartnerAccount(ctx, request as $10.GetDirectPartnerAccountRequest);
       case 'SearchRoomSubscriptions': return this.searchRoomSubscriptions(ctx, request as $10.SearchRoomSubscriptionsRequest);
       case 'GetSubscriptionSettings': return this.getSubscriptionSettings(ctx, request as $10.GetSubscriptionSettingsRequest);
       case 'UpdateSubscriptionSettings': return this.updateSubscriptionSettings(ctx, request as $10.UpdateSubscriptionSettingsRequest);

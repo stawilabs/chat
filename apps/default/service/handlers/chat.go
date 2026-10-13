@@ -64,8 +64,9 @@ type ChatServer struct {
 type ServerOption func(*serverOptions)
 
 type serverOptions struct {
-	stawiRooms    stawi.Rooms
-	stawiAccounts stawi.AccountResolver
+	stawiRooms      stawi.Rooms
+	stawiAccounts   stawi.AccountResolver
+	profileAccounts stawi.ProfileAccounts
 }
 
 // WithStawi gives the server settlement's RoomService and the profile account
@@ -75,6 +76,12 @@ func WithStawi(rooms stawi.Rooms, accounts stawi.AccountResolver) ServerOption {
 		o.stawiRooms = rooms
 		o.stawiAccounts = accounts
 	}
+}
+
+// WithProfileAccounts gives the server settlement's profile account lookup,
+// which GetDirectPartnerAccount calls once chat has checked the DM.
+func WithProfileAccounts(accounts stawi.ProfileAccounts) ServerOption {
+	return func(o *serverOptions) { o.profileAccounts = accounts }
 }
 
 // NewChatServer creates a new ChatServer with the business layers initialized.
@@ -152,6 +159,7 @@ func NewChatServer(
 		authzMiddleware,
 		business.WithStawiBindings(stawiBindings),
 		business.WithPersonalRooms(serviceChecker), // stawi_room_resolve gate
+		business.WithProfileAccounts(options.profileAccounts),
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,
@@ -389,6 +397,30 @@ func (ps *ChatServer) GetRoom(
 	return connect.NewResponse(&chatv1.GetRoomResponse{
 		Room: room,
 	}), nil
+}
+
+// GetDirectPartnerAccount answers the Stawi account of the other person in
+// the caller's DM. Only a person (a contact) asks; the room decides the rest.
+func (ps *ChatServer) GetDirectPartnerAccount(
+	ctx context.Context,
+	req *connect.Request[chatv1.GetDirectPartnerAccountRequest],
+) (*connect.Response[chatv1.GetDirectPartnerAccountResponse], error) {
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.GetRoomId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("room_id must be specified"))
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := ps.RoomBusiness.GetDirectPartnerAccount(timeoutCtx, req.Msg.GetRoomId(), authenticatedContact)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func (ps *ChatServer) CreateRoom(

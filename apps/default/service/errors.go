@@ -167,6 +167,15 @@ var (
 		connect.CodeFailedPrecondition,
 		errors.New("a direct room's members are fixed"),
 	)
+	// ErrNoDirectPartner refuses a DM partner lookup the caller is not
+	// entitled to. It is the one answer for every reason (no such room, not a
+	// member, not a DM, someone left), so it says nothing about the room.
+	ErrNoDirectPartner = connect.NewError(connect.CodePermissionDenied,
+		errors.New("this is not a direct message you share with one other person"))
+	// ErrPartnerAccountUnavailable is a DM partner lookup settlement could not
+	// answer; the caller may retry.
+	ErrPartnerAccountUnavailable = connect.NewError(connect.CodeUnavailable,
+		errors.New("the partner's Stawi account cannot be read right now"))
 	// ErrPersonalRoomNotStawi refuses a conversion of a DM or a bot room: neither
 	// is ever a Stawi room (person to person money is the personal loan book's).
 	ErrPersonalRoomNotStawi = connect.NewError(connect.CodeFailedPrecondition,
