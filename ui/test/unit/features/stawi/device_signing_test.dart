@@ -408,4 +408,70 @@ void main() {
       );
     });
   });
+
+  group('genesisAgentConfirmed', () {
+    final v = GoRoomGenesisVectors.named('agent');
+    final founder = Uint8List.fromList(List.filled(20, 0xf1));
+    final carol = Uint8List.fromList(List.filled(20, 0xca));
+
+    test('no agent needs no check', () {
+      final g = GoRoomGenesisVectors.named('no_agent').roomGenesis();
+      expect(genesisAgentConfirmed(g), isTrue);
+    });
+
+    test('a member agent matches their account in the genesis', () {
+      final g = v.roomGenesis(
+        founderProfileIds: const ['p1'],
+        accounts: [founder],
+        agentAccount: founder,
+        agentProfileId: 'p1',
+      );
+      expect(genesisAgentConfirmed(g), isTrue);
+      // A founder is never confirmed by a lookup in place of the genesis.
+      final other = v.roomGenesis(
+        founderProfileIds: const ['p1'],
+        accounts: [founder],
+        agentAccount: carol,
+        agentProfileId: 'p1',
+      );
+      expect(
+        genesisAgentConfirmed(other, resolvedAgentAccount: carol),
+        isFalse,
+      );
+    });
+
+    test('a DM partner agent matches the account chat answers', () {
+      final g = v.roomGenesis(
+        accounts: [founder],
+        agentAccount: carol,
+        agentProfileId: 'p-carol',
+      );
+      expect(genesisAgentConfirmed(g, resolvedAgentAccount: carol), isTrue);
+    });
+
+    test('a mismatched address is refused', () {
+      final g = v.roomGenesis(
+        accounts: [founder],
+        agentAccount: Uint8List.fromList(List.filled(20, 0x66)),
+        agentProfileId: 'p-carol',
+      );
+      expect(genesisAgentConfirmed(g, resolvedAgentAccount: carol), isFalse);
+    });
+
+    test('an agent that cannot be resolved is refused', () {
+      final g = v.roomGenesis(
+        accounts: [founder],
+        agentAccount: carol,
+        agentProfileId: 'p-carol',
+      );
+      expect(genesisAgentConfirmed(g), isFalse);
+      expect(
+        genesisAgentConfirmed(
+          g..clearAgentProfileId(),
+          resolvedAgentAccount: carol,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

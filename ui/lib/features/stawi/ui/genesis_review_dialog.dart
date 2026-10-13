@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 
+import '../data/stawi_room_service.dart' show agentNotConfirmed;
 import '../domain/stawi_payloads.dart';
 
 /// What a founder is told about the Stawi fee before signing.
@@ -17,6 +18,7 @@ Future<bool> showGenesisReview(
   required StawiGenesisView card,
   required String roomName,
   required List<String> founderNames,
+  required bool agentConfirmed,
   String? agentName,
 }) async =>
     await showDialog<bool>(
@@ -26,6 +28,7 @@ Future<bool> showGenesisReview(
         card: card,
         roomName: roomName,
         founderNames: founderNames,
+        agentConfirmed: agentConfirmed,
         agentName: agentName,
       ),
     ) ??
@@ -41,6 +44,7 @@ class GenesisReviewDialog extends StatelessWidget {
     required this.card,
     required this.roomName,
     required this.founderNames,
+    required this.agentConfirmed,
     this.agentName,
     super.key,
   });
@@ -54,6 +58,10 @@ class GenesisReviewDialog extends StatelessWidget {
 
   /// The agent's name; null when the genesis names no agent.
   final String? agentName;
+
+  /// Whether this device confirmed the agent's address belongs to the person
+  /// named. Without it the genesis cannot be signed from here.
+  final bool agentConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +101,16 @@ class GenesisReviewDialog extends StatelessWidget {
             ],
             const SizedBox(height: 12),
             Text(genesisFeeSentence, style: theme.textTheme.bodySmall),
+            if (!agentConfirmed) ...[
+              const SizedBox(height: 12),
+              Text(
+                agentNotConfirmed,
+                key: const Key('genesis-agent-unconfirmed'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -102,11 +120,12 @@ class GenesisReviewDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          key: const Key('genesis-sign'),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Sign as a founder'),
-        ),
+        if (agentConfirmed)
+          FilledButton(
+            key: const Key('genesis-sign'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sign as a founder'),
+          ),
       ],
     );
   }

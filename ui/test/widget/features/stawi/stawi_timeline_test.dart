@@ -11,6 +11,7 @@ import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/room_subscription_service.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
+import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
@@ -541,6 +542,8 @@ void main() {
     final genesisHash = Uint8List.fromList(roomGenesis.genesisHash);
     final digest = Uint8List.fromList(roomGenesis.founders[1].signingDigest);
     const names = {'p-owner': 'Olive', 'p1': 'Me', 'p-carol': 'Carol'};
+    // The account chat answers for Carol, the DM partner: the genesis agent.
+    final carolAccount = Uint8List.fromList(roomGenesis.agent);
 
     RoomEvent card({List<int>? hash}) => RoomEvent(
       id: 'conv1',
@@ -587,6 +590,7 @@ void main() {
       required String profileId,
       List<RoomEvent> outcomes = const [],
       List<RoomEvent> signatures = const [],
+      DmPartnerAccountOf? agentAccounts,
     }) => [
       stawiOutcomesProvider.overrideWith((ref, id) => Stream.value(outcomes)),
       stawiGenesisSignaturesProvider.overrideWith(
@@ -605,6 +609,9 @@ void main() {
           keys: keys,
           identity: () async => identityWith(profileId, account),
           send: sender.call,
+          agentAccounts:
+              agentAccounts ??
+              (id) async => id == 'p-carol' ? carolAccount : null,
         ),
       ),
     ];
@@ -655,6 +662,89 @@ void main() {
         (await keys.load('p1'))!.keyId,
       );
       expect(find.text('Genesis signed'), findsOneWidget);
+    });
+
+    testWidgets('an agent whose address is not theirs cannot be signed', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: card(), isMe: false),
+          overrides: overrides(
+            profileId: 'p1',
+            agentAccounts: (_) async =>
+                Uint8List.fromList(List.filled(20, 0x66)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stawi agent: Carol'), findsOneWidget);
+      expect(
+        find.text('The agent could not be confirmed on this device'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('genesis-sign')), findsNothing);
+      await tester.tap(find.byKey(const Key('genesis-review-cancel')));
+      await tester.pumpAndSettle();
+      expect(sender.sent, isEmpty);
+    });
+
+    testWidgets('an agent that cannot be resolved cannot be signed', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: card(), isMe: false),
+          overrides: overrides(
+            profileId: 'p1',
+            agentAccounts: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('The agent could not be confirmed on this device'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('genesis-sign')), findsNothing);
+    });
+
+    testWidgets('a member agent matches their account in the genesis', (
+      tester,
+    ) async {
+      final olive = GoRoomGenesisVectors.named('agent').roomGenesis(
+        founderProfileIds: const ['p-owner', 'p1'],
+        accounts: [ownerAccount, account],
+        agentAccount: ownerAccount,
+        agentProfileId: 'p-owner',
+      );
+      transport.on(
+        settlement.RoomService.getRoomGenesis,
+        (req) => settlement.GetRoomGenesisResponse(genesis: olive),
+      );
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: card(hash: olive.genesisHash), isMe: false),
+          overrides: overrides(
+            profileId: 'p1',
+            agentAccounts: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+      expect(find.text('Stawi agent: Olive'), findsOneWidget);
+      expect(find.byKey(const Key('genesis-agent-unconfirmed')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('genesis-sign')));
+      await tester.pumpAndSettle();
+      expect(sender.sent.single.type, RoomEventType.stawiGenesisSignature);
     });
 
     testWidgets('cancelling the review sends no signature', (tester) async {

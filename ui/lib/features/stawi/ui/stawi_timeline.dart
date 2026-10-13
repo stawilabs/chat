@@ -89,6 +89,7 @@ class _GenesisCardState extends ConsumerState<GenesisCard> {
         card: prepared.card,
         roomName: roomName,
         founderNames: founderNames,
+        agentConfirmed: prepared.agentConfirmed,
         agentName: agentName,
       );
       if (!confirmed || !mounted) return;

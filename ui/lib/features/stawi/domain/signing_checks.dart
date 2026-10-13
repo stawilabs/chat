@@ -114,6 +114,27 @@ Uint8List checkedRoomCallDigest({
   return (digest: Uint8List.fromList(founder.signingDigest), genesis: genesis);
 }
 
+/// Whether [genesis]'s agent address belongs to the profile it is shown as,
+/// so the name a founder reviews is who the room pays. No agent needs no
+/// check. A founder agent is checked against the founder's own account in the
+/// genesis; anyone else against [resolvedAgentAccount], the account this
+/// device found for that profile (a DM partner's, through chat), and is
+/// unconfirmed without one.
+bool genesisAgentConfirmed(
+  settlement.RoomGenesis genesis, {
+  Uint8List? resolvedAgentAccount,
+}) {
+  if (genesis.agent.isEmpty) return true;
+  final agent = genesis.agent;
+  if (agent.length != 20 || genesis.agentProfileId.isEmpty) return false;
+  final founder = genesis.founders
+      .where((f) => f.profileId == genesis.agentProfileId)
+      .firstOrNull;
+  if (founder != null) return bytesEqual(founder.account, agent);
+  return resolvedAgentAccount != null &&
+      bytesEqual(resolvedAgentAccount, agent);
+}
+
 /// Recomputes [genesis]'s hash from what it says: settlement's RoomGenesis
 /// mapped onto the contract's genesis inputs.
 void _verifyGenesisContents(settlement.RoomGenesis genesis) {

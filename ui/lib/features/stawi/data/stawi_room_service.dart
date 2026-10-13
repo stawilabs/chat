@@ -14,6 +14,7 @@ import '../domain/stawi_payloads.dart';
 import '../domain/template_rules.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
+import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
 
 /// Sends one Stawi act into a room as a chat event.
@@ -34,6 +35,7 @@ class StawiRoomService {
     required this._identity,
     required this._send,
     this._ballots,
+    this._agentAccounts,
   });
 
   final settlement.RoomServiceClient _rooms;
@@ -41,6 +43,10 @@ class StawiRoomService {
   final Future<StawiIdentity> Function() _identity;
   final StawiActSender _send;
   final SecretBallotStore? _ballots;
+
+  /// Resolves an agent who is not a founder to their account, so the device
+  /// can confirm the genesis pays the person it names.
+  final DmPartnerAccountOf? _agentAccounts;
 
   /// Asks for [roomId] to become a Stawi room. Chat prepares the genesis
   /// with settlement and turns this event into the genesis card.
@@ -117,7 +123,27 @@ class StawiRoomService {
       genesis: checked.genesis,
       digest: checked.digest,
       profileId: me.profileId,
+      agentConfirmed: genesisAgentConfirmed(
+        checked.genesis,
+        resolvedAgentAccount: await _agentAccountOf(checked.genesis),
+      ),
     );
+  }
+
+  /// The account of a genesis agent who is not one of its founders, as this
+  /// device can find it; null when it cannot.
+  Future<Uint8List?> _agentAccountOf(settlement.RoomGenesis genesis) async {
+    final agentId = genesis.agentProfileId;
+    if (genesis.agent.isEmpty ||
+        agentId.isEmpty ||
+        genesis.founders.any((f) => f.profileId == agentId)) {
+      return null;
+    }
+    try {
+      return await _agentAccounts?.call(agentId);
+    } on Object {
+      return null;
+    }
   }
 
   /// Signs a checked genesis the founder has reviewed with this device's key
@@ -127,6 +153,9 @@ class StawiRoomService {
     PreparedGenesisSignature prepared, {
     String roomName = 'this room',
   }) async {
+    if (!prepared.agentConfirmed) {
+      throw const SigningRefused(agentNotConfirmed);
+    }
     final key = await _keys.unlock(
       prepared.profileId,
       reason: 'Found $roomName on Stawi',
@@ -330,6 +359,7 @@ final stawiRoomServiceProvider = Provider<StawiRoomService>((ref) {
     identity: () => ref.read(stawiIdentityProvider.future),
     send: sending.sendStawiAct,
     ballots: SecretBallotStore(const SecureStorageDeviceKeyVault()),
+    agentAccounts: ref.watch(dmPartnerAccountOfProvider),
   );
 });
 
@@ -343,6 +373,7 @@ final class PreparedGenesisSignature {
     required this.genesis,
     required this.digest,
     required this.profileId,
+    required this.agentConfirmed,
   });
 
   /// The conversion event whose card the founder signs from.
@@ -357,4 +388,13 @@ final class PreparedGenesisSignature {
 
   /// The founder who signs.
   final String profileId;
+
+  /// Whether this device confirmed the genesis agent's address is the account
+  /// of the profile it is shown as ([genesisAgentConfirmed]). An unconfirmed
+  /// genesis is shown but cannot be signed.
+  final bool agentConfirmed;
 }
+
+/// Shown, and refused with, when a genesis' agent could not be confirmed.
+const String agentNotConfirmed =
+    'The agent could not be confirmed on this device';

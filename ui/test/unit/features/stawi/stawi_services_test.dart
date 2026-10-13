@@ -56,12 +56,21 @@ void main() {
     ).unlock('p1', reason: 'expected signature');
   });
 
-  StawiRoomService roomService() => StawiRoomService(
-    rooms: settlement.RoomServiceClient(transport),
-    keys: keys,
-    identity: () async => identityWith('p1', account),
-    send: sender.call,
+  // The Go vector's agent, answered by chat as the DM partner p-agent's.
+  final vectorAgent = hexToBytes(
+    GoRoomGenesisVectors.named('agent').json['agent'] as String,
   );
+
+  StawiRoomService roomService({DmPartnerAccountOf? agentAccounts}) =>
+      StawiRoomService(
+        rooms: settlement.RoomServiceClient(transport),
+        keys: keys,
+        identity: () async => identityWith('p1', account),
+        send: sender.call,
+        agentAccounts:
+            agentAccounts ??
+            (profileId) async => profileId == 'p-agent' ? vectorAgent : null,
+      );
 
   group('signed room calls', () {
     void preparesInvite({List<int>? digestOverride}) {
@@ -313,6 +322,51 @@ void main() {
         reason: 'the key is not unlocked to prepare',
       );
       expect(sender.sent, isEmpty);
+    });
+
+    test(
+      'a DM partner agent is confirmed by the account chat answers',
+      () async {
+        genesisOnSettlement();
+        final prepared = await roomService().prepareGenesisSignature(card());
+        expect(prepared.agentConfirmed, isTrue);
+      },
+    );
+
+    test(
+      'an agent at another address is not confirmed and not signed',
+      () async {
+        genesisOnSettlement();
+        final service = roomService(
+          agentAccounts: (_) async => Uint8List.fromList(List.filled(20, 0x66)),
+        );
+        final prepared = await service.prepareGenesisSignature(card());
+        expect(prepared.agentConfirmed, isFalse);
+        await expectLater(
+          service.submitGenesisSignature(prepared),
+          throwsA(
+            isA<SigningRefused>().having(
+              (e) => e.reason,
+              'reason',
+              'The agent could not be confirmed on this device',
+            ),
+          ),
+        );
+        expect(gate.reasons, isEmpty, reason: 'the key is never unlocked');
+        expect(sender.sent, isEmpty);
+      },
+    );
+
+    test('an agent that cannot be resolved is not confirmed', () async {
+      genesisOnSettlement();
+      for (final resolver in <DmPartnerAccountOf>[
+        (_) async => null,
+        (_) async => throw const DirectPartnerRefused(),
+      ]) {
+        final prepared = await roomService(agentAccounts: resolver)
+            .prepareGenesisSignature(card());
+        expect(prepared.agentConfirmed, isFalse);
+      }
     });
 
     test('a genesis whose contents differ from its hash is refused', () async {

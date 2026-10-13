@@ -564,12 +564,13 @@ class GoRoomGenesisVectors {
   /// members in order, each with their own account wrapping of the hash.
   /// With [accounts], the founders hold those instead and the hash is
   /// recomputed with stawi_finance_sdk roomGenesisHash, which the SDK checks
-  /// against these same Go vectors. A non-zero agent is shown as
-  /// [agentProfileId].
+  /// against these same Go vectors; likewise with [agentAccount] in place of
+  /// the case's agent. A non-zero agent is shown as [agentProfileId].
   settlement.RoomGenesis roomGenesis({
     String genesisId = 'gen00000000000000001',
     List<String>? founderProfileIds,
     List<Uint8List>? accounts,
+    Uint8List? agentAccount,
     String agentProfileId = 'p-agent',
   }) {
     final members =
@@ -579,10 +580,10 @@ class GoRoomGenesisVectors {
             hexToBytes(m),
         ];
     final chainId = BigInt.from(json['chain_id'] as int);
-    final agent = _hex('agent');
+    final agent = agentAccount ?? _hex('agent');
     final hasAgent = agent.any((b) => b != 0);
     final joinPolicy = json['join_policy'] as int;
-    final hash = accounts == null
+    final hash = accounts == null && agentAccount == null
         ? genesisHash
         : roomGenesisHash(
             chainId: chainId,

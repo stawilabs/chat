@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 
+import '../../../core/db/database.dart';
 import '../../../core/networking/client.dart';
 import '../../rooms/data/room_service.dart';
 import 'stawi_identity.dart';
@@ -185,3 +186,35 @@ final dmPairLoansProvider = FutureProvider.autoDispose
           .watch(stawiLoanServiceProvider)
           .between(me.address, partner.address);
     });
+
+/// The Stawi account chat answers for a profile as one of the person's DM
+/// partners, or null when no DM of theirs has that partner, or chat refuses
+/// (the partner has not written) for every one that does.
+typedef DmPartnerAccountOf = Future<Uint8List?> Function(String profileId);
+
+/// Finds the person's DMs holding the profile in the local store and asks
+/// chat for that partner's account ([counterpartyAccountsProvider]).
+final dmPartnerAccountOfProvider = Provider<DmPartnerAccountOf>(
+  (ref) => (profileId) async {
+    if (profileId.isEmpty) return null;
+    final db = AppDatabase.instance;
+    final rooms = await ref.read(roomRepositoryProvider).getAllRooms();
+    for (final room in rooms.where((r) => r.type == 'direct')) {
+      final held =
+          await (db.select(db.roomSubscriptions)
+                ..where((t) => t.roomId.equals(room.id))
+                ..where((t) => t.profileId.equals(profileId)))
+              .get();
+      if (held.isEmpty) continue;
+      try {
+        final found = await ref.read(counterpartyAccountsProvider)(room.id);
+        if (found.profileId == profileId && found.account.length == 20) {
+          return found.account;
+        }
+      } on DirectPartnerRefused {
+        continue;
+      }
+    }
+    return null;
+  },
+);
