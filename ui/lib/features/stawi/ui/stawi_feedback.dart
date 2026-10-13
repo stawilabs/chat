@@ -1,6 +1,7 @@
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/material.dart';
 
+import '../data/stawi_counterparty.dart';
 import '../data/stawi_identity.dart';
 import '../domain/signing_checks.dart';
 
@@ -22,6 +23,7 @@ String stawiErrorMessage(Object error) => switch (error) {
   _ when isAccountCatchingUp(error) => accountCatchingUpMessage,
   SigningRefused(:final reason) => 'Not signed: $reason',
   StawiUnavailable(:final message) => message,
+  DirectPartnerRefused() => DirectPartnerRefused.messageFor('They'),
   connect.ConnectException(:final code, :final message) => switch (code) {
     connect.Code.unauthenticated => 'Sign in again to continue',
     connect.Code.permissionDenied => 'Not allowed: $message',

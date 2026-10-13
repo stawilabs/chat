@@ -65,7 +65,7 @@ void main() {
     expect(await lookup('dm-bob'), isNull);
   });
 
-  test('chat\'s refusal says it is not a DM, and nothing more', () async {
+  test('chat\'s refusal asks for the partner to write first', () async {
     chat.on(
       pb.ChatService.getDirectPartnerAccount,
       (req) => throw connect.ConnectException(
@@ -73,15 +73,10 @@ void main() {
         'this is not a direct message you share with one other person',
       ),
     );
-    await expectLater(
-      lookup('group-1'),
-      throwsA(
-        isA<StawiUnavailable>().having(
-          (e) => e.message,
-          'message',
-          notADirectMessage,
-        ),
-      ),
+    await expectLater(lookup('dm-new'), throwsA(isA<DirectPartnerRefused>()));
+    expect(
+      DirectPartnerRefused.messageFor('Bob'),
+      'Bob needs to send you a message first',
     );
   });
 

@@ -111,21 +111,29 @@ void main() {
     expect(chosen, isNull);
   });
 
-  testWidgets('a refused lookup is shown on its row and cannot be chosen', (
-    tester,
-  ) async {
-    var closed = false;
-    await pumpPicker(tester, const [
-      DirectRoomRef(roomId: 'dm-gone', name: 'Dan'),
-      DirectRoomRef(roomId: 'dm-bob', name: 'Bob'),
-    ], (_) => closed = true);
+  testWidgets(
+    'a partner who has not written yet is asked for, and cannot be chosen',
+    (tester) async {
+      var closed = false;
+      await pumpPicker(tester, const [
+        DirectRoomRef(roomId: 'dm-gone', name: 'Dan'),
+        DirectRoomRef(roomId: 'dm-bob', name: 'Bob'),
+      ], (_) => closed = true);
 
-    expect(find.text(notADirectMessage), findsOneWidget);
-    expect(find.text('0xb0b0…b0b0'), findsOneWidget, reason: 'others resolve');
-    await tester.tap(find.byKey(const Key('dm-partner-dm-gone')));
-    await tester.pumpAndSettle();
-    expect(closed, isFalse);
-  });
+      expect(
+        find.text('Dan needs to send you a message first'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('0xb0b0…b0b0'),
+        findsOneWidget,
+        reason: 'others resolve',
+      );
+      await tester.tap(find.byKey(const Key('dm-partner-dm-gone')));
+      await tester.pumpAndSettle();
+      expect(closed, isFalse);
+    },
+  );
 
   testWidgets('without DMs it says how to get one', (tester) async {
     await pumpPicker(tester, const [], (_) {});

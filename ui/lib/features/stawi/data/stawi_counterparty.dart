@@ -71,13 +71,25 @@ final class DirectPartnerAccount {
 /// Profile never hands one person's accounts to another, and settlement
 /// answers a profile's account only to services. Chat answers it for a DM:
 /// it checks that the caller is an active member of that DIRECT room of two
-/// people, then asks settlement. A DM is the only way to name a counterparty.
+/// people and that the partner has taken part (started the DM or written in
+/// it), then asks settlement. A DM is the only way to name a counterparty.
 typedef CounterpartyAccounts =
     Future<DirectPartnerAccount> Function(String roomId);
 
-/// What a refused lookup tells the person: chat says nothing about the room.
-const String notADirectMessage =
-    'This is not a direct message with one other person';
+/// Chat refused the lookup. It says nothing about why; the usual reason is
+/// that the partner has not written in the DM yet (a partner's account is
+/// revealed only once they have taken part), so that is what the person is
+/// told.
+final class DirectPartnerRefused implements Exception {
+  const DirectPartnerRefused();
+
+  /// The line shown for the DM partner [name].
+  static String messageFor(String name) =>
+      '$name needs to send you a message first';
+
+  @override
+  String toString() => messageFor('They');
+}
 
 /// The lookup through chat's GetDirectPartnerAccount.
 CounterpartyAccounts chatCounterpartyAccounts(
@@ -92,7 +104,7 @@ CounterpartyAccounts chatCounterpartyAccounts(
     throw switch (e.code) {
       connect.Code.permissionDenied ||
       connect.Code.failedPrecondition ||
-      connect.Code.notFound => const StawiUnavailable(notADirectMessage),
+      connect.Code.notFound => const DirectPartnerRefused(),
       connect.Code.unavailable => const StawiUnavailable(
         'Their Stawi account cannot be read right now; try again shortly',
       ),

@@ -15,8 +15,9 @@ Future<StawiContactAccount?> showDmPartnerPicker(BuildContext context) =>
     );
 
 /// The person's DMs, each partner's Stawi account looked up only when its
-/// row is built. A partner with an account can be chosen; one without, or a
-/// lookup chat refuses, is shown and cannot.
+/// row is built. A partner with an account can be chosen; one without, or
+/// one who has not written in the DM yet (chat refuses the lookup), is shown
+/// and cannot.
 class DmPartnerPicker extends ConsumerWidget {
   const DmPartnerPicker({super.key});
 
@@ -86,7 +87,11 @@ class _PartnerTile extends ConsumerWidget {
             key: key,
             enabled: false,
             title: title,
-            subtitle: Text(stawiErrorMessage(error)),
+            subtitle: Text(
+              error is DirectPartnerRefused
+                  ? DirectPartnerRefused.messageFor(room.name)
+                  : stawiErrorMessage(error),
+            ),
           ),
           data: (contact) => contact == null
               ? ListTile(
