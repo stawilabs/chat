@@ -16,6 +16,7 @@ import (
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"gorm.io/gorm"
 
 	"github.com/stawilabs/chat/apps/default/service/authz"
@@ -345,16 +346,22 @@ func (c *StawiChain) decode(ctx context.Context, name string, payload []byte, ms
 // the aggregate by room id, which is empty exactly when it does not know the
 // room yet, and such a fact must wait for its room rather than be dropped.
 func validateFact(msg proto.Message) error {
-	type withMeta interface {
-		GetMeta() *financev1.EventMeta
-		SetMeta(*financev1.EventMeta)
-	}
 	clone := proto.Clone(msg)
-	if m, ok := clone.(withMeta); ok {
-		if m.GetMeta() == nil {
+	// Through reflection, not a generated SetMeta: the open Go API (stawi's
+	// local codegen) has no setters, and the fact must be sanitised either way.
+	refl := clone.ProtoReflect()
+	if fd := refl.Descriptor().Fields().ByName("meta"); fd != nil && fd.Message() != nil &&
+		fd.Message().FullName() == (&financev1.EventMeta{}).ProtoReflect().Descriptor().FullName() {
+		if !refl.Has(fd) {
 			return errors.New("fact has no meta")
 		}
-		m.SetMeta(&financev1.EventMeta{EventId: m.GetMeta().GetEventId(), AggregateType: "fact", AggregateId: "fact"})
+		meta, ok := refl.Get(fd).Message().Interface().(*financev1.EventMeta)
+		if !ok {
+			return errors.New("fact meta is not an EventMeta")
+		}
+		refl.Set(fd, protoreflect.ValueOfMessage((&financev1.EventMeta{
+			EventId: meta.GetEventId(), AggregateType: "fact", AggregateId: "fact",
+		}).ProtoReflect()))
 	}
 	return protovalidate.Validate(clone)
 }
