@@ -16,6 +16,7 @@ import '../domain/signing_checks.dart';
 import '../domain/stawi_money.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
+import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
 import 'stawi_vault_service.dart';
 
@@ -89,7 +90,11 @@ class StawiAccountService {
     required GenesisSessionProofs proofs,
     required Future<StawiIdentity> Function() identity,
     Future<PersonalTargets> Function()? targets,
-  }) : _accounts = accounts,
+    Duration readyEvery = const Duration(seconds: 3),
+    int readyAttempts = 60,
+  }) : _readyEvery = readyEvery,
+       _readyAttempts = readyAttempts,
+       _accounts = accounts,
        _keys = keys,
        _proofs = proofs,
        _identity = identity,
@@ -104,6 +109,10 @@ class StawiAccountService {
   /// books), read for every personal call; null reads as unknown, which
   /// refuses the call.
   final Future<PersonalTargets> Function()? _targets;
+
+  /// How [ensureReady] polls when a money call finds the account not ready.
+  final Duration _readyEvery;
+  final int _readyAttempts;
 
   /// The account and this device's key. Reads only: nothing is signed, so
   /// the device lock is not asked.
@@ -134,10 +143,12 @@ class StawiAccountService {
   /// picks the pending deployment up without deploying twice. Stops with
   /// [AccountSetupCancelled] once [cancelled] says so.
   Future<StawiAccountRef> ensureReady({
-    Duration every = const Duration(seconds: 3),
-    int attempts = 60,
+    Duration? every,
+    int? attempts,
     bool Function()? cancelled,
   }) async {
+    every ??= _readyEvery;
+    attempts ??= _readyAttempts;
     void checkCancelled() {
       if (cancelled?.call() ?? false) throw const AccountSetupCancelled();
     }
@@ -263,52 +274,6 @@ class StawiAccountService {
         settlement.GetAccountCallRequest(callId: callId),
       )).call;
 
-  /// Pays [amount] (integer minor units of the account's policy asset) from
-  /// the member's primary account into the room whose custody is [custody].
-  /// Straight to the chain through settlement; chat is not involved. The
-  /// payment lands in the room's SAVINGS bucket and the room's rules engine
-  /// applies it.
-  ///
-  /// [reason] is what the device lock shows the person before signing.
-  Future<settlement.AccountCall> contribute({
-    required Uint8List custody,
-    required String amount,
-    String reason = 'Pay into this room',
-  }) async {
-    if (custody.length != 20) {
-      throw const FormatException('A room custody is a 20-byte address');
-    }
-    if (!_positiveDecimal.hasMatch(amount)) {
-      throw const FormatException('Enter a whole amount greater than zero');
-    }
-    final me = await _identity();
-    final account = me.primary;
-    if (account == null) {
-      throw const StawiUnavailable('Your profile has no Stawi account yet');
-    }
-    final key = await _keys.unlock(me.profileId, reason: reason);
-    final prepared = await _accounts.prepareAccountCall(
-      settlement.PrepareAccountCallRequest(
-        address: account.address,
-        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
-        params: settlement.AccountCallParams(room: custody, amount: amount),
-      ),
-    );
-    final (:digest, amount: _) = checkedContribution(
-      prepared: prepared,
-      account: account.address,
-      custody: custody,
-      amount: amount,
-    );
-    final submitted = await _accounts.submitAccountCall(
-      settlement.SubmitAccountCallRequest(
-        callId: prepared.callId,
-        authorization: key.sign(digest),
-      ),
-    );
-    return submitted.call;
-  }
-
   /// The personal targets, or null when they cannot be read (which refuses
   /// every personal call, since none could be checked).
   Future<PersonalTargets?> _personalTargets() async {
@@ -353,7 +318,7 @@ class StawiAccountService {
       account: account.address,
       personal: targets,
     );
-    return PreparedMoneyCall(
+    return PreparedMoneyCall._(
       callId: prepared.callId,
       digest: checked.digest,
       kind: request.call.kind,
@@ -394,7 +359,7 @@ class StawiAccountService {
       amount: amount,
       personal: targets,
     );
-    return PreparedMoneyCall(
+    return PreparedMoneyCall._(
       callId: prepared.callId,
       digest: digest,
       kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
@@ -421,6 +386,12 @@ class StawiAccountService {
     final params = on ? standingOrderParams(loan) : standingRevokeParams(loan);
     final targets = on ? await _personalTargets() : null;
     final policyAsset = (await status()).state?.policy.asset ?? const <int>[];
+    if (policyAsset.length != 20 || policyAsset.every((b) => b == 0)) {
+      throw const SigningRefused(
+        'your account\'s asset could not be read just now, so the automatic '
+        'payment cannot be checked; try again shortly',
+      );
+    }
     final prepared = await _accounts.prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
@@ -449,7 +420,7 @@ class StawiAccountService {
         policyAsset: policyAsset,
       );
     }
-    return PreparedMoneyCall(
+    return PreparedMoneyCall._(
       callId: prepared.callId,
       digest: digest,
       kind: kind,
@@ -462,12 +433,12 @@ class StawiAccountService {
     );
   }
 
-  /// Sends [amount] from the wallet to another Stawi account [to] (picked
-  /// from the person's contacts; there is no free-text address).
+  /// Sends [amount] from the wallet to [to], a Stawi account found for a
+  /// contact. There is no free-text address: only the counterparty lookup
+  /// builds a [StawiContactAccount].
   Future<PreparedMoneyCall> prepareTransferOut({
-    required Uint8List to,
+    required StawiContactAccount to,
     required BigInt amount,
-    String? name,
   }) async {
     final account = await ensureReady();
     final prepared = await _accounts.prepareAccountCall(
@@ -478,7 +449,7 @@ class StawiAccountService {
           amount: amount.toString(),
           destination: finance.ValueLocation(
             kind: finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
-            address: to,
+            address: to.address,
           ),
         ),
       ),
@@ -486,18 +457,18 @@ class StawiAccountService {
     final digest = checkedTransferOut(
       prepared: prepared,
       account: account.address,
-      to: to,
+      to: to.address,
       amount: amount,
     );
-    return PreparedMoneyCall(
+    return PreparedMoneyCall._(
       callId: prepared.callId,
       digest: digest,
       kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
       review: MoneyReview.transferOut(
-        to: to,
+        to: to.address,
         amount: amount,
         asset: await _asset(),
-        name: name,
+        name: to.name,
       ),
     );
   }
@@ -530,7 +501,7 @@ class StawiAccountService {
       custody: custody,
       amount: amount,
     );
-    return PreparedMoneyCall(
+    return PreparedMoneyCall._(
       callId: prepared.callId,
       digest: digest,
       kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
@@ -545,10 +516,10 @@ class StawiAccountService {
 
   /// Prepares a loan or withdrawal call on the member's account and checks
   /// it on the device. Nothing is signed yet: the member sees
-  /// [PreparedEngineCall.call] (a payoff's quoted ceiling, for one) first.
+  /// [PreparedMoneyCall.call] (a payoff's quoted ceiling, for one) first.
   /// [engines] is the room's live Room.engines; without them nothing is
   /// prepared, since the call could not be checked.
-  Future<PreparedEngineCall> prepareEngineCall(
+  Future<PreparedMoneyCall> prepareEngineCall(
     AccountEngineRequest request, {
     required RoomEngineTargets? engines,
     String? feeLine,
@@ -577,11 +548,11 @@ class StawiAccountService {
       account: account.address,
       engines: engines,
     );
-    return PreparedEngineCall(
+    return PreparedMoneyCall._(
       callId: prepared.callId,
       digest: checked.digest,
+      kind: request.call.kind,
       call: checked.call,
-      request: request,
       review: MoneyReview.engine(request, checked.call, feeLine: feeLine),
     );
   }
@@ -598,11 +569,6 @@ class StawiAccountService {
       ),
     )).call;
   }
-
-  /// Signs a prepared engine call: [submit].
-  Future<settlement.AccountCall> submitEngineCall(
-    PreparedEngineCall prepared,
-  ) => submit(prepared);
 
   /// Whether [loan]'s standing order (automatic payment) is on, read off the
   /// account's authorizations.
@@ -661,9 +627,11 @@ class StawiAccountService {
 }
 
 /// A call settlement prepared and the device checked, awaiting the person's
-/// go-ahead: what they see ([review]) and the digest the device signs.
+/// go-ahead: what they see ([review]) and the digest the device signs. Only
+/// the checked `prepare*` methods of [StawiAccountService] build one, so a
+/// digest that was not checked cannot reach [StawiAccountService.submit].
 class PreparedMoneyCall {
-  const PreparedMoneyCall({
+  const PreparedMoneyCall._({
     required this.callId,
     required this.digest,
     required this.review,
@@ -679,22 +647,6 @@ class PreparedMoneyCall {
   /// What the account will do, decoded from the prepared calldata; null for a
   /// call that is not an engine call.
   final EngineCall? call;
-}
-
-/// An engine call on a room, prepared and checked.
-class PreparedEngineCall extends PreparedMoneyCall {
-  PreparedEngineCall({
-    required super.callId,
-    required super.digest,
-    required EngineCall call,
-    required this.request,
-    required super.review,
-  }) : super(kind: request.call.kind, call: call);
-
-  final AccountEngineRequest request;
-
-  @override
-  EngineCall get call => super.call!;
 }
 
 /// Settlement's genesis states for a deployment already on its way.

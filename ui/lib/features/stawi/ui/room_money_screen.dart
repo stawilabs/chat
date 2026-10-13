@@ -464,7 +464,10 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   final _instalments = TextEditingController();
   bool _busy = false;
   String? _error;
-  PreparedEngineCall? _prepared;
+  PreparedMoneyCall? _prepared;
+
+  /// What the member asked for, kept with [_prepared].
+  AccountEngineRequest? _request;
 
   /// For a payoff: what to pay in first, once read (null: it could not be).
   PayoffTopUp? _topUp;
@@ -534,12 +537,13 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     if (!mounted) return;
     final topUp =
         prepared != null && widget.call == AccountEngineCall.loanPayoff
-        ? await _payoffTopUp(prepared)
+        ? await _payoffTopUp(prepared, request)
         : null;
     if (!mounted) return;
     setState(() {
       _busy = false;
       _prepared = prepared;
+      _request = prepared == null ? null : request;
       _topUp = topUp;
     });
   }
@@ -547,8 +551,11 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   /// What the member must pay in before [prepared] can pay the loan off, from
   /// the credit their live book says a payoff can spend; null when it cannot
   /// be read.
-  Future<PayoffTopUp?> _payoffTopUp(PreparedEngineCall prepared) async {
-    final asset = prepared.request.asset;
+  Future<PayoffTopUp?> _payoffTopUp(
+    PreparedMoneyCall prepared,
+    AccountEngineRequest request,
+  ) async {
+    final asset = request.asset;
     if (asset == null) return null;
     try {
       final identity = await ref.read(stawiIdentityProvider.future);
@@ -556,7 +563,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
         stawiMemberBalancesProvider(widget.roomId).future,
       );
       return payoffTopUpFor(
-        payoff: prepared.call.amount,
+        payoff: prepared.call!.amount,
         asset: asset.sdkAsset,
         balances: balances,
         myAccounts: identity.addresses,
@@ -569,19 +576,18 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   /// Pays the top-up into the room and waits for it to land, so the payoff
   /// that follows finds the claimed dues paid and the credit there.
   Future<void> _payTopUp() async {
-    final prepared = _prepared!;
+    final request = _request!;
     final topUp = _topUp!.topUp;
     setState(() => _busy = true);
     final service = ref.read(stawiAccountServiceProvider);
     final landed = await runStawiAction(context, () async {
-      final submitted = await service.contribute(
-        custody: prepared.request.custody,
+      // The button that asked for the top-up names its amount; the device
+      // lock shows the same amount before signing.
+      final prepared = await service.prepareContribution(
+        custody: request.custody,
         amount: topUp.toString(),
-        reason: prepared.request.asset == null
-            ? 'Top up your dues before the payoff'
-            : 'Pay ${formatUnits(topUp, prepared.request.asset!)} into this '
-                  'room before the payoff',
       );
+      final submitted = await service.submit(prepared);
       final last = await service.followAccountCall(submitted.callId).last;
       if (last.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
         throw StawiUnavailable(
@@ -605,8 +611,8 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     setState(() => _busy = true);
     final call = await runStawiAction(
       context,
-      () => ref.read(stawiAccountServiceProvider).submitEngineCall(prepared),
-      success: 'Signed and submitted: ${prepared.request.summary}',
+      () => ref.read(stawiAccountServiceProvider).submit(prepared),
+      success: prepared.review.done,
     );
     if (!mounted) return;
     if (call != null) {
@@ -726,12 +732,12 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                   decoration: const InputDecoration(labelText: 'Instalments'),
                 ),
             ] else ...[
-              _Review(call: prepared.call, request: prepared.request),
+              _Review(call: prepared.call!, request: _request!),
               if (widget.call == AccountEngineCall.loanPayoff)
                 _TopUpNotice(
                   topUp: _topUp,
                   toppedUp: _toppedUp,
-                  request: prepared.request,
+                  request: _request!,
                 ),
             ],
             if (_error != null)
@@ -763,7 +769,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
             child: Text(
               _busy
                   ? 'Topping up…'
-                  : 'Top up ${_formatTopUp(prepared.request, _topUp!.topUp)}',
+                  : 'Top up ${_formatTopUp(_request!, _topUp!.topUp)}',
             ),
           )
         else

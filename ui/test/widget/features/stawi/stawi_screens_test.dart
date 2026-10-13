@@ -300,6 +300,11 @@ void main() {
           ),
         ),
       );
+    transport.on(
+      settlement.AccountService.getAsset,
+      (req) => settlement.GetAssetResponse(asset: usdcInfo),
+    );
+    await serveDeployedAccount(transport, anvilKey);
     final keys = DeviceKeyStore(
       vaultWith('p1', anvilKey),
       gate: SigningGate.open,
@@ -328,6 +333,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('contribute-amount')), '500');
     await tester.tap(find.byKey(const Key('contribute-submit')));
+    await tester.pumpAndSettle();
+    // Nothing is signed until the person confirms what was prepared.
+    expect(find.byKey(const Key('money-confirm')), findsOneWidget);
+    expect(
+      transport.requestsTo(settlement.AccountService.submitAccountCall),
+      isEmpty,
+    );
+    await tester.tap(find.byKey(const Key('money-confirm-sign')));
     await tester.pumpAndSettle();
 
     final prepare = transport

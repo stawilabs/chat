@@ -69,6 +69,10 @@ void main() {
           call: settlement.RoomCall(callId: req.callId),
         ),
       );
+    transport.on(
+      settlement.AccountService.getAsset,
+      (req) => settlement.GetAssetResponse(asset: usdcInfo),
+    );
     await serveDeployedAccount(
       transport,
       GoEngineCallVector.load().first.devicePrivateKey,

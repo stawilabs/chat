@@ -540,8 +540,13 @@ void main() {
       key = (await keys.load('p1'))!;
     });
 
-    void prepares({String? amount, Uint8List? destination}) {
+    Future<void> prepares({String? amount, Uint8List? destination}) async {
+      await serveDeployedAccount(transport, anvilKey);
       transport
+        ..on(
+          settlement.AccountService.getAsset,
+          (req) => settlement.GetAssetResponse(asset: usdcInfo),
+        )
         ..on(
           settlement.AccountService.prepareAccountCall,
           (req) => settlement.PrepareAccountCallResponse(
@@ -576,12 +581,16 @@ void main() {
         );
     }
 
+    Future<settlement.AccountCall> contribute(String amount) async {
+      final s = service(keys, identityWith('p1', account));
+      return s.submit(
+        await s.prepareContribution(custody: custody, amount: amount),
+      );
+    }
+
     test('prepares a CONTRIBUTE, checks it and signs its digest', () async {
-      prepares();
-      final call = await service(
-        keys,
-        identityWith('p1', account),
-      ).contribute(custody: custody, amount: '2500000');
+      await prepares();
+      final call = await contribute('2500000');
       expect(
         call.state,
         settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
@@ -615,12 +624,9 @@ void main() {
         () => prepares(destination: Uint8List(20)),
       ]) {
         transport = FakeConnectTransport();
-        setup();
+        await setup();
         await expectLater(
-          service(
-            keys,
-            identityWith('p1', account),
-          ).contribute(custody: custody, amount: '2500000'),
+          contribute('2500000'),
           throwsA(isA<SigningRefused>()),
         );
         expect(
@@ -633,10 +639,7 @@ void main() {
     test('refuses a malformed amount before calling settlement', () async {
       for (final amount in ['', '0', '01', '-5', '1.5']) {
         await expectLater(
-          service(
-            keys,
-            identityWith('p1', account),
-          ).contribute(custody: custody, amount: amount),
+          contribute(amount),
           throwsFormatException,
           reason: amount,
         );

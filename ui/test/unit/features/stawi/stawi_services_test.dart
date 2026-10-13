@@ -2,14 +2,17 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/governance_requests.dart';
+import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/loan_terms.dart';
 import 'package:stawi/features/stawi/domain/personal_calls.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
@@ -431,23 +434,6 @@ void main() {
         isEmpty,
       );
     });
-
-    test('a refused device lock pays nothing', () async {
-      gate.refuse = true;
-      await expectLater(
-        accountService().contribute(
-          custody: Uint8List(20),
-          amount: '100',
-          reason: 'Pay 1.00 USDC into this room',
-        ),
-        throwsA(isA<SigningRefused>()),
-      );
-      expect(gate.reasons, ['Pay 1.00 USDC into this room']);
-      expect(
-        transport.requestsTo(settlement.AccountService.submitAccountCall),
-        isEmpty,
-      );
-    });
   });
 
   group('personal money calls', () {
@@ -487,6 +473,8 @@ void main() {
           proofs: refusingSessionProofs,
           identity: () async => identityWith('p1', pay.account),
           targets: read ?? () async => targets,
+          readyEvery: Duration.zero,
+          readyAttempts: 2,
         );
 
     setUp(() async {
@@ -759,6 +747,190 @@ void main() {
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
       expect(sent.params.authorizationId, r.authorizationId);
+    });
+
+    test(
+      'a retryable readiness failure is a plain, retryable message',
+      () async {
+        t.on(
+          settlement.AccountService.getAccount,
+          (req) => settlement.GetAccountResponse(
+            account: settlement.AccountState(
+              address: req.address,
+              genesisState: 'PENDING',
+            ),
+          ),
+        );
+        await expectLater(
+          service().preparePersonal(
+            PersonalRequest.pay(loan: payable(), amount: BigInt.from(52000000)),
+          ),
+          throwsA(
+            isA<StawiUnavailable>().having(
+              (e) => e.message,
+              'message',
+              accountSetupPendingMessage,
+            ),
+          ),
+        );
+        expect(
+          t.requestsTo(settlement.AccountService.prepareAccountCall),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'a standing order is refused when the policy asset is unknown',
+      () async {
+        final g = GoVaultVectors.load().standingGrants.first;
+        final r = GoVaultVectors.load().standingRevokes.first;
+        // serveDeployedAccount in setUp names no policy asset.
+        final s = service();
+        await expectLater(
+          s.prepareStandingOrder(g.loan, on: true),
+          throwsA(isA<SigningRefused>()),
+        );
+        await expectLater(
+          s.prepareStandingOrder(r.loan, on: false),
+          throwsA(isA<SigningRefused>()),
+        );
+        expect(
+          t.requestsTo(settlement.AccountService.prepareAccountCall),
+          isEmpty,
+        );
+      },
+    );
+
+    group('withdrawing to a contact', () {
+      final d = GoVaultVectors.load().deposits.first;
+      final bea = StawiContactAccount.forTest(
+        Uint8List.fromList(List.filled(20, 0xbe)),
+        name: 'Bea',
+      );
+
+      /// A TRANSFER prepared from the deposit vector's intent, sent to
+      /// [to] for [amount].
+      settlement.PrepareAccountCallResponse transfer(
+        List<int> to,
+        BigInt amount,
+      ) {
+        final i = d.intent
+          ..destination = finance.ValueLocation(
+            kind: finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
+            address: to,
+          )
+          ..amount = amount.toString();
+        final digest = sdkIntentOf(i).digest();
+        return settlement.PrepareAccountCallResponse(
+          callId: 'acct00000000000000t1',
+          intentDigest: digest,
+          financialIntent: i,
+          call: settlement.AccountCall(
+            callId: 'acct00000000000000t1',
+            address: d.account,
+            kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
+            intentDigest: digest,
+          ),
+        );
+      }
+
+      StawiAccountService withdrawer() => StawiAccountService(
+        accounts: settlement.AccountServiceClient(t),
+        keys: DeviceKeyStore(
+          vaultWith('p1', pay.devicePrivateKey),
+          gate: payGate,
+        ),
+        proofs: refusingSessionProofs,
+        identity: () async => identityWith('p1', d.account),
+        readyEvery: Duration.zero,
+        readyAttempts: 2,
+      );
+
+      test('goes to the contact\'s account, checked, then signed', () async {
+        final amount = BigInt.from(5000000);
+        final answer = transfer(bea.address, amount);
+        t.on(settlement.AccountService.prepareAccountCall, (req) => answer);
+        final s = withdrawer();
+        final prepared = await s.prepareTransferOut(to: bea, amount: amount);
+        final sent = t
+            .requestsTo(settlement.AccountService.prepareAccountCall)
+            .single;
+        expect(
+          sent.kind,
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
+        );
+        expect(sent.params.destination.address, bea.address);
+        expect(
+          sent.params.destination.kind,
+          finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
+        );
+        expect(sent.params.amount, '5000000');
+        expect(prepared.review.title, 'Send 5.00 USDC to Bea');
+        await s.submit(prepared);
+        final submit = t
+            .requestsTo(settlement.AccountService.submitAccountCall)
+            .single;
+        expect(
+          recoverDeviceAddress(answer.intentDigest, submit.authorization),
+          await deviceAddressOf(pay.devicePrivateKey),
+        );
+        expect(payGate.reasons, ['Send 5.00 USDC to Bea']);
+      });
+
+      test('refuses another destination or another amount', () async {
+        final amount = BigInt.from(5000000);
+        for (final answer in [
+          transfer(Uint8List.fromList(List.filled(20, 0xee)), amount),
+          transfer(bea.address, amount + BigInt.one),
+        ]) {
+          t.on(settlement.AccountService.prepareAccountCall, (req) => answer);
+          await expectLater(
+            withdrawer().prepareTransferOut(to: bea, amount: amount),
+            throwsA(isA<SigningRefused>()),
+          );
+        }
+        expect(
+          t.requestsTo(settlement.AccountService.submitAccountCall),
+          isEmpty,
+        );
+      });
+
+      test('refuses no amount', () async {
+        t.on(
+          settlement.AccountService.prepareAccountCall,
+          (req) => transfer(bea.address, BigInt.zero),
+        );
+        await expectLater(
+          withdrawer().prepareTransferOut(to: bea, amount: BigInt.zero),
+          throwsA(isA<SigningRefused>()),
+        );
+      });
+
+      test(
+        'the lookup builds no contact from a zero or short address',
+        () async {
+          for (final bad in [Uint8List(20), Uint8List(5)]) {
+            final container = ProviderContainer(
+              overrides: [
+                counterpartyAccountsProvider.overrideWithValue(
+                  (profileId) async => bad,
+                ),
+              ],
+            );
+            addTearDown(container.dispose);
+            final sub = container.listen(
+              counterpartyAccountProvider('p2'),
+              (_, _) {},
+            );
+            addTearDown(sub.close);
+            await expectLater(
+              container.read(counterpartyAccountProvider('p2').future),
+              throwsA(isA<StawiUnavailable>()),
+            );
+          }
+        },
+      );
     });
   });
 }

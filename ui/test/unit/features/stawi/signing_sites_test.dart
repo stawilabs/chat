@@ -18,8 +18,6 @@ const Set<String> deviceSignSites = {
   'lib/features/stawi/data/stawi_account_service.dart deploy',
   // ADD_KEY.
   'lib/features/stawi/data/stawi_account_service.dart addDeviceKey',
-  // Money: a payment into a room.
-  'lib/features/stawi/data/stawi_account_service.dart contribute',
   // Money: every prepared and checked call (loans, savings, wallet).
   'lib/features/stawi/data/stawi_account_service.dart submit',
   // Room genesis.

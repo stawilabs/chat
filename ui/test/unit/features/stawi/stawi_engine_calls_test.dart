@@ -92,8 +92,8 @@ void main() {
           request,
           engines: v.engines(),
         );
-        expect(prepared.call.action, request.call.action, reason: v.name);
-        expect(prepared.call.room, v.room);
+        expect(prepared.call!.action, request.call.action, reason: v.name);
+        expect(prepared.call!.room, v.room);
 
         final prepare = transport
             .requestsTo(settlement.AccountService.prepareAccountCall)
@@ -104,7 +104,7 @@ void main() {
           expect(prepare.params.loanId, Int64(request.loanId));
         }
 
-        await s.submitEngineCall(prepared);
+        await s.submit(prepared);
         final submit = transport
             .requestsTo(settlement.AccountService.submitAccountCall)
             .single;
@@ -136,10 +136,7 @@ void main() {
       final request = requestFor(v);
       final prepared = await s.prepareEngineCall(request, engines: v.engines());
       expect(gate.reasons, isEmpty, reason: 'preparing signs nothing');
-      await expectLater(
-        s.submitEngineCall(prepared),
-        throwsA(isA<SigningRefused>()),
-      );
+      await expectLater(s.submit(prepared), throwsA(isA<SigningRefused>()));
       expect(gate.reasons, [request.summary]);
       expect(
         transport.requestsTo(settlement.AccountService.submitAccountCall),
@@ -161,7 +158,7 @@ void main() {
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
       expect(prepare.params.hasAmount(), isFalse);
-      expect(prepared.call.amount, BigInt.from(520000000));
+      expect(prepared.call!.amount, BigInt.from(520000000));
     });
 
     test('refuses a call other than the one asked for', () async {

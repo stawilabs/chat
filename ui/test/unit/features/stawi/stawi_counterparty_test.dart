@@ -27,10 +27,11 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    expect(
-      await container.read(counterpartyAccountProvider('p2').future),
-      account,
+    final contact = await container.read(
+      counterpartyAccountProvider('p2').future,
     );
+    expect(contact!.address, account);
+    expect(contact.profileId, 'p2');
     expect(
       await container.read(counterpartyAccountProvider('p3').future),
       isNull,

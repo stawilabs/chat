@@ -144,7 +144,7 @@ void main() {
         .toList();
     late FakeConnectTransport transport;
 
-    Future<PreparedEngineCall> prepare(
+    Future<PreparedMoneyCall> prepare(
       GoEngineCallVector v,
       RoomEngineTargets? engines,
     ) async {
@@ -180,11 +180,11 @@ void main() {
 
     test('accepts the room’s own active engine for each action', () async {
       expect(
-        (await prepare(pledge, pledge.engines())).call.action.target,
+        (await prepare(pledge, pledge.engines())).call!.action.target,
         EngineTarget.loanBook,
       );
       expect(
-        (await prepare(equity, equity.engines())).call.action.target,
+        (await prepare(equity, equity.engines())).call!.action.target,
         EngineTarget.rulesEngine,
       );
     });
