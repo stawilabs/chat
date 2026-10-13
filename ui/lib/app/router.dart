@@ -210,11 +210,9 @@ GoRouter router(Ref ref) {
           final q = state.uri.queryParameters;
           final loanRef = NavigationHelper.loanRefFrom(q);
           if (loanRef == null) return const InvalidLoanLinkScreen();
-          return LoanDetailScreen(
-            ref: loanRef,
-            counterpartyName: q['name'],
-            roomId: q['room'],
-          );
+          // The page names the other person from the loan itself; a link
+          // carries no name.
+          return LoanDetailScreen(ref: loanRef, roomId: q['room']);
         },
       ),
       GoRoute(

@@ -23,6 +23,7 @@ import 'package:stawi/features/rooms/domain/room.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_agent_invitations.dart';
 import 'package:stawi/features/stawi/data/stawi_clients.dart';
 import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
@@ -487,6 +488,19 @@ class JourneyHarness {
       ),
       currentUserSubscriptionIdProvider.overrideWith(
         (ref, roomId) async => 'sub-me',
+      ),
+      // Agent invitations go into the DM's timeline here; what is read back
+      // is that timeline's invitations and acceptances, oldest first.
+      agentActSenderProvider.overrideWithValue(acts.call),
+      agentEventsSourceProvider.overrideWithValue(
+        (dmRoomId) => _timeline(dmRoomId).map(
+          (events) => [
+            for (final e in events.reversed)
+              if (e.type == RoomEventType.stawiAgentInvitation ||
+                  e.type == RoomEventType.stawiAgentAcceptance)
+                e,
+          ],
+        ),
       ),
       syncRoomMembersOnEntryProvider.overrideWith((ref, roomId) async {}),
       roomSyncStatusProvider.overrideWith(

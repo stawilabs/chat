@@ -43,7 +43,7 @@ void main() {
             roomByIdProvider.overrideWith(
               (ref, id) async => Room(id: id, name: 'R', type: type),
             ),
-            roomMuteStateProvider.overrideWith(_Unmuted.new),
+            roomMuteStateProvider.overrideWith2((_) => _Unmuted()),
             roomMembersProvider.overrideWith((ref, id) async => const []),
             roomMediaProvider.overrideWith((ref, id) => Stream.value(const [])),
           ],

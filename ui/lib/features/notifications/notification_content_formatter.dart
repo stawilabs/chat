@@ -157,6 +157,8 @@ class NotificationContentFormatter {
       case RoomEventType.stawiSignedCall:
       case RoomEventType.stawiCallOutcome:
       case RoomEventType.financeCard:
+      case RoomEventType.stawiAgentInvitation:
+      case RoomEventType.stawiAgentAcceptance:
         return 'Stawi update';
     }
   }
@@ -268,6 +270,12 @@ class NotificationContentFormatter {
 
         case RoomEventType.financeCard:
           return (FinanceCardView.fromContent(event.content).title, null);
+
+        case RoomEventType.stawiAgentInvitation:
+          return ("Invited you to be a Stawi room's agent", null);
+
+        case RoomEventType.stawiAgentAcceptance:
+          return ("Accepted being a Stawi room's agent", null);
       }
     } catch (e, stackTrace) {
       AppLogger.error(

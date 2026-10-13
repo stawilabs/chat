@@ -9,6 +9,7 @@ import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_agent_invitations.dart';
 import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
@@ -509,13 +510,17 @@ void main() {
     );
   });
 
-  testWidgets('ConvertRoomScreen names the agent: a member or a DM partner '
-      'who has written', (tester) async {
+  testWidgets('ConvertRoomScreen names the agent: a member, or a DM partner '
+      'once they accepted an agent invitation', (tester) async {
     tester.view
       ..physicalSize = const Size(1080, 4000)
       ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final sender = RecordingActSender();
+    // Agent invitations sent into DMs, and where each DM's invitation for
+    // this room stands.
+    final invitations = RecordingActSender();
+    final status = <String, AgentInviteStatus>{};
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -549,8 +554,8 @@ void main() {
               ),
             ],
           ),
-          directRoomsProvider.overrideWith(
-            (ref) async => const [
+          directRoomListerProvider.overrideWithValue(
+            () async => const [
               DirectRoomRef(roomId: 'dm-carol', name: 'Carol'),
               DirectRoomRef(roomId: 'dm-dan', name: 'Dan'),
             ],
@@ -574,6 +579,14 @@ void main() {
               ),
               identity: () async => identityWith('p1', account),
               send: sender.call,
+            ),
+          ),
+          agentActSenderProvider.overrideWithValue(invitations.call),
+          agentInviteStatusProvider.overrideWith(
+            (ref, key) => Stream.value(
+              key.roomId == roomId
+                  ? status[key.dmRoomId] ?? AgentInviteStatus.none
+                  : AgentInviteStatus.none,
             ),
           ),
         ],
@@ -610,17 +623,42 @@ void main() {
     await tester.tap(agent);
     await tester.pumpAndSettle();
     expect(enabled('agent-member-sub-2'), isTrue);
+    // Carol has written, but is not a member: she is invited first.
+    expect(enabled('agent-dm-dm-carol'), isFalse);
     expect(
-      tester
-          .widget<ListTile>(find.byKey(const Key('agent-dm-dm-carol')))
-          .enabled,
-      isTrue,
+      find.text(
+        'The agent must be a room member or someone who accepted your agent '
+        'invitation for this room',
+      ),
+      findsOneWidget,
     );
-    expect(
-      tester.widget<ListTile>(find.byKey(const Key('agent-dm-dm-dan'))).enabled,
-      isFalse,
-    );
+    expect(enabled('agent-dm-dm-dan'), isFalse);
     expect(find.text('Dan needs to send you a message first'), findsOneWidget);
+    expect(find.byKey(const Key('agent-invite-dm-dan')), findsNothing);
+    await tester.tap(find.byKey(const Key('agent-invite-dm-carol')));
+    await tester.pumpAndSettle();
+    final invite = invitations.sent.single;
+    expect(invite.roomId, 'dm-carol');
+    expect(invite.type, RoomEventType.stawiAgentInvitation);
+    expect(StawiAgentInvitationView.fromContent(invite.content).roomId, roomId);
+    expect(sender.sent, isEmpty, reason: 'nothing is sent into this room');
+    Navigator.of(tester.element(find.byKey(const Key('agent-none')))).pop();
+    await tester.pumpAndSettle();
+
+    // Invited, not accepted yet: still not offered.
+    status['dm-carol'] = AgentInviteStatus.invited;
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(enabled('agent-dm-dm-carol'), isFalse);
+    expect(find.text('Invited; waiting for Carol to accept'), findsOneWidget);
+    Navigator.of(tester.element(find.byKey(const Key('agent-none')))).pop();
+    await tester.pumpAndSettle();
+
+    // She accepted in the DM: now she can be chosen.
+    status['dm-carol'] = AgentInviteStatus.accepted;
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(enabled('agent-dm-dm-carol'), isTrue);
 
     // A member first, then a DM partner instead.
     await tester.tap(find.byKey(const Key('agent-member-sub-2')));

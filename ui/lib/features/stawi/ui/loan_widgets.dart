@@ -9,6 +9,7 @@ import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../data/stawi_account_service.dart';
+import '../data/stawi_counterparty.dart';
 import '../data/stawi_loan_service.dart';
 import '../data/stawi_vault_service.dart';
 import '../domain/loan_view.dart';
@@ -153,6 +154,43 @@ class LoanCard extends StatelessWidget {
 /// Said when finance could not read a loan's schedule.
 const String scheduleUnavailableText =
     'The schedule could not be read just now';
+
+/// The name a loan's other person is shown by: a DM's name only when that
+/// DM's partner account is exactly the loan's counterparty, else a short
+/// address said not to be one of the person's chats. Null for a loan with no
+/// other person, and while it is looked up.
+String? watchCounterpartyName(WidgetRef ref, LoanView view) {
+  final other = view.counterparty;
+  if (other == null) return null;
+  return ref
+      .watch(counterpartyNameProvider(bytesToHex0x(other).toLowerCase()))
+      .asData
+      ?.value
+      .label;
+}
+
+/// A [LoanCard] naming its other person by account ([watchCounterpartyName]),
+/// looked up only when the card is built.
+class NamedLoanCard extends ConsumerWidget {
+  const NamedLoanCard({
+    required this.view,
+    required this.assets,
+    this.onTap,
+    super.key,
+  });
+
+  final LoanView view;
+  final StawiAssets assets;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => LoanCard(
+    view: view,
+    assets: assets,
+    counterpartyName: watchCounterpartyName(ref, view),
+    onTap: onTap,
+  );
+}
 
 /// A loan's schedule, or a quote's. When finance could not read it
 /// ([unavailable]) it shows "—" and a way to read it again ([onRetry]),

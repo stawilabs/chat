@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
-import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart'
+    show bytesToHex0x, hexToBytes;
 
 import '../../../core/networking/client.dart';
 import '../../profile/data/profile_providers.dart';
+import '../../rooms/data/room_id_remap.dart';
 import '../../rooms/data/room_service.dart';
 import 'stawi_identity.dart';
 import 'stawi_loan_service.dart';
@@ -96,6 +100,16 @@ final class DirectPartnerRefused implements Exception {
   String toString() => messageFor('They');
 }
 
+/// Chat refused the lookup for now: the person asked for too many partner
+/// accounts in the last minute (GetDirectPartnerAccount's per-person limit,
+/// RESOURCE_EXHAUSTED). Lookups back off; what is unknown shows as "—".
+final class PartnerLookupsExhausted implements Exception {
+  const PartnerLookupsExhausted();
+
+  @override
+  String toString() => 'Too many lookups; try again in a minute';
+}
+
 /// The lookup through chat's GetDirectPartnerAccount.
 CounterpartyAccounts chatCounterpartyAccounts(
   Future<pb.ChatServiceClient> Function() chat,
@@ -113,6 +127,7 @@ CounterpartyAccounts chatCounterpartyAccounts(
       connect.Code.unavailable => const StawiUnavailable(
         'Their Stawi account cannot be read right now; try again shortly',
       ),
+      connect.Code.resourceExhausted => const PartnerLookupsExhausted(),
       _ => e,
     };
   }
@@ -130,11 +145,76 @@ final counterpartyAccountsProvider = Provider<CounterpartyAccounts>(
   ),
 );
 
+/// How long a lookup that failed (refused, unreachable) is kept before it is
+/// asked again, and how long every lookup waits once chat says too many were
+/// asked (RESOURCE_EXHAUSTED).
+const Duration partnerLookupRetryAfter = Duration(seconds: 30);
+const Duration partnerLookupBackoff = Duration(minutes: 1);
+
+/// When partner lookups may be asked again after chat said too many were
+/// asked; null when they may be asked now. Shared by every lookup of the
+/// session.
+final class PartnerLookupBackoff {
+  DateTime? until;
+
+  bool active(DateTime now) => until != null && now.isBefore(until!);
+}
+
+final partnerLookupBackoffProvider = Provider<PartnerLookupBackoff>(
+  (ref) => PartnerLookupBackoff(),
+);
+
+/// The clock partner lookups back off by, so tests can fix it.
+final partnerLookupClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
+
+/// Chat's answer for the partner of the DM `roomId`, cached for the session:
+/// one GetDirectPartnerAccount per DM, asked only when something needs it (a
+/// row being shown, a loan being named), and asked again only when the DM is
+/// remapped to the server's id. A refusal or an outage is kept for
+/// [partnerLookupRetryAfter] and then asked again; once chat says too many
+/// were asked, no lookup is asked for [partnerLookupBackoff] and each reads
+/// as [PartnerLookupsExhausted]. Throws [DirectPartnerRefused],
+/// [StawiUnavailable] or [PartnerLookupsExhausted].
+final partnerLookupProvider = FutureProvider.autoDispose
+    .family<DirectPartnerAccount, String>((ref, roomId) async {
+      // A DM opened offline adopts the server's room id: the answer for
+      // either id is asked again.
+      final remaps = roomIdRemaps.listen((r) {
+        if (r.oldId == roomId || r.newId == roomId) ref.invalidateSelf();
+      });
+      ref.onDispose(remaps.cancel);
+      final keep = ref.keepAlive();
+      void retryLater(Duration after) {
+        final timer = Timer(after, keep.close);
+        ref.onDispose(timer.cancel);
+      }
+
+      final backoff = ref.read(partnerLookupBackoffProvider);
+      final now = ref.read(partnerLookupClockProvider);
+      if (backoff.active(now())) {
+        retryLater(backoff.until!.difference(now()));
+        throw const PartnerLookupsExhausted();
+      }
+      try {
+        return await ref.read(counterpartyAccountsProvider)(roomId);
+      } on PartnerLookupsExhausted {
+        backoff.until = now().add(partnerLookupBackoff);
+        retryLater(partnerLookupBackoff);
+        rethrow;
+      } on Object {
+        retryLater(partnerLookupRetryAfter);
+        rethrow;
+      }
+    }, retry: (_, _) => null);
+
 /// The account of the other person in the DM `roomId`, or null when they
 /// have none. An answer that is not a 20-byte, non-zero address is refused.
+/// Read through the session's [partnerLookupProvider].
 final counterpartyAccountProvider = FutureProvider.autoDispose
     .family<StawiContactAccount?, String>((ref, roomId) async {
-      final found = await ref.watch(counterpartyAccountsProvider)(roomId);
+      final found = await ref.watch(partnerLookupProvider(roomId).future);
       if (found.account.isEmpty) return null;
       if (found.account.length != 20 || found.account.every((b) => b == 0)) {
         throw const StawiUnavailable('That is not a Stawi account');
@@ -220,65 +300,116 @@ final class DmPartner {
       account!.any((b) => b != 0);
 }
 
-/// Asks chat, through [lookup], for the partner of each of [rooms]. A DM chat
-/// refuses is [DmPartner.refused]; one it could not answer is unknown.
-Future<List<DmPartner>> lookUpDmPartners(
-  List<DirectRoomRef> rooms,
-  CounterpartyAccounts lookup,
-) => Future.wait([
-  for (final room in rooms)
-    () async {
-      try {
-        final found = await lookup(room.roomId);
-        return DmPartner(
-          room: room,
-          profileId: found.profileId.isEmpty ? null : found.profileId,
-          account: found.account.isEmpty
-              ? null
-              : Uint8List.fromList(found.account),
-        );
-      } on DirectPartnerRefused {
-        return DmPartner(room: room, refused: true);
-      } on Object {
-        return DmPartner(room: room);
-      }
-    }(),
-]);
-
-/// Every DM partner of the person, as chat answers for each DM.
-final dmPartnersProvider = FutureProvider.autoDispose<List<DmPartner>>(
-  (ref) async => lookUpDmPartners(
-    await ref.watch(directRoomsProvider.future),
-    ref.watch(counterpartyAccountsProvider),
-  ),
-);
-
-/// The names of the person's DM partners by their Stawi account (lowercase
-/// 0x hex): the DM's own name, else the partner's profile name when this
-/// device has it. A partner chat does not name, or whose name is not known,
-/// is left out.
-final dmPartnerNamesProvider = FutureProvider.autoDispose<Map<String, String>>((
-  ref,
-) async {
-  final partners = await ref.watch(dmPartnersProvider.future);
-  final names = <String, String>{};
-  for (final p in partners) {
-    if (!p.known) continue;
-    var name = p.room.named ? p.room.name.trim() : '';
-    if (name.isEmpty) {
-      try {
-        final profile = await ref.watch(
-          profileByIdProvider(p.profileId!).future,
-        );
-        name = profile?.name?.trim() ?? '';
-      } on Object {
-        name = '';
-      }
-    }
-    if (name.isNotEmpty) names[bytesToHex0x(p.account!).toLowerCase()] = name;
+/// One DM's partner as the session's lookup answers it: refused (the
+/// partner has not written yet) or unknown (unreachable, or too many
+/// lookups) when chat did not name them.
+Future<DmPartner> dmPartnerOf(Ref ref, DirectRoomRef room) async {
+  try {
+    final found = await ref.read(partnerLookupProvider(room.roomId).future);
+    return DmPartner(
+      room: room,
+      profileId: found.profileId.isEmpty ? null : found.profileId,
+      account: found.account.isEmpty ? null : Uint8List.fromList(found.account),
+    );
+  } on DirectPartnerRefused {
+    return DmPartner(room: room, refused: true);
+  } on Object {
+    return DmPartner(room: room);
   }
-  return names;
-});
+}
+
+/// Walks the person's DMs, newest first, asking the session's lookup for each
+/// partner until [found] is satisfied; a DM chat refuses, cannot answer or
+/// answers too often for is skipped, never the end of the walk. Lookups stop
+/// once chat says too many were asked.
+Future<DmPartner?> findDmPartner(
+  Ref ref,
+  bool Function(DmPartner partner) found,
+) async {
+  final rooms = await ref.read(directRoomListerProvider)();
+  final backoff = ref.read(partnerLookupBackoffProvider);
+  final now = ref.read(partnerLookupClockProvider);
+  for (final room in rooms) {
+    if (backoff.active(now())) return null;
+    final partner = await dmPartnerOf(ref, room);
+    if (partner.known && found(partner)) return partner;
+  }
+  return null;
+}
+
+/// The name a DM partner is shown by: the DM's own name, else their profile
+/// name when this device has it; null when neither is known.
+Future<String?> dmPartnerName(Ref ref, DmPartner p) async {
+  final named = p.room.named ? p.room.name.trim() : '';
+  if (named.isNotEmpty) return named;
+  try {
+    final profile = await ref.read(profileByIdProvider(p.profileId!).future);
+    final name = profile?.name?.trim() ?? '';
+    return name.isEmpty ? null : name;
+  } on Object {
+    return null;
+  }
+}
+
+/// How the other person of a loan is shown: by name only when one of the
+/// person's DMs has exactly that account as its partner; otherwise by a
+/// short address, said not to be one of their chats.
+final class CounterpartyName {
+  const CounterpartyName({required this.account, this.name});
+
+  final List<int> account;
+
+  /// The DM partner's name; null when no DM's partner has this account.
+  final String? name;
+
+  /// "0x1234…abcd".
+  String get shortAddress {
+    final hex = bytesToHex0x(account).toLowerCase();
+    return hex.length <= 14
+        ? hex
+        : '${hex.substring(0, 6)}…${hex.substring(hex.length - 4)}';
+  }
+
+  /// The name, else "0x1234…abcd (not one of your chats)".
+  String get label => name ?? '$shortAddress ($notOneOfYourChats)';
+}
+
+/// Said of a counterparty no DM of the person's names.
+const String notOneOfYourChats = 'not one of your chats';
+
+/// The other person of a loan, named by their account (lowercase 0x hex): a
+/// DM's name is used only when chat answers that DM's partner account as
+/// exactly this one. Asked lazily, per loan shown, through the session's
+/// cached lookups.
+final counterpartyNameProvider = FutureProvider.autoDispose
+    .family<CounterpartyName, String>((ref, accountHex) async {
+      final account = hexToBytes(accountHex);
+      final partner = await findDmPartner(
+        ref,
+        (p) => _same(p.account!, account),
+      );
+      return CounterpartyName(
+        account: account,
+        name: partner == null ? null : await dmPartnerName(ref, partner),
+      );
+    });
+
+bool _same(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// The DM partner whose profile is `profileId`, through the session's cached
+/// lookups; null when no DM of the person's has them as its named partner.
+final dmPartnerByProfileProvider = FutureProvider.autoDispose
+    .family<DmPartner?, String>(
+      (ref, profileId) => profileId.isEmpty
+          ? Future.value()
+          : findDmPartner(ref, (p) => p.profileId == profileId),
+    );
 
 /// The person-to-person loans between the person and the other member of the
 /// DM `roomId`, either way; empty when the partner has no Stawi account.
@@ -300,24 +431,15 @@ final dmPairLoansProvider = FutureProvider.autoDispose
 /// (the partner has not written) for every one that does.
 typedef DmPartnerAccountOf = Future<Uint8List?> Function(String profileId);
 
-/// Asks chat for the partner of each of the person's DMs until one is the
-/// profile ([counterpartyAccountsProvider]): the answer names the partner,
-/// so no DM is taken for theirs on the local store's word.
+/// Walks the person's DMs through the session's cached lookups until one's
+/// partner is the profile: the answer names the partner, so no DM is taken
+/// for theirs on the local store's word. A DM that cannot be answered is
+/// skipped.
 final dmPartnerAccountOfProvider = Provider<DmPartnerAccountOf>(
   (ref) => (profileId) async {
     if (profileId.isEmpty) return null;
-    final rooms = await ref.read(directRoomListerProvider)();
-    final lookup = ref.read(counterpartyAccountsProvider);
-    for (final room in rooms) {
-      try {
-        final found = await lookup(room.roomId);
-        if (found.profileId == profileId && found.account.length == 20) {
-          return Uint8List.fromList(found.account);
-        }
-      } on DirectPartnerRefused {
-        continue;
-      }
-    }
-    return null;
+    final partner = await findDmPartner(ref, (p) => p.profileId == profileId);
+    final account = partner?.account;
+    return account != null && account.length == 20 ? account : null;
   },
 );

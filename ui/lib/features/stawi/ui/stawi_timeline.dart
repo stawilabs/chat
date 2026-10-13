@@ -8,6 +8,8 @@ import '../../auth/data/current_user_provider.dart';
 import '../../messages/domain/room_event.dart';
 import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_subscription_service.dart';
+import '../data/stawi_account_service.dart' show stawiClockProvider;
+import '../data/stawi_agent_invitations.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_identity.dart';
 import '../data/stawi_loan_service.dart';
@@ -37,6 +39,14 @@ class StawiTimelineItem extends StatelessWidget {
     RoomEventType.stawiSignedCall => StawiActBubble(event: event, isMe: isMe),
     RoomEventType.stawiCallOutcome => StawiOutcomeBubble(event: event),
     RoomEventType.financeCard => FinanceCardBubble(event: event),
+    RoomEventType.stawiAgentInvitation => AgentInvitationCard(
+      event: event,
+      isMe: isMe,
+    ),
+    RoomEventType.stawiAgentAcceptance => AgentAcceptanceCard(
+      event: event,
+      isMe: isMe,
+    ),
     _ => const SizedBox.shrink(),
   };
 }
@@ -619,8 +629,8 @@ final cardLoanProvider = FutureProvider.family<finance.Loan?, LoanRef>((
 
 /// Opens the loan a card names. On an offer or an ask, the person it waits
 /// for (the borrower of an offer, the lender of an ask) sees Review instead;
-/// both open the loan's page, where it is decided. In a DM the other person
-/// is named on that page.
+/// both open the loan's page, where it is decided. That page names the other
+/// person by the loan's counterparty account, never by this room.
 class _OpenLoanButton extends ConsumerWidget {
   const _OpenLoanButton({required this.card, required this.roomId});
 
@@ -637,21 +647,194 @@ class _OpenLoanButton extends ConsumerWidget {
       review =
           loan != null && mine != null && LoanView(loan, mine: mine).awaitsMe;
     }
-    final room = ref.watch(roomByIdProvider(roomId)).asData?.value;
-    final partner =
-        room != null && room.type == 'direct' && room.name.isNotEmpty
-        ? room.name
-        : null;
     return OutlinedButton.icon(
       key: const Key('finance-card-open-loan'),
       icon: Icon(review ? Icons.rate_review_outlined : Icons.open_in_new),
       label: Text(review ? 'Review' : 'Open loan'),
       onPressed: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => LoanDetailScreen(
-            ref: loanRef,
-            roomId: roomId,
-            counterpartyName: partner,
+          // The page names the other person by the loan's own account.
+          builder: (_) => LoanDetailScreen(ref: loanRef, roomId: roomId),
+        ),
+      ),
+    );
+  }
+}
+
+/// "until 20 Oct, 14:05" in local time.
+String _until(DateTime t) => DateFormat('d MMM, HH:mm').format(t.toLocal());
+
+/// The name a DM's partner is shown by in its own timeline.
+String _partnerName(WidgetRef ref, String dmRoomId) {
+  final room = ref.watch(roomByIdProvider(dmRoomId)).asData?.value;
+  return room == null || room.name.isEmpty ? 'They' : room.name;
+}
+
+/// An agent invitation in a DM. The invited partner (not its sender) sees
+/// Accept while it can still be accepted and they have not accepted it;
+/// accepting sends STAWI_AGENT_ACCEPTANCE naming it.
+class AgentInvitationCard extends ConsumerStatefulWidget {
+  const AgentInvitationCard({
+    required this.event,
+    required this.isMe,
+    super.key,
+  });
+
+  final RoomEvent event;
+  final bool isMe;
+
+  @override
+  ConsumerState<AgentInvitationCard> createState() =>
+      _AgentInvitationCardState();
+}
+
+class _AgentInvitationCardState extends ConsumerState<AgentInvitationCard> {
+  bool _sending = false;
+
+  Future<void> _accept() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+    await runStawiAction(
+      context,
+      () =>
+          acceptAgentInvitation(ref.read(agentActSenderProvider), widget.event),
+      success: 'Accepted; they can now name you the room\'s agent',
+    );
+    if (mounted) setState(() => _sending = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final event = widget.event;
+    final invitation = StawiAgentInvitationView.fromContent(event.content);
+    final room = invitation.roomName.isEmpty ? 'a room' : invitation.roomName;
+    final now = ref.watch(stawiClockProvider)();
+    final live = invitation.liveAt(now);
+    final accepted =
+        ref
+            .watch(
+              agentInvitationAcceptedProvider((
+                dmRoomId: event.roomId,
+                invitationEventId: event.id,
+              )),
+            )
+            .asData
+            ?.value ??
+        false;
+    final who = _partnerName(ref, event.roomId);
+    final expires = invitation.expiresAt;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Card(
+          key: Key('agent-invitation-${event.id}'),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.badge_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.isMe
+                            ? 'You invited $who to be the Stawi agent of $room'
+                            : '$who invited you to be the Stawi agent of $room',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'An agent receives part of the Stawi fee on the room\'s '
+                  'income. Accepting lets the room\'s founders see your '
+                  'Stawi account address.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (expires != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      accepted
+                          ? 'Accepted'
+                          : live
+                          ? 'Can be accepted until ${_until(expires)}'
+                          : 'Expired',
+                      key: const Key('agent-invitation-state'),
+                    ),
+                  ),
+                if (!widget.isMe && live && !accepted) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton(
+                      key: const Key('agent-invitation-accept'),
+                      onPressed: _sending ? null : _accept,
+                      child: const Text('Accept'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An acceptance of an agent invitation in a DM: the inviter may name the
+/// acceptor agent of the room until it expires.
+class AgentAcceptanceCard extends ConsumerWidget {
+  const AgentAcceptanceCard({
+    required this.event,
+    required this.isMe,
+    super.key,
+  });
+
+  final RoomEvent event;
+  final bool isMe;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final a = StawiAgentAcceptanceView.fromContent(event.content);
+    final room = a.roomName.isEmpty ? 'the room' : a.roomName;
+    final now = ref.watch(stawiClockProvider)();
+    final expires = a.expiresAt;
+    final who = _partnerName(ref, event.roomId);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Card(
+          key: Key('agent-acceptance-${event.id}'),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: ListTile(
+            leading: Icon(
+              Icons.verified_user_outlined,
+              color: theme.colorScheme.primary,
+            ),
+            title: Text(
+              isMe
+                  ? 'You accepted being agent for $room'
+                  : '$who accepted being agent for $room',
+            ),
+            subtitle: expires == null
+                ? null
+                : Text(
+                    a.liveAt(now)
+                        ? 'Can be named agent until ${_until(expires)}'
+                        : 'Expired',
+                    key: const Key('agent-acceptance-state'),
+                  ),
           ),
         ),
       ),

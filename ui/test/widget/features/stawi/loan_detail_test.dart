@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/core/navigation/navigation_helper.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
 import 'package:stawi/features/stawi/data/stawi_vault_service.dart';
@@ -265,6 +266,15 @@ void main() {
     }
   }
 
+  // The person's DMs and the partner account chat answers for each: Bob's
+  // DM names Bob's account by default.
+  var dms = const [DirectRoomRef(roomId: 'dm-bob', name: 'Bob')];
+  var partners = <String, List<int>>{'dm-bob': bob};
+  setUp(() {
+    dms = const [DirectRoomRef(roomId: 'dm-bob', name: 'Bob')];
+    partners = {'dm-bob': bob};
+  });
+
   Future<void> open(WidgetTester tester, StawiAccountService service) async {
     tester.view
       ..physicalSize = const Size(1080, 4000)
@@ -288,13 +298,15 @@ void main() {
               identity: identity,
             ),
           ),
-        ],
-        child: MaterialApp(
-          home: LoanDetailScreen(
-            ref: LoanRef.of(served),
-            counterpartyName: 'Bob',
+          directRoomListerProvider.overrideWithValue(() async => dms),
+          counterpartyAccountsProvider.overrideWithValue(
+            (roomId) async => DirectPartnerAccount(
+              profileId: 'p-$roomId',
+              account: Uint8List.fromList(partners[roomId] ?? const []),
+            ),
           ),
-        ),
+        ],
+        child: MaterialApp(home: LoanDetailScreen(ref: LoanRef.of(served))),
       ),
     );
     await settle(tester);
@@ -387,6 +399,49 @@ void main() {
       await tapAndSettle(tester, find.byKey(const Key('loan-decline')));
       expect(prepared(), [_cancel]);
       expect(find.byKey(const Key('money-review')), findsOneWidget);
+    });
+  });
+
+  group('the other person is named by the loan\'s own account', () {
+    testWidgets('a DM whose partner is not that account does not name it', (
+      tester,
+    ) async {
+      final service = await serve();
+      served = offerToMe();
+      // A DM called "Bob" whose partner is someone else.
+      partners = {'dm-bob': Uint8List.fromList(List.filled(20, 0xee))};
+      await open(tester, service);
+      expect(find.textContaining('from Bob'), findsNothing);
+      expect(find.textContaining('From Bob'), findsNothing);
+      expect(
+        find.textContaining('0xb0b1…c2c3 ($notOneOfYourChats)'),
+        findsWidgets,
+      );
+      await tapAndSettle(tester, find.byKey(const Key('loan-accept')));
+      expect(
+        inReview(
+          'Accept a loan of 300.00 USDC from 0xb0b1…c2c3 '
+          '($notOneOfYourChats)',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a DM further down whose partner is that account names it', (
+      tester,
+    ) async {
+      final service = await serve();
+      served = offerToMe();
+      dms = const [
+        DirectRoomRef(roomId: 'dm-ann', name: 'Ann'),
+        DirectRoomRef(roomId: 'dm-bob', name: 'Bob'),
+      ];
+      partners = {
+        'dm-ann': Uint8List.fromList(List.filled(20, 0xa1)),
+        'dm-bob': bob,
+      };
+      await open(tester, service);
+      expect(find.text('From Bob'), findsOneWidget);
     });
   });
 

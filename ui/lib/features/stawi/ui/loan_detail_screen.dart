@@ -6,6 +6,7 @@ import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
+import '../../rooms/data/room_providers.dart';
 import '../data/stawi_account_service.dart';
 import '../data/stawi_identity.dart';
 import '../data/stawi_loan_service.dart';
@@ -19,6 +20,7 @@ import '../domain/stawi_money.dart';
 import 'loan_widgets.dart';
 import 'money_review_sheet.dart';
 import 'pay_sheets.dart';
+import 'room_money_screen.dart';
 import 'stawi_feedback.dart';
 
 /// The review title of the standing order offered once a loan is active.
@@ -103,18 +105,12 @@ Future<void> followAndOfferAutoPay(
 
 /// One loan: its terms, its schedule and what the person may do with it.
 class LoanDetailScreen extends ConsumerStatefulWidget {
-  const LoanDetailScreen({
-    required this.ref,
-    this.counterpartyName,
-    this.roomId,
-    super.key,
-  });
+  const LoanDetailScreen({required this.ref, this.roomId, super.key});
 
-  /// The loan, as its LoanBook names it.
+  /// The loan, as its LoanBook names it. The other person is named by the
+  /// loan's own counterparty account ([watchCounterpartyName]), never by
+  /// where the page was opened from.
   final LoanRef ref;
-
-  /// The other person, when known (for words only).
-  final String? counterpartyName;
 
   /// The room a group loan belongs to.
   final String? roomId;
@@ -128,7 +124,10 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
   bool _settling = false;
   bool _autoPay = true;
 
-  String get _name => widget.counterpartyName ?? 'them';
+  /// The loan's other person as last named (see [watchCounterpartyName]).
+  String? _counterparty;
+
+  String get _name => _counterparty ?? 'them';
 
   /// Runs a money action on this loan. The buttons stay off until it is
   /// done: a call it submits is followed until it is final, and only then is
@@ -173,7 +172,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
         ref,
         () async => service.preparePersonal(
           PersonalRequest.acceptOffer(offer: loan),
-          counterpartyName: widget.counterpartyName,
+          counterpartyName: _counterparty,
         ),
       );
       if (call == null || !autoPay || !mounted) return call;
@@ -197,7 +196,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           .read(stawiAccountServiceProvider)
           .preparePersonal(
             PersonalRequest.cancel(loan: loan),
-            counterpartyName: widget.counterpartyName,
+            counterpartyName: _counterparty,
           ),
     ),
   );
@@ -272,7 +271,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           .read(stawiAccountServiceProvider)
           .preparePersonal(
             PersonalRequest.acceptAsk(ask: loan, pocket: id),
-            counterpartyName: widget.counterpartyName,
+            counterpartyName: _counterparty,
             pocketName: pocketName(now),
           ),
     );
@@ -311,6 +310,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           final view = LoanView.of(r, mine: mine);
+          _counterparty = watchCounterpartyName(ref, view);
           return RefreshIndicator(
             onRefresh: () => ref.refresh(loanProvider(widget.ref).future),
             child: ListView(
@@ -338,7 +338,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
       LoanCard(
         view: view,
         assets: assets,
-        counterpartyName: widget.counterpartyName,
+        counterpartyName: _counterparty,
       ),
       if (waiting)
         Padding(
@@ -352,7 +352,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: RecordSummary(
             borrower: Uint8List.fromList(loan.borrowerAccount),
-            name: widget.counterpartyName ?? 'The borrower',
+            name: _counterparty ?? 'The borrower',
           ),
         ),
       const SizedBox(height: 8),
@@ -405,7 +405,33 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
   }) {
     final loan = view.loan;
     final role = view.role;
-    if (view.isGroup) return const [];
+    if (view.isGroup) {
+      // A group loan is paid in its room's Loans tab, where the room's rules
+      // apply each payment.
+      if (role != LoanRole.borrower || !active || loan.roomId.isEmpty) {
+        return const [];
+      }
+      final room = ref.watch(roomByIdProvider(loan.roomId)).asData?.value;
+      final roomName = room == null || room.name.isEmpty
+          ? 'the room'
+          : room.name;
+      return [
+        FilledButton.icon(
+          key: const Key('loan-pay-in-room'),
+          icon: const Icon(Icons.groups_outlined),
+          label: Text('Pay in $roomName'),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => RoomMoneyScreen(
+                roomId: loan.roomId,
+                roomName: roomName,
+                initialTab: RoomMoneyScreen.loansTab,
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
     final busy = _busy;
     if (pending && view.isOpenOffer && role == LoanRole.borrower) {
       return [

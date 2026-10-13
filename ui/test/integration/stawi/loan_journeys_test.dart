@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/core/db/database.dart' show Profile;
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
+import 'package:stawi/features/stawi/data/stawi_counterparty.dart'
+    show notOneOfYourChats;
 import 'package:stawi/features/stawi/domain/intent_bridge.dart'
     show sdkIntentOf;
 import 'package:stawi/features/stawi/domain/loan_terms.dart';
@@ -721,12 +723,59 @@ void main() {
     expect(enabled('agent-member-sub-me'), isTrue);
     expect(enabled('agent-member-sub-amina'), isFalse);
     expect(find.text(agentUnconfirmableReason), findsOneWidget);
-    expect(enabled('agent-dm-dm-agnes'), isTrue);
+    // Agnes has written but is not a member: she is invited into her DM
+    // first, and offered only once she accepted for this room.
+    expect(enabled('agent-dm-dm-agnes'), isFalse);
     expect(enabled('agent-dm-dm-dan'), isFalse);
+    await tapAndSettle(tester, find.byKey(const Key('agent-invite-dm-agnes')));
+    final invitation = h.acts.sent.single;
+    expect(invitation.roomId, 'dm-agnes');
+    expect(invitation.type, RoomEventType.stawiAgentInvitation);
+    expect(
+      StawiAgentInvitationView.fromContent(invitation.content).roomId,
+      'r-chama',
+    );
+    h.post(
+      RoomEvent(
+        id: 'inv1',
+        roomId: 'dm-agnes',
+        senderId: 'sub-me',
+        type: RoomEventType.stawiAgentInvitation,
+        createdAt: 0,
+        status: EventStatus.read,
+        content: {...invitation.content, 'roomName': 'Chama'},
+      ),
+    );
+    await settle(tester);
+    expect(find.text('Invited; waiting for Agnes to accept'), findsOneWidget);
+    expect(enabled('agent-dm-dm-agnes'), isFalse);
+
+    // Agnes accepts in the DM; chat stamps the room and the expiry.
+    h.post(
+      RoomEvent(
+        id: 'acc1',
+        roomId: 'dm-agnes',
+        senderId: 'sub-agnes',
+        type: RoomEventType.stawiAgentAcceptance,
+        createdAt: 1,
+        status: EventStatus.read,
+        content: {
+          'invitationEventId': 'inv1',
+          'roomId': 'r-chama',
+          'roomName': 'Chama',
+          'expiresAt': DateTime.now()
+              .toUtc()
+              .add(const Duration(days: 7))
+              .toIso8601String(),
+        },
+      ),
+    );
+    await settle(tester);
+    expect(enabled('agent-dm-dm-agnes'), isTrue);
     await tapAndSettle(tester, find.byKey(const Key('agent-dm-dm-agnes')));
     await tapAndSettle(tester, find.byKey(const Key('stawi-send-conversion')));
 
-    final conversion = h.acts.sent.single;
+    final conversion = h.acts.sent[1];
     expect(conversion.type, RoomEventType.stawiRoomConversion);
     final view = StawiConversionView.fromContent(conversion.content);
     expect(view.agentProfileId, 'p-agent');
@@ -763,21 +812,20 @@ void main() {
         .requestsTo(pb.ChatService.getDirectPartnerAccount)
         .length;
     await tapAndSettle(tester, find.byKey(const Key('genesis-open-review')));
-    // The agent's address is confirmed with chat's answer for Agnes's DM.
-    expect(
-      h.chatApi
-          .requestsTo(pb.ChatService.getDirectPartnerAccount)
-          .skip(before)
-          .map((r) => r.roomId),
-      contains('dm-agnes'),
+    // The agent's address is confirmed with chat's answer for Agnes's DM,
+    // the one the picker asked for: lookups are kept for the session.
+    final lookups = h.chatApi.requestsTo(
+      pb.ChatService.getDirectPartnerAccount,
     );
+    expect(lookups.map((r) => r.roomId), contains('dm-agnes'));
+    expect(lookups.skip(before), isEmpty, reason: 'asked once a session');
     expect(find.byKey(const Key('genesis-review')), findsOneWidget);
     expect(find.text('Stawi agent: Agnes'), findsOneWidget);
     expect(find.byKey(const Key('genesis-agent-unconfirmed')), findsNothing);
-    expect(h.acts.sent, hasLength(1), reason: 'nothing is signed first');
+    expect(h.acts.sent, hasLength(2), reason: 'nothing is signed first');
 
     await tapAndSettle(tester, find.byKey(const Key('genesis-sign')));
-    final signed = h.acts.sent[1];
+    final signed = h.acts.sent[2];
     expect(signed.type, RoomEventType.stawiGenesisSignature);
     expect(signed.parentId, 'conv1');
     // The founder signs their account's wrapping of the Go genesis hash.
@@ -832,9 +880,10 @@ void main() {
       }));
     await h.pumpApp(tester, '/money');
 
-    // A loan names the DM partner it is with; one with nobody known cannot.
+    // A loan names the DM partner whose account it is with; one with an
+    // account none of the person's DMs has is a short address.
     expect(find.text('From Bob'), findsOneWidget);
-    expect(find.text('From them'), findsOneWidget);
+    expect(find.text('From 0xdddd…dddd ($notOneOfYourChats)'), findsOneWidget);
 
     await tapAndSettle(tester, find.byKey(const Key('wallet-send')));
     expect(find.byKey(const Key('dm-partner-picker')), findsOneWidget);

@@ -48,6 +48,18 @@ class StawiPayloadCodec {
         content: _json(payload.financeCard),
       );
     }
+    if (payload.hasStawiAgentInvitation()) {
+      return (
+        type: RoomEventType.stawiAgentInvitation,
+        content: _json(payload.stawiAgentInvitation),
+      );
+    }
+    if (payload.hasStawiAgentAcceptance()) {
+      return (
+        type: RoomEventType.stawiAgentAcceptance,
+        content: _json(payload.stawiAgentAcceptance),
+      );
+    }
     return null;
   }
 
@@ -80,6 +92,26 @@ class StawiPayloadCodec {
           ..type = pb.PayloadType.PAYLOAD_TYPE_STAWI_SIGNED_CALL
           ..stawiSignedCall = (pb.StawiSignedCallContent()
             ..mergeFromProto3Json(content, ignoreUnknownFields: true));
+        return true;
+      case RoomEventType.stawiAgentInvitation:
+        final invitation = pb.StawiAgentInvitationContent()
+          ..mergeFromProto3Json(content, ignoreUnknownFields: true)
+          // Stamped by the server; whatever a client sends is replaced.
+          ..clearRoomName()
+          ..clearExpiresAt();
+        payload
+          ..type = pb.PayloadType.PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+          ..stawiAgentInvitation = invitation;
+        return true;
+      case RoomEventType.stawiAgentAcceptance:
+        final acceptance = pb.StawiAgentAcceptanceContent()
+          ..mergeFromProto3Json(content, ignoreUnknownFields: true)
+          ..clearRoomId()
+          ..clearRoomName()
+          ..clearExpiresAt();
+        payload
+          ..type = pb.PayloadType.PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+          ..stawiAgentAcceptance = acceptance;
         return true;
       default:
         return false;
@@ -503,3 +535,71 @@ List<String> _strings(Object? value) =>
 
 DateTime? _time(Object? value) =>
     value is String ? DateTime.tryParse(value)?.toUtc() : null;
+
+/// A STAWI_AGENT_INVITATION, sent in a DM by the person converting a room to
+/// the partner they want as its agent. The server stamps the room's name and
+/// how long it can be accepted.
+class StawiAgentInvitationView {
+  const StawiAgentInvitationView({
+    required this.roomId,
+    required this.roomName,
+    this.expiresAt,
+  });
+
+  factory StawiAgentInvitationView.fromContent(Map<String, dynamic> c) =>
+      StawiAgentInvitationView(
+        roomId: c['roomId'] as String? ?? '',
+        roomName: c['roomName'] as String? ?? '',
+        expiresAt: _time(c['expiresAt']),
+      );
+
+  /// The group room being converted.
+  final String roomId;
+
+  /// The room's name as chat holds it; empty until the server stamped it.
+  final String roomName;
+
+  /// Until when it can be accepted; null until the server stamped it.
+  final DateTime? expiresAt;
+
+  /// Whether it can still be accepted at [now].
+  bool liveAt(DateTime now) => expiresAt != null && now.isBefore(expiresAt!);
+
+  /// What the converter sends: the room only; chat fills in the rest.
+  static Map<String, dynamic> content({required String roomId}) =>
+      StawiPayloadCodec._json(pb.StawiAgentInvitationContent(roomId: roomId));
+}
+
+/// A STAWI_AGENT_ACCEPTANCE, sent in a DM by the invited partner. The server
+/// stamps the room it names and how long the inviter may name them agent.
+class StawiAgentAcceptanceView {
+  const StawiAgentAcceptanceView({
+    required this.invitationEventId,
+    required this.roomId,
+    required this.roomName,
+    this.expiresAt,
+  });
+
+  factory StawiAgentAcceptanceView.fromContent(Map<String, dynamic> c) =>
+      StawiAgentAcceptanceView(
+        invitationEventId: c['invitationEventId'] as String? ?? '',
+        roomId: c['roomId'] as String? ?? '',
+        roomName: c['roomName'] as String? ?? '',
+        expiresAt: _time(c['expiresAt']),
+      );
+
+  final String invitationEventId;
+  final String roomId;
+  final String roomName;
+
+  /// Until when the inviter may name the acceptor agent.
+  final DateTime? expiresAt;
+
+  bool liveAt(DateTime now) => expiresAt != null && now.isBefore(expiresAt!);
+
+  /// What the invited partner sends: the invitation accepted.
+  static Map<String, dynamic> content({required String invitationEventId}) =>
+      StawiPayloadCodec._json(
+        pb.StawiAgentAcceptanceContent(invitationEventId: invitationEventId),
+      );
+}

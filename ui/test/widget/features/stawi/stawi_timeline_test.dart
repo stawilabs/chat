@@ -8,9 +8,14 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
+import 'package:stawi/features/rooms/data/room_providers.dart';
 import 'package:stawi/features/rooms/data/room_subscription_service.dart';
+import 'package:stawi/features/rooms/domain/room.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
+import 'package:stawi/features/stawi/data/stawi_account_service.dart'
+    show stawiClockProvider;
+import 'package:stawi/features/stawi/data/stawi_agent_invitations.dart';
 import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
@@ -885,6 +890,133 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('On chain'), findsOneWidget);
       expect(find.byKey(const Key('genesis-open-review')), findsNothing);
+    });
+  });
+
+  group('agent invitation cards in a DM', () {
+    final now = DateTime.utc(2026, 10, 13, 12);
+    late RecordingActSender acts;
+    late List<RoomEvent> dmEvents;
+
+    setUp(() {
+      acts = RecordingActSender();
+      dmEvents = [];
+    });
+
+    RoomEvent invitation({DateTime? expiresAt}) => RoomEvent(
+      id: 'inv1',
+      roomId: 'dm-agnes',
+      senderId: 'sub-agnes',
+      type: RoomEventType.stawiAgentInvitation,
+      createdAt: 0,
+      status: EventStatus.delivered,
+      content: {
+        'roomId': 'r-chama',
+        'roomName': 'Chama',
+        'expiresAt': (expiresAt ?? now.add(const Duration(days: 7)))
+            .toIso8601String(),
+      },
+    );
+
+    Future<void> show(WidgetTester tester, RoomEvent event, bool isMe) =>
+        tester.pumpWidget(
+          host(
+            StawiTimelineItem(event: event, isMe: isMe),
+            overrides: [
+              roomByIdProvider.overrideWith(
+                (ref, id) async => Room(id: id, name: 'Agnes', type: 'direct'),
+              ),
+              stawiClockProvider.overrideWithValue(() => now),
+              agentActSenderProvider.overrideWithValue(acts.call),
+              agentEventsSourceProvider.overrideWithValue(
+                (dmRoomId) => Stream.value(dmEvents),
+              ),
+            ],
+          ),
+        );
+
+    testWidgets('the invited partner accepts it, naming the invitation', (
+      tester,
+    ) async {
+      await show(tester, invitation(), false);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Agnes invited you to be the Stawi agent of Chama'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Can be accepted until'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('agent-invitation-accept')));
+      await tester.pumpAndSettle();
+      final sent = acts.sent.single;
+      expect(sent.roomId, 'dm-agnes');
+      expect(sent.type, RoomEventType.stawiAgentAcceptance);
+      expect(
+        StawiAgentAcceptanceView.fromContent(sent.content).invitationEventId,
+        'inv1',
+      );
+    });
+
+    testWidgets('its sender sees no Accept', (tester) async {
+      await show(tester, invitation(), true);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('You invited Agnes to be the Stawi agent of Chama'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('agent-invitation-accept')), findsNothing);
+    });
+
+    testWidgets('an expired or accepted invitation offers no Accept', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        invitation(expiresAt: now.subtract(const Duration(minutes: 1))),
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Expired'), findsOneWidget);
+      expect(find.byKey(const Key('agent-invitation-accept')), findsNothing);
+
+      dmEvents = [
+        const RoomEvent(
+          id: 'acc1',
+          roomId: 'dm-agnes',
+          senderId: 'sub-me',
+          type: RoomEventType.stawiAgentAcceptance,
+          createdAt: 1,
+          content: {'invitationEventId': 'inv1', 'roomId': 'r-chama'},
+        ),
+      ];
+      await show(tester, invitation(), false);
+      await tester.pumpAndSettle();
+      expect(find.text('Accepted'), findsOneWidget);
+      expect(find.byKey(const Key('agent-invitation-accept')), findsNothing);
+    });
+
+    testWidgets('the inviter sees the acceptance and until when it holds', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        RoomEvent(
+          id: 'acc1',
+          roomId: 'dm-agnes',
+          senderId: 'sub-agnes',
+          type: RoomEventType.stawiAgentAcceptance,
+          createdAt: 1,
+          content: {
+            'invitationEventId': 'inv1',
+            'roomId': 'r-chama',
+            'roomName': 'Chama',
+            'expiresAt': now.add(const Duration(days: 7)).toIso8601String(),
+          },
+        ),
+        false,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Agnes accepted being agent for Chama'), findsOneWidget);
+      expect(find.textContaining('Can be named agent until'), findsOneWidget);
     });
   });
 }

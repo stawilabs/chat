@@ -250,6 +250,7 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
             onTap: () async {
               final chosen = await showStawiAgentPicker(
                 context,
+                roomId: widget.roomId,
                 members: members.asData?.value ?? const [],
                 founders: Set.of(_founders),
               );

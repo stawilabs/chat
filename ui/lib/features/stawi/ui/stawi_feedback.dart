@@ -26,6 +26,9 @@ String stawiErrorMessage(Object error) => switch (error) {
   SigningRefused(:final reason) => 'Not signed: $reason',
   StawiUnavailable(:final message) => message,
   DirectPartnerRefused() => DirectPartnerRefused.messageFor('They'),
+  // Too many partner lookups for now: unknown, shown as "—" until they are
+  // asked again.
+  PartnerLookupsExhausted() => '—',
   connect.ConnectException(:final code, :final message) => switch (code) {
     connect.Code.unauthenticated => 'Sign in again to continue',
     connect.Code.permissionDenied => 'Not allowed: $message',

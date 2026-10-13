@@ -89,19 +89,18 @@ class NavigationHelper {
     context.push('/room/$roomId/stawi?name=${Uri.encodeComponent(roomName)}');
   }
 
-  /// Navigate to one loan: `/loan?book=<hex>&pool=<hex>&id=<n>`, with the
-  /// other person's name and a group loan's room when known.
+  /// Navigate to one loan: `/loan?book=<hex>&pool=<hex>&id=<n>`, with a
+  /// group loan's room when known. The page names the other person from the
+  /// loan's own account, so a link carries no name.
   static void navigateToLoan(
     BuildContext context, {
     required LoanRef ref,
-    String? counterpartyName,
     String? roomId,
   }) {
     final query = {
       'book': bytesToHex0x(ref.loanBook).toLowerCase(),
       'pool': bytesToHex0x(ref.pool).toLowerCase(),
       'id': ref.loanId.toString(),
-      'name': ?counterpartyName,
       'room': ?roomId,
     };
     context.push(Uri(path: '/loan', queryParameters: query).toString());

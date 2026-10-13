@@ -53,6 +53,8 @@ class ChatEventCodec {
       case domain.RoomEventType.stawiSignedCall:
       case domain.RoomEventType.stawiCallOutcome:
       case domain.RoomEventType.financeCard:
+      case domain.RoomEventType.stawiAgentInvitation:
+      case domain.RoomEventType.stawiAgentAcceptance:
         // Chat accepts Stawi acts only as ROOM_EVENT_TYPE_EVENT.
         return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
     }

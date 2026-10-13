@@ -618,6 +618,8 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
       case RoomEventType.stawiSignedCall:
       case RoomEventType.stawiCallOutcome:
       case RoomEventType.financeCard:
+      case RoomEventType.stawiAgentInvitation:
+      case RoomEventType.stawiAgentAcceptance:
         return StawiTimelineItem(event: widget.message, isMe: isMe);
       case RoomEventType.callOffer:
       case RoomEventType.callAnswer:

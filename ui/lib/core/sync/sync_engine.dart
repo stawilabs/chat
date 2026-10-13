@@ -1052,6 +1052,14 @@ class SyncEngine with WidgetsBindingObserver {
         existingEvent.content['genesis'] == null) {
       // The server turns a conversion into the genesis card: keep its copy.
       await _messageRepo.replaceServerContent(event.id, content);
+    } else if (existingEvent != null &&
+        (domainType == domain.RoomEventType.stawiAgentInvitation ||
+            domainType == domain.RoomEventType.stawiAgentAcceptance) &&
+        content['expiresAt'] != null &&
+        existingEvent.content['expiresAt'] == null) {
+      // The server stamps an agent invitation or acceptance with the room's
+      // name and its expiry: keep its copy.
+      await _messageRepo.replaceServerContent(event.id, content);
     }
     if (existingEvent != null) {
       // Event already exists by server ID - ack was processed first (normal case)
@@ -2540,6 +2548,8 @@ class SyncEngine with WidgetsBindingObserver {
       case domain.RoomEventType.stawiSignedCall:
       case domain.RoomEventType.stawiCallOutcome:
       case domain.RoomEventType.financeCard:
+      case domain.RoomEventType.stawiAgentInvitation:
+      case domain.RoomEventType.stawiAgentAcceptance:
         return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
     }
   }
