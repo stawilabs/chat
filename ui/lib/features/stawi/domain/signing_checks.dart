@@ -68,9 +68,12 @@ Uint8List checkedRoomCallDigest({
   return digest;
 }
 
-/// The digest a founder signs for a genesis. [card] is the genesis card chat
-/// posted in the room; settlement's record must agree with it.
-Uint8List checkedGenesisDigest({
+/// The digest a founder signs for a genesis, and the genesis it was checked
+/// against. [card] is the genesis card chat posted in the room; settlement's
+/// record must agree with it, and the device recomputes the genesis hash from
+/// the record's contents (agent included, stawi_finance_sdk
+/// verifyRoomGenesis), so what the founder reviews is what they sign.
+({Uint8List digest, settlement.RoomGenesis genesis}) checkedGenesisDigest({
   required settlement.RoomGenesis genesis,
   required StawiGenesisView card,
   required String profileId,
@@ -88,6 +91,7 @@ Uint8List checkedGenesisDigest({
       'the genesis hash differs from the one posted in the room',
     );
   }
+  _verifyGenesisContents(genesis);
   final founder = genesis.founders
       .where((f) => f.profileId == profileId)
       .firstOrNull;
@@ -107,7 +111,44 @@ Uint8List checkedGenesisDigest({
       'the signing digest is not your account wrapping of the genesis',
     );
   }
-  return Uint8List.fromList(founder.signingDigest);
+  return (digest: Uint8List.fromList(founder.signingDigest), genesis: genesis);
+}
+
+/// Recomputes [genesis]'s hash from what it says: settlement's RoomGenesis
+/// mapped onto the contract's genesis inputs.
+void _verifyGenesisContents(settlement.RoomGenesis genesis) {
+  final joinPolicy = switch (genesis.joinPolicy) {
+    finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PRIVATE => 0,
+    finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PUBLIC => 1,
+    _ => throw const SigningRefused('the genesis does not say who can join'),
+  };
+  // The agent and the profile it is shown as are named together, or not at
+  // all.
+  if (genesis.agent.isEmpty != genesis.agentProfileId.isEmpty) {
+    throw const SigningRefused('the genesis agent is not named');
+  }
+  try {
+    verifyRoomGenesis(
+      chainId: _chainId(genesis.chainId),
+      factory: genesis.factory,
+      constitutionHash: genesis.constitutionHash,
+      financePolicyHash: genesis.financePolicyHash,
+      securityPolicyHash: genesis.securityPolicyHash,
+      asset: genesis.asset,
+      initialMembers: [for (final f in genesis.founders) f.account],
+      manifestVersion: genesis.manifestVersion,
+      paramsHash: genesis.compiledSecurityParamsHash,
+      roomBinding: genesis.roomBinding,
+      joinPolicy: joinPolicy,
+      agent: genesis.agent.isEmpty ? null : genesis.agent,
+      genesisHash: genesis.genesisHash,
+    );
+    // verifyRoomGenesis reports a mismatch, or malformed contents, as an
+    // ArgumentError.
+    // ignore: avoid_catching_errors
+  } on ArgumentError {
+    throw const SigningRefused('the genesis hash does not match its contents');
+  }
 }
 
 /// The digest to sign for a prepared device call on the member's account.

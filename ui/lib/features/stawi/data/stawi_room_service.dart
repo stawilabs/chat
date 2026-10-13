@@ -50,6 +50,7 @@ class StawiRoomService {
     required Map<String, String> ruleValues,
     required List<String> founderSubscriptionIds,
     required StawiJoinPolicy joinPolicy,
+    String? agentProfileId,
   }) {
     if (templateId.isEmpty) {
       throw ArgumentError.value(templateId, 'templateId', 'choose a template');
@@ -81,17 +82,18 @@ class StawiRoomService {
         ruleValues: ruleValues,
         founderSubscriptionIds: founderSubscriptionIds,
         joinPolicy: joinPolicy,
+        agentProfileId: agentProfileId,
       ),
     );
   }
 
-  /// Signs the genesis on [conversion]'s card with this device's key and
-  /// sends the signature into the room, under the card. [roomName] names the
-  /// room on the device lock prompt.
-  Future<RoomEvent> signGenesis(
-    RoomEvent conversion, {
-    String roomName = 'this room',
-  }) async {
+  /// Reads the genesis on [conversion]'s card from settlement and checks it
+  /// for this founder: the card's hash, the founder's own account wrapping,
+  /// and the hash recomputed from the genesis' contents (agent included).
+  /// Nothing is signed; the founder reviews the result first.
+  Future<PreparedGenesisSignature> prepareGenesisSignature(
+    RoomEvent conversion,
+  ) async {
     final card = StawiConversionView.fromContent(conversion.content).genesis;
     if (card == null || card.genesisId.isEmpty) {
       throw const SigningRefused('the genesis is not prepared yet');
@@ -103,23 +105,39 @@ class StawiRoomService {
     final genesis = (await _rooms.getRoomGenesis(
       settlement.GetRoomGenesisRequest(genesisId: card.genesisId),
     )).genesis;
-    final digest = checkedGenesisDigest(
+    final checked = checkedGenesisDigest(
       genesis: genesis,
       card: card,
       profileId: me.profileId,
       ownAccounts: me.addresses,
     );
+    return PreparedGenesisSignature._(
+      conversion: conversion,
+      card: card,
+      genesis: checked.genesis,
+      digest: checked.digest,
+      profileId: me.profileId,
+    );
+  }
+
+  /// Signs a checked genesis the founder has reviewed with this device's key
+  /// and sends the signature into the room, under the card. [roomName] names
+  /// the room on the device lock prompt.
+  Future<RoomEvent> submitGenesisSignature(
+    PreparedGenesisSignature prepared, {
+    String roomName = 'this room',
+  }) async {
     final key = await _keys.unlock(
-      me.profileId,
+      prepared.profileId,
       reason: 'Found $roomName on Stawi',
     );
     return _send(
-      roomId: conversion.roomId,
+      roomId: prepared.conversion.roomId,
       type: RoomEventType.stawiGenesisSignature,
-      parentId: conversion.id,
+      parentId: prepared.conversion.id,
       content: StawiGenesisSignatureView.content(
-        genesisId: card.genesisId,
-        signature: key.sign(digest),
+        genesisId: prepared.card.genesisId,
+        signature: key.sign(prepared.digest),
         signerKeyId: key.keyId,
       ),
     );
@@ -314,3 +332,29 @@ final stawiRoomServiceProvider = Provider<StawiRoomService>((ref) {
     ballots: SecretBallotStore(const SecureStorageDeviceKeyVault()),
   );
 });
+
+/// A genesis checked for one founder ([StawiRoomService.prepareGenesisSignature])
+/// and awaiting their review. Only the room service builds one, so a digest
+/// reaches the device key only after its checks.
+final class PreparedGenesisSignature {
+  const PreparedGenesisSignature._({
+    required this.conversion,
+    required this.card,
+    required this.genesis,
+    required this.digest,
+    required this.profileId,
+  });
+
+  /// The conversion event whose card the founder signs from.
+  final RoomEvent conversion;
+  final StawiGenesisView card;
+
+  /// Settlement's genesis, its hash recomputed from these contents.
+  final settlement.RoomGenesis genesis;
+
+  /// The founder's account-wrapped digest of the genesis hash.
+  final Uint8List digest;
+
+  /// The founder who signs.
+  final String profileId;
+}

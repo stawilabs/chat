@@ -140,9 +140,8 @@ class GoSignedCallVectors {
 
   factory GoSignedCallVectors.load() => GoSignedCallVectors._(
     jsonDecode(
-          File('test/fixtures/stawi/go_signed_calls.json').readAsStringSync(),
-        )
-        as Map<String, dynamic>,
+      File('test/fixtures/stawi/go_signed_calls.json').readAsStringSync(),
+    ) as Map<String, dynamic>,
   );
 
   final Map<String, dynamic> _json;
@@ -220,11 +219,8 @@ class GoGenesisVector {
 
   static List<GoGenesisVector> load() =>
       ((jsonDecode(
-                    File(
-                      'test/fixtures/stawi/go_genesis.json',
-                    ).readAsStringSync(),
-                  )
-                  as Map<String, dynamic>)['genesis_device_digest']
+                File('test/fixtures/stawi/go_genesis.json').readAsStringSync(),
+              ) as Map<String, dynamic>)['genesis_device_digest']
               as List)
           .map((v) => GoGenesisVector(v as Map<String, dynamic>))
           .toList();
@@ -545,11 +541,9 @@ class GoRoomGenesisVectors {
 
   static List<GoRoomGenesisVectors> load() =>
       ((jsonDecode(
-                    File(
-                      'test/fixtures/stawi/go_room_genesis.json',
-                    ).readAsStringSync(),
-                  )
-                  as Map<String, dynamic>)['cases']
+                File('test/fixtures/stawi/go_room_genesis.json')
+                    .readAsStringSync(),
+              ) as Map<String, dynamic>)['cases']
               as List)
           .map((v) => GoRoomGenesisVectors(v as Map<String, dynamic>))
           .toList();
@@ -558,6 +552,83 @@ class GoRoomGenesisVectors {
 
   String get name => json['name'] as String;
   Uint8List get genesisHash => hexToBytes(json['genesis_hash'] as String);
+
+  /// The case named [name].
+  static GoRoomGenesisVectors named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  Uint8List _hex(String key) => hexToBytes(json[key] as String);
+
+  /// Settlement's pending RoomGenesis for this case, founded by
+  /// [founderProfileIds] (p1, p2, … by default) holding the case's initial
+  /// members in order, each with their own account wrapping of the hash.
+  /// With [accounts], the founders hold those instead and the hash is
+  /// recomputed with stawi_finance_sdk roomGenesisHash, which the SDK checks
+  /// against these same Go vectors. A non-zero agent is shown as
+  /// [agentProfileId].
+  settlement.RoomGenesis roomGenesis({
+    String genesisId = 'gen00000000000000001',
+    List<String>? founderProfileIds,
+    List<Uint8List>? accounts,
+    String agentProfileId = 'p-agent',
+  }) {
+    final members =
+        accounts ??
+        [
+          for (final m in (json['initial_members'] as List).cast<String>())
+            hexToBytes(m),
+        ];
+    final chainId = BigInt.from(json['chain_id'] as int);
+    final agent = _hex('agent');
+    final hasAgent = agent.any((b) => b != 0);
+    final joinPolicy = json['join_policy'] as int;
+    final hash = accounts == null
+        ? genesisHash
+        : roomGenesisHash(
+            chainId: chainId,
+            factory: _hex('factory'),
+            constitutionHash: _hex('constitution_hash'),
+            financePolicyHash: _hex('finance_policy_hash'),
+            securityPolicyHash: _hex('security_policy_hash'),
+            asset: _hex('asset'),
+            initialMembers: members,
+            manifestVersion: json['manifest_version'] as int,
+            paramsHash: _hex('params_hash'),
+            roomBinding: _hex('room_binding'),
+            joinPolicy: joinPolicy,
+            agent: hasAgent ? agent : null,
+          );
+    final profiles =
+        founderProfileIds ??
+        [for (var i = 0; i < members.length; i++) 'p${i + 1}'];
+    return settlement.RoomGenesis(
+      genesisId: genesisId,
+      state: settlement.RoomGenesisState.ROOM_GENESIS_STATE_PENDING,
+      chainId: Int64(json['chain_id'] as int),
+      factory: _hex('factory'),
+      genesisHash: hash,
+      constitutionHash: _hex('constitution_hash'),
+      financePolicyHash: _hex('finance_policy_hash'),
+      securityPolicyHash: _hex('security_policy_hash'),
+      compiledSecurityParamsHash: _hex('params_hash'),
+      joinPolicy: joinPolicy == 1
+          ? finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PUBLIC
+          : finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PRIVATE,
+      founders: [
+        for (var i = 0; i < members.length; i++)
+          settlement.RoomFounder(
+            profileId: profiles[i],
+            account: members[i],
+            signingDigest: accountWrappedHash(members[i], chainId, hash),
+          ),
+      ],
+      agent: hasAgent ? agent : null,
+      agentProfileId: hasAgent ? agentProfileId : null,
+      asset: _hex('asset'),
+      manifestVersion: json['manifest_version'] as int,
+      roomBinding: _hex('room_binding'),
+    );
+  }
 }
 
 /// A uint64 decimal (possibly above Int64's signed range) as Int64 bits.
@@ -580,13 +651,9 @@ class GoEngineCallVector {
   GoEngineCallVector(this.json, this.devicePrivateKey);
 
   static List<GoEngineCallVector> load() {
-    final d =
-        jsonDecode(
-              File(
-                'test/fixtures/stawi/go_engine_calls.json',
-              ).readAsStringSync(),
-            )
-            as Map<String, dynamic>;
+    final d = jsonDecode(
+      File('test/fixtures/stawi/go_engine_calls.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
     return [
       for (final v in d['engine_calls'] as List)
         GoEngineCallVector(

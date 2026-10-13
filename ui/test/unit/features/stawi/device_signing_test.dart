@@ -7,6 +7,7 @@ import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
@@ -222,29 +223,21 @@ void main() {
   });
 
   group('checkedGenesisDigest', () {
-    final v = vectors.accountWrappedHashes.firstWhere(
-      (v) => v['name'] == 'anvil_0/seq' && v['chain_id'] == '146',
+    final rg = GoRoomGenesisVectors.named('agent');
+    final account = hexToBytes(
+      (rg.json['initial_members'] as List).first as String,
     );
-    final account = hexToBytes(v['account'] as String);
-    final genesisHash = hexToBytes(v['hash'] as String);
+    final genesisHash = rg.genesisHash;
 
     settlement.RoomGenesis genesis({
       List<int>? signingDigest,
       settlement.RoomGenesisState state =
           settlement.RoomGenesisState.ROOM_GENESIS_STATE_PENDING,
-    }) => settlement.RoomGenesis(
-      genesisId: 'gen00000000000000001',
-      state: state,
-      chainId: Int64(146),
-      genesisHash: genesisHash,
-      founders: [
-        settlement.RoomFounder(
-          profileId: 'p1',
-          account: account,
-          signingDigest: signingDigest ?? hexToBytes(v['wrapped'] as String),
-        ),
-      ],
-    );
+    }) {
+      final g = rg.roomGenesis()..state = state;
+      if (signingDigest != null) g.founders.first.signingDigest = signingDigest;
+      return g;
+    }
 
     final card = StawiGenesisView(
       genesisId: 'gen00000000000000001',
@@ -253,14 +246,116 @@ void main() {
       founderProfileIds: const ['p1'],
     );
 
+    Matcher refusedWith(String reason) => throwsA(
+      isA<SigningRefused>().having((e) => e.reason, 'reason', reason),
+    );
+
     test('returns the founder digest when it wraps the posted hash', () {
-      final digest = checkedGenesisDigest(
+      final checked = checkedGenesisDigest(
         genesis: genesis(),
         card: card,
         profileId: 'p1',
         ownAccounts: [account],
       );
-      expect(bytesToHex0x(digest), v['wrapped']);
+      expect(
+        checked.digest,
+        accountWrappedHash(account, BigInt.from(146), genesisHash),
+      );
+      expect(checked.genesis.agentProfileId, 'p-agent');
+    });
+
+    test('every Go genesis case is recomputed on the device', () {
+      for (final v in GoRoomGenesisVectors.load()) {
+        final g = v.roomGenesis();
+        final founder = g.founders.first;
+        final checked = checkedGenesisDigest(
+          genesis: g,
+          card: StawiGenesisView(
+            genesisId: g.genesisId,
+            genesisHash: v.genesisHash,
+            constitutionHash: Uint8List(32),
+            founderProfileIds: [for (final f in g.founders) f.profileId],
+          ),
+          profileId: founder.profileId,
+          ownAccounts: [Uint8List.fromList(founder.account)],
+        );
+        expect(checked.digest, founder.signingDigest, reason: v.name);
+      }
+    });
+
+    test('refuses a genesis whose agent was swapped after hashing', () {
+      final swapped = genesis();
+      final agent = Uint8List.fromList(swapped.agent);
+      agent[19] ^= 0x01;
+      swapped.agent = agent;
+      expect(
+        () => checkedGenesisDigest(
+          genesis: swapped,
+          card: card,
+          profileId: 'p1',
+          ownAccounts: [account],
+        ),
+        refusedWith('the genesis hash does not match its contents'),
+      );
+    });
+
+    test('refuses a genesis whose agent was removed after hashing', () {
+      final removed = genesis()
+        ..clearAgent()
+        ..clearAgentProfileId();
+      expect(
+        () => checkedGenesisDigest(
+          genesis: removed,
+          card: card,
+          profileId: 'p1',
+          ownAccounts: [account],
+        ),
+        refusedWith('the genesis hash does not match its contents'),
+      );
+    });
+
+    test('refuses other contents that differ from the hash', () {
+      for (final change in <void Function(settlement.RoomGenesis)>[
+        (g) => g.joinPolicy = finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PUBLIC,
+        (g) => g.compiledSecurityParamsHash = Uint8List(32),
+        (g) => g.asset = Uint8List(20),
+        (g) => g.manifestVersion = 2,
+        (g) => g.roomBinding = Uint8List(32),
+      ]) {
+        final g = genesis();
+        change(g);
+        expect(
+          () => checkedGenesisDigest(
+            genesis: g,
+            card: card,
+            profileId: 'p1',
+            ownAccounts: [account],
+          ),
+          refusedWith('the genesis hash does not match its contents'),
+        );
+      }
+    });
+
+    test('refuses an unspecified join policy and an unnamed agent', () {
+      expect(
+        () => checkedGenesisDigest(
+          genesis: genesis()
+            ..joinPolicy = finance.RoomJoinPolicy.ROOM_JOIN_POLICY_UNSPECIFIED,
+          card: card,
+          profileId: 'p1',
+          ownAccounts: [account],
+        ),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(
+        () => checkedGenesisDigest(
+          genesis: genesis()..clearAgentProfileId(),
+          card: card,
+          profileId: 'p1',
+          ownAccounts: [account],
+        ),
+        refusedWith('the genesis agent is not named'),
+      );
     });
 
     test('refuses a hash other than the posted one', () {

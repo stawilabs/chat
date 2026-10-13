@@ -151,6 +151,7 @@ class StawiConversionView {
     required this.ruleValues,
     required this.founderSubscriptionIds,
     required this.joinPolicy,
+    this.agentProfileId = '',
     this.genesis,
   });
 
@@ -164,6 +165,7 @@ class StawiConversionView {
       },
       founderSubscriptionIds: _strings(content['founderSubscriptionIds']),
       joinPolicy: StawiJoinPolicy.fromName(content['joinPolicy'] as String?),
+      agentProfileId: content['agentProfileId'] as String? ?? '',
       genesis: genesis is Map
           ? StawiGenesisView.fromJson(genesis.cast<String, dynamic>())
           : null,
@@ -174,20 +176,27 @@ class StawiConversionView {
   final Map<String, String> ruleValues;
   final List<String> founderSubscriptionIds;
   final StawiJoinPolicy? joinPolicy;
+
+  /// The profile named as the room's Stawi agent; empty for none.
+  final String agentProfileId;
   final StawiGenesisView? genesis;
 
-  /// The content map to send: the proto3 JSON of the payload.
+  /// The content map to send: the proto3 JSON of the payload. [agentProfileId]
+  /// names the room's Stawi agent (a member of the room, or a DM partner who
+  /// has written to the sender); null or empty for none.
   static Map<String, dynamic> content({
     required String templateId,
     required Map<String, String> ruleValues,
     required List<String> founderSubscriptionIds,
     required StawiJoinPolicy joinPolicy,
+    String? agentProfileId,
   }) => StawiPayloadCodec._json(
     pb.StawiRoomConversionContent(
       templateId: templateId,
       ruleValues: ruleValues.entries,
       founderSubscriptionIds: founderSubscriptionIds,
       joinPolicy: joinPolicy.proto,
+      agentProfileId: (agentProfileId?.isEmpty ?? true) ? null : agentProfileId,
     ),
   );
 }

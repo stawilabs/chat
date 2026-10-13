@@ -55,8 +55,6 @@ void main() {
     (v) => v['name'] == 'anvil_0/seq' && v['chain_id'] == '146',
   );
   final account = hexToBytes(wrapped['account'] as String);
-  final genesisHash = hexToBytes(wrapped['hash'] as String);
-  final digest = hexToBytes(wrapped['wrapped'] as String);
 
   group('StawiActBubble', () {
     const act = RoomEvent(
@@ -532,7 +530,19 @@ void main() {
   });
 
   group('GenesisCard', () {
-    RoomEvent card() => RoomEvent(
+    // Carol is the agent; the genesis was hashed with her account, and the
+    // device recomputes that hash before the founder sees the review.
+    final ownerAccount = Uint8List.fromList(List.filled(20, 0xbb));
+    final roomGenesis = GoRoomGenesisVectors.named('agent').roomGenesis(
+      founderProfileIds: const ['p-owner', 'p1'],
+      accounts: [ownerAccount, account],
+      agentProfileId: 'p-carol',
+    );
+    final genesisHash = Uint8List.fromList(roomGenesis.genesisHash);
+    final digest = Uint8List.fromList(roomGenesis.founders[1].signingDigest);
+    const names = {'p-owner': 'Olive', 'p1': 'Me', 'p-carol': 'Carol'};
+
+    RoomEvent card({List<int>? hash}) => RoomEvent(
       id: 'conv1',
       roomId: roomId,
       senderId: 'sub-owner',
@@ -546,7 +556,7 @@ void main() {
         'joinPolicy': 'STAWI_JOIN_POLICY_PRIVATE',
         'genesis': {
           'genesisId': 'gen00000000000000001',
-          'genesisHash': base64Encode(genesisHash),
+          'genesisHash': base64Encode(hash ?? genesisHash),
           'constitutionHash': base64Encode(Uint8List(32)),
           'founderProfileIds': ['p-owner', 'p1'],
           'expiresAt': DateTime.now()
@@ -566,19 +576,7 @@ void main() {
         ..on(
           settlement.RoomService.getRoomGenesis,
           (req) => settlement.GetRoomGenesisResponse(
-            genesis: settlement.RoomGenesis(
-              genesisId: req.genesisId,
-              state: settlement.RoomGenesisState.ROOM_GENESIS_STATE_PENDING,
-              chainId: Int64(146),
-              genesisHash: genesisHash,
-              founders: [
-                settlement.RoomFounder(
-                  profileId: 'p1',
-                  account: account,
-                  signingDigest: digest,
-                ),
-              ],
-            ),
+            genesis: roomGenesis.deepCopy()..genesisId = req.genesisId,
           ),
         );
       sender = RecordingActSender();
@@ -595,6 +593,9 @@ void main() {
         (ref, id) => Stream.value(signatures),
       ),
       currentProfileIdProvider.overrideWith((ref) async => profileId),
+      stawiMemberNameProvider.overrideWith(
+        (ref, key) async => names[key.profileId] ?? 'Member',
+      ),
       currentUserSubscriptionIdProvider.overrideWith(
         (ref, roomId) async => 'sub-me',
       ),
@@ -608,7 +609,9 @@ void main() {
       ),
     ];
 
-    testWidgets('a founder signs the genesis from the card', (tester) async {
+    testWidgets('a founder reviews the agent and the fee, then signs', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         host(
           StawiTimelineItem(event: card(), isMe: false),
@@ -624,6 +627,22 @@ void main() {
         findsOneWidget,
       );
 
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('genesis-review')), findsOneWidget);
+      expect(find.text('Stawi agent: Carol'), findsOneWidget);
+      expect(find.text('Founders: Olive, Me'), findsOneWidget);
+      expect(find.text('Who can join: By invitation'), findsOneWidget);
+      expect(
+        find.text(
+          "Stawi takes a fee from the group's interest, fees and penalties; "
+          'an agent receives part of it.',
+        ),
+        findsOneWidget,
+      );
+      expect(sender.sent, isEmpty, reason: 'nothing is signed before review');
+
       await tester.tap(find.byKey(const Key('genesis-sign')));
       await tester.pumpAndSettle();
 
@@ -638,6 +657,87 @@ void main() {
       expect(find.text('Genesis signed'), findsOneWidget);
     });
 
+    testWidgets('cancelling the review sends no signature', (tester) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: card(), isMe: false),
+          overrides: overrides(profileId: 'p1'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-review-cancel')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('genesis-review')), findsNothing);
+      expect(sender.sent, isEmpty);
+      expect(find.text('Genesis signed'), findsNothing);
+      expect(
+        find.byKey(const Key('genesis-open-review')),
+        findsOneWidget,
+        reason: 'the founder can review again',
+      );
+    });
+
+    testWidgets('a genesis with no agent says so', (tester) async {
+      transport.on(
+        settlement.RoomService.getRoomGenesis,
+        (req) => settlement.GetRoomGenesisResponse(
+          genesis: GoRoomGenesisVectors.named('no_agent').roomGenesis(
+            founderProfileIds: const ['p-owner', 'p1'],
+            accounts: [ownerAccount, account],
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(
+            event: card(
+              hash: GoRoomGenesisVectors.named('no_agent')
+                  .roomGenesis(accounts: [ownerAccount, account])
+                  .genesisHash,
+            ),
+            isMe: false,
+          ),
+          overrides: overrides(profileId: 'p1'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+      expect(find.text('No agent'), findsOneWidget);
+      expect(find.textContaining('Stawi agent:'), findsNothing);
+    });
+
+    testWidgets('a genesis whose agent was swapped is never shown to sign', (
+      tester,
+    ) async {
+      transport.on(
+        settlement.RoomService.getRoomGenesis,
+        (req) => settlement.GetRoomGenesisResponse(
+          genesis: roomGenesis.deepCopy()
+            ..agent = Uint8List.fromList(List.filled(20, 0x66)),
+        ),
+      );
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: card(), isMe: false),
+          overrides: overrides(profileId: 'p1'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('genesis-review')), findsNothing);
+      expect(
+        find.textContaining('the genesis hash does not match its contents'),
+        findsOneWidget,
+      );
+      expect(sender.sent, isEmpty);
+    });
+
     testWidgets('a member who is not a founder sees no sign button', (
       tester,
     ) async {
@@ -648,7 +748,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('genesis-sign')), findsNothing);
+      expect(find.byKey(const Key('genesis-open-review')), findsNothing);
     });
 
     testWidgets('a founder who signed sees no sign button', (tester) async {
@@ -673,7 +773,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('genesis-sign')), findsNothing);
+      expect(find.byKey(const Key('genesis-open-review')), findsNothing);
       expect(find.text('You signed'), findsOneWidget);
     });
 
@@ -694,7 +794,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('On chain'), findsOneWidget);
-      expect(find.byKey(const Key('genesis-sign')), findsNothing);
+      expect(find.byKey(const Key('genesis-open-review')), findsNothing);
     });
   });
 }

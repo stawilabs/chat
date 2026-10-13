@@ -17,6 +17,7 @@ import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart' show LoanRef;
 import '../domain/stawi_money.dart';
 import '../domain/stawi_payloads.dart';
+import 'genesis_review_dialog.dart';
 import 'governance_sheet.dart';
 import 'loan_detail_screen.dart';
 import 'stawi_feedback.dart';
@@ -53,21 +54,52 @@ class GenesisCard extends ConsumerStatefulWidget {
 class _GenesisCardState extends ConsumerState<GenesisCard> {
   bool _signing = false;
 
+  /// Checks the genesis on this device, shows the founder what they are
+  /// signing, and signs only if they choose to. Cancelling signs nothing.
   Future<void> _sign() async {
     setState(() => _signing = true);
-    await runStawiAction(context, () async {
+    try {
+      final service = ref.read(stawiRoomServiceProvider);
+      final prepared = await runStawiAction(
+        context,
+        () => service.prepareGenesisSignature(widget.event),
+      );
+      if (prepared == null || !mounted) return;
       final room = await ref
           .read(roomByIdProvider(widget.event.roomId).future)
           .catchError((Object _) => null);
-      final name = room?.name ?? '';
-      return ref
-          .read(stawiRoomServiceProvider)
-          .signGenesis(
-            widget.event,
-            roomName: name.isEmpty ? 'this room' : name,
-          );
-    }, success: 'Genesis signed');
-    if (mounted) setState(() => _signing = false);
+      final roomName = (room?.name ?? '').isEmpty ? 'this room' : room!.name;
+      Future<String> nameOf(String profileId) => ref
+          .read(
+            stawiMemberNameProvider((
+              roomId: widget.event.roomId,
+              profileId: profileId,
+            )).future,
+          )
+          .catchError((Object _) => 'Member');
+      final founderNames = [
+        for (final f in prepared.genesis.founders) await nameOf(f.profileId),
+      ];
+      final agentId = prepared.genesis.agentProfileId;
+      final agentName = agentId.isEmpty ? null : await nameOf(agentId);
+      if (!mounted) return;
+      final confirmed = await showGenesisReview(
+        context,
+        genesis: prepared.genesis,
+        card: prepared.card,
+        roomName: roomName,
+        founderNames: founderNames,
+        agentName: agentName,
+      );
+      if (!confirmed || !mounted) return;
+      await runStawiAction(
+        context,
+        () => service.submitGenesisSignature(prepared, roomName: roomName),
+        success: 'Genesis signed',
+      );
+    } finally {
+      if (mounted) setState(() => _signing = false);
+    }
   }
 
   @override
@@ -182,10 +214,10 @@ class _GenesisCardState extends ConsumerState<GenesisCard> {
                 if (canSign) ...[
                   const SizedBox(height: 12),
                   FilledButton.icon(
-                    key: const Key('genesis-sign'),
+                    key: const Key('genesis-open-review'),
                     onPressed: _signing ? null : _sign,
                     icon: const Icon(Icons.draw_outlined),
-                    label: Text(_signing ? 'Signing…' : 'Sign as founder'),
+                    label: Text(_signing ? 'Signing…' : 'Review and sign'),
                   ),
                 ],
                 if (signedByMe && phase == StawiRoomPhase.awaitingSignatures)

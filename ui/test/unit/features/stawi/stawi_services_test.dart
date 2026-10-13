@@ -217,6 +217,21 @@ void main() {
       expect(sender.sent, isEmpty);
     });
 
+    // Another founder's account. Every founder signs their own wrapping of
+    // the genesis hash, never a shared digest.
+    final otherAccount = Uint8List.fromList(List.filled(20, 0xbb));
+    final roomGenesis = GoRoomGenesisVectors.named('agent').roomGenesis(
+      founderProfileIds: const ['p2', 'p1'],
+      accounts: [otherAccount, account],
+    );
+    final genesisHash = Uint8List.fromList(roomGenesis.genesisHash);
+    final genesisDigest = Uint8List.fromList(
+      roomGenesis.founders[1].signingDigest,
+    );
+    final otherDigest = Uint8List.fromList(
+      roomGenesis.founders[0].signingDigest,
+    );
+
     RoomEvent card({List<String> founders = const ['p1', 'p2']}) => RoomEvent(
       id: 'conv1',
       roomId: roomId,
@@ -230,48 +245,102 @@ void main() {
         'joinPolicy': 'STAWI_JOIN_POLICY_PRIVATE',
         'genesis': {
           'genesisId': 'gen00000000000000001',
-          'genesisHash': base64Encode(typedHash),
+          'genesisHash': base64Encode(genesisHash),
           'constitutionHash': base64Encode(Uint8List(32)),
           'founderProfileIds': founders,
         },
       },
     );
 
-    // Another founder's account and its own wrapping of the genesis hash:
-    // every founder signs their own digest, never a shared one.
-    final otherAccount = Uint8List.fromList(List.filled(20, 0xbb));
-    final otherDigest = keccak256(Uint8List.fromList([9, 9, 9]));
-
     void genesisOnSettlement() {
       transport.on(
         settlement.RoomService.getRoomGenesis,
         (req) => settlement.GetRoomGenesisResponse(
-          genesis: settlement.RoomGenesis(
-            genesisId: req.genesisId,
-            chatRoomId: roomId,
-            state: settlement.RoomGenesisState.ROOM_GENESIS_STATE_PENDING,
-            chainId: Int64(146),
-            genesisHash: typedHash,
-            founders: [
-              settlement.RoomFounder(
-                profileId: 'p2',
-                account: otherAccount,
-                signingDigest: otherDigest,
-              ),
-              settlement.RoomFounder(
-                profileId: 'p1',
-                account: account,
-                signingDigest: digest,
-              ),
-            ],
-          ),
+          genesis: roomGenesis.deepCopy()
+            ..genesisId = req.genesisId
+            ..chatRoomId = roomId,
         ),
       );
     }
 
+    Future<RoomEvent> signGenesis(
+      RoomEvent conversion, {
+      String? roomName,
+    }) async {
+      final service = roomService();
+      final prepared = await service.prepareGenesisSignature(conversion);
+      return roomName == null
+          ? service.submitGenesisSignature(prepared)
+          : service.submitGenesisSignature(prepared, roomName: roomName);
+    }
+
+    test('conversion names the agent by profile', () async {
+      await roomService().convert(
+        roomId: roomId,
+        templateId: 'ug_savings_basic',
+        ruleValues: const {},
+        founderSubscriptionIds: const ['sub-me'],
+        joinPolicy: StawiJoinPolicy.private,
+        agentProfileId: 'carol0000000000000001',
+      );
+      final content = sender.sent.single.content;
+      expect(content['agentProfileId'], 'carol0000000000000001');
+      expect(
+        StawiConversionView.fromContent(content).agentProfileId,
+        'carol0000000000000001',
+      );
+    });
+
+    test('conversion without an agent sends none', () async {
+      await roomService().convert(
+        roomId: roomId,
+        templateId: 'ug_savings_basic',
+        ruleValues: const {},
+        founderSubscriptionIds: const ['sub-me'],
+        joinPolicy: StawiJoinPolicy.private,
+      );
+      expect(sender.sent.single.content.containsKey('agentProfileId'), isFalse);
+    });
+
+    test('preparing checks the genesis and signs nothing', () async {
+      genesisOnSettlement();
+      final prepared = await roomService().prepareGenesisSignature(card());
+      expect(prepared.digest, genesisDigest);
+      expect(prepared.genesis.agentProfileId, 'p-agent');
+      expect(
+        gate.reasons,
+        isEmpty,
+        reason: 'the key is not unlocked to prepare',
+      );
+      expect(sender.sent, isEmpty);
+    });
+
+    test('a genesis whose contents differ from its hash is refused', () async {
+      transport.on(
+        settlement.RoomService.getRoomGenesis,
+        (req) => settlement.GetRoomGenesisResponse(
+          genesis: roomGenesis.deepCopy()
+            ..agentProfileId = 'p-mallory'
+            ..agent = Uint8List.fromList(List.filled(20, 0x66)),
+        ),
+      );
+      await expectLater(
+        roomService().prepareGenesisSignature(card()),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            'the genesis hash does not match its contents',
+          ),
+        ),
+      );
+      expect(gate.reasons, isEmpty);
+      expect(sender.sent, isEmpty);
+    });
+
     test('a founder signs the account-wrapped genesis hash', () async {
       genesisOnSettlement();
-      await roomService().signGenesis(card());
+      await signGenesis(card());
 
       final act = sender.sent.single;
       expect(act.type, RoomEventType.stawiGenesisSignature);
@@ -279,13 +348,13 @@ void main() {
       expect(act.content['genesisId'], 'gen00000000000000001');
       expect(act.content['signerKeyId'], key.keyId);
       final signature = base64Decode(act.content['signature'] as String);
-      expect(recoverDeviceAddress(digest, signature), key.address);
+      expect(recoverDeviceAddress(genesisDigest, signature), key.address);
       expect(signature, isNot(signer.sign(otherDigest)));
     });
 
     test('the device lock names the room being founded', () async {
       genesisOnSettlement();
-      await roomService().signGenesis(card(), roomName: 'Kampala Savers');
+      await signGenesis(card(), roomName: 'Kampala Savers');
       expect(gate.reasons, ['Found Kampala Savers on Stawi']);
       expect(sender.sent, hasLength(1));
     });
@@ -293,29 +362,26 @@ void main() {
     test('a refused device lock sends no genesis signature', () async {
       genesisOnSettlement();
       gate.refuse = true;
-      await expectLater(
-        roomService().signGenesis(card()),
-        throwsA(isA<SigningRefused>()),
-      );
+      await expectLater(signGenesis(card()), throwsA(isA<SigningRefused>()));
       expect(gate.reasons, ['Found this room on Stawi']);
       expect(sender.sent, isEmpty);
     });
 
     test('a founder signs their own digest, not another founder\'s', () async {
       genesisOnSettlement();
-      await roomService().signGenesis(card());
+      await signGenesis(card());
 
       final signature = base64Decode(
         sender.sent.single.content['signature'] as String,
       );
-      expect(signature, signer.sign(digest));
+      expect(signature, signer.sign(genesisDigest));
       expect(recoverDeviceAddress(otherDigest, signature), isNot(key.address));
     });
 
     test('a member who is not a founder cannot sign', () async {
       genesisOnSettlement();
       await expectLater(
-        roomService().signGenesis(card(founders: const ['p2'])),
+        signGenesis(card(founders: const ['p2'])),
         throwsA(isA<SigningRefused>()),
       );
       expect(transport.calls, isEmpty);

@@ -9,6 +9,7 @@ import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
@@ -508,6 +509,141 @@ void main() {
     expect(view.templateId, 'ug_savings_basic');
     expect(view.founderSubscriptionIds, unorderedEquals(['sub-me', 'sub-2']));
     expect(view.joinPolicy, StawiJoinPolicy.private);
+    expect(
+      view.agentProfileId,
+      isEmpty,
+      reason: 'no agent unless one is named',
+    );
+  });
+
+  testWidgets('ConvertRoomScreen names the agent: a member or a DM partner '
+      'who has written', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1080, 4000)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sender = RecordingActSender();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiTemplatesProvider.overrideWith(
+            (ref) async => [
+              finance.PolicyTemplate(
+                templateId: 'ug_savings_basic',
+                name: 'Uganda savings room',
+              ),
+            ],
+          ),
+          roomMembersProvider.overrideWith(
+            (ref, roomId) async => [
+              RoomSubscriptionInfo(
+                id: 'sub-me',
+                profileId: 'p1',
+                contactId: null,
+                name: 'Me',
+                avatarUrl: null,
+                role: 'owner',
+                joinedAt: 0,
+              ),
+              RoomSubscriptionInfo(
+                id: 'sub-2',
+                profileId: 'p2',
+                contactId: null,
+                name: 'Amina',
+                avatarUrl: null,
+                role: 'member',
+                joinedAt: 1,
+              ),
+            ],
+          ),
+          directRoomsProvider.overrideWith(
+            (ref) async => const [
+              DirectRoomRef(roomId: 'dm-carol', name: 'Carol'),
+              DirectRoomRef(roomId: 'dm-dan', name: 'Dan'),
+            ],
+          ),
+          counterpartyAccountsProvider.overrideWithValue(
+            (roomId) async => roomId == 'dm-carol'
+                ? DirectPartnerAccount(
+                    profileId: 'p-carol',
+                    account: Uint8List.fromList(List.filled(20, 0xca)),
+                    deployed: true,
+                  )
+                : throw const DirectPartnerRefused(),
+          ),
+          currentProfileIdProvider.overrideWith((ref) async => 'p1'),
+          stawiRoomServiceProvider.overrideWithValue(
+            StawiRoomService(
+              rooms: settlement.RoomServiceClient(FakeConnectTransport()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
+              identity: () async => identityWith('p1', account),
+              send: sender.call,
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: ConvertRoomScreen(roomId: roomId)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final agent = find.byKey(const Key('stawi-agent'));
+    expect(
+      find.descendant(of: agent, matching: find.text('No agent')),
+      findsOneWidget,
+    );
+
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('agent-none')), findsOneWidget);
+    expect(find.byKey(const Key('agent-member-sub-me')), findsOneWidget);
+    expect(find.byKey(const Key('agent-member-sub-2')), findsOneWidget);
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const Key('agent-dm-dm-carol')))
+          .enabled,
+      isTrue,
+    );
+    expect(
+      tester.widget<ListTile>(find.byKey(const Key('agent-dm-dm-dan'))).enabled,
+      isFalse,
+    );
+    expect(find.text('Dan needs to send you a message first'), findsOneWidget);
+
+    // A member first, then a DM partner instead.
+    await tester.tap(find.byKey(const Key('agent-member-sub-2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: agent, matching: find.text('Amina')),
+      findsOneWidget,
+    );
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('agent-dm-dm-dan')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('stawi-agent-picker')),
+      findsOneWidget,
+      reason: 'a partner who has not written cannot be chosen',
+    );
+    await tester.tap(find.byKey(const Key('agent-dm-dm-carol')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: agent, matching: find.text('Carol')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('template-ug_savings_basic')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('stawi-send-conversion')));
+    await tester.tap(find.byKey(const Key('stawi-send-conversion')));
+    await tester.pumpAndSettle();
+
+    final view = StawiConversionView.fromContent(sender.sent.single.content);
+    expect(view.agentProfileId, 'p-carol');
+    expect(view.founderSubscriptionIds, ['sub-me']);
   });
 
   testWidgets('ConvertRoomScreen holds the founding quorum to the founders', (
