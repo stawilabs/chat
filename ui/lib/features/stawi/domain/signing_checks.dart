@@ -7,6 +7,8 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
 import 'account_engine_calls.dart';
 import 'intent_bridge.dart';
+import 'loan_terms.dart';
+import 'personal_calls.dart';
 import 'stawi_payloads.dart';
 
 /// Settlement builds every digest a device signs. Before the device signs one,
@@ -200,14 +202,16 @@ AccountPolicy accountPolicyFrom(finance.AccountPolicyParams p) {
   );
 }
 
-/// The digest to sign for a prepared contribution: the call must be a
-/// CONTRIBUTE from [account] of exactly [amount] into [custody].
-Uint8List checkedContributionDigest({
+/// The digest to sign for a prepared contribution, and the amount it pays
+/// (to review): the call must be a CONTRIBUTE from [account] of exactly
+/// [amount] (integer minor units, greater than zero) into [custody].
+({Uint8List digest, BigInt amount}) checkedContribution({
   required settlement.PrepareAccountCallResponse prepared,
   required Uint8List account,
   required Uint8List custody,
   required String amount,
 }) {
+  final asked = _positiveAmount(amount);
   final digest = checkedAccountCallDigest(
     prepared: prepared,
     kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
@@ -228,7 +232,16 @@ Uint8List checkedContributionDigest({
       'the call pays ${intent.amount}, not the $amount you asked for (minor units)',
     );
   }
-  return digest;
+  return (digest: digest, amount: asked);
+}
+
+final RegExp _positiveDecimal = RegExp(r'^[1-9][0-9]{0,77}$');
+
+BigInt _positiveAmount(String amount) {
+  if (!_positiveDecimal.hasMatch(amount)) {
+    throw const SigningRefused('no amount was asked for');
+  }
+  return BigInt.parse(amount);
 }
 
 /// The digest to sign for a prepared engine call, and the call it binds (to
@@ -279,6 +292,386 @@ Uint8List checkedContributionDigest({
     });
   }
   return (digest: digest, call: call);
+}
+
+/// Why a personal call is refused when the personal targets are unknown.
+const String personalTargetsUnknownReason =
+    'your savings vault and loan book could not be read just now, so the call '
+    'cannot be checked against them; try again shortly';
+
+/// The digest to sign for a prepared personal call, and the call it binds (to
+/// review). Checked with the SDK against what the person asked for
+/// ([PersonalRequest.expected]), their vault and the admitted loan books
+/// ([personal], finance VaultService.GetPersonalTargets), the offer they were
+/// shown and the book their loan is on. Without the targets nothing is
+/// signed.
+({Uint8List digest, EngineCall call}) checkedPersonalCall({
+  required settlement.PrepareAccountCallResponse prepared,
+  required PersonalRequest request,
+  required Uint8List account,
+  required PersonalTargets? personal,
+}) {
+  if (personal == null) {
+    throw const SigningRefused(personalTargetsUnknownReason);
+  }
+  final call = request.call;
+  // Only a payoff may leave its amount to settlement's quote.
+  if (call.takesAmount &&
+      call != PersonalCall.payoff &&
+      request.expected.amount <= BigInt.zero) {
+    throw const SigningRefused('no amount was asked for');
+  }
+  if (call.onExistingLoan &&
+      (request.loanBook == null ||
+          !bytesEqual(request.params.loanBook, request.loanBook!))) {
+    throw const SigningRefused('the loan\'s book is not named');
+  }
+  _checkRole(request, account);
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: call.kind,
+    account: account,
+  );
+  final intent = sdkIntentOf(prepared.financialIntent);
+  if (!bytesEqual(intentDigestOf(intent), digest)) {
+    throw const SigningRefused('the digest is not the prepared intent\'s');
+  }
+  if (!bytesEqual(intent.account, account)) {
+    throw const SigningRefused('the call is made from another account');
+  }
+  try {
+    final checked = verifyEngineCallIntent(
+      intent,
+      prepared.call.engineTarget,
+      prepared.call.engineCalldata,
+      expected: request.expected,
+      personal: personal,
+      offer: request.offer,
+      loanBook: request.loanBook,
+    );
+    return (digest: digest, call: checked);
+  } on EngineCallException catch (e) {
+    throw SigningRefused(engineRefusal(e.error));
+  }
+}
+
+/// The person must be the party the call is theirs to make as: the borrower
+/// accepts an offer, pays and pays off; the lender lends what was asked; and
+/// either may cancel an offer or ask not yet accepted.
+void _checkRole(PersonalRequest request, Uint8List account) {
+  final loan = request.loan;
+  if (loan == null) return;
+  bool mine(List<int> a) => bytesEqual(a, account);
+  final ok = switch (request.call) {
+    PersonalCall.acceptOffer ||
+    PersonalCall.pay ||
+    PersonalCall.payoff => mine(loan.borrowerAccount),
+    PersonalCall.acceptAsk => mine(loan.lender) || mine(loan.pool),
+    PersonalCall.cancel =>
+      mine(loan.borrowerAccount) || mine(loan.lender) || mine(loan.pool),
+    _ => true,
+  };
+  if (!ok) throw const SigningRefused('this loan is not yours to act on');
+}
+
+/// A refusal in the person's words.
+String engineRefusal(EngineCallError e) => switch (e) {
+  EngineCallError.requestMismatch =>
+    'settlement prepared something else: not the call you asked for',
+  EngineCallError.maxRepayMismatch =>
+    'the most you could repay is not what the terms give',
+  EngineCallError.offerMismatch ||
+  EngineCallError.offerUnknown => 'this is not the offer you were shown',
+  EngineCallError.notThePersonalTarget || EngineCallError.notTheLoansBook =>
+    'the call goes to a contract that is not your vault or this loan\'s book',
+  EngineCallError.counterpartyIsARoom || EngineCallError.noCounterparty =>
+    'the other person is not a person\'s account',
+  _ => 'the call does not check out (${e.name})',
+};
+
+/// The digest to sign for a prepared deposit into the person's own vault:
+/// a VAULT_DEPOSIT from [account] of exactly [amount] into [pocket], the
+/// pocket the person chose (32 zero bytes: free savings), in their vault
+/// ([personal]).
+Uint8List checkedVaultDeposit({
+  required settlement.PrepareAccountCallResponse prepared,
+  required Uint8List account,
+  required Uint8List pocket,
+  required BigInt amount,
+  required PersonalTargets? personal,
+}) {
+  if (personal == null) {
+    throw const SigningRefused(personalTargetsUnknownReason);
+  }
+  if (amount <= BigInt.zero) {
+    throw const SigningRefused('no amount was asked for');
+  }
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
+    account: account,
+  );
+  final intent = _intentOf(prepared, digest, account);
+  try {
+    verifyVaultDepositIntent(intent, vault: personal.vault, pocket: pocket);
+  } on VaultException {
+    throw const SigningRefused('the deposit goes to another pocket or vault');
+  }
+  if (intent.amount != amount) {
+    throw SigningRefused(
+      'the deposit is ${intent.amount}, not the $amount you asked for (minor units)',
+    );
+  }
+  return digest;
+}
+
+/// Why a standing order that is not the loan's own is refused.
+const String notTheLoansStandingOrder =
+    'this is not your loan\'s automatic payment';
+
+/// The digest to sign for a prepared standing order (automatic payment) for
+/// [loan], and the grant it installs (to review). Only an active personal
+/// loan the person borrowed gets one, and only the grant the SDK
+/// (verifyStandingOrderGrant) finds is the loan's: its id, the vault as
+/// target, one instalment's period and at most the largest instalment per
+/// period, in [policyAsset].
+({Uint8List digest, StandingGrant grant}) checkedStandingGrant({
+  required settlement.PrepareAccountCallResponse prepared,
+  required Uint8List account,
+  required finance.Loan loan,
+  required PersonalTargets? personal,
+  required List<int> policyAsset,
+}) {
+  if (loan.state != finance.LoanState.LOAN_STATE_FUNDED) {
+    throw const SigningRefused(
+      'a standing order starts once the loan is active',
+    );
+  }
+  if (loan.kind == finance.LoanKind.LOAN_KIND_GROUP ||
+      !bytesEqual(loan.borrowerAccount, account)) {
+    throw const SigningRefused(notTheLoansStandingOrder);
+  }
+  if (personal == null) {
+    throw const SigningRefused(personalTargetsUnknownReason);
+  }
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_GRANT_STANDING,
+    account: account,
+  );
+  final intent = _intentOf(prepared, digest, account);
+  final op = prepared.managementOp;
+  if (!prepared.hasManagementOp() ||
+      op.kind != opGrantStanding ||
+      op.key.isNotEmpty ||
+      op.authorizationId.isNotEmpty ||
+      op.hasPolicy() ||
+      !op.hasAuth()) {
+    throw const SigningRefused(notTheLoansStandingOrder);
+  }
+  final StandingGrant grant;
+  final BigInt amount;
+  final PersonalTerms terms;
+  try {
+    grant = _standingGrantOf(op.auth);
+    amount = BigInt.parse(loan.requested.amount);
+    terms = LoanTerms(loan.terms).sdk;
+  } on FormatException {
+    throw const SigningRefused(notTheLoansStandingOrder);
+  }
+  try {
+    verifyStandingOrderGrant(
+      intent,
+      grant,
+      personal: personal,
+      book: loan.loanBook,
+      pool: loan.pool,
+      loanId: _u64(loan.onchainLoanId),
+      policyAsset: policyAsset,
+      amount: amount,
+      terms: terms,
+    );
+  } on VaultException catch (e) {
+    throw SigningRefused(switch (e.error) {
+      VaultError.notAStandingGrant =>
+        'the signature would not cover the automatic payment shown',
+      _ => notTheLoansStandingOrder,
+    });
+  }
+  return (digest: digest, grant: grant);
+}
+
+StandingGrant _standingGrantOf(finance.AccountStandingParams a) {
+  if (!RegExp(r'^(0|[1-9][0-9]{0,77})$').hasMatch(a.maxPerPeriod)) {
+    throw const FormatException('max_per_period');
+  }
+  return StandingGrant(
+    authorizationId: a.authorizationId,
+    target: a.target,
+    selector: a.selector,
+    asset: a.asset,
+    maxPerPeriod: BigInt.parse(a.maxPerPeriod),
+    periodSeconds: _u64(a.periodSeconds),
+    epochStart: _u64(a.epochStart),
+    validAfter: _u64(a.validAfter),
+    validUntil: _u64(a.validUntil),
+  );
+}
+
+/// The REVOKE_STANDING management op kind (AccountPolicyLib.OpKind).
+const int opRevokeStanding = 11;
+
+/// The digest to sign for stopping [loan]'s standing order: a REVOKE_STANDING
+/// of exactly the loan's standing order id, whose intent binds that op.
+Uint8List checkedStandingRevoke({
+  required settlement.PrepareAccountCallResponse prepared,
+  required Uint8List account,
+  required finance.Loan loan,
+}) {
+  const wrong = SigningRefused(
+    'this would stop something other than your loan\'s automatic payment',
+  );
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_REVOKE_STANDING,
+    account: account,
+  );
+  final intent = _intentOf(prepared, digest, account);
+  if (loan.loanBook.length != 20 || loan.pool.length != 20) throw wrong;
+  final id = standingOrderId(
+    loan.loanBook,
+    loan.pool,
+    _u64(loan.onchainLoanId),
+  );
+  final op = prepared.managementOp;
+  if (!prepared.hasManagementOp() ||
+      op.kind != opRevokeStanding ||
+      op.key.isNotEmpty ||
+      op.hasAuth() ||
+      op.hasPolicy() ||
+      !bytesEqual(op.authorizationId, id)) {
+    throw wrong;
+  }
+  if (intent.type != IntentType.authorizationRevoke ||
+      intent.mode != IntentMode.directSignature ||
+      intent.room.isNotEmpty ||
+      intent.amount != BigInt.zero ||
+      !bytesEqual(
+        intent.authorizationId,
+        standingOpHash(kind: opRevokeStanding, authorizationId: id),
+      )) {
+    throw wrong;
+  }
+  return digest;
+}
+
+/// keccak256(abi.encode(ManagementOp)) of a standing op (Go
+/// stawi.ManagementOpHash): [kind], no key, [authorizationId] (a
+/// REVOKE_STANDING's), [grant] (a GRANT_STANDING's auth; zero otherwise) and
+/// the zero policy. For a grant it equals the SDK's [StandingGrant.opHash];
+/// the SDK has no revoke counterpart, so the revoke check uses this.
+Uint8List standingOpHash({
+  required int kind,
+  List<int>? authorizationId,
+  StandingGrant? grant,
+}) {
+  Uint8List word(BigInt v) => bigIntToBytes(v, 32);
+  Uint8List left(List<int> b) => Uint8List(32)..setRange(0, b.length, b);
+  Uint8List right(List<int> b) => Uint8List(32)..setRange(32 - b.length, 32, b);
+  final zero = Uint8List(32);
+  final id = authorizationId ?? zero;
+  if (id.length != 32 || kind < 0 || kind > 255) {
+    throw const SigningRefused('the management op is malformed');
+  }
+  const opHead = 13 * 32;
+  const policyHead = 8 * 32;
+  final out = BytesBuilder(copy: false)
+    ..add(word(BigInt.from(32)))
+    ..add(word(BigInt.from(kind)))
+    ..add(zero) // key
+    ..add(left(id));
+  if (grant == null) {
+    for (var i = 0; i < 9; i++) {
+      out.add(zero);
+    }
+  } else {
+    out
+      ..add(left(grant.authorizationId))
+      ..add(right(grant.target))
+      ..add(left(grant.selector))
+      ..add(right(grant.asset))
+      ..add(word(grant.maxPerPeriod))
+      ..add(word(grant.periodSeconds))
+      ..add(word(grant.epochStart))
+      ..add(word(grant.validAfter))
+      ..add(word(grant.validUntil));
+  }
+  out
+    ..add(word(BigInt.from(opHead)))
+    ..add(zero) // policy asset
+    ..add(zero) // periodLimit
+    ..add(zero) // periodSeconds
+    ..add(zero) // epochStart
+    ..add(word(BigInt.from(policyHead)))
+    ..add(word(BigInt.from(policyHead + 32)))
+    ..add(zero) // guardianThreshold
+    ..add(zero) // allowlistMode
+    ..add(zero) // allowlist: length 0
+    ..add(zero); // guardians: length 0
+  return keccak256(out.toBytes());
+}
+
+/// The digest to sign for sending [amount] of the wallet's asset to another
+/// address [to] the person gave: a TRANSFER to exactly that user account.
+Uint8List checkedTransferOut({
+  required settlement.PrepareAccountCallResponse prepared,
+  required Uint8List account,
+  required Uint8List to,
+  required BigInt amount,
+}) {
+  if (to.length != 20 || to.every((b) => b == 0)) {
+    throw const SigningRefused('that is not an address to send to');
+  }
+  if (amount <= BigInt.zero) {
+    throw const SigningRefused('no amount was asked for');
+  }
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
+    account: account,
+  );
+  final intent = _intentOf(prepared, digest, account);
+  final d = intent.destination;
+  if (intent.type != IntentType.transfer ||
+      intent.mode != IntentMode.directSignature ||
+      intent.room.isNotEmpty ||
+      d.kind != LocationKind.userAccount ||
+      !bytesEqual(d.address, to)) {
+    throw const SigningRefused('the money goes somewhere other than you said');
+  }
+  if (intent.amount != amount) {
+    throw SigningRefused(
+      'the call sends ${intent.amount}, not the $amount you asked for (minor units)',
+    );
+  }
+  return digest;
+}
+
+/// The prepared intent, checked to be the one [digest] signs and made from
+/// [account].
+FinancialIntent _intentOf(
+  settlement.PrepareAccountCallResponse prepared,
+  Uint8List digest,
+  Uint8List account,
+) {
+  final intent = sdkIntentOf(prepared.financialIntent);
+  if (!bytesEqual(intentDigestOf(intent), digest)) {
+    throw const SigningRefused('the digest is not the prepared intent\'s');
+  }
+  if (!bytesEqual(intent.account, account)) {
+    throw const SigningRefused('the call is made from another account');
+  }
+  return intent;
 }
 
 /// Why an engine call is refused when the room's engines are unknown.

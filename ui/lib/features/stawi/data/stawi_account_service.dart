@@ -283,7 +283,7 @@ class StawiAccountService {
         params: settlement.AccountCallParams(room: custody, amount: amount),
       ),
     );
-    final digest = checkedContributionDigest(
+    final (:digest, amount: _) = checkedContribution(
       prepared: prepared,
       account: account.address,
       custody: custody,

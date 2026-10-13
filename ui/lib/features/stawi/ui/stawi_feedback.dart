@@ -4,8 +4,22 @@ import 'package:flutter/material.dart';
 import '../data/stawi_identity.dart';
 import '../domain/signing_checks.dart';
 
+/// What to tell the member when settlement asks them to retry a member
+/// action because their account is still being settled (an engine's
+/// SettleAgain): nothing failed; the same action goes through shortly.
+const String accountCatchingUpMessage =
+    'Your account is being brought up to date; try again shortly';
+
+/// Whether [error] is settlement's retryable answer to a member action whose
+/// account is being brought up to date (Unavailable, from SettleAgain).
+bool isAccountCatchingUp(Object error) =>
+    error is connect.ConnectException &&
+    error.code == connect.Code.unavailable &&
+    error.message.contains('being brought up to date');
+
 /// What to tell the member when a Stawi action fails.
 String stawiErrorMessage(Object error) => switch (error) {
+  _ when isAccountCatchingUp(error) => accountCatchingUpMessage,
   SigningRefused(:final reason) => 'Not signed: $reason',
   StawiUnavailable(:final message) => message,
   connect.ConnectException(:final code, :final message) => switch (code) {

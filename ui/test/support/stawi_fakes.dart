@@ -9,6 +9,7 @@ import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -266,9 +267,175 @@ class GoVaultVectors {
     for (final v in json[name] as List) v as Map<String, dynamic>,
   ];
 
-  List<Map<String, dynamic>> get deposits => _section('deposits');
-  List<Map<String, dynamic>> get standingGrants => _section('standing_grants');
+  List<GoDepositVector> get deposits => [
+    for (final d in _section('deposits')) GoDepositVector(d),
+  ];
+  List<GoStandingGrantVector> get standingGrants => [
+    for (final g in _section('standing_grants')) GoStandingGrantVector(g),
+  ];
   List<Map<String, dynamic>> get standingOrders => _section('standing_orders');
+}
+
+/// One Go-produced deposit into a vault pocket.
+class GoDepositVector {
+  GoDepositVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get vault => hexToBytes(json['vault'] as String);
+  Uint8List get pocket {
+    final p = json['pocket'] as String;
+    return p.isEmpty ? Uint8List(32) : hexToBytes(p);
+  }
+
+  BigInt get amount => BigInt.parse(json['amount'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+
+  /// The vault and, as its one loan book, an address that is not it.
+  PersonalTargets get targets => PersonalTargets.fromResponse(
+    vault: vault,
+    loanBooks: [Uint8List.fromList(List.filled(20, 0x10))],
+  );
+
+  /// What settlement's PrepareAccountCall returns for this deposit.
+  settlement.PrepareAccountCallResponse get prepared =>
+      settlement.PrepareAccountCallResponse(
+        callId: 'acct00000000000000d1',
+        intentDigest: digest,
+        financialIntent: intent,
+        call: settlement.AccountCall(
+          callId: 'acct00000000000000d1',
+          address: account,
+          kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
+          intentDigest: digest,
+        ),
+      );
+}
+
+/// One Go-produced standing order for a personal loan: the loan, the grant
+/// settlement chooses for it and the GRANT_STANDING intent that binds it.
+class GoStandingGrantVector {
+  GoStandingGrantVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get book => hexToBytes(json['book'] as String);
+  Uint8List get pool => hexToBytes(json['pool'] as String);
+  BigInt get loanId => BigInt.parse(json['loan_id'] as String);
+  Uint8List get vault => hexToBytes(json['vault'] as String);
+  Uint8List get asset => hexToBytes(json['asset'] as String);
+  BigInt get amount => BigInt.parse(json['amount'] as String);
+  BigInt get largestInstalment =>
+      BigInt.parse(json['largest_instalment'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+
+  PersonalTerms get terms {
+    final t = json['terms'] as Map<String, dynamic>;
+    return PersonalTerms(
+      n: t['n'] as int,
+      everyDays: t['every_days'] as int,
+      method: t['method'] as int,
+      rateBps: t['rate_bps'] as int,
+      lateMethod: t['late_method'] as int,
+      lateBps: t['late_bps'] as int,
+      lateFlat: BigInt.parse(t['late_flat'] as String),
+      defaultAfterDays: t['default_after_days'] as int,
+    );
+  }
+
+  /// The grant as finance.v1 AccountStandingParams carries it.
+  finance.AccountStandingParams get standing {
+    final g = json['grant'] as Map<String, dynamic>;
+    return finance.AccountStandingParams(
+      authorizationId: hexToBytes(g['authorization_id'] as String),
+      target: hexToBytes(g['target'] as String),
+      selector: hexToBytes(g['selector'] as String),
+      asset: hexToBytes(g['asset'] as String),
+      maxPerPeriod: g['max_per_period'] as String,
+      periodSeconds: _u64('${g['period_seconds']}'),
+      epochStart: _u64('${g['epoch_start']}'),
+      validAfter: _u64('${g['valid_after']}'),
+      validUntil: _u64('${g['valid_until']}'),
+    );
+  }
+
+  /// The loan as finance shows it to its borrower: active.
+  finance.Loan get loan => finance.Loan(
+    loanBook: book,
+    pool: pool,
+    lender: pool,
+    borrowerAccount: account,
+    onchainLoanId: _u64(loanId.toString()),
+    requested: finance.Money(amount: amount.toString()),
+    terms: finance.PersonalLoanTerms()
+      ..mergeFromProto3Json(terms.toProtoJson()),
+    kind: bytesEqual(pool, account)
+        ? finance.LoanKind.LOAN_KIND_SELF
+        : finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+    state: finance.LoanState.LOAN_STATE_FUNDED,
+  );
+
+  PersonalTargets get targets =>
+      PersonalTargets.fromResponse(vault: vault, loanBooks: [book]);
+
+  /// What settlement's PrepareAccountCall returns for this grant.
+  settlement.PrepareAccountCallResponse get prepared =>
+      _prepare(intent, digest, standing);
+
+  /// The grant with fields changed, as a self-consistent prepared call: the
+  /// intent's authorization_id is the changed op's hash and the digest that
+  /// intent's, so only the grant's own check can refuse it.
+  settlement.PrepareAccountCallResponse preparedWith({
+    BigInt? maxPerPeriod,
+    BigInt? periodSeconds,
+    List<int>? target,
+    List<int>? authorizationId,
+  }) {
+    final s = standing;
+    if (maxPerPeriod != null) s.maxPerPeriod = maxPerPeriod.toString();
+    if (periodSeconds != null) s.periodSeconds = _u64('$periodSeconds');
+    if (target != null) s.target = target;
+    if (authorizationId != null) s.authorizationId = authorizationId;
+    final grant = StandingGrant(
+      authorizationId: s.authorizationId,
+      target: s.target,
+      selector: s.selector,
+      asset: s.asset,
+      maxPerPeriod: BigInt.parse(s.maxPerPeriod),
+      periodSeconds: BigInt.parse(s.periodSeconds.toStringUnsigned()),
+      epochStart: BigInt.parse(s.epochStart.toStringUnsigned()),
+      validAfter: BigInt.parse(s.validAfter.toStringUnsigned()),
+      validUntil: BigInt.parse(s.validUntil.toStringUnsigned()),
+    );
+    final i = intent..authorizationId = grant.opHash;
+    return _prepare(i, sdkIntentOf(i).digest(), s);
+  }
+
+  settlement.PrepareAccountCallResponse _prepare(
+    finance.FinancialIntent i,
+    Uint8List digest,
+    finance.AccountStandingParams s,
+  ) => settlement.PrepareAccountCallResponse(
+    callId: 'acct00000000000000g1',
+    intentDigest: digest,
+    financialIntent: i,
+    call: settlement.AccountCall(
+      callId: 'acct00000000000000g1',
+      address: account,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_GRANT_STANDING,
+      intentDigest: digest,
+    ),
+    managementOp: finance.AccountManagementOp(kind: opGrantStanding, auth: s),
+  );
 }
 
 /// One Go-produced RoomFactory.genesisHash case (stawi_finance_sdk 0.6.0
@@ -349,61 +516,7 @@ class GoEngineCallVector {
   Uint8List get account => hexToBytes(_intent['account'] as String);
 
   /// The vector's intent as finance.v1 carries it.
-  finance.FinancialIntent get intent {
-    final i = _intent;
-    final d = i['domain'] as Map<String, dynamic>;
-    finance.Principal principal(Object? p) {
-      final m = p! as Map<String, dynamic>;
-      return finance.Principal(
-        type: finance.PrincipalType.valueOf(m['type'] as int),
-        id: hexToBytes(m['id'] as String),
-      );
-    }
-
-    finance.ValueLocation location(Object? l) {
-      final m = l! as Map<String, dynamic>;
-      return finance.ValueLocation(
-        kind: finance.LocationKind.valueOf(m['kind'] as int),
-        address: hexToBytes(m['address'] as String),
-        bucket: m['bucket'] as String,
-      );
-    }
-
-    Int64 n(Object? v) => _u64('$v');
-    return finance.FinancialIntent(
-      intentId: hexToBytes(i['intent_id'] as String),
-      type: finance.IntentType.valueOf(i['type'] as int),
-      domain: finance.IntentDomain(
-        protocolVersion: d['protocol_version'] as int,
-        chainId: n(d['chain_id']),
-        verifyingContract: hexToBytes(d['verifying_contract'] as String),
-        accountVersion: d['account_version'] as int,
-        moduleVersion: d['module_version'] as int,
-        environment: d['environment'] as String,
-      ),
-      requestedBy: principal(i['requested_by']),
-      authorizedBy: principal(i['authorized_by']),
-      account: hexToBytes(i['account'] as String),
-      room: hexToBytes(i['room'] as String),
-      source: location(i['source']),
-      destination: location(i['destination']),
-      asset: hexToBytes(i['asset'] as String),
-      amount: i['amount'] as String,
-      mode: finance.AuthorizationMode.valueOf(i['mode'] as int),
-      authorizationId: hexToBytes(i['authorization_id'] as String),
-      capabilityId: hexToBytes(i['capability_id'] as String),
-      constitutionHash: hexToBytes(i['constitution_hash'] as String),
-      securityPolicyHash: hexToBytes(i['security_policy_hash'] as String),
-      policyEpoch: n(i['policy_epoch']),
-      nonce: n(i['nonce']),
-      credentialEpoch: n(i['credential_epoch']),
-      recoveryEpoch: n(i['recovery_epoch']),
-      validAfter: n(i['valid_after']),
-      validUntil: n(i['valid_until']),
-      countryPolicyVersion: hexToBytes(i['country_policy_version'] as String),
-      complianceRequired: i['compliance_required'] as bool,
-    );
-  }
+  finance.FinancialIntent get intent => financeIntentOf(_intent);
 
   /// The room's engines with this call's target as the engine its action runs
   /// on (the other engine elsewhere).
@@ -449,3 +562,59 @@ final StawiAsset usdc = StawiAsset.fromInfo(usdcInfo);
 
 /// A room's assets in tests: its USDC.
 final StawiAssets usdcAssets = StawiAssets([usdcInfo]);
+
+/// A Go vector's intent (snake_case JSON) as finance.v1 carries it.
+finance.FinancialIntent financeIntentOf(Map<String, dynamic> i) {
+  final d = i['domain'] as Map<String, dynamic>;
+  finance.Principal principal(Object? p) {
+    final m = p! as Map<String, dynamic>;
+    return finance.Principal(
+      type: finance.PrincipalType.valueOf(m['type'] as int),
+      id: hexToBytes(m['id'] as String),
+    );
+  }
+
+  finance.ValueLocation location(Object? l) {
+    final m = l! as Map<String, dynamic>;
+    return finance.ValueLocation(
+      kind: finance.LocationKind.valueOf(m['kind'] as int),
+      address: hexToBytes(m['address'] as String),
+      bucket: m['bucket'] as String,
+    );
+  }
+
+  Int64 n(Object? v) => _u64('$v');
+  return finance.FinancialIntent(
+    intentId: hexToBytes(i['intent_id'] as String),
+    type: finance.IntentType.valueOf(i['type'] as int),
+    domain: finance.IntentDomain(
+      protocolVersion: d['protocol_version'] as int,
+      chainId: n(d['chain_id']),
+      verifyingContract: hexToBytes(d['verifying_contract'] as String),
+      accountVersion: d['account_version'] as int,
+      moduleVersion: d['module_version'] as int,
+      environment: d['environment'] as String,
+    ),
+    requestedBy: principal(i['requested_by']),
+    authorizedBy: principal(i['authorized_by']),
+    account: hexToBytes(i['account'] as String),
+    room: hexToBytes(i['room'] as String),
+    source: location(i['source']),
+    destination: location(i['destination']),
+    asset: hexToBytes(i['asset'] as String),
+    amount: i['amount'] as String,
+    mode: finance.AuthorizationMode.valueOf(i['mode'] as int),
+    authorizationId: hexToBytes(i['authorization_id'] as String),
+    capabilityId: hexToBytes(i['capability_id'] as String),
+    constitutionHash: hexToBytes(i['constitution_hash'] as String),
+    securityPolicyHash: hexToBytes(i['security_policy_hash'] as String),
+    policyEpoch: n(i['policy_epoch']),
+    nonce: n(i['nonce']),
+    credentialEpoch: n(i['credential_epoch']),
+    recoveryEpoch: n(i['recovery_epoch']),
+    validAfter: n(i['valid_after']),
+    validUntil: n(i['valid_until']),
+    countryPolicyVersion: hexToBytes(i['country_policy_version'] as String),
+    complianceRequired: i['compliance_required'] as bool,
+  );
+}
