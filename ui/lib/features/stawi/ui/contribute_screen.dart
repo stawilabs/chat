@@ -48,9 +48,12 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
       if (asset == null) {
         throw const FormatException('The room’s asset could not be read');
       }
+      final amount = parseAmountInput(_amount.text, asset);
       return service.contribute(
         custody: custody,
-        amount: parseAmountInput(_amount.text, asset),
+        amount: amount,
+        reason:
+            'Pay ${formatUnits(BigInt.parse(amount), asset)} into this room',
       );
     });
     if (!mounted) return;

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
@@ -97,7 +98,7 @@ void main() {
         );
       StawiRoomService device(MemoryDeviceKeyVault ballots) => StawiRoomService(
         rooms: settlement.RoomServiceClient(transport),
-        keys: DeviceKeyStore(vaultWith('p1', anvilKey)),
+        keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open),
         identity: () async => identityWith('p1', account),
         send: RecordingActSender().call,
         ballots: SecretBallotStore(ballots),
@@ -154,7 +155,10 @@ void main() {
         );
       return StawiAccountService(
         accounts: settlement.AccountServiceClient(transport),
-        keys: DeviceKeyStore(vaultWith('p1', v.devicePrivateKey)),
+        keys: DeviceKeyStore(
+          vaultWith('p1', v.devicePrivateKey),
+          gate: SigningGate.open,
+        ),
         proofs: refusingSessionProofs,
         identity: () async => identityWith('p1', v.account),
       ).prepareEngineCall(

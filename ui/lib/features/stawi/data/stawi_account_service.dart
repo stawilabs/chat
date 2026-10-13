@@ -94,6 +94,8 @@ class StawiAccountService {
   final GenesisSessionProofs _proofs;
   final Future<StawiIdentity> Function() _identity;
 
+  /// The account and this device's key. Reads only: nothing is signed, so
+  /// the device lock is not asked.
   Future<StawiAccountStatus> status() async {
     final me = await _identity();
     final key = await _keys.loadOrCreate(me.profileId);
@@ -111,6 +113,40 @@ class StawiAccountService {
     );
   }
 
+  /// The primary account, deployed with a key of this device: deploys it the
+  /// first time money is touched (a signature, so behind the device lock) and
+  /// reads the chain every [every] until it is deployed, at most [attempts]
+  /// times. Refuses a deployed account this device holds no key of, and
+  /// gives up with [accountSetupPendingMessage] when the chain is slower;
+  /// trying again picks the pending deployment up without deploying twice.
+  Future<StawiAccountRef> ensureReady({
+    Duration every = const Duration(seconds: 3),
+    int attempts = 60,
+  }) async {
+    var s = await status();
+    final account = s.account;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    if (!s.deployed && !_genesisUnderway.contains(s.genesisState)) {
+      await deploy();
+    }
+    for (var i = 0; !s.deployed && i < attempts; i++) {
+      await Future<void>.delayed(every);
+      s = await status();
+      if (s.genesisState == 'FAILED') {
+        throw const StawiUnavailable(accountSetupFailedMessage);
+      }
+    }
+    if (!s.deployed) {
+      throw const StawiUnavailable(accountSetupPendingMessage);
+    }
+    if (!s.deviceRegistered) {
+      throw const StawiUnavailable(deviceNotAKeyMessage);
+    }
+    return account;
+  }
+
   /// Deploys the profile's primary account with this device's key as its
   /// first device: settlement returns the genesis digest, the device signs
   /// it, and settlement attests and relays the deployment.
@@ -120,7 +156,10 @@ class StawiAccountService {
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
-    final key = await _keys.loadOrCreate(me.profileId);
+    final key = await _keys.unlock(
+      me.profileId,
+      reason: 'Set up your Stawi account',
+    );
     final deviceKey = settlement.DeviceKey(
       publicKey: key.publicKey,
       algorithm: settlement.DeviceKeyAlgorithm.DEVICE_KEY_ALGORITHM_SECP256K1,
@@ -160,7 +199,10 @@ class StawiAccountService {
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
-    final key = await _keys.loadOrCreate(me.profileId);
+    final key = await _keys.unlock(
+      me.profileId,
+      reason: 'Add a device to your Stawi account',
+    );
     const kind = settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY;
     final prepared = await _accounts.prepareAccountCall(
       settlement.PrepareAccountCallRequest(
@@ -197,9 +239,12 @@ class StawiAccountService {
   /// Straight to the chain through settlement; chat is not involved. The
   /// payment lands in the room's SAVINGS bucket and the room's rules engine
   /// applies it.
+  ///
+  /// [reason] is what the device lock shows the person before signing.
   Future<settlement.AccountCall> contribute({
     required Uint8List custody,
     required String amount,
+    String reason = 'Pay into this room',
   }) async {
     if (custody.length != 20) {
       throw const FormatException('A room custody is a 20-byte address');
@@ -212,7 +257,7 @@ class StawiAccountService {
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
-    final key = await _keys.loadOrCreate(me.profileId);
+    final key = await _keys.unlock(me.profileId, reason: reason);
     final prepared = await _accounts.prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
@@ -284,7 +329,10 @@ class StawiAccountService {
     PreparedEngineCall prepared,
   ) async {
     final me = await _identity();
-    final key = await _keys.loadOrCreate(me.profileId);
+    final key = await _keys.unlock(
+      me.profileId,
+      reason: prepared.request.summary,
+    );
     return (await _accounts.submitAccountCall(
       settlement.SubmitAccountCallRequest(
         callId: prepared.callId,
@@ -351,6 +399,22 @@ class PreparedEngineCall {
   final AccountEngineRequest request;
 }
 
+/// Settlement's genesis states for a deployment already on its way.
+const Set<String> _genesisUnderway = {'PENDING', 'SUBMITTED'};
+
+/// The chain has not finished deploying the account in the time allowed.
+const String accountSetupPendingMessage =
+    'Your Stawi account is still being set up; try again in a minute';
+
+/// Settlement gave up on the account's deployment.
+const String accountSetupFailedMessage =
+    'Setting up your Stawi account failed; try again';
+
+/// The account is deployed but this device holds none of its keys.
+const String deviceNotAKeyMessage =
+    'This device is not a key of your Stawi account. Add this device from '
+    'one that is (Stawi account).';
+
 final RegExp _positiveDecimal = RegExp(r'^[1-9][0-9]{0,77}$');
 
 /// Whether an account call has reached a state it will not leave.
@@ -389,3 +453,10 @@ final stawiAccountStatusProvider =
     FutureProvider.autoDispose<StawiAccountStatus>(
       (ref) => ref.watch(stawiAccountServiceProvider).status(),
     );
+
+/// The account ready for money: watched by every money surface, so setup
+/// starts by itself the first time one opens. It fails with a message (and
+/// is retried by invalidating it) rather than waiting forever.
+final stawiAccountReadyProvider = FutureProvider.autoDispose<StawiAccountRef>(
+  (ref) => ref.watch(stawiAccountServiceProvider).ensureReady(),
+);

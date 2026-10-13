@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -19,6 +20,7 @@ void main() {
       for (final v in vectors.preparedCallSignatures) {
         final store = DeviceKeyStore(
           vaultWith('p1', v['private_key'] as String),
+          gate: SigningGate.open,
         );
         final key = (await store.load('p1'))!;
         final digest = hexToBytes(v['digest'] as String);
@@ -35,12 +37,19 @@ void main() {
 
     test('generates the key once and keeps it per profile', () async {
       final vault = MemoryDeviceKeyVault();
-      final store = DeviceKeyStore(vault, random: Random(7));
+      final store = DeviceKeyStore(
+        vault,
+        gate: SigningGate.open,
+        random: Random(7),
+      );
 
       expect(await store.load('p1'), isNull);
       final first = await store.loadOrCreate('p1');
       final again = await store.loadOrCreate('p1');
-      final reopened = await DeviceKeyStore(vault).load('p1');
+      final reopened = await DeviceKeyStore(
+        vault,
+        gate: SigningGate.open,
+      ).load('p1');
       final other = await store.loadOrCreate('p2');
 
       expect(again.address, first.address);
@@ -55,7 +64,7 @@ void main() {
 
     test('concurrent first use generates a single key', () async {
       final vault = MemoryDeviceKeyVault();
-      final store = DeviceKeyStore(vault);
+      final store = DeviceKeyStore(vault, gate: SigningGate.open);
       final keys = await Future.wait([
         store.loadOrCreate('p1'),
         store.loadOrCreate('p1'),
@@ -66,7 +75,10 @@ void main() {
     });
 
     test('signatures carry v as 27 or 28, never a raw recovery id', () async {
-      final key = await DeviceKeyStore(vaultWith('p1', anvilKey)).load('p1');
+      final key = await DeviceKeyStore(
+        vaultWith('p1', anvilKey),
+        gate: SigningGate.open,
+      ).load('p1');
       final vs = <int>{};
       for (var i = 0; i < 32; i++) {
         final signature = key!.sign(keccak256(Uint8List.fromList([i])));
@@ -80,6 +92,7 @@ void main() {
     test('a signature recovers to the device key', () async {
       final key = await DeviceKeyStore(
         MemoryDeviceKeyVault(),
+        gate: SigningGate.open,
       ).loadOrCreate('p');
       final digest = keccak256(Uint8List.fromList([1, 2, 3]));
       expect(recoverDeviceAddress(digest, key.sign(digest)), key.address);

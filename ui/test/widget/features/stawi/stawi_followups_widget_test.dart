@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
@@ -116,7 +117,10 @@ void main() {
         [(proposalId: 3, vote: vote(DateTime.utc(2026, 10, 20)))],
         service: StawiRoomService(
           rooms: settlement.RoomServiceClient(transport),
-          keys: DeviceKeyStore(vaultWith('p1', anvilKey)),
+          keys: DeviceKeyStore(
+            vaultWith('p1', anvilKey),
+            gate: SigningGate.open,
+          ),
           identity: () async => identityWith('p1', account),
           send: sender.call,
           ballots: SecretBallotStore(ballots),
@@ -192,7 +196,10 @@ void main() {
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
                 accounts: settlement.AccountServiceClient(transport),
-                keys: DeviceKeyStore(vaultWith('p1', request.devicePrivateKey)),
+                keys: DeviceKeyStore(
+                  vaultWith('p1', request.devicePrivateKey),
+                  gate: SigningGate.open,
+                ),
                 proofs: refusingSessionProofs,
                 identity: () async => identityWith('p1', request.account),
               ),

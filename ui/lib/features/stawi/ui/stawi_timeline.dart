@@ -6,6 +6,7 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../auth/data/current_user_provider.dart';
 import '../../messages/domain/room_event.dart';
+import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_subscription_service.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
@@ -49,11 +50,18 @@ class _GenesisCardState extends ConsumerState<GenesisCard> {
 
   Future<void> _sign() async {
     setState(() => _signing = true);
-    await runStawiAction(
-      context,
-      () => ref.read(stawiRoomServiceProvider).signGenesis(widget.event),
-      success: 'Genesis signed',
-    );
+    await runStawiAction(context, () async {
+      final room = await ref
+          .read(roomByIdProvider(widget.event.roomId).future)
+          .catchError((Object _) => null);
+      final name = room?.name ?? '';
+      return ref
+          .read(stawiRoomServiceProvider)
+          .signGenesis(
+            widget.event,
+            roomName: name.isEmpty ? 'this room' : name,
+          );
+    }, success: 'Genesis signed');
     if (mounted) setState(() => _signing = false);
   }
 

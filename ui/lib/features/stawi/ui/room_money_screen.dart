@@ -577,6 +577,10 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
       final submitted = await service.contribute(
         custody: prepared.request.custody,
         amount: topUp.toString(),
+        reason: prepared.request.asset == null
+            ? 'Top up your dues before the payoff'
+            : 'Pay ${formatUnits(topUp, prepared.request.asset!)} into this '
+                  'room before the payoff',
       );
       final last = await service.followAccountCall(submitted.callId).last;
       if (last.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {

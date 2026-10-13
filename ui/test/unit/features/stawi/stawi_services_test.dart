@@ -34,11 +34,13 @@ void main() {
   late RecordingActSender sender;
   late DeviceKeyStore keys;
   late DeviceKeyHandle key;
+  late RecordingSigningGate gate;
 
   setUp(() async {
+    gate = RecordingSigningGate();
     transport = FakeConnectTransport();
     sender = RecordingActSender();
-    keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+    keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate);
     key = (await keys.load('p1'))!;
   });
 
@@ -137,6 +139,33 @@ void main() {
         finance.VoteChoice.VOTE_CHOICE_REJECT,
       );
       expect(sender.sent.single.content['kind'], 'CAST_VOTE');
+      expect(gate.reasons, [request.summary]);
+    });
+
+    test('the device lock is asked with the call summary first', () async {
+      preparesInvite();
+      final request = inviteRequest(profileId: 'p2', name: 'Amina');
+      await roomService().signedCall(
+        roomId: roomId,
+        kind: request.kind,
+        params: request.params,
+        summary: request.summary,
+      );
+      expect(gate.reasons, ['Invite Amina']);
+    });
+
+    test('a refused device lock signs and sends nothing', () async {
+      preparesInvite();
+      gate.refuse = true;
+      await expectLater(
+        roomService().signedCall(
+          roomId: roomId,
+          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
+          summary: 'Invite Amina',
+        ),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(sender.sent, isEmpty);
     });
   });
 
@@ -240,6 +269,24 @@ void main() {
       final signature = base64Decode(act.content['signature'] as String);
       expect(recoverDeviceAddress(digest, signature), key.address);
       expect(signature, isNot(key.sign(otherDigest)));
+    });
+
+    test('the device lock names the room being founded', () async {
+      genesisOnSettlement();
+      await roomService().signGenesis(card(), roomName: 'Kampala Savers');
+      expect(gate.reasons, ['Found Kampala Savers on Stawi']);
+      expect(sender.sent, hasLength(1));
+    });
+
+    test('a refused device lock sends no genesis signature', () async {
+      genesisOnSettlement();
+      gate.refuse = true;
+      await expectLater(
+        roomService().signGenesis(card()),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(gate.reasons, ['Found this room on Stawi']);
+      expect(sender.sent, isEmpty);
     });
 
     test('a founder signs their own digest, not another founder\'s', () async {
@@ -348,6 +395,49 @@ void main() {
           .requestsTo(settlement.AccountService.submitAccountCall)
           .single;
       expect(recoverDeviceAddress(digest, submit.authorization), key.address);
+      expect(gate.reasons, ['Add a device to your Stawi account']);
+    });
+
+    test('a refused device lock adds no key', () async {
+      gate.refuse = true;
+      await expectLater(
+        accountService().addDeviceKey(Uint8List(20)),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(
+        transport.requestsTo(settlement.AccountService.submitAccountCall),
+        isEmpty,
+      );
+    });
+
+    test('a refused device lock deploys nothing', () async {
+      gate.refuse = true;
+      await expectLater(
+        accountService().deploy(),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(gate.reasons, ['Set up your Stawi account']);
+      expect(
+        transport.requestsTo(settlement.AccountService.deployAccount),
+        isEmpty,
+      );
+    });
+
+    test('a refused device lock pays nothing', () async {
+      gate.refuse = true;
+      await expectLater(
+        accountService().contribute(
+          custody: Uint8List(20),
+          amount: '100',
+          reason: 'Pay 1.00 USDC into this room',
+        ),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(gate.reasons, ['Pay 1.00 USDC into this room']);
+      expect(
+        transport.requestsTo(settlement.AccountService.submitAccountCall),
+        isEmpty,
+      );
     });
   });
 }

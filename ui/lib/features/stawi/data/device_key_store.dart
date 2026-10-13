@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import 'signing_gate.dart';
+
 /// Where the device key's private scalar is kept. Production is the platform
 /// keystore (Keychain / Keystore); tests use a map.
 abstract interface class DeviceKeyVault {
@@ -61,10 +63,15 @@ class DeviceKeyHandle {
 /// Generates the device key on first use and keeps it in the platform's
 /// secure storage, one per profile signed in on this device. There is no way
 /// to read the private key out: it is used only through [DeviceKeyHandle].
+/// Every signature takes the key through [unlock], behind [SigningGate];
+/// there is no default gate, so a store cannot be built that signs unasked.
 class DeviceKeyStore {
-  DeviceKeyStore(this._vault, {Random? random}) : _random = random;
+  DeviceKeyStore(this._vault, {required SigningGate gate, Random? random})
+    : _gate = gate,
+      _random = random;
 
   final DeviceKeyVault _vault;
+  final SigningGate _gate;
   final Random? _random;
   final Map<String, Future<DeviceKeyHandle>> _inFlight = {};
 
@@ -77,7 +84,18 @@ class DeviceKeyStore {
     return DeviceKeyHandle._(DeviceKey.fromPrivateKey(hexToBytes(stored)));
   }
 
+  /// The profile's key for one signature, once the device lock confirms
+  /// [reason] (what is about to be signed, in the person's words).
+  Future<DeviceKeyHandle> unlock(
+    String profileId, {
+    required String reason,
+  }) async {
+    await _gate.confirm(reason);
+    return loadOrCreate(profileId);
+  }
+
   /// The profile's key, generated and stored the first time it is needed.
+  /// Reading its address only: a signature goes through [unlock].
   Future<DeviceKeyHandle> loadOrCreate(String profileId) =>
       _inFlight.putIfAbsent(profileId, () async {
         try {
@@ -93,5 +111,8 @@ class DeviceKeyStore {
 }
 
 final deviceKeyStoreProvider = Provider<DeviceKeyStore>(
-  (ref) => DeviceKeyStore(const SecureStorageDeviceKeyVault()),
+  (ref) => DeviceKeyStore(
+    const SecureStorageDeviceKeyVault(),
+    gate: ref.watch(signingGateProvider),
+  ),
 );

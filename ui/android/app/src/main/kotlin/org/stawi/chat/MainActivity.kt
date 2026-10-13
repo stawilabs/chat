@@ -1,7 +1,7 @@
 package org.stawi.chat
 
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -12,8 +12,11 @@ import io.flutter.plugin.common.MethodChannel
  * financial chats were screenshot-able and appeared in the app-switcher despite
  * the protection being "on". FLAG_SECURE blocks screenshots, screen recording,
  * and the recents thumbnail.
+ *
+ * A FlutterFragmentActivity: local_auth shows the device-lock prompt every
+ * Stawi signature waits on only from a FragmentActivity.
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val screenshotChannel = "chat.app/screenshot_prevention"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

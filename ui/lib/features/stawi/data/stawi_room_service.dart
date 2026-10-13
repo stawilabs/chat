@@ -91,8 +91,12 @@ class StawiRoomService {
   }
 
   /// Signs the genesis on [conversion]'s card with this device's key and
-  /// sends the signature into the room, under the card.
-  Future<RoomEvent> signGenesis(RoomEvent conversion) async {
+  /// sends the signature into the room, under the card. [roomName] names the
+  /// room on the device lock prompt.
+  Future<RoomEvent> signGenesis(
+    RoomEvent conversion, {
+    String roomName = 'this room',
+  }) async {
     final card = StawiConversionView.fromContent(conversion.content).genesis;
     if (card == null || card.genesisId.isEmpty) {
       throw const SigningRefused('the genesis is not prepared yet');
@@ -110,7 +114,10 @@ class StawiRoomService {
       profileId: me.profileId,
       ownAccounts: me.addresses,
     );
-    final key = await _keys.loadOrCreate(me.profileId);
+    final key = await _keys.unlock(
+      me.profileId,
+      reason: 'Found $roomName on Stawi',
+    );
     return _send(
       roomId: conversion.roomId,
       type: RoomEventType.stawiGenesisSignature,
@@ -153,7 +160,7 @@ class StawiRoomService {
       ownAccounts: account == null ? me.addresses : [account],
     );
     check?.call(prepared);
-    final key = await _keys.loadOrCreate(me.profileId);
+    final key = await _keys.unlock(me.profileId, reason: summary);
     return _send(
       roomId: roomId,
       type: RoomEventType.stawiSignedCall,

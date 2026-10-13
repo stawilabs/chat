@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
@@ -62,7 +63,10 @@ void main() {
   group('engine calls', () {
     StawiAccountService service(GoEngineCallVector v) => StawiAccountService(
       accounts: settlement.AccountServiceClient(transport),
-      keys: DeviceKeyStore(vaultWith('p1', v.devicePrivateKey)),
+      keys: DeviceKeyStore(
+        vaultWith('p1', v.devicePrivateKey),
+        gate: SigningGate.open,
+      ),
       proofs: refusingSessionProofs,
       identity: () async => identityWith('p1', v.account),
     );
@@ -105,6 +109,40 @@ void main() {
             .single;
         expect(bytesToHex0x(submit.authorization), v.signature, reason: v.name);
       }
+    });
+
+    test('a refused device lock submits no engine call', () async {
+      final v = vectors.first;
+      transport
+        ..on(
+          settlement.AccountService.prepareAccountCall,
+          (req) => v.prepared(req.kind),
+        )
+        ..on(
+          settlement.AccountService.submitAccountCall,
+          (req) => settlement.SubmitAccountCallResponse(
+            call: settlement.AccountCall(callId: req.callId),
+          ),
+        );
+      final gate = RecordingSigningGate(refuse: true);
+      final s = StawiAccountService(
+        accounts: settlement.AccountServiceClient(transport),
+        keys: DeviceKeyStore(vaultWith('p1', v.devicePrivateKey), gate: gate),
+        proofs: refusingSessionProofs,
+        identity: () async => identityWith('p1', v.account),
+      );
+      final request = requestFor(v);
+      final prepared = await s.prepareEngineCall(request, engines: v.engines());
+      expect(gate.reasons, isEmpty, reason: 'preparing signs nothing');
+      await expectLater(
+        s.submitEngineCall(prepared),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(gate.reasons, [request.summary]);
+      expect(
+        transport.requestsTo(settlement.AccountService.submitAccountCall),
+        isEmpty,
+      );
     });
 
     test('a payoff without a ceiling shows the quoted one', () async {

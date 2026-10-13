@@ -7,7 +7,9 @@ import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -79,6 +81,21 @@ class MemoryDeviceKeyVault implements DeviceKeyVault {
   Future<void> write(String key, String value) async {
     writes++;
     entries[key] = value;
+  }
+}
+
+/// A [SigningGate] that records what it was asked to confirm, and confirms
+/// unless [refuse] is set.
+class RecordingSigningGate implements SigningGate {
+  RecordingSigningGate({this.refuse = false});
+
+  bool refuse;
+  final List<String> reasons = [];
+
+  @override
+  Future<void> confirm(String reason) async {
+    reasons.add(reason);
+    if (refuse) throw const SigningRefused(notConfirmedReason);
   }
 }
 

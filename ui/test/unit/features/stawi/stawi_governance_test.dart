@@ -7,6 +7,7 @@ import 'package:antinvestor_api_authentication/antinvestor_api_authentication.da
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_binding.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
@@ -66,7 +67,7 @@ void main() {
 
     StawiRoomService service() => StawiRoomService(
       rooms: settlement.RoomServiceClient(transport),
-      keys: DeviceKeyStore(vaultWith('p1', anvilKey)),
+      keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open),
       identity: () async => identityWith('p1', account),
       send: sender.call,
       ballots: SecretBallotStore(ballotVault),
@@ -268,7 +269,7 @@ void main() {
   group('rules-engine calls', () {
     StawiRoomService service() => StawiRoomService(
       rooms: settlement.RoomServiceClient(transport),
-      keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+      keys: DeviceKeyStore(MemoryDeviceKeyVault(), gate: SigningGate.open),
       identity: () async => identityWith('p1', Uint8List(20)),
       send: RecordingActSender().call,
     );
@@ -360,7 +361,10 @@ void main() {
         );
       final service = StawiAccountService(
         accounts: settlement.AccountServiceClient(transport),
-        keys: DeviceKeyStore(vaultWith('p1', genesis.devicePrivateKey)),
+        keys: DeviceKeyStore(
+          vaultWith('p1', genesis.devicePrivateKey),
+          gate: SigningGate.open,
+        ),
         proofs: authenticationSessionProofs(
           authentication.AuthenticationServiceClient(transport),
         ),

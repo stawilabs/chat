@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
@@ -147,7 +149,10 @@ void main() {
 
     test('signs the Go genesis digest byte for byte', () async {
       fakeSettlement();
-      final keys = DeviceKeyStore(vaultWith('p1', v.devicePrivateKey));
+      final keys = DeviceKeyStore(
+        vaultWith('p1', v.devicePrivateKey),
+        gate: SigningGate.open,
+      );
       final key = (await keys.load('p1'))!;
       final response = await service(keys, v.identity('p1')).deploy();
       expect(response.genesisState, 'PENDING');
@@ -166,7 +171,10 @@ void main() {
 
     test('a digest it cannot rebuild is never signed or sent', () async {
       fakeSettlement(prepared: v.prepared..genesisDigest = Uint8List(32));
-      final keys = DeviceKeyStore(vaultWith('p1', v.devicePrivateKey));
+      final keys = DeviceKeyStore(
+        vaultWith('p1', v.devicePrivateKey),
+        gate: SigningGate.open,
+      );
       await expectLater(
         service(keys, v.identity('p1')).deploy(),
         throwsA(isA<SigningRefused>()),
@@ -179,7 +187,10 @@ void main() {
 
     test('without a session proof source nothing is deployed', () async {
       fakeSettlement();
-      final keys = DeviceKeyStore(vaultWith('p1', v.devicePrivateKey));
+      final keys = DeviceKeyStore(
+        vaultWith('p1', v.devicePrivateKey),
+        gate: SigningGate.open,
+      );
       await expectLater(
         service(keys, v.identity('p1'), proofs: refusingSessionProofs).deploy(),
         throwsA(isA<connect.ConnectException>()),
@@ -191,6 +202,234 @@ void main() {
     });
   });
 
+  group('ensureReady', () {
+    final v = genesis.firstWhere((v) => v.name == 'settlement_default');
+    late RecordingSigningGate gate;
+    late DeviceKeyStore keys;
+    late DeviceKeyHandle key;
+
+    setUp(() async {
+      gate = RecordingSigningGate();
+      keys = DeviceKeyStore(vaultWith('p1', v.devicePrivateKey), gate: gate);
+      key = (await keys.load('p1'))!;
+    });
+
+    settlement.AccountState undeployed(String genesisState) =>
+        settlement.AccountState(address: v.account, genesisState: genesisState);
+
+    settlement.AccountState deployed({required bool mine}) =>
+        settlement.AccountState(
+          address: v.account,
+          deployed: true,
+          genesisState: 'DEPLOYED',
+          keys: [
+            settlement.AccountKey(
+              key: mine ? key.address : Uint8List(20),
+              active: true,
+            ),
+          ],
+        );
+
+    /// Settlement answers GetAccount with [states] in turn, repeating the
+    /// last; deploys answer PENDING.
+    void chainAnswers(List<settlement.AccountState> states) {
+      var reads = 0;
+      transport
+        ..on(settlement.AccountService.getAccount, (req) {
+          final i = reads < states.length ? reads : states.length - 1;
+          reads++;
+          return settlement.GetAccountResponse(account: states[i]);
+        })
+        ..on(
+          settlement.AccountService.prepareDeployAccount,
+          (req) => v.prepared,
+        )
+        ..on(
+          settlement.AccountService.deployAccount,
+          (req) => settlement.DeployAccountResponse(
+            address: req.address,
+            genesisState: 'PENDING',
+          ),
+        );
+    }
+
+    Future<StawiAccountRef> ready({int attempts = 60}) => service(
+      keys,
+      v.identity('p1'),
+    ).ensureReady(every: Duration.zero, attempts: attempts);
+
+    int reads() =>
+        transport.requestsTo(settlement.AccountService.getAccount).length;
+    int deploys() =>
+        transport.requestsTo(settlement.AccountService.deployAccount).length;
+
+    test(
+      'ensureReady deploys an undeployed account once and waits for it',
+      () async {
+        chainAnswers([
+          undeployed(''),
+          undeployed('PENDING'),
+          deployed(mine: true),
+        ]);
+        final account = await ready();
+        expect(account.address, v.account);
+        expect(account.primary, isTrue);
+        expect(deploys(), 1);
+        expect(reads(), 3);
+        expect(gate.reasons, ['Set up your Stawi account']);
+        expect(
+          bytesToHex0x(
+            transport
+                .requestsTo(settlement.AccountService.deployAccount)
+                .single
+                .deviceSignature,
+          ),
+          v.signature,
+        );
+      },
+    );
+
+    test(
+      'a deployed account with this device as a key is ready at once',
+      () async {
+        chainAnswers([deployed(mine: true)]);
+        expect((await ready()).address, v.account);
+        expect(deploys(), 0);
+        expect(gate.reasons, isEmpty, reason: 'nothing is signed');
+      },
+    );
+
+    test(
+      'a deployment already under way is waited for, not repeated',
+      () async {
+        chainAnswers([undeployed('SUBMITTED'), deployed(mine: true)]);
+        await ready();
+        expect(deploys(), 0);
+        expect(gate.reasons, isEmpty);
+      },
+    );
+
+    test('a failed deployment is deployed again', () async {
+      chainAnswers([undeployed('FAILED'), deployed(mine: true)]);
+      await ready();
+      expect(deploys(), 1);
+    });
+
+    test(
+      'ensureReady refuses a deployed account this device is not a key of',
+      () async {
+        chainAnswers([deployed(mine: false)]);
+        await expectLater(
+          ready(),
+          throwsA(
+            isA<StawiUnavailable>().having(
+              (e) => e.message,
+              'message',
+              contains('Add this device'),
+            ),
+          ),
+        );
+        expect(deploys(), 0);
+      },
+    );
+
+    test('a refused device lock deploys nothing', () async {
+      gate.refuse = true;
+      chainAnswers([undeployed('')]);
+      await expectLater(ready(), throwsA(isA<SigningRefused>()));
+      expect(
+        transport.requestsTo(settlement.AccountService.prepareDeployAccount),
+        isEmpty,
+      );
+      expect(deploys(), 0);
+    });
+
+    test('a slow chain gives up with a message to try again', () async {
+      chainAnswers([undeployed(''), undeployed('PENDING')]);
+      await expectLater(
+        ready(attempts: 3),
+        throwsA(
+          isA<StawiUnavailable>().having(
+            (e) => e.message,
+            'message',
+            accountSetupPendingMessage,
+          ),
+        ),
+      );
+      expect(reads(), 4);
+      expect(deploys(), 1);
+
+      // Trying again picks the pending deployment up without redeploying.
+      transport = FakeConnectTransport();
+      chainAnswers([undeployed('PENDING'), deployed(mine: true)]);
+      await ready();
+      expect(deploys(), 0);
+    });
+
+    test('a deployment that fails while waited for says so', () async {
+      chainAnswers([undeployed(''), undeployed('FAILED')]);
+      await expectLater(
+        ready(),
+        throwsA(
+          isA<StawiUnavailable>().having(
+            (e) => e.message,
+            'message',
+            accountSetupFailedMessage,
+          ),
+        ),
+      );
+      expect(deploys(), 1);
+    });
+
+    testWidgets('by default it reads every 3 s and gives up after 3 min', (
+      tester,
+    ) async {
+      chainAnswers([undeployed(''), undeployed('PENDING')]);
+      Object? error;
+      var done = false;
+      unawaited(
+        service(keys, v.identity('p1')).ensureReady().then(
+          (_) => done = true,
+          onError: (Object e) {
+            error = e;
+            done = true;
+          },
+        ),
+      );
+      await tester.pump();
+      expect(reads(), 1);
+      await tester.pump(const Duration(seconds: 3));
+      expect(reads(), 2);
+      for (var i = 0; i < 58; i++) {
+        await tester.pump(const Duration(seconds: 3));
+      }
+      expect(done, isFalse, reason: 'still waiting at 2 min 57 s');
+      await tester.pump(const Duration(seconds: 3));
+      expect(done, isTrue);
+      expect(reads(), 61);
+      expect(
+        error,
+        isA<StawiUnavailable>().having(
+          (e) => e.message,
+          'message',
+          accountSetupPendingMessage,
+        ),
+      );
+    });
+
+    test('a profile with no account is not set up', () async {
+      chainAnswers([undeployed('')]);
+      await expectLater(
+        service(
+          keys,
+          const StawiIdentity(profileId: 'p1', accounts: []),
+        ).ensureReady(every: Duration.zero),
+        throwsA(isA<StawiUnavailable>()),
+      );
+      expect(transport.calls, isEmpty);
+    });
+  });
+
   group('contribute', () {
     final account = Uint8List.fromList(List.filled(20, 0xac));
     final custody = Uint8List.fromList(List.filled(20, 0xc0));
@@ -199,7 +438,7 @@ void main() {
     late DeviceKeyHandle key;
 
     setUp(() async {
-      keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+      keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open);
       key = (await keys.load('p1'))!;
     });
 
@@ -343,7 +582,7 @@ void main() {
       ),
     );
     final funded = await service(
-      DeviceKeyStore(MemoryDeviceKeyVault()),
+      DeviceKeyStore(MemoryDeviceKeyVault(), gate: SigningGate.open),
       identityWith('p1', account),
     ).fundTestAccount('1,000', usdc);
     expect(funded.amount, '1000000000');
@@ -356,7 +595,7 @@ void main() {
 
   test('the faucet refuses an amount the asset cannot hold', () async {
     final faucet = service(
-      DeviceKeyStore(MemoryDeviceKeyVault()),
+      DeviceKeyStore(MemoryDeviceKeyVault(), gate: SigningGate.open),
       identityWith('p1', Uint8List(20)),
     );
     for (final bad in ['0', '-1', '1.0000001', 'ten']) {

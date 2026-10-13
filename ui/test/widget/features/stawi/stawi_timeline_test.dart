@@ -10,6 +10,7 @@ import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/room_subscription_service.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
@@ -209,7 +210,7 @@ void main() {
           ),
         );
       sender = RecordingActSender();
-      keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+      keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open);
     });
 
     List<Override> overrides({

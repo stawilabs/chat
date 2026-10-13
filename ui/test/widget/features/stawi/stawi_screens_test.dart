@@ -7,6 +7,7 @@ import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
@@ -40,7 +41,7 @@ void main() {
 
     setUp(() async {
       transport = FakeConnectTransport();
-      keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+      keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open);
       key = (await keys.load('p1'))!;
     });
 
@@ -165,7 +166,10 @@ void main() {
             asset: usdcInfo,
           ),
         );
-      key = (await DeviceKeyStore(vaultWith('p1', anvilKey)).load('p1'))!;
+      key = (await DeviceKeyStore(
+        vaultWith('p1', anvilKey),
+        gate: SigningGate.open,
+      ).load('p1'))!;
     });
 
     Widget screen({required bool showTestFunds}) => ProviderScope(
@@ -180,7 +184,10 @@ void main() {
         stawiAccountServiceProvider.overrideWithValue(
           StawiAccountService(
             accounts: settlement.AccountServiceClient(transport),
-            keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+            keys: DeviceKeyStore(
+              MemoryDeviceKeyVault(),
+              gate: SigningGate.open,
+            ),
             proofs: refusingSessionProofs,
             identity: () async => identityWith('p1', account),
           ),
@@ -293,7 +300,10 @@ void main() {
           ),
         ),
       );
-    final keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+    final keys = DeviceKeyStore(
+      vaultWith('p1', anvilKey),
+      gate: SigningGate.open,
+    );
 
     await tester.pumpWidget(
       ProviderScope(
@@ -399,7 +409,10 @@ void main() {
           stawiRoomServiceProvider.overrideWithValue(
             StawiRoomService(
               rooms: settlement.RoomServiceClient(FakeConnectTransport()),
-              keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
               identity: () async => identityWith('p1', account),
               send: sender.call,
             ),
@@ -481,7 +494,10 @@ void main() {
           stawiRoomServiceProvider.overrideWithValue(
             StawiRoomService(
               rooms: settlement.RoomServiceClient(FakeConnectTransport()),
-              keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
               identity: () async => identityWith('p1', account),
               send: sender.call,
             ),
