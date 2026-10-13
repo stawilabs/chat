@@ -182,6 +182,7 @@ void main() {
           settlement.AccountService.prepareAccountCall,
           (req) => request.prepared(req.kind),
         );
+      await serveDeployedAccount(transport, request.devicePrivateKey);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [

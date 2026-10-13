@@ -5,15 +5,19 @@ import 'package:antinvestor_api_authentication/antinvestor_api_authentication.da
     as authentication;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
 import '../domain/account_engine_calls.dart';
+import '../domain/money_review.dart';
+import '../domain/personal_calls.dart';
 import '../domain/signing_checks.dart';
 import '../domain/stawi_money.dart';
 import 'device_key_store.dart';
 import 'stawi_clients.dart';
 import 'stawi_identity.dart';
+import 'stawi_vault_service.dart';
 
 /// Issues the authentication service's genesis session proof (P26): proof
 /// that this profile held a live session on this device when its first key
@@ -84,15 +88,22 @@ class StawiAccountService {
     required DeviceKeyStore keys,
     required GenesisSessionProofs proofs,
     required Future<StawiIdentity> Function() identity,
+    Future<PersonalTargets> Function()? targets,
   }) : _accounts = accounts,
        _keys = keys,
        _proofs = proofs,
-       _identity = identity;
+       _identity = identity,
+       _targets = targets;
 
   final settlement.AccountServiceClient _accounts;
   final DeviceKeyStore _keys;
   final GenesisSessionProofs _proofs;
   final Future<StawiIdentity> Function() _identity;
+
+  /// Finance's personal targets (the person's vault and the admitted loan
+  /// books), read for every personal call; null reads as unknown, which
+  /// refuses the call.
+  final Future<PersonalTargets> Function()? _targets;
 
   /// The account and this device's key. Reads only: nothing is signed, so
   /// the device lock is not asked.
@@ -298,6 +309,240 @@ class StawiAccountService {
     return submitted.call;
   }
 
+  /// The personal targets, or null when they cannot be read (which refuses
+  /// every personal call, since none could be checked).
+  Future<PersonalTargets?> _personalTargets() async {
+    final read = _targets;
+    if (read == null) return null;
+    try {
+      return await read();
+    } on Object {
+      return null;
+    }
+  }
+
+  /// The asset every personal amount is in: the deployment's.
+  Future<StawiAsset> _asset() async {
+    final info = (await testAsset()).asset;
+    return info.assetId.isEmpty
+        ? const StawiAsset.unknown('')
+        : StawiAsset.fromInfo(info);
+  }
+
+  /// Prepares a loan or savings call on the person's own account and checks
+  /// it on the device. Nothing is signed yet: [PreparedMoneyCall.review] is
+  /// what they are shown first. [counterpartyName] and [pocketName] only
+  /// word the review.
+  Future<PreparedMoneyCall> preparePersonal(
+    PersonalRequest request, {
+    String? counterpartyName,
+    String? pocketName,
+  }) async {
+    final account = await ensureReady();
+    final targets = await _personalTargets();
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: request.call.kind,
+        params: request.params,
+      ),
+    );
+    final checked = checkedPersonalCall(
+      prepared: prepared,
+      request: request,
+      account: account.address,
+      personal: targets,
+    );
+    return PreparedMoneyCall(
+      callId: prepared.callId,
+      digest: checked.digest,
+      kind: request.call.kind,
+      call: checked.call,
+      review: MoneyReview.personal(
+        request,
+        checked.call,
+        asset: await _asset(),
+        counterpartyName: counterpartyName,
+        pocketName: pocketName,
+      ),
+    );
+  }
+
+  /// Adds [amount] to the person's own [pocket] (32 zero bytes: free
+  /// savings).
+  Future<PreparedMoneyCall> prepareDeposit({
+    required Uint8List pocket,
+    required BigInt amount,
+    String? pocketName,
+  }) async {
+    final account = await ensureReady();
+    final targets = await _personalTargets();
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
+        params: settlement.AccountCallParams(
+          pocket: pocket.every((b) => b == 0) ? null : pocket,
+          amount: amount.toString(),
+        ),
+      ),
+    );
+    final digest = checkedVaultDeposit(
+      prepared: prepared,
+      account: account.address,
+      pocket: pocket,
+      amount: amount,
+      personal: targets,
+    );
+    return PreparedMoneyCall(
+      callId: prepared.callId,
+      digest: digest,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
+      review: MoneyReview.deposit(
+        amount: amount,
+        pocketName:
+            pocketName ??
+            (pocket.every((b) => b == 0) ? 'Free savings' : 'Savings goal'),
+        asset: await _asset(),
+      ),
+    );
+  }
+
+  /// Turns [loan]'s automatic payment [on] or off. Only an active loan the
+  /// person borrowed gets one.
+  Future<PreparedMoneyCall> prepareStandingOrder(
+    finance.Loan loan, {
+    required bool on,
+  }) async {
+    final account = await ensureReady();
+    final kind = on
+        ? settlement.AccountCallKind.ACCOUNT_CALL_KIND_GRANT_STANDING
+        : settlement.AccountCallKind.ACCOUNT_CALL_KIND_REVOKE_STANDING;
+    final params = on ? standingOrderParams(loan) : standingRevokeParams(loan);
+    final targets = on ? await _personalTargets() : null;
+    final policyAsset = (await status()).state?.policy.asset ?? const <int>[];
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: kind,
+        params: params,
+      ),
+    );
+    final asset = await _asset();
+    final Uint8List digest;
+    var perInstalment = BigInt.zero;
+    if (on) {
+      final checked = checkedStandingGrant(
+        prepared: prepared,
+        account: account.address,
+        loan: loan,
+        personal: targets,
+        policyAsset: policyAsset,
+      );
+      digest = checked.digest;
+      perInstalment = checked.grant.maxPerPeriod;
+    } else {
+      digest = checkedStandingRevoke(
+        prepared: prepared,
+        account: account.address,
+        loan: loan,
+        policyAsset: policyAsset,
+      );
+    }
+    return PreparedMoneyCall(
+      callId: prepared.callId,
+      digest: digest,
+      kind: kind,
+      review: MoneyReview.standingOrder(
+        loan: loan,
+        on: on,
+        asset: asset,
+        perInstalment: perInstalment,
+      ),
+    );
+  }
+
+  /// Sends [amount] from the wallet to another Stawi account [to] (picked
+  /// from the person's contacts; there is no free-text address).
+  Future<PreparedMoneyCall> prepareTransferOut({
+    required Uint8List to,
+    required BigInt amount,
+    String? name,
+  }) async {
+    final account = await ensureReady();
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
+        params: settlement.AccountCallParams(
+          amount: amount.toString(),
+          destination: finance.ValueLocation(
+            kind: finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
+            address: to,
+          ),
+        ),
+      ),
+    );
+    final digest = checkedTransferOut(
+      prepared: prepared,
+      account: account.address,
+      to: to,
+      amount: amount,
+    );
+    return PreparedMoneyCall(
+      callId: prepared.callId,
+      digest: digest,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
+      review: MoneyReview.transferOut(
+        to: to,
+        amount: amount,
+        asset: await _asset(),
+        name: name,
+      ),
+    );
+  }
+
+  /// Pays [amount] (integer minor units) from the person's account into the
+  /// room whose custody is [custody]; the room's rules apply it.
+  Future<PreparedMoneyCall> prepareContribution({
+    required Uint8List custody,
+    required String amount,
+    String roomName = 'this room',
+    String? note,
+  }) async {
+    if (custody.length != 20) {
+      throw const FormatException('A room custody is a 20-byte address');
+    }
+    if (!_positiveDecimal.hasMatch(amount)) {
+      throw const FormatException('Enter a whole amount greater than zero');
+    }
+    final account = await ensureReady();
+    final prepared = await _accounts.prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+        params: settlement.AccountCallParams(room: custody, amount: amount),
+      ),
+    );
+    final (:digest, amount: checkedAmount) = checkedContribution(
+      prepared: prepared,
+      account: account.address,
+      custody: custody,
+      amount: amount,
+    );
+    return PreparedMoneyCall(
+      callId: prepared.callId,
+      digest: digest,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+      review: MoneyReview.contribution(
+        amount: BigInt.parse(checkedAmount.toString()),
+        roomName: roomName,
+        asset: await _asset(),
+        note: note,
+      ),
+    );
+  }
+
   /// Prepares a loan or withdrawal call on the member's account and checks
   /// it on the device. Nothing is signed yet: the member sees
   /// [PreparedEngineCall.call] (a payoff's quoted ceiling, for one) first.
@@ -306,12 +551,10 @@ class StawiAccountService {
   Future<PreparedEngineCall> prepareEngineCall(
     AccountEngineRequest request, {
     required RoomEngineTargets? engines,
+    String? feeLine,
   }) async {
     if (engines == null) throw const SigningRefused(enginesUnknownReason);
-    final account = (await _identity()).primary;
-    if (account == null) {
-      throw const StawiUnavailable('Your profile has no Stawi account yet');
-    }
+    final account = await ensureReady();
     final prepared = await _accounts.prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
@@ -339,24 +582,42 @@ class StawiAccountService {
       digest: checked.digest,
       call: checked.call,
       request: request,
+      review: MoneyReview.engine(request, checked.call, feeLine: feeLine),
     );
   }
 
-  /// Signs a prepared, checked engine call on this device and submits it.
-  Future<settlement.AccountCall> submitEngineCall(
-    PreparedEngineCall prepared,
-  ) async {
+  /// Signs a prepared, checked call on this device and submits it. The
+  /// device lock shows the review's plain title.
+  Future<settlement.AccountCall> submit(PreparedMoneyCall prepared) async {
     final me = await _identity();
-    final key = await _keys.unlock(
-      me.profileId,
-      reason: prepared.request.summary,
-    );
+    final key = await _keys.unlock(me.profileId, reason: prepared.review.title);
     return (await _accounts.submitAccountCall(
       settlement.SubmitAccountCallRequest(
         callId: prepared.callId,
         authorization: key.sign(prepared.digest),
       ),
     )).call;
+  }
+
+  /// Signs a prepared engine call: [submit].
+  Future<settlement.AccountCall> submitEngineCall(
+    PreparedEngineCall prepared,
+  ) => submit(prepared);
+
+  /// Whether [loan]'s standing order (automatic payment) is on, read off the
+  /// account's authorizations.
+  Future<bool> standingOrderOn(finance.Loan loan) async {
+    final ref = LoanRef.of(loan);
+    final id = standingOrderId(ref.loanBook, ref.pool, ref.loanId);
+    final state = (await status()).state;
+    return state?.authorizationIds.any((a) => bytesEqual(a, id)) ?? false;
+  }
+
+  /// The wallet: the account's balance of the deployment's asset in minor
+  /// units. Null when the chain could not be read: unknown, never zero.
+  Future<BigInt?> walletBalance() async {
+    final raw = (await status()).state?.balance ?? '';
+    return raw.isEmpty ? null : BigInt.tryParse(raw);
   }
 
   /// Follows a submitted account call until it is final, failed or expired,
@@ -399,22 +660,41 @@ class StawiAccountService {
   }
 }
 
-/// An engine call settlement prepared and the device checked, awaiting the
-/// member's go-ahead.
-class PreparedEngineCall {
-  const PreparedEngineCall({
+/// A call settlement prepared and the device checked, awaiting the person's
+/// go-ahead: what they see ([review]) and the digest the device signs.
+class PreparedMoneyCall {
+  const PreparedMoneyCall({
     required this.callId,
     required this.digest,
-    required this.call,
-    required this.request,
+    required this.review,
+    required this.kind,
+    this.call,
   });
 
   final String callId;
   final Uint8List digest;
+  final MoneyReview review;
+  final settlement.AccountCallKind kind;
 
-  /// What the account will do, decoded from the prepared calldata.
-  final EngineCall call;
+  /// What the account will do, decoded from the prepared calldata; null for a
+  /// call that is not an engine call.
+  final EngineCall? call;
+}
+
+/// An engine call on a room, prepared and checked.
+class PreparedEngineCall extends PreparedMoneyCall {
+  PreparedEngineCall({
+    required super.callId,
+    required super.digest,
+    required EngineCall call,
+    required this.request,
+    required super.review,
+  }) : super(kind: request.call.kind, call: call);
+
   final AccountEngineRequest request;
+
+  @override
+  EngineCall get call => super.call!;
 }
 
 /// Settlement's genesis states for a deployment already on its way.
@@ -467,6 +747,7 @@ final stawiAccountServiceProvider = Provider<StawiAccountService>((ref) {
     keys: ref.watch(deviceKeyStoreProvider),
     proofs: ref.watch(genesisSessionProofsProvider),
     identity: () => ref.read(stawiIdentityProvider.future),
+    targets: () => ref.read(stawiVaultServiceProvider).targets(),
   );
 });
 
@@ -493,3 +774,8 @@ final stawiAccountReadyProvider = FutureProvider.autoDispose<StawiAccountRef>((
       .watch(stawiAccountServiceProvider)
       .ensureReady(cancelled: () => disposed);
 });
+
+/// The wallet's balance; null when unknown (shown as "—", never 0).
+final stawiWalletBalanceProvider = FutureProvider.autoDispose<BigInt?>(
+  (ref) => ref.watch(stawiAccountServiceProvider).walletBalance(),
+);

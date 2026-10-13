@@ -40,7 +40,7 @@ void main() {
   late RecordingActSender sender;
   late MemoryDeviceKeyVault ballots;
 
-  setUp(() {
+  setUp(() async {
     transport = FakeConnectTransport()
       ..on(
         settlement.RoomService.prepareRoomCall,
@@ -69,6 +69,10 @@ void main() {
           call: settlement.RoomCall(callId: req.callId),
         ),
       );
+    await serveDeployedAccount(
+      transport,
+      GoEngineCallVector.load().first.devicePrivateKey,
+    );
     sender = RecordingActSender();
     ballots = MemoryDeviceKeyVault();
   });

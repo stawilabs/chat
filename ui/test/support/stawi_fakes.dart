@@ -170,6 +170,40 @@ MemoryDeviceKeyVault vaultWith(String profileId, String privateKeyHex) {
   return vault;
 }
 
+/// The EVM address of the device key [privateKeyHex].
+Future<Uint8List> deviceAddressOf(String privateKeyHex) async =>
+    (await DeviceKeyStore(
+      vaultWith('p', privateKeyHex),
+      gate: SigningGate.open,
+    ).load('p'))!.address;
+
+/// Answers GetAccount with a deployed account whose active key is the device
+/// key [privateKeyHex] (what ensureReady looks for),
+/// with the given wallet [balance] ("" unknown), [policyAsset] and
+/// [authorizationIds].
+Future<void> serveDeployedAccount(
+  FakeConnectTransport transport,
+  String privateKeyHex, {
+  String balance = '',
+  List<int>? policyAsset,
+  List<List<int>> authorizationIds = const [],
+}) async {
+  final device = await deviceAddressOf(privateKeyHex);
+  transport.on(
+    settlement.AccountService.getAccount,
+    (req) => settlement.GetAccountResponse(
+      account: settlement.AccountState(
+        address: req.address,
+        deployed: true,
+        keys: [settlement.AccountKey(key: device, active: true)],
+        balance: balance,
+        policy: settlement.AccountPolicy(asset: policyAsset),
+        authorizationIds: authorizationIds,
+      ),
+    ),
+  );
+}
+
 /// A signed-in member owning [account].
 StawiIdentity identityWith(String profileId, Uint8List account) =>
     StawiIdentity(

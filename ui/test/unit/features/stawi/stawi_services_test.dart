@@ -10,6 +10,8 @@ import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/governance_requests.dart';
+import 'package:stawi/features/stawi/domain/loan_terms.dart';
+import 'package:stawi/features/stawi/domain/personal_calls.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -445,6 +447,318 @@ void main() {
         transport.requestsTo(settlement.AccountService.submitAccountCall),
         isEmpty,
       );
+    });
+  });
+
+  group('personal money calls', () {
+    final personal = {
+      for (final v in GoEngineCallVector.load().where((v) => v.personal))
+        v.name: v,
+    };
+    final pay = personal['pay']!;
+    final vault = hexToBytes('0x909192939495969798999a9b9c9d9e9fa0a1a2a3');
+    final book = hexToBytes('0x101112131415161718191a1b1c1d1e1f20212223');
+    final pool = hexToBytes('0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3');
+    final targets = PersonalTargets.fromResponse(
+      vault: vault,
+      loanBooks: [book],
+    );
+    late RecordingSigningGate payGate;
+    late FakeConnectTransport t;
+
+    finance.Loan payable() => finance.Loan(
+      pool: pool,
+      lender: pool,
+      borrowerAccount: pay.account,
+      loanBook: book,
+      onchainLoanId: Int64(1),
+      requested: finance.Money(amount: '300000000'),
+      kind: finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+      state: finance.LoanState.LOAN_STATE_FUNDED,
+    );
+
+    StawiAccountService service({Future<PersonalTargets> Function()? read}) =>
+        StawiAccountService(
+          accounts: settlement.AccountServiceClient(t),
+          keys: DeviceKeyStore(
+            vaultWith('p1', pay.devicePrivateKey),
+            gate: payGate,
+          ),
+          proofs: refusingSessionProofs,
+          identity: () async => identityWith('p1', pay.account),
+          targets: read ?? () async => targets,
+        );
+
+    setUp(() async {
+      payGate = RecordingSigningGate();
+      t = FakeConnectTransport()
+        ..on(
+          settlement.AccountService.prepareAccountCall,
+          (req) => pay.prepared(req.kind),
+        )
+        ..on(
+          settlement.AccountService.getAsset,
+          (req) => settlement.GetAssetResponse(asset: usdcInfo),
+        )
+        ..on(
+          settlement.AccountService.submitAccountCall,
+          (req) => settlement.SubmitAccountCallResponse(
+            call: settlement.AccountCall(callId: req.callId),
+          ),
+        );
+      await serveDeployedAccount(t, pay.devicePrivateKey);
+    });
+
+    test(
+      'pays an instalment: checked, reviewed, signed as the vector',
+      () async {
+        final s = service();
+        final prepared = await s.preparePersonal(
+          PersonalRequest.pay(loan: payable(), amount: BigInt.from(52000000)),
+        );
+        expect(prepared.review.title, 'Pay an instalment');
+        expect(prepared.review.lines, contains(('Amount', '52.00 USDC')));
+        expect(prepared.digest, pay.digest);
+        expect(payGate.reasons, isEmpty, reason: 'preparing signs nothing');
+
+        final sent = t
+            .requestsTo(settlement.AccountService.prepareAccountCall)
+            .single;
+        expect(
+          sent.kind,
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_PAY,
+        );
+        expect(sent.params.loanBook, book);
+
+        await s.submit(prepared);
+        // The device lock showed the plain title, never a kind name.
+        expect(payGate.reasons, ['Pay an instalment']);
+        final submit = t
+            .requestsTo(settlement.AccountService.submitAccountCall)
+            .single;
+        expect(bytesToHex0x(submit.authorization), pay.signature);
+      },
+    );
+
+    test('an offer is titled with the person and the amount', () async {
+      final offer = personal['offer']!;
+      t.on(
+        settlement.AccountService.prepareAccountCall,
+        (req) => offer.prepared(req.kind),
+      );
+      final terms = offer.json['terms'] as Map<String, dynamic>;
+      final s = service();
+      final prepared = await s.preparePersonal(
+        PersonalRequest.offer(
+          borrower: pool,
+          pocket: Uint8List(32),
+          amount: BigInt.from(300000000),
+          terms: LoanTerms.fromSdk(
+            PersonalTerms(
+              n: terms['n'] as int,
+              everyDays: terms['every_days'] as int,
+              method: terms['method'] as int,
+              rateBps: terms['rate_bps'] as int,
+              lateMethod: terms['late_method'] as int,
+              lateBps: terms['late_bps'] as int,
+              lateFlat: BigInt.parse(terms['late_flat'] as String),
+              defaultAfterDays: terms['default_after_days'] as int,
+            ),
+          ),
+          expiresAt: DateTime.fromMillisecondsSinceEpoch(
+            1760000000 * 1000,
+            isUtc: true,
+          ),
+        ),
+        counterpartyName: 'Amina',
+      );
+      expect(prepared.review.title, 'Lend 300.00 USDC to Amina');
+      await s.submit(prepared);
+      expect(payGate.reasons, ['Lend 300.00 USDC to Amina']);
+    });
+
+    test(
+      'an account that is not ready is brought up before anything',
+      () async {
+        t.on(
+          settlement.AccountService.getAccount,
+          (req) => settlement.GetAccountResponse(
+            account: settlement.AccountState(address: req.address),
+          ),
+        );
+        t.on(
+          settlement.AccountService.prepareDeployAccount,
+          (req) => throw StateError('deploy attempted'),
+        );
+        await expectLater(
+          service().preparePersonal(
+            PersonalRequest.pay(loan: payable(), amount: BigInt.from(52000000)),
+          ),
+          throwsA(anything),
+        );
+        expect(
+          t.requestsTo(settlement.AccountService.prepareAccountCall),
+          isEmpty,
+        );
+      },
+    );
+
+    test('a refused check submits nothing', () async {
+      final other = personal['personal_cancel']!;
+      t.on(
+        settlement.AccountService.prepareAccountCall,
+        (req) => other.prepared(req.kind),
+      );
+      await expectLater(
+        service().preparePersonal(
+          PersonalRequest.pay(loan: payable(), amount: BigInt.from(52000000)),
+        ),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(
+        t.requestsTo(settlement.AccountService.submitAccountCall),
+        isEmpty,
+      );
+    });
+
+    test('unreadable personal targets refuse the call', () async {
+      await expectLater(
+        service(
+          read: () async => throw StateError('finance down'),
+        ).preparePersonal(
+          PersonalRequest.pay(loan: payable(), amount: BigInt.from(52000000)),
+        ),
+        throwsA(isA<SigningRefused>()),
+      );
+    });
+
+    test('a refused device lock submits nothing', () async {
+      final s = service();
+      final prepared = await s.preparePersonal(
+        PersonalRequest.pay(loan: payable(), amount: BigInt.from(52000000)),
+      );
+      payGate.refuse = true;
+      await expectLater(s.submit(prepared), throwsA(isA<SigningRefused>()));
+      expect(
+        t.requestsTo(settlement.AccountService.submitAccountCall),
+        isEmpty,
+      );
+    });
+
+    test(
+      'the wallet balance is the account\'s, and unknown when empty',
+      () async {
+        await serveDeployedAccount(
+          t,
+          pay.devicePrivateKey,
+          balance: '12500000',
+        );
+        expect(await service().walletBalance(), BigInt.from(12500000));
+        await serveDeployedAccount(t, pay.devicePrivateKey);
+        expect(await service().walletBalance(), isNull);
+      },
+    );
+
+    test('a standing order is on when the account holds its id', () async {
+      final loan = payable();
+      final ref = LoanRef.of(loan);
+      final id = standingOrderId(ref.loanBook, ref.pool, ref.loanId);
+      await serveDeployedAccount(
+        t,
+        pay.devicePrivateKey,
+        authorizationIds: [id],
+      );
+      expect(await service().standingOrderOn(loan), isTrue);
+      await serveDeployedAccount(
+        t,
+        pay.devicePrivateKey,
+        authorizationIds: [Uint8List(32)],
+      );
+      expect(await service().standingOrderOn(loan), isFalse);
+    });
+
+    test('a deposit is checked against the pocket and signed', () async {
+      final d = GoVaultVectors.load().deposits.first;
+      t.on(settlement.AccountService.prepareAccountCall, (req) => d.prepared);
+      final s = StawiAccountService(
+        accounts: settlement.AccountServiceClient(t),
+        keys: DeviceKeyStore(
+          vaultWith('p1', pay.devicePrivateKey),
+          gate: payGate,
+        ),
+        proofs: refusingSessionProofs,
+        identity: () async => identityWith('p1', d.account),
+        targets: () async => d.targets,
+      );
+      await serveDeployedAccount(t, pay.devicePrivateKey);
+      final prepared = await s.prepareDeposit(
+        pocket: d.pocket,
+        amount: d.amount,
+      );
+      expect(prepared.digest, d.digest);
+      expect(prepared.review.title, 'Add 50.00 USDC to Free savings');
+      // Another pocket than the one asked for is refused.
+      await expectLater(
+        s.prepareDeposit(pocket: Uint8List(32)..[0] = 7, amount: d.amount),
+        throwsA(isA<SigningRefused>()),
+      );
+    });
+
+    test('a standing order is granted only after the SDK check', () async {
+      final g = GoVaultVectors.load().standingGrants.first;
+      t.on(settlement.AccountService.prepareAccountCall, (req) => g.prepared);
+      await serveDeployedAccount(t, pay.devicePrivateKey, policyAsset: g.asset);
+      final s = StawiAccountService(
+        accounts: settlement.AccountServiceClient(t),
+        keys: DeviceKeyStore(
+          vaultWith('p1', pay.devicePrivateKey),
+          gate: payGate,
+        ),
+        proofs: refusingSessionProofs,
+        identity: () async => identityWith('p1', g.account),
+        targets: () async => g.targets,
+      );
+      final prepared = await s.prepareStandingOrder(g.loan, on: true);
+      expect(prepared.digest, g.digest);
+      expect(prepared.review.title, 'Pay automatically');
+      final sent = t
+          .requestsTo(settlement.AccountService.prepareAccountCall)
+          .single;
+      expect(
+        sent.kind,
+        settlement.AccountCallKind.ACCOUNT_CALL_KIND_GRANT_STANDING,
+      );
+      // A loan that is not active gets none.
+      await expectLater(
+        s.prepareStandingOrder(
+          g.loan..state = finance.LoanState.LOAN_STATE_PAID,
+          on: true,
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('a standing order is revoked by its loan\'s id', () async {
+      final r = GoVaultVectors.load().standingRevokes.first;
+      t.on(settlement.AccountService.prepareAccountCall, (req) => r.prepared());
+      await serveDeployedAccount(t, pay.devicePrivateKey, policyAsset: r.asset);
+      final s = StawiAccountService(
+        accounts: settlement.AccountServiceClient(t),
+        keys: DeviceKeyStore(
+          vaultWith('p1', pay.devicePrivateKey),
+          gate: payGate,
+        ),
+        proofs: refusingSessionProofs,
+        identity: () async => identityWith('p1', r.account),
+        targets: () async => targets,
+      );
+      final prepared = await s.prepareStandingOrder(r.loan, on: false);
+      expect(prepared.digest, r.digest);
+      expect(prepared.review.title, 'Stop paying automatically');
+      final sent = t
+          .requestsTo(settlement.AccountService.prepareAccountCall)
+          .single;
+      expect(sent.params.authorizationId, r.authorizationId);
     });
   });
 }

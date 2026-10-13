@@ -147,12 +147,13 @@ void main() {
     Future<PreparedEngineCall> prepare(
       GoEngineCallVector v,
       RoomEngineTargets? engines,
-    ) {
+    ) async {
       transport = FakeConnectTransport()
         ..on(
           settlement.AccountService.prepareAccountCall,
           (req) => v.prepared(req.kind),
         );
+      await serveDeployedAccount(transport, v.devicePrivateKey);
       return StawiAccountService(
         accounts: settlement.AccountServiceClient(transport),
         keys: DeviceKeyStore(

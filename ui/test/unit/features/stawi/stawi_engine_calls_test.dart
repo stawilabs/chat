@@ -74,6 +74,7 @@ void main() {
     test('every action is checked, shown and signed byte for byte', () async {
       for (final v in vectors) {
         transport = FakeConnectTransport();
+        await serveDeployedAccount(transport, v.devicePrivateKey);
         final request = requestFor(v);
         transport
           ..on(
@@ -113,6 +114,7 @@ void main() {
 
     test('a refused device lock submits no engine call', () async {
       final v = vectors.first;
+      await serveDeployedAccount(transport, v.devicePrivateKey);
       transport
         ..on(
           settlement.AccountService.prepareAccountCall,
@@ -147,6 +149,7 @@ void main() {
 
     test('a payoff without a ceiling shows the quoted one', () async {
       final v = vectors.firstWhere((v) => v.name == 'loan_payoff');
+      await serveDeployedAccount(transport, v.devicePrivateKey);
       transport.on(
         settlement.AccountService.prepareAccountCall,
         (req) => v.prepared(req.kind),
@@ -190,6 +193,7 @@ void main() {
             settlement.AccountService.prepareAccountCall,
             (req) => pledge.prepared(req.kind),
           );
+        await serveDeployedAccount(transport, pledge.devicePrivateKey);
         await expectLater(
           service(
             pledge,
@@ -230,6 +234,7 @@ void main() {
 
     test('refuses an intent that does not bind the calldata', () async {
       final v = vectors.firstWhere((v) => v.name == 'withdraw_credit');
+      await serveDeployedAccount(transport, v.devicePrivateKey);
       transport.on(
         settlement.AccountService.prepareAccountCall,
         (req) =>
@@ -245,6 +250,7 @@ void main() {
     test('refuses a digest that is not the intent\'s', () async {
       final v = vectors.firstWhere((v) => v.name == 'withdraw_equity');
       final bad = Uint8List.fromList(v.digest)..[0] ^= 1;
+      await serveDeployedAccount(transport, v.devicePrivateKey);
       transport.on(
         settlement.AccountService.prepareAccountCall,
         (req) => v.prepared(req.kind)
