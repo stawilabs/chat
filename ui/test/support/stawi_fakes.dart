@@ -273,7 +273,73 @@ class GoVaultVectors {
   List<GoStandingGrantVector> get standingGrants => [
     for (final g in _section('standing_grants')) GoStandingGrantVector(g),
   ];
+  List<GoStandingRevokeVector> get standingRevokes => [
+    for (final r in _section('standing_revokes')) GoStandingRevokeVector(r),
+  ];
   List<Map<String, dynamic>> get standingOrders => _section('standing_orders');
+}
+
+/// One Go-produced REVOKE_STANDING of a personal loan's standing order.
+class GoStandingRevokeVector {
+  GoStandingRevokeVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get book => hexToBytes(json['book'] as String);
+  Uint8List get pool => hexToBytes(json['pool'] as String);
+  BigInt get loanId => BigInt.parse(json['loan_id'] as String);
+  Uint8List get asset => hexToBytes(json['asset'] as String);
+  Uint8List get authorizationId =>
+      hexToBytes(json['authorization_id'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+
+  /// The active loan whose order is revoked, as its borrower sees it.
+  finance.Loan get loan => finance.Loan(
+    loanBook: book,
+    pool: pool,
+    lender: pool,
+    borrowerAccount: account,
+    onchainLoanId: _u64(loanId.toString()),
+    kind: bytesEqual(pool, account)
+        ? finance.LoanKind.LOAN_KIND_SELF
+        : finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+    state: finance.LoanState.LOAN_STATE_FUNDED,
+  );
+
+  /// What settlement's PrepareAccountCall returns for this revoke; [opId]
+  /// replaces the op's authorization id, and [intentAuthorizationId] the
+  /// intent's (its digest recomputed, so only the revoke check can refuse).
+  settlement.PrepareAccountCallResponse prepared({
+    List<int>? opId,
+    List<int>? intentAuthorizationId,
+  }) {
+    final i = intent;
+    var d = digest;
+    if (intentAuthorizationId != null) {
+      i.authorizationId = intentAuthorizationId;
+      d = sdkIntentOf(i).digest();
+    }
+    return settlement.PrepareAccountCallResponse(
+      callId: 'acct00000000000000r1',
+      intentDigest: d,
+      financialIntent: i,
+      call: settlement.AccountCall(
+        callId: 'acct00000000000000r1',
+        address: account,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_REVOKE_STANDING,
+        intentDigest: d,
+      ),
+      managementOp: finance.AccountManagementOp(
+        kind: opRevokeStanding,
+        authorizationId: opId ?? authorizationId,
+      ),
+    );
+  }
 }
 
 /// One Go-produced deposit into a vault pocket.

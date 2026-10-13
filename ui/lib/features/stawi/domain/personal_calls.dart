@@ -357,6 +357,12 @@ final class PersonalRequest {
   }) {
     final ref = _ref(loan);
     if (ceiling != null) _amount(ceiling);
+    // Without a ceiling settlement quotes one; it may be no more than the
+    // most the loan could cost (LoanBook.maxRepayable of its amount and
+    // terms), which the check holds the quote to.
+    final bound = ceiling != null
+        ? null
+        : _maxRepay(_money(loan.requested), LoanTerms(loan.terms).sdk);
     return PersonalRequest._(
       PersonalCall.payoff,
       params: settlement.AccountCallParams(
@@ -372,6 +378,7 @@ final class PersonalRequest {
         amount: ceiling ?? BigInt.zero,
       ),
       loan: loan,
+      maxRepay: bound,
     );
   }
 
@@ -409,8 +416,11 @@ final class PersonalRequest {
     if (bytes.length > maxGoalNameBytes) {
       throw const FormatException('A goal name is at most 80 bytes');
     }
-    if (target.isNegative || target > sdk.maxUint128) {
-      throw const FormatException('Enter a target amount');
+    if (target <= BigInt.zero) {
+      throw const FormatException('Enter a target greater than zero');
+    }
+    if (target > sdk.maxUint128) {
+      throw const FormatException('That amount is too large');
     }
     final unlock = _seconds(unlockAt);
     return PersonalRequest._(
@@ -492,7 +502,8 @@ final class PersonalRequest {
   final Uint8List? loanBook;
 
   /// ask and acceptOffer: the SDK's [sdk.maxRepayable] of the loan, what the
-  /// review shows as "At most you will repay".
+  /// review shows as "At most you will repay". A payoff without a ceiling:
+  /// the same bound, which settlement's quoted ceiling may not exceed.
   final BigInt? maxRepay;
 }
 

@@ -310,6 +310,7 @@ const String personalTargetsUnknownReason =
   required PersonalRequest request,
   required Uint8List account,
   required PersonalTargets? personal,
+  Iterable<List<int>> roomCustodies = const [],
 }) {
   if (personal == null) {
     throw const SigningRefused(personalTargetsUnknownReason);
@@ -348,12 +349,23 @@ const String personalTargetsUnknownReason =
       personal: personal,
       offer: request.offer,
       loanBook: request.loanBook,
+      roomCustodies: roomCustodies,
     );
+    final bound = request.maxRepay;
+    if (call == PersonalCall.payoff &&
+        request.expected.amount == BigInt.zero &&
+        (bound == null || checked.amount > bound)) {
+      throw const SigningRefused(payoffQuoteTooHigh);
+    }
     return (digest: digest, call: checked);
   } on EngineCallException catch (e) {
     throw SigningRefused(engineRefusal(e.error));
   }
 }
+
+/// Why a quoted payoff above the most the loan could cost is refused.
+const String payoffQuoteTooHigh =
+    'the quoted payoff is more than this loan could ever cost';
 
 /// The person must be the party the call is theirs to make as: the borrower
 /// accepts an offer, pays and pays off; the lender lends what was asked; and
@@ -518,15 +530,14 @@ StandingGrant _standingGrantOf(finance.AccountStandingParams a) {
   );
 }
 
-/// The REVOKE_STANDING management op kind (AccountPolicyLib.OpKind).
-const int opRevokeStanding = 11;
-
 /// The digest to sign for stopping [loan]'s standing order: a REVOKE_STANDING
-/// of exactly the loan's standing order id, whose intent binds that op.
+/// whose op names exactly the loan's standing order id and whose intent the
+/// SDK (verifyStandingOrderRevoke) finds binds that op, in [policyAsset].
 Uint8List checkedStandingRevoke({
   required settlement.PrepareAccountCallResponse prepared,
   required Uint8List account,
   required finance.Loan loan,
+  required List<int> policyAsset,
 }) {
   const wrong = SigningRefused(
     'this would stop something other than your loan\'s automatic payment',
@@ -537,12 +548,24 @@ Uint8List checkedStandingRevoke({
     account: account,
   );
   final intent = _intentOf(prepared, digest, account);
-  if (loan.loanBook.length != 20 || loan.pool.length != 20) throw wrong;
-  final id = standingOrderId(
-    loan.loanBook,
-    loan.pool,
-    _u64(loan.onchainLoanId),
-  );
+  if (loan.loanBook.length != 20 ||
+      loan.pool.length != 20 ||
+      policyAsset.length != 20 ||
+      policyAsset.every((b) => b == 0)) {
+    throw wrong;
+  }
+  final Uint8List id;
+  try {
+    id = verifyStandingOrderRevoke(
+      intent,
+      book: loan.loanBook,
+      pool: loan.pool,
+      loanId: _u64(loan.onchainLoanId),
+      policyAsset: policyAsset,
+    );
+  } on VaultException {
+    throw wrong;
+  }
   final op = prepared.managementOp;
   if (!prepared.hasManagementOp() ||
       op.kind != opRevokeStanding ||
@@ -552,73 +575,7 @@ Uint8List checkedStandingRevoke({
       !bytesEqual(op.authorizationId, id)) {
     throw wrong;
   }
-  if (intent.type != IntentType.authorizationRevoke ||
-      intent.mode != IntentMode.directSignature ||
-      intent.room.isNotEmpty ||
-      intent.amount != BigInt.zero ||
-      !bytesEqual(
-        intent.authorizationId,
-        standingOpHash(kind: opRevokeStanding, authorizationId: id),
-      )) {
-    throw wrong;
-  }
   return digest;
-}
-
-/// keccak256(abi.encode(ManagementOp)) of a standing op (Go
-/// stawi.ManagementOpHash): [kind], no key, [authorizationId] (a
-/// REVOKE_STANDING's), [grant] (a GRANT_STANDING's auth; zero otherwise) and
-/// the zero policy. For a grant it equals the SDK's [StandingGrant.opHash];
-/// the SDK has no revoke counterpart, so the revoke check uses this.
-Uint8List standingOpHash({
-  required int kind,
-  List<int>? authorizationId,
-  StandingGrant? grant,
-}) {
-  Uint8List word(BigInt v) => bigIntToBytes(v, 32);
-  Uint8List left(List<int> b) => Uint8List(32)..setRange(0, b.length, b);
-  Uint8List right(List<int> b) => Uint8List(32)..setRange(32 - b.length, 32, b);
-  final zero = Uint8List(32);
-  final id = authorizationId ?? zero;
-  if (id.length != 32 || kind < 0 || kind > 255) {
-    throw const SigningRefused('the management op is malformed');
-  }
-  const opHead = 13 * 32;
-  const policyHead = 8 * 32;
-  final out = BytesBuilder(copy: false)
-    ..add(word(BigInt.from(32)))
-    ..add(word(BigInt.from(kind)))
-    ..add(zero) // key
-    ..add(left(id));
-  if (grant == null) {
-    for (var i = 0; i < 9; i++) {
-      out.add(zero);
-    }
-  } else {
-    out
-      ..add(left(grant.authorizationId))
-      ..add(right(grant.target))
-      ..add(left(grant.selector))
-      ..add(right(grant.asset))
-      ..add(word(grant.maxPerPeriod))
-      ..add(word(grant.periodSeconds))
-      ..add(word(grant.epochStart))
-      ..add(word(grant.validAfter))
-      ..add(word(grant.validUntil));
-  }
-  out
-    ..add(word(BigInt.from(opHead)))
-    ..add(zero) // policy asset
-    ..add(zero) // periodLimit
-    ..add(zero) // periodSeconds
-    ..add(zero) // epochStart
-    ..add(word(BigInt.from(policyHead)))
-    ..add(word(BigInt.from(policyHead + 32)))
-    ..add(zero) // guardianThreshold
-    ..add(zero) // allowlistMode
-    ..add(zero) // allowlist: length 0
-    ..add(zero); // guardians: length 0
-  return keccak256(out.toBytes());
 }
 
 /// The digest to sign for sending [amount] of the wallet's asset to another

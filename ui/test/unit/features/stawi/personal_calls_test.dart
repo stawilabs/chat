@@ -105,7 +105,13 @@ void main() {
     'pay': () =>
         PersonalRequest.pay(loan: offered(), amount: BigInt.from(52000000)),
     'personal_cancel': () => PersonalRequest.cancel(loan: offered(loanId: 2)),
-    'personal_payoff': () => PersonalRequest.payoff(loan: offered()),
+    // The vector's ceiling is the largest uint256: one the person set.
+    'personal_payoff': () => PersonalRequest.payoff(
+      loan: offered(),
+      ceiling: BigInt.parse(
+        vectors['personal_payoff']!.json['amount'] as String,
+      ),
+    ),
     'vault_withdraw': () =>
         PersonalRequest.withdraw(pocket: free, amount: BigInt.from(100000000)),
     'vault_create_goal': () => PersonalRequest.createGoal(
@@ -182,6 +188,59 @@ void main() {
       final r = PersonalRequest.payoff(loan: offered());
       expect(r.params.amount, isEmpty);
       expect(r.expected.amount, BigInt.zero);
+      expect(r.maxRepay, BigInt.from(637500000));
+    });
+
+    /// The payoff vector's call with settlement's quote [q] as the ceiling,
+    /// its intent and digest made to match.
+    settlement.PrepareAccountCallResponse quoted(BigInt q) {
+      final v = vectors['personal_payoff']!;
+      final calldata = EngineCall(
+        action: EngineAction.personalPayoff,
+        pool: peer,
+        loanId: BigInt.one,
+        amount: q,
+      ).calldata;
+      final intent = v.intent
+        ..amount = q.toString()
+        ..authorizationId = engineCallHash(v.target, calldata);
+      final digest = sdkIntentOf(intent).digest();
+      return v.prepared(PersonalCall.payoff.kind)
+        ..intentDigest = digest
+        ..financialIntent = intent
+        ..call.intentDigest = digest
+        ..call.engineCalldata = calldata;
+    }
+
+    test('a quoted payoff up to the most the loan could cost is shown', () {
+      final r = PersonalRequest.payoff(loan: offered());
+      for (final q in [BigInt.from(260000000), r.maxRepay!]) {
+        final checked = checkedPersonalCall(
+          prepared: quoted(q),
+          request: r,
+          account: me,
+          personal: targets,
+        );
+        expect(checked.call.amount, q);
+      }
+    });
+
+    test('a quoted payoff above the most the loan could cost is refused', () {
+      final r = PersonalRequest.payoff(loan: offered());
+      for (final q in [
+        r.maxRepay! + BigInt.one,
+        BigInt.parse(vectors['personal_payoff']!.json['amount'] as String),
+      ]) {
+        expect(
+          () => checkedPersonalCall(
+            prepared: quoted(q),
+            request: r,
+            account: me,
+            personal: targets,
+          ),
+          refusedWith(payoffQuoteTooHigh),
+        );
+      }
     });
   });
 
@@ -355,6 +414,88 @@ void main() {
           pocket: goalPocket,
         ),
       ),
+      'lending to an ask of another borrower': (
+        'accept_ask',
+        () => PersonalRequest.acceptAsk(
+          ask: asked()..borrowerAccount = (Uint8List(20)..[0] = 5),
+          pocket: goalPocket,
+        ),
+      ),
+      'lending another amount to an ask': (
+        'accept_ask',
+        () => PersonalRequest.acceptAsk(
+          ask: asked()..requested = finance.Money(amount: '300000001'),
+          pocket: goalPocket,
+        ),
+      ),
+      'moving from another pocket': (
+        'vault_move',
+        () => PersonalRequest.move(
+          from: Uint8List(32)..[0] = 2,
+          to: goalPocket,
+          amount: BigInt.from(100000000),
+        ),
+      ),
+      'moving another amount': (
+        'vault_move',
+        () => PersonalRequest.move(
+          from: free,
+          to: goalPocket,
+          amount: BigInt.from(100000001),
+        ),
+      ),
+      'a goal of another target': (
+        'vault_create_goal',
+        () => PersonalRequest.createGoal(
+          name: 'school',
+          target: BigInt.from(500000001),
+          unlockAt: DateTime.fromMillisecondsSinceEpoch(
+            1790000000 * 1000,
+            isUtc: true,
+          ),
+          loanable: true,
+        ),
+      ),
+      'a goal unlocking at another time': (
+        'vault_create_goal',
+        () => PersonalRequest.createGoal(
+          name: 'school',
+          target: BigInt.from(500000000),
+          unlockAt: DateTime.fromMillisecondsSinceEpoch(
+            1790000001 * 1000,
+            isUtc: true,
+          ),
+          loanable: true,
+        ),
+      ),
+      'cancelling with another lender': (
+        'personal_cancel',
+        () => PersonalRequest.cancel(
+          loan: offered(loanId: 2)
+            ..pool = (Uint8List(20)..[0] = 7)
+            ..lender = (Uint8List(20)..[0] = 7),
+        ),
+      ),
+      'paying off another lender': (
+        'personal_payoff',
+        () => PersonalRequest.payoff(
+          loan: offered()
+            ..pool = (Uint8List(20)..[0] = 7)
+            ..lender = (Uint8List(20)..[0] = 7),
+          ceiling: BigInt.parse(
+            vectors['personal_payoff']!.json['amount'] as String,
+          ),
+        ),
+      ),
+      'paying off another loan': (
+        'personal_payoff',
+        () => PersonalRequest.payoff(
+          loan: offered(loanId: 2),
+          ceiling: BigInt.parse(
+            vectors['personal_payoff']!.json['amount'] as String,
+          ),
+        ),
+      ),
       'paying another amount': (
         'pay',
         () => PersonalRequest.pay(loan: offered(), amount: BigInt.from(1)),
@@ -452,6 +593,19 @@ void main() {
         () =>
             check('vault_withdraw', cases['vault_withdraw']!(), account: peer),
         throwsA(isA<SigningRefused>()),
+      );
+    });
+
+    test('a counterparty that is a known room is refused', () {
+      expect(
+        () => checkedPersonalCall(
+          prepared: vectors['offer']!.prepared(PersonalCall.offer.kind),
+          request: cases['offer']!(),
+          account: me,
+          personal: targets,
+          roomCustodies: [peer],
+        ),
+        refusedWith('the other person is not a person\'s account'),
       );
     });
 
@@ -669,7 +823,8 @@ void main() {
 
   group('goals', () {
     DateTime unlock() => DateTime.utc(2027);
-    test('a name over 80 bytes of UTF-8 is refused', () {
+    test('a name over 80 bytes of UTF-8, an empty name or a zero target is '
+        'refused', () {
       expect(
         () => PersonalRequest.createGoal(
           name: '€' * 27,
@@ -692,6 +847,21 @@ void main() {
         loanable: false,
       );
       expect(ok.expected.goalNameHash, keccak256Utf8('€' * 26));
+      expect(
+        () => PersonalRequest.createGoal(
+          name: 'school',
+          target: BigInt.zero,
+          unlockAt: unlock(),
+          loanable: false,
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            'Enter a target greater than zero',
+          ),
+        ),
+      );
       expect(
         () => PersonalRequest.createGoal(
           name: '',
@@ -747,7 +917,6 @@ void main() {
           validUntil: BigInt.parse(s.validUntil.toStringUnsigned()),
         );
         expect(sg.opHash, g.opHash);
-        expect(standingOpHash(kind: opGrantStanding, grant: sg), g.opHash);
       });
 
       test('${g.name}: another ceiling is refused', () {
@@ -877,68 +1046,72 @@ void main() {
         refusedWith(personalTargetsUnknownReason),
       );
     });
+  });
 
-    group('turning it off', () {
-      final id = standingOrderId(g.book, g.pool, g.loanId);
-      settlement.PrepareAccountCallResponse revoke({
-        List<int>? opId,
-        List<int>? intentId,
-      }) {
-        final intent = g.intent
-          ..type = finance.IntentType.INTENT_TYPE_AUTHORIZATION_REVOKE
-          ..authorizationId =
-              intentId ??
-              standingOpHash(kind: opRevokeStanding, authorizationId: id);
-        final digest = sdkIntentOf(intent).digest();
-        return settlement.PrepareAccountCallResponse(
-          callId: 'acct00000000000000r1',
-          intentDigest: digest,
-          financialIntent: intent,
-          call: settlement.AccountCall(
-            address: g.account,
-            kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_REVOKE_STANDING,
-            intentDigest: digest,
-          ),
-          managementOp: finance.AccountManagementOp(
-            kind: opRevokeStanding,
-            authorizationId: opId ?? id,
-          ),
-        );
-      }
+  group('turning a standing order off', () {
+    final revokes = GoVaultVectors.load().standingRevokes;
+    test(
+      'the vectors cover self, person-to-person and the largest loan id',
+      () {
+        expect(revokes, hasLength(3));
+      },
+    );
+    const wrong =
+        'this would stop something other than your loan\'s automatic payment';
 
-      test('revoking the loan\'s own order is signed', () {
-        final p = revoke();
+    for (final r in revokes) {
+      Uint8List revoke(
+        settlement.PrepareAccountCallResponse p, {
+        finance.Loan? loan,
+        List<int>? policyAsset,
+      }) => checkedStandingRevoke(
+        prepared: p,
+        account: r.account,
+        loan: loan ?? r.loan,
+        policyAsset: policyAsset ?? r.asset,
+      );
+
+      test('${r.name}: the loan\'s own order is revoked', () {
+        expect(revoke(r.prepared()), r.digest);
+        expect(standingOrderRevokeOpHash(r.authorizationId), r.opHash);
+        expect(standingRevokeParams(r.loan).authorizationId, r.authorizationId);
+      });
+
+      test('${r.name}: another id in the op is refused', () {
         expect(
-          checkedStandingRevoke(prepared: p, account: g.account, loan: g.loan),
-          p.intentDigest,
+          () => revoke(r.prepared(opId: Uint8List(32)..[0] = 1)),
+          refusedWith(wrong),
         );
-        expect(standingRevokeParams(g.loan).authorizationId, id);
       });
 
-      test('revoking another authorization is refused', () {
-        final other = standingOrderId(g.book, g.pool, g.loanId + BigInt.one);
-        for (final p in [
-          revoke(opId: other),
-          revoke(
-            opId: other,
-            intentId: standingOpHash(
-              kind: opRevokeStanding,
-              authorizationId: other,
+      test('${r.name}: an intent revoking another order is refused', () {
+        final other = standingOrderId(r.book, r.pool, r.loanId - BigInt.one);
+        expect(
+          () => revoke(
+            r.prepared(
+              opId: other,
+              intentAuthorizationId: standingOrderRevokeOpHash(other),
             ),
           ),
-          revoke(intentId: Uint8List(32)),
-        ]) {
-          expect(
-            () => checkedStandingRevoke(
-              prepared: p,
-              account: g.account,
-              loan: g.loan,
-            ),
-            throwsA(isA<SigningRefused>()),
-          );
-        }
+          refusedWith(wrong),
+        );
+        expect(
+          () => revoke(r.prepared(intentAuthorizationId: Uint8List(32))),
+          refusedWith(wrong),
+        );
       });
-    });
+
+      test('${r.name}: another loan or asset is refused', () {
+        expect(
+          () => revoke(r.prepared(), loan: r.loan..onchainLoanId = Int64(2)),
+          refusedWith(wrong),
+        );
+        expect(
+          () => revoke(r.prepared(), policyAsset: Uint8List(20)..[0] = 1),
+          refusedWith(wrong),
+        );
+      });
+    }
   });
 
   group('deposits', () {
