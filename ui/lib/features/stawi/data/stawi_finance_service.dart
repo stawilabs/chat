@@ -9,18 +9,13 @@ import 'stawi_identity.dart';
 /// chat room id.
 class StawiFinanceService {
   StawiFinanceService({
-    required finance.RoomServiceClient rooms,
-    required finance.TreasuryServiceClient treasury,
-    required finance.GovernanceServiceClient governance,
-    required Future<StawiIdentity> Function() identity,
-    finance.SavingsServiceClient? savings,
-    finance.LoanServiceClient? loans,
-  }) : _rooms = rooms,
-       _treasury = treasury,
-       _governance = governance,
-       _identity = identity,
-       _savings = savings,
-       _loans = loans;
+    required this._rooms,
+    required this._treasury,
+    required this._governance,
+    required this._identity,
+    this._savings,
+    this._loans,
+  });
 
   final finance.SavingsServiceClient? _savings;
   final finance.LoanServiceClient? _loans;
@@ -37,9 +32,8 @@ class StawiFinanceService {
 
   /// The seeded constitution templates a room can be converted with.
   Future<List<finance.PolicyTemplate>> templates() async =>
-      (await _rooms.listPolicyTemplates(
-        finance.ListPolicyTemplatesRequest(),
-      )).templates;
+      (await _rooms.listPolicyTemplates(finance.ListPolicyTemplatesRequest()))
+          .templates;
 
   /// The signed-in member's membership of [roomId], or null when finance has
   /// no member for them there.
@@ -66,9 +60,8 @@ class StawiFinanceService {
 
   /// The room's members, as finance indexes them from the chain.
   Future<List<finance.Member>> members(String roomId) async =>
-      (await _rooms.listMembers(
-        finance.ListMembersRequest(roomId: roomId),
-      )).members;
+      (await _rooms.listMembers(finance.ListMembersRequest(roomId: roomId)))
+          .members;
 
   /// Every member's money in [roomId]: indexed totals, the live book (when
   /// settlement could read it: books_available) and their loans.
@@ -94,9 +87,8 @@ class StawiFinanceService {
 
   /// The room's loans.
   Future<List<finance.Loan>> loans(String roomId) async =>
-      (await _loansClient.listLoans(
-        finance.ListLoansRequest(roomId: roomId),
-      )).loans;
+      (await _loansClient.listLoans(finance.ListLoansRequest(roomId: roomId)))
+          .loans;
 
   /// The assets the room's amounts name (Room.assets).
   Future<StawiAssets> roomAssets(String roomId) async => StawiAssets(
@@ -121,9 +113,11 @@ class StawiFinanceService {
 
   /// The constitution's roles.
   Future<List<finance.RoleCapabilities>> roles(String roomId) async =>
-      (await _rooms.getPolicy(
-        finance.GetPolicyRequest(roomId: roomId),
-      )).policyVersion.constitution.governance.roles;
+      (await _rooms.getPolicy(finance.GetPolicyRequest(roomId: roomId)))
+          .policyVersion
+          .constitution
+          .governance
+          .roles;
 
   /// The room's proposal with on-chain number [onchainProposalId], if
   /// finance has indexed it.

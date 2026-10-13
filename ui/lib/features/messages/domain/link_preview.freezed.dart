@@ -35,16 +35,21 @@ $LinkPreviewCopyWith<LinkPreview> get copyWith => _$LinkPreviewCopyWithImpl<Link
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkPreview&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.siteName, siteName) || other.siteName == siteName)&&(identical(other.favicon, favicon) || other.favicon == favicon));
+  final _this = this as LinkPreview;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkPreview&&(identical(other.url, _this.url) || other.url == _this.url)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.imageUrl, _this.imageUrl) || other.imageUrl == _this.imageUrl)&&(identical(other.siteName, _this.siteName) || other.siteName == _this.siteName)&&(identical(other.favicon, _this.favicon) || other.favicon == _this.favicon));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url,title,description,imageUrl,siteName,favicon);
+int get hashCode {
+  final _this = this as LinkPreview;
+  return Object.hash(runtimeType,_this.url,_this.title,_this.description,_this.imageUrl,_this.siteName,_this.favicon);
+}
 
 @override
 String toString() {
-  return 'LinkPreview(url: $url, title: $title, description: $description, imageUrl: $imageUrl, siteName: $siteName, favicon: $favicon)';
+  final _this = this as LinkPreview;
+  return 'LinkPreview(url: ${_this.url}, title: ${_this.title}, description: ${_this.description}, imageUrl: ${_this.imageUrl}, siteName: ${_this.siteName}, favicon: ${_this.favicon})';
 }
 
 
@@ -250,16 +255,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LinkPreview&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.siteName, siteName) || other.siteName == siteName)&&(identical(other.favicon, favicon) || other.favicon == favicon));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _LinkPreview&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.siteName, siteName) || other.siteName == siteName)&&(identical(other.favicon, favicon) || other.favicon == favicon));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url,title,description,imageUrl,siteName,favicon);
+int get hashCode {
+    return Object.hash(runtimeType,url,title,description,imageUrl,siteName,favicon);
+}
 
 @override
 String toString() {
-  return 'LinkPreview(url: $url, title: $title, description: $description, imageUrl: $imageUrl, siteName: $siteName, favicon: $favicon)';
+    return 'LinkPreview(url: $url, title: $title, description: $description, imageUrl: $imageUrl, siteName: $siteName, favicon: $favicon)';
 }
 
 

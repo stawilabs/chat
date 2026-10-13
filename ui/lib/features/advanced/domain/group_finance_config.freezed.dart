@@ -29,16 +29,21 @@ $GroupFinanceConfigCopyWith<GroupFinanceConfig> get copyWith => _$GroupFinanceCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupFinanceConfig&&(identical(other.groupType, groupType) || other.groupType == groupType)&&(identical(other.groupCurrency, groupCurrency) || other.groupCurrency == groupCurrency)&&(identical(other.periodType, periodType) || other.periodType == periodType)&&(identical(other.periodicSaving, periodicSaving) || other.periodicSaving == periodicSaving)&&(identical(other.groupSavingsDay, groupSavingsDay) || other.groupSavingsDay == groupSavingsDay)&&(identical(other.terminationDate, terminationDate) || other.terminationDate == terminationDate)&&(identical(other.groupTenure, groupTenure) || other.groupTenure == groupTenure)&&(identical(other.registrationFee, registrationFee) || other.registrationFee == registrationFee)&&(identical(other.membersRequired, membersRequired) || other.membersRequired == membersRequired));
+  final _this = this as GroupFinanceConfig;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupFinanceConfig&&(identical(other.groupType, _this.groupType) || other.groupType == _this.groupType)&&(identical(other.groupCurrency, _this.groupCurrency) || other.groupCurrency == _this.groupCurrency)&&(identical(other.periodType, _this.periodType) || other.periodType == _this.periodType)&&(identical(other.periodicSaving, _this.periodicSaving) || other.periodicSaving == _this.periodicSaving)&&(identical(other.groupSavingsDay, _this.groupSavingsDay) || other.groupSavingsDay == _this.groupSavingsDay)&&(identical(other.terminationDate, _this.terminationDate) || other.terminationDate == _this.terminationDate)&&(identical(other.groupTenure, _this.groupTenure) || other.groupTenure == _this.groupTenure)&&(identical(other.registrationFee, _this.registrationFee) || other.registrationFee == _this.registrationFee)&&(identical(other.membersRequired, _this.membersRequired) || other.membersRequired == _this.membersRequired));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,groupType,groupCurrency,periodType,periodicSaving,groupSavingsDay,terminationDate,groupTenure,registrationFee,membersRequired);
+int get hashCode {
+  final _this = this as GroupFinanceConfig;
+  return Object.hash(runtimeType,_this.groupType,_this.groupCurrency,_this.periodType,_this.periodicSaving,_this.groupSavingsDay,_this.terminationDate,_this.groupTenure,_this.registrationFee,_this.membersRequired);
+}
 
 @override
 String toString() {
-  return 'GroupFinanceConfig(groupType: $groupType, groupCurrency: $groupCurrency, periodType: $periodType, periodicSaving: $periodicSaving, groupSavingsDay: $groupSavingsDay, terminationDate: $terminationDate, groupTenure: $groupTenure, registrationFee: $registrationFee, membersRequired: $membersRequired)';
+  final _this = this as GroupFinanceConfig;
+  return 'GroupFinanceConfig(groupType: ${_this.groupType}, groupCurrency: ${_this.groupCurrency}, periodType: ${_this.periodType}, periodicSaving: ${_this.periodicSaving}, groupSavingsDay: ${_this.groupSavingsDay}, terminationDate: ${_this.terminationDate}, groupTenure: ${_this.groupTenure}, registrationFee: ${_this.registrationFee}, membersRequired: ${_this.membersRequired})';
 }
 
 
@@ -244,16 +249,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupFinanceConfig&&(identical(other.groupType, groupType) || other.groupType == groupType)&&(identical(other.groupCurrency, groupCurrency) || other.groupCurrency == groupCurrency)&&(identical(other.periodType, periodType) || other.periodType == periodType)&&(identical(other.periodicSaving, periodicSaving) || other.periodicSaving == periodicSaving)&&(identical(other.groupSavingsDay, groupSavingsDay) || other.groupSavingsDay == groupSavingsDay)&&(identical(other.terminationDate, terminationDate) || other.terminationDate == terminationDate)&&(identical(other.groupTenure, groupTenure) || other.groupTenure == groupTenure)&&(identical(other.registrationFee, registrationFee) || other.registrationFee == registrationFee)&&(identical(other.membersRequired, membersRequired) || other.membersRequired == membersRequired));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupFinanceConfig&&(identical(other.groupType, groupType) || other.groupType == groupType)&&(identical(other.groupCurrency, groupCurrency) || other.groupCurrency == groupCurrency)&&(identical(other.periodType, periodType) || other.periodType == periodType)&&(identical(other.periodicSaving, periodicSaving) || other.periodicSaving == periodicSaving)&&(identical(other.groupSavingsDay, groupSavingsDay) || other.groupSavingsDay == groupSavingsDay)&&(identical(other.terminationDate, terminationDate) || other.terminationDate == terminationDate)&&(identical(other.groupTenure, groupTenure) || other.groupTenure == groupTenure)&&(identical(other.registrationFee, registrationFee) || other.registrationFee == registrationFee)&&(identical(other.membersRequired, membersRequired) || other.membersRequired == membersRequired));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,groupType,groupCurrency,periodType,periodicSaving,groupSavingsDay,terminationDate,groupTenure,registrationFee,membersRequired);
+int get hashCode {
+    return Object.hash(runtimeType,groupType,groupCurrency,periodType,periodicSaving,groupSavingsDay,terminationDate,groupTenure,registrationFee,membersRequired);
+}
 
 @override
 String toString() {
-  return 'GroupFinanceConfig(groupType: $groupType, groupCurrency: $groupCurrency, periodType: $periodType, periodicSaving: $periodicSaving, groupSavingsDay: $groupSavingsDay, terminationDate: $terminationDate, groupTenure: $groupTenure, registrationFee: $registrationFee, membersRequired: $membersRequired)';
+    return 'GroupFinanceConfig(groupType: $groupType, groupCurrency: $groupCurrency, periodType: $periodType, periodicSaving: $periodicSaving, groupSavingsDay: $groupSavingsDay, terminationDate: $terminationDate, groupTenure: $groupTenure, registrationFee: $registrationFee, membersRequired: $membersRequired)';
 }
 
 

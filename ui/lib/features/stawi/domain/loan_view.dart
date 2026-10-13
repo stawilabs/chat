@@ -23,11 +23,7 @@ BigInt instalmentOwed(finance.LoanInstalment i) {
 
 /// A loan as the person looking at it sees it.
 final class LoanView {
-  LoanView(
-    this.loan, {
-    required List<Uint8List> mine,
-    this.instalments = const [],
-  }) : _mine = mine;
+  LoanView(this.loan, {required this._mine, this.instalments = const []});
 
   final finance.Loan loan;
   final List<finance.LoanInstalment> instalments;

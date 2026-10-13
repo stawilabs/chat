@@ -8,12 +8,12 @@ import '../domain/call_stats.dart';
 /// Service for monitoring and managing call quality
 class CallQualityService {
   CallQualityService({
-    required RTCPeerConnection peerConnection,
+    required this._peerConnection,
     required this.onStatsUpdate,
     required this.onVideoStateChange,
     required this.onReconnectNeeded,
     required this.onWarning,
-  }) : _peerConnection = peerConnection;
+  });
   static const Duration _statsInterval = Duration(seconds: 2);
   static const Duration _reconnectTimeout = Duration(seconds: 30);
   static const int _maxReconnectAttempts = 5;

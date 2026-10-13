@@ -164,10 +164,9 @@ class SyncEngine with WidgetsBindingObserver {
     this._readReceiptRepo,
     this._roomSyncManager,
     this._roomRepository, {
-    required SettingsService settingsService,
-    SyncHealthMonitor? healthMonitor,
-  }) : _settingsService = settingsService,
-       _healthMonitor = healthMonitor;
+    required this._settingsService,
+    this._healthMonitor,
+  });
 
   final pb.GatewayServiceClient _gatewayClient;
   final pb.ChatServiceClient _chatClient;

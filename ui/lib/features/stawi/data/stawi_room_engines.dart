@@ -23,8 +23,9 @@ RoomEngineTargets? engineTargetsOf(finance.Room room) {
 typedef RoomEngineSource = Future<RoomEngineTargets?> Function(String roomId);
 
 /// Reads a room's products (dues and loan forms) as its rules engines hold them.
-typedef RoomProductSource =
-    Future<finance.ListRoomProductsResponse> Function(String roomId);
+typedef RoomProductSource = Future<finance.ListRoomProductsResponse> Function(
+  String roomId,
+);
 
 final roomEngineSourceProvider = Provider<RoomEngineSource>((ref) {
   final rooms = ref.watch(financeRoomsProvider);
@@ -65,10 +66,10 @@ String loanProductTerms(finance.RoomLoanProduct p, StawiAssets assets) {
       'up to ${formatMoney(p.maxAmount, assets)}',
     if (p.rateBps > 0) formatRate(p.rateBps, p.rateBasis),
     if (p.rateBps == 0) 'no interest',
-    if (p.maxInstalments > 0)
-      p.minInstalments == p.maxInstalments
-          ? '${p.maxInstalments} instalments'
-          : '${p.minInstalments}–${p.maxInstalments} instalments',
+    if (p.maxInstalments > 0 && p.minInstalments == p.maxInstalments)
+      '${p.maxInstalments} instalments'
+    else if (p.maxInstalments > 0)
+      '${p.minInstalments}–${p.maxInstalments} instalments',
     if (p.feeBps > 0) 'fee ${formatBps(p.feeBps)}',
     if (p.minGuarantors > 0) '${p.minGuarantors} guarantors',
   ];

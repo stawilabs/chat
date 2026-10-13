@@ -56,7 +56,8 @@ class MyMoneyScreen extends ConsumerWidget {
         ),
       ),
     );
-    final pockets = vault.asData?.value.pockets ?? const [];
+    final pockets =
+        vault.asData?.value.pockets ?? const <finance.SavingsPocket>[];
     final free = pockets.where(isFreeSavings).firstOrNull;
     final goals = [
       for (final p in pockets)
@@ -519,9 +520,8 @@ class _MyLoansState extends ConsumerState<_MyLoans>
                   a.loan.onchainLoanId,
                 );
                 if (byId != 0) return byId;
-                return bytesToHexKey(
-                  b.loan.pool,
-                ).compareTo(bytesToHexKey(a.loan.pool));
+                return bytesToHexKey(b.loan.pool)
+                    .compareTo(bytesToHexKey(a.loan.pool));
               });
             if (views.isEmpty) {
               return Padding(

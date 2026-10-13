@@ -37,16 +37,21 @@ $RoomCopyWith<Room> get copyWith => _$RoomCopyWithImpl<Room>(this as Room, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Room&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.lastEventId, lastEventId) || other.lastEventId == lastEventId)&&(identical(other.lastEventIndex, lastEventIndex) || other.lastEventIndex == lastEventIndex)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.disappearingTimeout, disappearingTimeout) || other.disappearingTimeout == disappearingTimeout)&&(identical(other.mutedUntil, mutedUntil) || other.mutedUntil == mutedUntil)&&(identical(other.memberLimit, memberLimit) || other.memberLimit == memberLimit)&&(identical(other.memberLimitEnabled, memberLimitEnabled) || other.memberLimitEnabled == memberLimitEnabled));
+  final _this = this as Room;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Room&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.lastEventId, _this.lastEventId) || other.lastEventId == _this.lastEventId)&&(identical(other.lastEventIndex, _this.lastEventIndex) || other.lastEventIndex == _this.lastEventIndex)&&(identical(other.unreadCount, _this.unreadCount) || other.unreadCount == _this.unreadCount)&&const DeepCollectionEquality().equals(other.metadata, _this.metadata)&&(identical(other.disappearingTimeout, _this.disappearingTimeout) || other.disappearingTimeout == _this.disappearingTimeout)&&(identical(other.mutedUntil, _this.mutedUntil) || other.mutedUntil == _this.mutedUntil)&&(identical(other.memberLimit, _this.memberLimit) || other.memberLimit == _this.memberLimit)&&(identical(other.memberLimitEnabled, _this.memberLimitEnabled) || other.memberLimitEnabled == _this.memberLimitEnabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,type,lastEventId,lastEventIndex,unreadCount,const DeepCollectionEquality().hash(metadata),disappearingTimeout,mutedUntil,memberLimit,memberLimitEnabled);
+int get hashCode {
+  final _this = this as Room;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.type,_this.lastEventId,_this.lastEventIndex,_this.unreadCount,const DeepCollectionEquality().hash(_this.metadata),_this.disappearingTimeout,_this.mutedUntil,_this.memberLimit,_this.memberLimitEnabled);
+}
 
 @override
 String toString() {
-  return 'Room(id: $id, name: $name, type: $type, lastEventId: $lastEventId, lastEventIndex: $lastEventIndex, unreadCount: $unreadCount, metadata: $metadata, disappearingTimeout: $disappearingTimeout, mutedUntil: $mutedUntil, memberLimit: $memberLimit, memberLimitEnabled: $memberLimitEnabled)';
+  final _this = this as Room;
+  return 'Room(id: ${_this.id}, name: ${_this.name}, type: ${_this.type}, lastEventId: ${_this.lastEventId}, lastEventIndex: ${_this.lastEventIndex}, unreadCount: ${_this.unreadCount}, metadata: ${_this.metadata}, disappearingTimeout: ${_this.disappearingTimeout}, mutedUntil: ${_this.mutedUntil}, memberLimit: ${_this.memberLimit}, memberLimitEnabled: ${_this.memberLimitEnabled})';
 }
 
 
@@ -272,16 +277,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Room&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.lastEventId, lastEventId) || other.lastEventId == lastEventId)&&(identical(other.lastEventIndex, lastEventIndex) || other.lastEventIndex == lastEventIndex)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.disappearingTimeout, disappearingTimeout) || other.disappearingTimeout == disappearingTimeout)&&(identical(other.mutedUntil, mutedUntil) || other.mutedUntil == mutedUntil)&&(identical(other.memberLimit, memberLimit) || other.memberLimit == memberLimit)&&(identical(other.memberLimitEnabled, memberLimitEnabled) || other.memberLimitEnabled == memberLimitEnabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Room&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.lastEventId, lastEventId) || other.lastEventId == lastEventId)&&(identical(other.lastEventIndex, lastEventIndex) || other.lastEventIndex == lastEventIndex)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&const DeepCollectionEquality().equals(other.metadata, _metadata)&&(identical(other.disappearingTimeout, disappearingTimeout) || other.disappearingTimeout == disappearingTimeout)&&(identical(other.mutedUntil, mutedUntil) || other.mutedUntil == mutedUntil)&&(identical(other.memberLimit, memberLimit) || other.memberLimit == memberLimit)&&(identical(other.memberLimitEnabled, memberLimitEnabled) || other.memberLimitEnabled == memberLimitEnabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,type,lastEventId,lastEventIndex,unreadCount,const DeepCollectionEquality().hash(_metadata),disappearingTimeout,mutedUntil,memberLimit,memberLimitEnabled);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,type,lastEventId,lastEventIndex,unreadCount,const DeepCollectionEquality().hash(_metadata),disappearingTimeout,mutedUntil,memberLimit,memberLimitEnabled);
+}
 
 @override
 String toString() {
-  return 'Room(id: $id, name: $name, type: $type, lastEventId: $lastEventId, lastEventIndex: $lastEventIndex, unreadCount: $unreadCount, metadata: $metadata, disappearingTimeout: $disappearingTimeout, mutedUntil: $mutedUntil, memberLimit: $memberLimit, memberLimitEnabled: $memberLimitEnabled)';
+    return 'Room(id: $id, name: $name, type: $type, lastEventId: $lastEventId, lastEventIndex: $lastEventIndex, unreadCount: $unreadCount, metadata: $metadata, disappearingTimeout: $disappearingTimeout, mutedUntil: $mutedUntil, memberLimit: $memberLimit, memberLimitEnabled: $memberLimitEnabled)';
 }
 
 

@@ -79,9 +79,7 @@ final class DeviceKeyHandle extends DevicePublicKey {
 /// half only; a key that signs comes from [unlock], behind [SigningGate].
 /// There is no default gate, so a store cannot be built that signs unasked.
 class DeviceKeyStore {
-  DeviceKeyStore(this._vault, {required SigningGate gate, Random? random})
-    : _gate = gate,
-      _random = random;
+  DeviceKeyStore(this._vault, {required this._gate, this._random});
 
   final DeviceKeyVault _vault;
   final SigningGate _gate;

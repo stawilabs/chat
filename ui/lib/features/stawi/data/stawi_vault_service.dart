@@ -10,11 +10,7 @@ import 'stawi_identity.dart';
 
 /// The person's own savings vault, as finance reads it off the chain.
 class StawiVaultService {
-  StawiVaultService({
-    required finance.VaultServiceClient vault,
-    required Future<StawiIdentity> Function() identity,
-  }) : _vault = vault,
-       _identity = identity;
+  StawiVaultService({required this._vault, required this._identity});
 
   final finance.VaultServiceClient _vault;
   final Future<StawiIdentity> Function() _identity;

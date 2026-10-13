@@ -25,8 +25,9 @@ import 'stawi_vault_service.dart';
 /// that this profile held a live session on this device when its first key
 /// was registered, binding the key whose address is [deviceAddress]
 /// (pubkey_hash = keccak256(address)). DeployAccount requires one.
-typedef GenesisSessionProofs =
-    Future<Uint8List> Function({required Uint8List deviceAddress});
+typedef GenesisSessionProofs = Future<Uint8List> Function({
+  required Uint8List deviceAddress,
+});
 
 /// The proof from the authentication service's IssueGenesisSessionProof,
 /// bound to the caller's own live session and device (taken from the token,
@@ -86,24 +87,16 @@ class StawiAccountStatus {
 /// signs it here after checking it.
 class StawiAccountService {
   StawiAccountService({
-    required settlement.AccountServiceClient accounts,
-    required DeviceKeyStore keys,
-    required GenesisSessionProofs proofs,
-    required Future<StawiIdentity> Function() identity,
-    Future<PersonalTargets> Function()? targets,
-    Future<finance.GetLoanResponse> Function(LoanRef ref)? loan,
-    Duration readyEvery = const Duration(seconds: 3),
-    int readyAttempts = 60,
-    Duration followEvery = const Duration(seconds: 3),
-  }) : _readyEvery = readyEvery,
-       _followEvery = followEvery,
-       _loan = loan,
-       _readyAttempts = readyAttempts,
-       _accounts = accounts,
-       _keys = keys,
-       _proofs = proofs,
-       _identity = identity,
-       _targets = targets;
+    required this._accounts,
+    required this._keys,
+    required this._proofs,
+    required this._identity,
+    this._targets,
+    this._loan,
+    this._readyEvery = const Duration(seconds: 3),
+    this._readyAttempts = 60,
+    this._followEvery = const Duration(seconds: 3),
+  });
 
   final settlement.AccountServiceClient _accounts;
   final DeviceKeyStore _keys;

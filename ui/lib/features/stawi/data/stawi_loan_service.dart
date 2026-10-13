@@ -15,11 +15,7 @@ import 'stawi_identity.dart';
 /// Loans as finance reads them off the LoanBook: the person's own, those
 /// between two people, a room's, and quotes before anything is signed.
 class StawiLoanService {
-  StawiLoanService({
-    required finance.LoanServiceClient loans,
-    required Future<StawiIdentity> Function() identity,
-  }) : _loans = loans,
-       _identity = identity;
+  StawiLoanService({required this._loans, required this._identity});
 
   final finance.LoanServiceClient _loans;
   final Future<StawiIdentity> Function() _identity;

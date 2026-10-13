@@ -12323,32 +12323,30 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
 }
 
-typedef $$ProfilesTableCreateCompanionBuilder =
-    ProfilesCompanion Function({
-      required String id,
-      Value<String?> name,
-      Value<String?> avatarUrl,
-      Value<int?> updatedAt,
-      Value<String?> metadata,
-      Value<int> status,
-      Value<String?> statusMessage,
-      Value<int?> statusUpdatedAt,
-      Value<String?> bio,
-      Value<int> rowid,
-    });
-typedef $$ProfilesTableUpdateCompanionBuilder =
-    ProfilesCompanion Function({
-      Value<String> id,
-      Value<String?> name,
-      Value<String?> avatarUrl,
-      Value<int?> updatedAt,
-      Value<String?> metadata,
-      Value<int> status,
-      Value<String?> statusMessage,
-      Value<int?> statusUpdatedAt,
-      Value<String?> bio,
-      Value<int> rowid,
-    });
+typedef $$ProfilesTableCreateCompanionBuilder = ProfilesCompanion Function({
+  required String id,
+  Value<String?> name,
+  Value<String?> avatarUrl,
+  Value<int?> updatedAt,
+  Value<String?> metadata,
+  Value<int> status,
+  Value<String?> statusMessage,
+  Value<int?> statusUpdatedAt,
+  Value<String?> bio,
+  Value<int> rowid,
+});
+typedef $$ProfilesTableUpdateCompanionBuilder = ProfilesCompanion Function({
+  Value<String> id,
+  Value<String?> name,
+  Value<String?> avatarUrl,
+  Value<int?> updatedAt,
+  Value<String?> metadata,
+  Value<int> status,
+  Value<String?> statusMessage,
+  Value<int?> statusUpdatedAt,
+  Value<String?> bio,
+  Value<int> rowid,
+});
 
 class $$ProfilesTableFilterComposer
     extends Composer<_$AppDatabase, $ProfilesTable> {
@@ -12606,36 +12604,34 @@ typedef $$ProfilesTableProcessedTableManager =
       Profile,
       PrefetchHooks Function()
     >;
-typedef $$RosterTableCreateCompanionBuilder =
-    RosterCompanion Function({
-      required String id,
-      Value<String?> rosterId,
-      Value<String?> profileId,
-      Value<String?> contactId,
-      Value<int> contactType,
-      required String contactDetail,
-      Value<bool> isVerified,
-      Value<String?> displayName,
-      Value<bool> isBlocked,
-      Value<int?> syncedAt,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
-typedef $$RosterTableUpdateCompanionBuilder =
-    RosterCompanion Function({
-      Value<String> id,
-      Value<String?> rosterId,
-      Value<String?> profileId,
-      Value<String?> contactId,
-      Value<int> contactType,
-      Value<String> contactDetail,
-      Value<bool> isVerified,
-      Value<String?> displayName,
-      Value<bool> isBlocked,
-      Value<int?> syncedAt,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
+typedef $$RosterTableCreateCompanionBuilder = RosterCompanion Function({
+  required String id,
+  Value<String?> rosterId,
+  Value<String?> profileId,
+  Value<String?> contactId,
+  Value<int> contactType,
+  required String contactDetail,
+  Value<bool> isVerified,
+  Value<String?> displayName,
+  Value<bool> isBlocked,
+  Value<int?> syncedAt,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
+typedef $$RosterTableUpdateCompanionBuilder = RosterCompanion Function({
+  Value<String> id,
+  Value<String?> rosterId,
+  Value<String?> profileId,
+  Value<String?> contactId,
+  Value<int> contactType,
+  Value<String> contactDetail,
+  Value<bool> isVerified,
+  Value<String?> displayName,
+  Value<bool> isBlocked,
+  Value<int?> syncedAt,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
 
 class $$RosterTableFilterComposer
     extends Composer<_$AppDatabase, $RosterTable> {
@@ -12931,36 +12927,34 @@ typedef $$RosterTableProcessedTableManager =
       RosterData,
       PrefetchHooks Function()
     >;
-typedef $$RoomsTableCreateCompanionBuilder =
-    RoomsCompanion Function({
-      required String id,
-      Value<String?> name,
-      Value<String?> type,
-      Value<String?> lastEventId,
-      Value<int?> lastEventIndex,
-      Value<int> unreadCount,
-      Value<String?> metadata,
-      Value<int?> disappearingTimeout,
-      Value<int?> mutedUntil,
-      Value<int?> memberLimit,
-      Value<bool> memberLimitEnabled,
-      Value<int> rowid,
-    });
-typedef $$RoomsTableUpdateCompanionBuilder =
-    RoomsCompanion Function({
-      Value<String> id,
-      Value<String?> name,
-      Value<String?> type,
-      Value<String?> lastEventId,
-      Value<int?> lastEventIndex,
-      Value<int> unreadCount,
-      Value<String?> metadata,
-      Value<int?> disappearingTimeout,
-      Value<int?> mutedUntil,
-      Value<int?> memberLimit,
-      Value<bool> memberLimitEnabled,
-      Value<int> rowid,
-    });
+typedef $$RoomsTableCreateCompanionBuilder = RoomsCompanion Function({
+  required String id,
+  Value<String?> name,
+  Value<String?> type,
+  Value<String?> lastEventId,
+  Value<int?> lastEventIndex,
+  Value<int> unreadCount,
+  Value<String?> metadata,
+  Value<int?> disappearingTimeout,
+  Value<int?> mutedUntil,
+  Value<int?> memberLimit,
+  Value<bool> memberLimitEnabled,
+  Value<int> rowid,
+});
+typedef $$RoomsTableUpdateCompanionBuilder = RoomsCompanion Function({
+  Value<String> id,
+  Value<String?> name,
+  Value<String?> type,
+  Value<String?> lastEventId,
+  Value<int?> lastEventIndex,
+  Value<int> unreadCount,
+  Value<String?> metadata,
+  Value<int?> disappearingTimeout,
+  Value<int?> mutedUntil,
+  Value<int?> memberLimit,
+  Value<bool> memberLimitEnabled,
+  Value<int> rowid,
+});
 
 final class $$RoomsTableReferences
     extends BaseReferences<_$AppDatabase, $RoomsTable, Room> {
@@ -13961,19 +13955,15 @@ class $$RoomSubscriptionsTableTableManager
                     >
                   >(state) {
                     if (roomId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.roomId,
-                                referencedTable:
-                                    $$RoomSubscriptionsTableReferences
-                                        ._roomIdTable(db),
-                                referencedColumn:
-                                    $$RoomSubscriptionsTableReferences
-                                        ._roomIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.roomId,
+                        referencedTable: $$RoomSubscriptionsTableReferences
+                            ._roomIdTable(db),
+                        referencedColumn: $$RoomSubscriptionsTableReferences
+                            ._roomIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -14001,64 +13991,62 @@ typedef $$RoomSubscriptionsTableProcessedTableManager =
       RoomSubscription,
       PrefetchHooks Function({bool roomId})
     >;
-typedef $$RoomEventsTableCreateCompanionBuilder =
-    RoomEventsCompanion Function({
-      required String id,
-      required String roomId,
-      required String senderId,
-      Value<String?> senderContactId,
-      required int type,
-      Value<String?> content,
-      Value<String?> parentId,
-      Value<int> status,
-      Value<int?> createdAt,
-      Value<int?> serverTs,
-      Value<String?> localId,
-      Value<int?> editedAt,
-      Value<String?> originalContent,
-      Value<bool> redacted,
-      Value<int?> redactedAt,
-      Value<String?> redactedBy,
-      Value<int> retryCount,
-      Value<String?> errorMessage,
-      Value<String?> forwardedFromRoom,
-      Value<String?> forwardedFromEvent,
-      Value<int> forwardCount,
-      Value<bool> forwardRestricted,
-      Value<int?> expiresAt,
-      Value<bool> starred,
-      Value<int?> starredAt,
-      Value<int> rowid,
-    });
-typedef $$RoomEventsTableUpdateCompanionBuilder =
-    RoomEventsCompanion Function({
-      Value<String> id,
-      Value<String> roomId,
-      Value<String> senderId,
-      Value<String?> senderContactId,
-      Value<int> type,
-      Value<String?> content,
-      Value<String?> parentId,
-      Value<int> status,
-      Value<int?> createdAt,
-      Value<int?> serverTs,
-      Value<String?> localId,
-      Value<int?> editedAt,
-      Value<String?> originalContent,
-      Value<bool> redacted,
-      Value<int?> redactedAt,
-      Value<String?> redactedBy,
-      Value<int> retryCount,
-      Value<String?> errorMessage,
-      Value<String?> forwardedFromRoom,
-      Value<String?> forwardedFromEvent,
-      Value<int> forwardCount,
-      Value<bool> forwardRestricted,
-      Value<int?> expiresAt,
-      Value<bool> starred,
-      Value<int?> starredAt,
-      Value<int> rowid,
-    });
+typedef $$RoomEventsTableCreateCompanionBuilder = RoomEventsCompanion Function({
+  required String id,
+  required String roomId,
+  required String senderId,
+  Value<String?> senderContactId,
+  required int type,
+  Value<String?> content,
+  Value<String?> parentId,
+  Value<int> status,
+  Value<int?> createdAt,
+  Value<int?> serverTs,
+  Value<String?> localId,
+  Value<int?> editedAt,
+  Value<String?> originalContent,
+  Value<bool> redacted,
+  Value<int?> redactedAt,
+  Value<String?> redactedBy,
+  Value<int> retryCount,
+  Value<String?> errorMessage,
+  Value<String?> forwardedFromRoom,
+  Value<String?> forwardedFromEvent,
+  Value<int> forwardCount,
+  Value<bool> forwardRestricted,
+  Value<int?> expiresAt,
+  Value<bool> starred,
+  Value<int?> starredAt,
+  Value<int> rowid,
+});
+typedef $$RoomEventsTableUpdateCompanionBuilder = RoomEventsCompanion Function({
+  Value<String> id,
+  Value<String> roomId,
+  Value<String> senderId,
+  Value<String?> senderContactId,
+  Value<int> type,
+  Value<String?> content,
+  Value<String?> parentId,
+  Value<int> status,
+  Value<int?> createdAt,
+  Value<int?> serverTs,
+  Value<String?> localId,
+  Value<int?> editedAt,
+  Value<String?> originalContent,
+  Value<bool> redacted,
+  Value<int?> redactedAt,
+  Value<String?> redactedBy,
+  Value<int> retryCount,
+  Value<String?> errorMessage,
+  Value<String?> forwardedFromRoom,
+  Value<String?> forwardedFromEvent,
+  Value<int> forwardCount,
+  Value<bool> forwardRestricted,
+  Value<int?> expiresAt,
+  Value<bool> starred,
+  Value<int?> starredAt,
+  Value<int> rowid,
+});
 
 final class $$RoomEventsTableReferences
     extends BaseReferences<_$AppDatabase, $RoomEventsTable, RoomEvent> {
@@ -14680,17 +14668,15 @@ class $$RoomEventsTableTableManager
                     >
                   >(state) {
                     if (roomId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.roomId,
-                                referencedTable: $$RoomEventsTableReferences
-                                    ._roomIdTable(db),
-                                referencedColumn: $$RoomEventsTableReferences
-                                    ._roomIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.roomId,
+                        referencedTable: $$RoomEventsTableReferences
+                            ._roomIdTable(db),
+                        referencedColumn: $$RoomEventsTableReferences
+                            ._roomIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -14718,24 +14704,22 @@ typedef $$RoomEventsTableProcessedTableManager =
       RoomEvent,
       PrefetchHooks Function({bool roomId})
     >;
-typedef $$SessionsTableCreateCompanionBuilder =
-    SessionsCompanion Function({
-      required String sessionId,
-      required String profileId,
-      required String deviceId,
-      Value<Uint8List?> ratchetState,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
-typedef $$SessionsTableUpdateCompanionBuilder =
-    SessionsCompanion Function({
-      Value<String> sessionId,
-      Value<String> profileId,
-      Value<String> deviceId,
-      Value<Uint8List?> ratchetState,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
+typedef $$SessionsTableCreateCompanionBuilder = SessionsCompanion Function({
+  required String sessionId,
+  required String profileId,
+  required String deviceId,
+  Value<Uint8List?> ratchetState,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
+typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
+  Value<String> sessionId,
+  Value<String> profileId,
+  Value<String> deviceId,
+  Value<Uint8List?> ratchetState,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
 
 class $$SessionsTableFilterComposer
     extends Composer<_$AppDatabase, $SessionsTable> {
@@ -14923,20 +14907,18 @@ typedef $$SessionsTableProcessedTableManager =
       Session,
       PrefetchHooks Function()
     >;
-typedef $$PrekeysTableCreateCompanionBuilder =
-    PrekeysCompanion Function({
-      Value<int> id,
-      Value<String?> publicKey,
-      Value<String?> privateKey,
-      Value<bool> isSigned,
-    });
-typedef $$PrekeysTableUpdateCompanionBuilder =
-    PrekeysCompanion Function({
-      Value<int> id,
-      Value<String?> publicKey,
-      Value<String?> privateKey,
-      Value<bool> isSigned,
-    });
+typedef $$PrekeysTableCreateCompanionBuilder = PrekeysCompanion Function({
+  Value<int> id,
+  Value<String?> publicKey,
+  Value<String?> privateKey,
+  Value<bool> isSigned,
+});
+typedef $$PrekeysTableUpdateCompanionBuilder = PrekeysCompanion Function({
+  Value<int> id,
+  Value<String?> publicKey,
+  Value<String?> privateKey,
+  Value<bool> isSigned,
+});
 
 class $$PrekeysTableFilterComposer
     extends Composer<_$AppDatabase, $PrekeysTable> {
@@ -15686,17 +15668,15 @@ class $$TransactionsTableTableManager
                     >
                   >(state) {
                     if (roomId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.roomId,
-                                referencedTable: $$TransactionsTableReferences
-                                    ._roomIdTable(db),
-                                referencedColumn: $$TransactionsTableReferences
-                                    ._roomIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.roomId,
+                        referencedTable: $$TransactionsTableReferences
+                            ._roomIdTable(db),
+                        referencedColumn: $$TransactionsTableReferences
+                            ._roomIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -16066,22 +16046,20 @@ typedef $$UserSettingsTableProcessedTableManager =
       UserSetting,
       PrefetchHooks Function()
     >;
-typedef $$DraftsTableCreateCompanionBuilder =
-    DraftsCompanion Function({
-      required String roomId,
-      required String content,
-      Value<String?> replyToId,
-      required int updatedAt,
-      Value<int> rowid,
-    });
-typedef $$DraftsTableUpdateCompanionBuilder =
-    DraftsCompanion Function({
-      Value<String> roomId,
-      Value<String> content,
-      Value<String?> replyToId,
-      Value<int> updatedAt,
-      Value<int> rowid,
-    });
+typedef $$DraftsTableCreateCompanionBuilder = DraftsCompanion Function({
+  required String roomId,
+  required String content,
+  Value<String?> replyToId,
+  required int updatedAt,
+  Value<int> rowid,
+});
+typedef $$DraftsTableUpdateCompanionBuilder = DraftsCompanion Function({
+  Value<String> roomId,
+  Value<String> content,
+  Value<String?> replyToId,
+  Value<int> updatedAt,
+  Value<int> rowid,
+});
 
 class $$DraftsTableFilterComposer
     extends Composer<_$AppDatabase, $DraftsTable> {
@@ -16719,28 +16697,26 @@ typedef $$ReadReceiptsTableProcessedTableManager =
       ReadReceipt,
       PrefetchHooks Function()
     >;
-typedef $$ReportsTableCreateCompanionBuilder =
-    ReportsCompanion Function({
-      required String id,
-      required String reportedUserId,
-      required String reason,
-      Value<String?> details,
-      Value<String?> evidenceEventIds,
-      required int reportedAt,
-      Value<String> status,
-      Value<int> rowid,
-    });
-typedef $$ReportsTableUpdateCompanionBuilder =
-    ReportsCompanion Function({
-      Value<String> id,
-      Value<String> reportedUserId,
-      Value<String> reason,
-      Value<String?> details,
-      Value<String?> evidenceEventIds,
-      Value<int> reportedAt,
-      Value<String> status,
-      Value<int> rowid,
-    });
+typedef $$ReportsTableCreateCompanionBuilder = ReportsCompanion Function({
+  required String id,
+  required String reportedUserId,
+  required String reason,
+  Value<String?> details,
+  Value<String?> evidenceEventIds,
+  required int reportedAt,
+  Value<String> status,
+  Value<int> rowid,
+});
+typedef $$ReportsTableUpdateCompanionBuilder = ReportsCompanion Function({
+  Value<String> id,
+  Value<String> reportedUserId,
+  Value<String> reason,
+  Value<String?> details,
+  Value<String?> evidenceEventIds,
+  Value<int> reportedAt,
+  Value<String> status,
+  Value<int> rowid,
+});
 
 class $$ReportsTableFilterComposer
     extends Composer<_$AppDatabase, $ReportsTable> {
@@ -17434,19 +17410,15 @@ class $$InviteLinksTableTableManager
                         >
                       >(state) {
                         if (roomId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.roomId,
-                                    referencedTable:
-                                        $$InviteLinksTableReferences
-                                            ._roomIdTable(db),
-                                    referencedColumn:
-                                        $$InviteLinksTableReferences
-                                            ._roomIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.roomId,
+                            referencedTable: $$InviteLinksTableReferences
+                                ._roomIdTable(db),
+                            referencedColumn: $$InviteLinksTableReferences
+                                ._roomIdTable(db)
+                                .id,
+                          ) as T;
                         }
 
                         return state;
@@ -17777,19 +17749,15 @@ class $$InviteLinkJoinsTableTableManager
                     >
                   >(state) {
                     if (inviteLinkId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.inviteLinkId,
-                                referencedTable:
-                                    $$InviteLinkJoinsTableReferences
-                                        ._inviteLinkIdTable(db),
-                                referencedColumn:
-                                    $$InviteLinkJoinsTableReferences
-                                        ._inviteLinkIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.inviteLinkId,
+                        referencedTable: $$InviteLinkJoinsTableReferences
+                            ._inviteLinkIdTable(db),
+                        referencedColumn: $$InviteLinkJoinsTableReferences
+                            ._inviteLinkIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;

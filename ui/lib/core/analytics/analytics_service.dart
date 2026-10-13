@@ -56,10 +56,9 @@ class AnalyticsConfig {
 /// ```
 class AnalyticsService {
   AnalyticsService({
-    required AnalyticsRepository repository,
-    AnalyticsConfig config = const AnalyticsConfig(),
-  }) : _config = config,
-       _repository = repository;
+    required this._repository,
+    this._config = const AnalyticsConfig(),
+  });
 
   final AnalyticsConfig _config;
   final AnalyticsRepository _repository;

@@ -29,16 +29,21 @@ $InviteLinkCopyWith<InviteLink> get copyWith => _$InviteLinkCopyWithImpl<InviteL
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InviteLink&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.code, code) || other.code == code)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.maxUses, maxUses) || other.maxUses == maxUses)&&(identical(other.useCount, useCount) || other.useCount == useCount)&&(identical(other.revoked, revoked) || other.revoked == revoked)&&(identical(other.requiresApproval, requiresApproval) || other.requiresApproval == requiresApproval)&&(identical(other.name, name) || other.name == name));
+  final _this = this as InviteLink;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InviteLink&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.roomId, _this.roomId) || other.roomId == _this.roomId)&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.createdBy, _this.createdBy) || other.createdBy == _this.createdBy)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.expiresAt, _this.expiresAt) || other.expiresAt == _this.expiresAt)&&(identical(other.maxUses, _this.maxUses) || other.maxUses == _this.maxUses)&&(identical(other.useCount, _this.useCount) || other.useCount == _this.useCount)&&(identical(other.revoked, _this.revoked) || other.revoked == _this.revoked)&&(identical(other.requiresApproval, _this.requiresApproval) || other.requiresApproval == _this.requiresApproval)&&(identical(other.name, _this.name) || other.name == _this.name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,roomId,code,createdBy,createdAt,expiresAt,maxUses,useCount,revoked,requiresApproval,name);
+int get hashCode {
+  final _this = this as InviteLink;
+  return Object.hash(runtimeType,_this.id,_this.roomId,_this.code,_this.createdBy,_this.createdAt,_this.expiresAt,_this.maxUses,_this.useCount,_this.revoked,_this.requiresApproval,_this.name);
+}
 
 @override
 String toString() {
-  return 'InviteLink(id: $id, roomId: $roomId, code: $code, createdBy: $createdBy, createdAt: $createdAt, expiresAt: $expiresAt, maxUses: $maxUses, useCount: $useCount, revoked: $revoked, requiresApproval: $requiresApproval, name: $name)';
+  final _this = this as InviteLink;
+  return 'InviteLink(id: ${_this.id}, roomId: ${_this.roomId}, code: ${_this.code}, createdBy: ${_this.createdBy}, createdAt: ${_this.createdAt}, expiresAt: ${_this.expiresAt}, maxUses: ${_this.maxUses}, useCount: ${_this.useCount}, revoked: ${_this.revoked}, requiresApproval: ${_this.requiresApproval}, name: ${_this.name})';
 }
 
 
@@ -248,16 +253,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InviteLink&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.code, code) || other.code == code)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.maxUses, maxUses) || other.maxUses == maxUses)&&(identical(other.useCount, useCount) || other.useCount == useCount)&&(identical(other.revoked, revoked) || other.revoked == revoked)&&(identical(other.requiresApproval, requiresApproval) || other.requiresApproval == requiresApproval)&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _InviteLink&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.code, code) || other.code == code)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.maxUses, maxUses) || other.maxUses == maxUses)&&(identical(other.useCount, useCount) || other.useCount == useCount)&&(identical(other.revoked, revoked) || other.revoked == revoked)&&(identical(other.requiresApproval, requiresApproval) || other.requiresApproval == requiresApproval)&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,roomId,code,createdBy,createdAt,expiresAt,maxUses,useCount,revoked,requiresApproval,name);
+int get hashCode {
+    return Object.hash(runtimeType,id,roomId,code,createdBy,createdAt,expiresAt,maxUses,useCount,revoked,requiresApproval,name);
+}
 
 @override
 String toString() {
-  return 'InviteLink(id: $id, roomId: $roomId, code: $code, createdBy: $createdBy, createdAt: $createdAt, expiresAt: $expiresAt, maxUses: $maxUses, useCount: $useCount, revoked: $revoked, requiresApproval: $requiresApproval, name: $name)';
+    return 'InviteLink(id: $id, roomId: $roomId, code: $code, createdBy: $createdBy, createdAt: $createdAt, expiresAt: $expiresAt, maxUses: $maxUses, useCount: $useCount, revoked: $revoked, requiresApproval: $requiresApproval, name: $name)';
 }
 
 
@@ -322,16 +329,21 @@ $InviteLinkJoinCopyWith<InviteLinkJoin> get copyWith => _$InviteLinkJoinCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InviteLinkJoin&&(identical(other.id, id) || other.id == id)&&(identical(other.inviteLinkId, inviteLinkId) || other.inviteLinkId == inviteLinkId)&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.status, status) || other.status == status));
+  final _this = this as InviteLinkJoin;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InviteLinkJoin&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.inviteLinkId, _this.inviteLinkId) || other.inviteLinkId == _this.inviteLinkId)&&(identical(other.profileId, _this.profileId) || other.profileId == _this.profileId)&&(identical(other.joinedAt, _this.joinedAt) || other.joinedAt == _this.joinedAt)&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,inviteLinkId,profileId,joinedAt,status);
+int get hashCode {
+  final _this = this as InviteLinkJoin;
+  return Object.hash(runtimeType,_this.id,_this.inviteLinkId,_this.profileId,_this.joinedAt,_this.status);
+}
 
 @override
 String toString() {
-  return 'InviteLinkJoin(id: $id, inviteLinkId: $inviteLinkId, profileId: $profileId, joinedAt: $joinedAt, status: $status)';
+  final _this = this as InviteLinkJoin;
+  return 'InviteLinkJoin(id: ${_this.id}, inviteLinkId: ${_this.inviteLinkId}, profileId: ${_this.profileId}, joinedAt: ${_this.joinedAt}, status: ${_this.status})';
 }
 
 
@@ -529,16 +541,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InviteLinkJoin&&(identical(other.id, id) || other.id == id)&&(identical(other.inviteLinkId, inviteLinkId) || other.inviteLinkId == inviteLinkId)&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _InviteLinkJoin&&(identical(other.id, id) || other.id == id)&&(identical(other.inviteLinkId, inviteLinkId) || other.inviteLinkId == inviteLinkId)&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,inviteLinkId,profileId,joinedAt,status);
+int get hashCode {
+    return Object.hash(runtimeType,id,inviteLinkId,profileId,joinedAt,status);
+}
 
 @override
 String toString() {
-  return 'InviteLinkJoin(id: $id, inviteLinkId: $inviteLinkId, profileId: $profileId, joinedAt: $joinedAt, status: $status)';
+    return 'InviteLinkJoin(id: $id, inviteLinkId: $inviteLinkId, profileId: $profileId, joinedAt: $joinedAt, status: $status)';
 }
 
 

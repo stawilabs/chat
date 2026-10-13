@@ -31,16 +31,21 @@ $RoomWithLastMessageCopyWith<RoomWithLastMessage> get copyWith => _$RoomWithLast
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoomWithLastMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.lastMessageText, lastMessageText) || other.lastMessageText == lastMessageText)&&(identical(other.lastMessageTimestamp, lastMessageTimestamp) || other.lastMessageTimestamp == lastMessageTimestamp)&&(identical(other.lastMessageSenderId, lastMessageSenderId) || other.lastMessageSenderId == lastMessageSenderId)&&(identical(other.lastMessageSenderName, lastMessageSenderName) || other.lastMessageSenderName == lastMessageSenderName)&&(identical(other.isTyping, isTyping) || other.isTyping == isTyping)&&(identical(other.draftText, draftText) || other.draftText == draftText)&&(identical(other.mutedUntil, mutedUntil) || other.mutedUntil == mutedUntil));
+  final _this = this as RoomWithLastMessage;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoomWithLastMessage&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.unreadCount, _this.unreadCount) || other.unreadCount == _this.unreadCount)&&(identical(other.lastMessageText, _this.lastMessageText) || other.lastMessageText == _this.lastMessageText)&&(identical(other.lastMessageTimestamp, _this.lastMessageTimestamp) || other.lastMessageTimestamp == _this.lastMessageTimestamp)&&(identical(other.lastMessageSenderId, _this.lastMessageSenderId) || other.lastMessageSenderId == _this.lastMessageSenderId)&&(identical(other.lastMessageSenderName, _this.lastMessageSenderName) || other.lastMessageSenderName == _this.lastMessageSenderName)&&(identical(other.isTyping, _this.isTyping) || other.isTyping == _this.isTyping)&&(identical(other.draftText, _this.draftText) || other.draftText == _this.draftText)&&(identical(other.mutedUntil, _this.mutedUntil) || other.mutedUntil == _this.mutedUntil));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,type,unreadCount,lastMessageText,lastMessageTimestamp,lastMessageSenderId,lastMessageSenderName,isTyping,draftText,mutedUntil);
+int get hashCode {
+  final _this = this as RoomWithLastMessage;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.type,_this.unreadCount,_this.lastMessageText,_this.lastMessageTimestamp,_this.lastMessageSenderId,_this.lastMessageSenderName,_this.isTyping,_this.draftText,_this.mutedUntil);
+}
 
 @override
 String toString() {
-  return 'RoomWithLastMessage(id: $id, name: $name, type: $type, unreadCount: $unreadCount, lastMessageText: $lastMessageText, lastMessageTimestamp: $lastMessageTimestamp, lastMessageSenderId: $lastMessageSenderId, lastMessageSenderName: $lastMessageSenderName, isTyping: $isTyping, draftText: $draftText, mutedUntil: $mutedUntil)';
+  final _this = this as RoomWithLastMessage;
+  return 'RoomWithLastMessage(id: ${_this.id}, name: ${_this.name}, type: ${_this.type}, unreadCount: ${_this.unreadCount}, lastMessageText: ${_this.lastMessageText}, lastMessageTimestamp: ${_this.lastMessageTimestamp}, lastMessageSenderId: ${_this.lastMessageSenderId}, lastMessageSenderName: ${_this.lastMessageSenderName}, isTyping: ${_this.isTyping}, draftText: ${_this.draftText}, mutedUntil: ${_this.mutedUntil})';
 }
 
 
@@ -252,16 +257,18 @@ _$RoomWithLastMessageCopyWith<_RoomWithLastMessage> get copyWith => __$RoomWithL
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoomWithLastMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.lastMessageText, lastMessageText) || other.lastMessageText == lastMessageText)&&(identical(other.lastMessageTimestamp, lastMessageTimestamp) || other.lastMessageTimestamp == lastMessageTimestamp)&&(identical(other.lastMessageSenderId, lastMessageSenderId) || other.lastMessageSenderId == lastMessageSenderId)&&(identical(other.lastMessageSenderName, lastMessageSenderName) || other.lastMessageSenderName == lastMessageSenderName)&&(identical(other.isTyping, isTyping) || other.isTyping == isTyping)&&(identical(other.draftText, draftText) || other.draftText == draftText)&&(identical(other.mutedUntil, mutedUntil) || other.mutedUntil == mutedUntil));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoomWithLastMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.lastMessageText, lastMessageText) || other.lastMessageText == lastMessageText)&&(identical(other.lastMessageTimestamp, lastMessageTimestamp) || other.lastMessageTimestamp == lastMessageTimestamp)&&(identical(other.lastMessageSenderId, lastMessageSenderId) || other.lastMessageSenderId == lastMessageSenderId)&&(identical(other.lastMessageSenderName, lastMessageSenderName) || other.lastMessageSenderName == lastMessageSenderName)&&(identical(other.isTyping, isTyping) || other.isTyping == isTyping)&&(identical(other.draftText, draftText) || other.draftText == draftText)&&(identical(other.mutedUntil, mutedUntil) || other.mutedUntil == mutedUntil));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,type,unreadCount,lastMessageText,lastMessageTimestamp,lastMessageSenderId,lastMessageSenderName,isTyping,draftText,mutedUntil);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,type,unreadCount,lastMessageText,lastMessageTimestamp,lastMessageSenderId,lastMessageSenderName,isTyping,draftText,mutedUntil);
+}
 
 @override
 String toString() {
-  return 'RoomWithLastMessage(id: $id, name: $name, type: $type, unreadCount: $unreadCount, lastMessageText: $lastMessageText, lastMessageTimestamp: $lastMessageTimestamp, lastMessageSenderId: $lastMessageSenderId, lastMessageSenderName: $lastMessageSenderName, isTyping: $isTyping, draftText: $draftText, mutedUntil: $mutedUntil)';
+    return 'RoomWithLastMessage(id: $id, name: $name, type: $type, unreadCount: $unreadCount, lastMessageText: $lastMessageText, lastMessageTimestamp: $lastMessageTimestamp, lastMessageSenderId: $lastMessageSenderId, lastMessageSenderName: $lastMessageSenderName, isTyping: $isTyping, draftText: $draftText, mutedUntil: $mutedUntil)';
 }
 
 

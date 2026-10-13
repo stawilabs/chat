@@ -30,16 +30,21 @@ $MessageSearchResultCopyWith<MessageSearchResult> get copyWith => _$MessageSearc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageSearchResult&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.roomName, roomName) || other.roomName == roomName)&&(identical(other.text, text) || other.text == text)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.query, query) || other.query == query));
+  final _this = this as MessageSearchResult;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageSearchResult&&(identical(other.messageId, _this.messageId) || other.messageId == _this.messageId)&&(identical(other.roomId, _this.roomId) || other.roomId == _this.roomId)&&(identical(other.roomName, _this.roomName) || other.roomName == _this.roomName)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.senderId, _this.senderId) || other.senderId == _this.senderId)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.query, _this.query) || other.query == _this.query));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,messageId,roomId,roomName,text,senderId,timestamp,query);
+int get hashCode {
+  final _this = this as MessageSearchResult;
+  return Object.hash(runtimeType,_this.messageId,_this.roomId,_this.roomName,_this.text,_this.senderId,_this.timestamp,_this.query);
+}
 
 @override
 String toString() {
-  return 'MessageSearchResult(messageId: $messageId, roomId: $roomId, roomName: $roomName, text: $text, senderId: $senderId, timestamp: $timestamp, query: $query)';
+  final _this = this as MessageSearchResult;
+  return 'MessageSearchResult(messageId: ${_this.messageId}, roomId: ${_this.roomId}, roomName: ${_this.roomName}, text: ${_this.text}, senderId: ${_this.senderId}, timestamp: ${_this.timestamp}, query: ${_this.query})';
 }
 
 
@@ -242,16 +247,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageSearchResult&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.roomName, roomName) || other.roomName == roomName)&&(identical(other.text, text) || other.text == text)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.query, query) || other.query == query));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageSearchResult&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.roomName, roomName) || other.roomName == roomName)&&(identical(other.text, text) || other.text == text)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.query, query) || other.query == query));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,messageId,roomId,roomName,text,senderId,timestamp,query);
+int get hashCode {
+    return Object.hash(runtimeType,messageId,roomId,roomName,text,senderId,timestamp,query);
+}
 
 @override
 String toString() {
-  return 'MessageSearchResult(messageId: $messageId, roomId: $roomId, roomName: $roomName, text: $text, senderId: $senderId, timestamp: $timestamp, query: $query)';
+    return 'MessageSearchResult(messageId: $messageId, roomId: $roomId, roomName: $roomName, text: $text, senderId: $senderId, timestamp: $timestamp, query: $query)';
 }
 
 

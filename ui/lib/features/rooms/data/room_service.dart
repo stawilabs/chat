@@ -30,8 +30,8 @@ class RoomService {
     this._memberRepo,
     this._roomSyncManager,
     this._authRuntime, {
-    Future<void> Function()? onJobCreated,
-  }) : _onJobCreated = onJobCreated;
+    this._onJobCreated,
+  });
   final RoomRepository _roomRepo;
   final PendingJobRepository _jobRepo;
   final pb_chat.ChatServiceClient _chatClient;

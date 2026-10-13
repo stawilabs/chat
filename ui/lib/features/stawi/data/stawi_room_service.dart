@@ -17,29 +17,24 @@ import 'stawi_clients.dart';
 import 'stawi_identity.dart';
 
 /// Sends one Stawi act into a room as a chat event.
-typedef StawiActSender =
-    Future<RoomEvent> Function({
-      required String roomId,
-      required RoomEventType type,
-      required Map<String, dynamic> content,
-      String? parentId,
-    });
+typedef StawiActSender = Future<RoomEvent> Function({
+  required String roomId,
+  required RoomEventType type,
+  required Map<String, dynamic> content,
+  String? parentId,
+});
 
 /// The room acts a member performs through chat: converting the room, signing
 /// its genesis, and signed governance calls. Settlement prepares every digest;
 /// the device checks and signs it; chat relays the act and posts its outcome.
 class StawiRoomService {
   StawiRoomService({
-    required settlement.RoomServiceClient rooms,
-    required DeviceKeyStore keys,
-    required Future<StawiIdentity> Function() identity,
-    required StawiActSender send,
-    SecretBallotStore? ballots,
-  }) : _rooms = rooms,
-       _keys = keys,
-       _identity = identity,
-       _send = send,
-       _ballots = ballots;
+    required this._rooms,
+    required this._keys,
+    required this._identity,
+    required this._send,
+    this._ballots,
+  });
 
   final settlement.RoomServiceClient _rooms;
   final DeviceKeyStore _keys;
