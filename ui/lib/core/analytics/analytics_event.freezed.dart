@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'analytics_event.dart';
@@ -9,6 +9,7 @@ part of 'analytics_event.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$AnalyticsEventCopyWithImpl<$Res>
 /// Create a copy of AnalyticsEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? name = null,Object? timestamp = null,Object? userId = freezed,Object? sessionId = freezed,Object? screenName = freezed,Object? properties = freezed,Object? userProperties = freezed,Object? isSynced = null,}) {
-  return _then(_self.copyWith(
+  return _then(AnalyticsEvent(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as AnalyticsEventType,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -218,7 +219,7 @@ return $default(_that.id,_that.type,_that.name,_that.timestamp,_that.userId,_tha
 @JsonSerializable()
 
 class _AnalyticsEvent extends AnalyticsEvent {
-  const _AnalyticsEvent({required this.id, required this.type, required this.name, required this.timestamp, this.userId, this.sessionId, this.screenName, final  Map<String, dynamic>? properties, final  Map<String, dynamic>? userProperties, this.isSynced = false}): _properties = properties,_userProperties = userProperties,super._();
+  const _AnalyticsEvent({required this.id, required this.type, required this.name, required this.timestamp, this.userId, this.sessionId, this.screenName,  Map<String, dynamic>? properties,  Map<String, dynamic>? userProperties, this.isSynced = false}): _properties = properties,_userProperties = userProperties,super._();
   factory _AnalyticsEvent.fromJson(Map<String, dynamic> json) => _$AnalyticsEventFromJson(json);
 
 @override final  String id;
@@ -372,7 +373,7 @@ class _$AnalyticsUserPropertiesCopyWithImpl<$Res>
 /// Create a copy of AnalyticsUserProperties
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? userId = freezed,Object? displayName = freezed,Object? email = freezed,Object? phoneNumber = freezed,Object? accountCreatedAt = freezed,Object? lastLoginAt = freezed,Object? appVersion = freezed,Object? platform = freezed,Object? deviceModel = freezed,Object? osVersion = freezed,Object? locale = freezed,Object? totalRooms = freezed,Object? totalContacts = freezed,Object? customProperties = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AnalyticsUserProperties(
 userId: freezed == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -528,7 +529,7 @@ return $default(_that.userId,_that.displayName,_that.email,_that.phoneNumber,_th
 @JsonSerializable()
 
 class _AnalyticsUserProperties implements AnalyticsUserProperties {
-  const _AnalyticsUserProperties({this.userId, this.displayName, this.email, this.phoneNumber, this.accountCreatedAt, this.lastLoginAt, this.appVersion, this.platform, this.deviceModel, this.osVersion, this.locale, this.totalRooms, this.totalContacts, final  Map<String, dynamic>? customProperties}): _customProperties = customProperties;
+  const _AnalyticsUserProperties({this.userId, this.displayName, this.email, this.phoneNumber, this.accountCreatedAt, this.lastLoginAt, this.appVersion, this.platform, this.deviceModel, this.osVersion, this.locale, this.totalRooms, this.totalContacts,  Map<String, dynamic>? customProperties}): _customProperties = customProperties;
   factory _AnalyticsUserProperties.fromJson(Map<String, dynamic> json) => _$AnalyticsUserPropertiesFromJson(json);
 
 @override final  String? userId;
@@ -682,7 +683,7 @@ class _$AnalyticsSessionCopyWithImpl<$Res>
 /// Create a copy of AnalyticsSession
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? startTime = null,Object? endTime = freezed,Object? eventCount = null,Object? screenViewCount = null,Object? entryScreen = freezed,Object? exitScreen = freezed,Object? userId = freezed,Object? deviceInfo = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AnalyticsSession(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,endTime: freezed == endTime ? _self.endTime : endTime // ignore: cast_nullable_to_non_nullable
@@ -833,7 +834,7 @@ return $default(_that.id,_that.startTime,_that.endTime,_that.eventCount,_that.sc
 @JsonSerializable()
 
 class _AnalyticsSession extends AnalyticsSession {
-  const _AnalyticsSession({required this.id, required this.startTime, this.endTime, this.eventCount = 0, this.screenViewCount = 0, this.entryScreen, this.exitScreen, this.userId, final  Map<String, dynamic>? deviceInfo}): _deviceInfo = deviceInfo,super._();
+  const _AnalyticsSession({required this.id, required this.startTime, this.endTime, this.eventCount = 0, this.screenViewCount = 0, this.entryScreen, this.exitScreen, this.userId,  Map<String, dynamic>? deviceInfo}): _deviceInfo = deviceInfo,super._();
   factory _AnalyticsSession.fromJson(Map<String, dynamic> json) => _$AnalyticsSessionFromJson(json);
 
 @override final  String id;

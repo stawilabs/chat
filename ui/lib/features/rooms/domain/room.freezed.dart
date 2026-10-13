@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'room.dart';
@@ -9,6 +9,7 @@ part of 'room.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -74,7 +75,7 @@ class _$RoomCopyWithImpl<$Res>
 /// Create a copy of Room
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? type = null,Object? lastEventId = freezed,Object? lastEventIndex = null,Object? unreadCount = null,Object? metadata = freezed,Object? disappearingTimeout = freezed,Object? mutedUntil = freezed,Object? memberLimit = freezed,Object? memberLimitEnabled = null,}) {
-  return _then(_self.copyWith(
+  return _then(Room(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -227,7 +228,7 @@ return $default(_that.id,_that.name,_that.type,_that.lastEventId,_that.lastEvent
 @JsonSerializable()
 
 class _Room extends Room {
-  const _Room({required this.id, required this.name, required this.type, this.lastEventId, this.lastEventIndex = 0, this.unreadCount = 0, final  Map<String, dynamic>? metadata, this.disappearingTimeout, this.mutedUntil, this.memberLimit, this.memberLimitEnabled = true}): _metadata = metadata,super._();
+  const _Room({required this.id, required this.name, required this.type, this.lastEventId, this.lastEventIndex = 0, this.unreadCount = 0,  Map<String, dynamic>? metadata, this.disappearingTimeout, this.mutedUntil, this.memberLimit, this.memberLimitEnabled = true}): _metadata = metadata,super._();
   factory _Room.fromJson(Map<String, dynamic> json) => _$RoomFromJson(json);
 
 @override final  String id;

@@ -292,7 +292,7 @@ Future<void> addTestMoney(
     () => service.fundTestAccount(amount, asset),
     success: 'Test money is on its way to your wallet',
   );
-  if (funded != null) invalidateSoon(container, [stawiWalletBalanceProvider]);
+  if (funded != null) invalidateAll(container, [stawiWalletBalanceProvider]);
 }
 
 /// What a new savings goal is to be.
@@ -410,7 +410,7 @@ Future<void> startGoal(
     } on Object {
       break;
     }
-    invalidateSoon(container, [myVaultProvider]);
+    invalidateAll(container, [myVaultProvider]);
     return;
   }
   if (context.mounted) {

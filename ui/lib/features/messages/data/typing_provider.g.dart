@@ -91,7 +91,7 @@ abstract class _$Typing extends $Notifier<Set<TypingUser>> {
   Set<TypingUser> build(String roomId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<Set<TypingUser>, Set<TypingUser>>;
     final element =
         ref.element
@@ -101,6 +101,6 @@ abstract class _$Typing extends $Notifier<Set<TypingUser>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

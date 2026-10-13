@@ -103,7 +103,7 @@ abstract class _$UploadProgressNotifier
   Map<String, UploadProgress> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<Map<String, UploadProgress>, Map<String, UploadProgress>>;
@@ -118,7 +118,7 @@ abstract class _$UploadProgressNotifier
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

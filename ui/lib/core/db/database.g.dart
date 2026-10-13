@@ -12576,7 +12576,16 @@ class $$ProfilesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ProfilesTable, Profile>(table),
+                  BaseReferences<_$AppDatabase, $ProfilesTable, Profile>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -12892,7 +12901,16 @@ class $$RosterTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$RosterTable, RosterData>(table),
+                  BaseReferences<_$AppDatabase, $RosterTable, RosterData>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -12952,10 +12970,7 @@ final class $$RoomsTableReferences
   _roomSubscriptionsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.roomSubscriptions,
-        aliasName: $_aliasNameGenerator(
-          db.rooms.id,
-          db.roomSubscriptions.roomId,
-        ),
+        aliasName: 'rooms__id__room_subscriptions__room_id',
       );
 
   $$RoomSubscriptionsTableProcessedTableManager get roomSubscriptionsRefs {
@@ -12975,7 +12990,7 @@ final class $$RoomsTableReferences
   static MultiTypedResultKey<$RoomEventsTable, List<RoomEvent>>
   _roomEventsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.roomEvents,
-    aliasName: $_aliasNameGenerator(db.rooms.id, db.roomEvents.roomId),
+    aliasName: 'rooms__id__room_events__room_id',
   );
 
   $$RoomEventsTableProcessedTableManager get roomEventsRefs {
@@ -12993,7 +13008,7 @@ final class $$RoomsTableReferences
   static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
   _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.transactions,
-    aliasName: $_aliasNameGenerator(db.rooms.id, db.transactions.roomId),
+    aliasName: 'rooms__id__transactions__room_id',
   );
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
@@ -13011,7 +13026,7 @@ final class $$RoomsTableReferences
   static MultiTypedResultKey<$InviteLinksTable, List<InviteLink>>
   _inviteLinksRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.inviteLinks,
-    aliasName: $_aliasNameGenerator(db.rooms.id, db.inviteLinks.roomId),
+    aliasName: 'rooms__id__invite_links__room_id',
   );
 
   $$InviteLinksTableProcessedTableManager get inviteLinksRefs {
@@ -13503,8 +13518,10 @@ class $$RoomsTableTableManager
               ),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) =>
-                    (e.readTable(table), $$RoomsTableReferences(db, table, e)),
+                (e) => (
+                  e.readTable<$RoomsTable, Room>(table),
+                  $$RoomsTableReferences(db, table, e),
+                ),
               )
               .toList(),
           prefetchHooksCallback:
@@ -13666,9 +13683,8 @@ final class $$RoomSubscriptionsTableReferences
     super.$_typedResult,
   );
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.roomSubscriptions.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('room_subscriptions__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -13919,7 +13935,7 @@ class $$RoomSubscriptionsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$RoomSubscriptionsTable, RoomSubscription>(table),
                   $$RoomSubscriptionsTableReferences(db, table, e),
                 ),
               )
@@ -14048,9 +14064,8 @@ final class $$RoomEventsTableReferences
     extends BaseReferences<_$AppDatabase, $RoomEventsTable, RoomEvent> {
   $$RoomEventsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.roomEvents.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('room_events__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -14639,7 +14654,7 @@ class $$RoomEventsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$RoomEventsTable, RoomEvent>(table),
                   $$RoomEventsTableReferences(db, table, e),
                 ),
               )
@@ -14878,7 +14893,16 @@ class $$SessionsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SessionsTable, Session>(table),
+                  BaseReferences<_$AppDatabase, $SessionsTable, Session>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15049,7 +15073,16 @@ class $$PrekeysTableTableManager
                 isSigned: isSigned,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$PrekeysTable, Prekey>(table),
+                  BaseReferences<_$AppDatabase, $PrekeysTable, Prekey>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15320,7 +15353,16 @@ class $$PendingJobsTableTableManager
                 lastError: lastError,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$PendingJobsTable, PendingJob>(table),
+                  BaseReferences<_$AppDatabase, $PendingJobsTable, PendingJob>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15369,9 +15411,8 @@ final class $$TransactionsTableReferences
     extends BaseReferences<_$AppDatabase, $TransactionsTable, Transaction> {
   $$TransactionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.transactions.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('transactions__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -15619,7 +15660,7 @@ class $$TransactionsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$TransactionsTable, Transaction>(table),
                   $$TransactionsTableReferences(db, table, e),
                 ),
               )
@@ -15821,7 +15862,16 @@ class $$SyncMetadataTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SyncMetadataTable, SyncMetadataData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SyncMetadataTable,
+                    SyncMetadataData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15983,7 +16033,16 @@ class $$UserSettingsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$UserSettingsTable, UserSetting>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UserSettingsTable,
+                    UserSetting
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16161,7 +16220,16 @@ class $$DraftsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DraftsTable, Draft>(table),
+                  BaseReferences<_$AppDatabase, $DraftsTable, Draft>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16411,7 +16479,16 @@ class $$FormMessageDraftsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FormMessageDraftsTable, FormMessageDraft>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $FormMessageDraftsTable,
+                    FormMessageDraft
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16609,7 +16686,16 @@ class $$ReadReceiptsTableTableManager
                 readAt: readAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ReadReceiptsTable, ReadReceipt>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ReadReceiptsTable,
+                    ReadReceipt
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16850,7 +16936,16 @@ class $$ReportsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ReportsTable, Report>(table),
+                  BaseReferences<_$AppDatabase, $ReportsTable, Report>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16906,9 +17001,8 @@ final class $$InviteLinksTableReferences
     extends BaseReferences<_$AppDatabase, $InviteLinksTable, InviteLink> {
   $$InviteLinksTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.inviteLinks.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('invite_links__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -16927,10 +17021,7 @@ final class $$InviteLinksTableReferences
   static MultiTypedResultKey<$InviteLinkJoinsTable, List<InviteLinkJoin>>
   _inviteLinkJoinsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.inviteLinkJoins,
-    aliasName: $_aliasNameGenerator(
-      db.inviteLinks.id,
-      db.inviteLinkJoins.inviteLinkId,
-    ),
+    aliasName: 'invite_links__id__invite_link_joins__invite_link_id',
   );
 
   $$InviteLinkJoinsTableProcessedTableManager get inviteLinkJoinsRefs {
@@ -17314,7 +17405,7 @@ class $$InviteLinksTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$InviteLinksTable, InviteLink>(table),
                   $$InviteLinksTableReferences(db, table, e),
                 ),
               )
@@ -17431,13 +17522,9 @@ final class $$InviteLinkJoinsTableReferences
     super.$_typedResult,
   );
 
-  static $InviteLinksTable _inviteLinkIdTable(_$AppDatabase db) =>
-      db.inviteLinks.createAlias(
-        $_aliasNameGenerator(
-          db.inviteLinkJoins.inviteLinkId,
-          db.inviteLinks.id,
-        ),
-      );
+  static $InviteLinksTable _inviteLinkIdTable(_$AppDatabase db) => db
+      .inviteLinks
+      .createAlias('invite_link_joins__invite_link_id__invite_links__id');
 
   $$InviteLinksTableProcessedTableManager get inviteLinkId {
     final $_column = $_itemColumn<String>('invite_link_id')!;
@@ -17664,7 +17751,7 @@ class $$InviteLinkJoinsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$InviteLinkJoinsTable, InviteLinkJoin>(table),
                   $$InviteLinkJoinsTableReferences(db, table, e),
                 ),
               )
@@ -17921,7 +18008,16 @@ class $$UploadChunksTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$UploadChunksTable, UploadChunk>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UploadChunksTable,
+                    UploadChunk
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -18237,7 +18333,16 @@ class $$DownloadChunksTableTableManager
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DownloadChunksTable, DownloadChunk>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DownloadChunksTable,
+                    DownloadChunk
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -18669,7 +18774,16 @@ class $$TransferJobsTableTableManager
                 nextRetryAt: nextRetryAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$TransferJobsTable, TransferJob>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $TransferJobsTable,
+                    TransferJob
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -19019,7 +19133,16 @@ class $$CallHistoryTableTableManager
                 isDeleted: isDeleted,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$CallHistoryTable, CallHistoryData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CallHistoryTable,
+                    CallHistoryData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -19337,7 +19460,16 @@ class $$AnalyticsEventsTableTableManager
                 syncedAt: syncedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$AnalyticsEventsTable, AnalyticsEvent>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AnalyticsEventsTable,
+                    AnalyticsEvent
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

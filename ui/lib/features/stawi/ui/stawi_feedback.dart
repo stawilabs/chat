@@ -69,29 +69,13 @@ String shortHex(String hex) => hex.length <= 14
 ProviderContainer moneyContainer(BuildContext context) =>
     ProviderScope.containerOf(context, listen: false);
 
-/// Reads [providers] again once the current event is done, keeping each
-/// one listened to until it has its new value.
-///
-/// flutter_riverpod 3.3.2-dev.2 asserts (and then never runs its scheduled
-/// work) when a refresh is scheduled while a disposal is pending, which is
-/// what invalidating a provider watched only by a screen under another route
-/// (its subscription paused) does. Waiting for the event to end lets pending
-/// disposals run, and the listener keeps the provider active through its
-/// refresh. [container] outlives any widget (see [moneyContainer]).
-void invalidateSoon(
+/// Reads [providers] again through [container], which outlives any widget
+/// (see [moneyContainer]), so this works after the screen is gone.
+void invalidateAll(
   ProviderContainer container,
   Iterable<ProviderBase<Object?>> providers,
 ) {
-  final all = providers.toList();
-  Future<void>.delayed(Duration.zero, () {
-    for (final p in all) {
-      if (!container.exists(p)) continue;
-      ProviderSubscription<Object?>? sub;
-      sub = container.listen<Object?>(p, (_, next) {
-        if (next is AsyncValue && next.isLoading) return;
-        sub?.close();
-      });
-      container.invalidate(p);
-    }
-  });
+  for (final p in providers) {
+    container.invalidate(p);
+  }
 }

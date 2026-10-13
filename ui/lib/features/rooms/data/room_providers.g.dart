@@ -237,7 +237,7 @@ abstract class _$RoomList extends $AsyncNotifier<List<domain.Room>> {
   FutureOr<List<domain.Room>> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<List<domain.Room>>, List<domain.Room>>;
     final element =
@@ -248,7 +248,7 @@ abstract class _$RoomList extends $AsyncNotifier<List<domain.Room>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -288,7 +288,7 @@ abstract class _$RoomListWithMessages
   FutureOr<List<RoomWithLastMessage>> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -306,6 +306,6 @@ abstract class _$RoomListWithMessages
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

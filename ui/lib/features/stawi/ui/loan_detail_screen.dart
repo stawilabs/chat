@@ -54,7 +54,7 @@ Future<void> followAndOfferAutoPay(
     context,
     () => service.followUntilActive(loanRef, callId: callId),
   );
-  invalidateSoon(container, moneyProviders(loanRef));
+  invalidateAll(container, moneyProviders(loanRef));
   if (loan == null || !context.mounted) return;
   if (loan.state != finance.LoanState.LOAN_STATE_FUNDED) {
     if (loan.state == finance.LoanState.LOAN_STATE_PENDING_APPROVAL ||

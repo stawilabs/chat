@@ -66,7 +66,7 @@ Future<settlement.AccountCall?> settleThenRefresh(
   } on Object {
     last = null;
   }
-  invalidateSoon(container, providers);
+  invalidateAll(container, providers);
   return last;
 }
 

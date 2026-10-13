@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'room_event.dart';
@@ -9,6 +9,7 @@ part of 'room_event.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -66,7 +67,7 @@ class _$RoomEventCopyWithImpl<$Res>
 /// Create a copy of RoomEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = null,Object? type = null,Object? content = null,Object? createdAt = null,Object? senderContactId = freezed,Object? parentId = freezed,Object? status = null,Object? serverTs = freezed,Object? localId = freezed,Object? editedAt = freezed,Object? redacted = null,Object? redactedAt = freezed,Object? redactedBy = freezed,Object? retryCount = null,Object? errorMessage = freezed,Object? forwardedFromRoom = freezed,Object? forwardedFromEvent = freezed,Object? forwardCount = null,Object? forwardRestricted = null,Object? expiresAt = freezed,Object? starred = null,Object? starredAt = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(RoomEvent(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,senderId: null == senderId ? _self.senderId : senderId // ignore: cast_nullable_to_non_nullable
@@ -232,7 +233,7 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.type,_that.content,_t
 @JsonSerializable()
 
 class _RoomEvent extends RoomEvent {
-  const _RoomEvent({required this.id, required this.roomId, required this.senderId, required this.type, required final  Map<String, dynamic> content, required this.createdAt, this.senderContactId, this.parentId, this.status = EventStatus.pending, this.serverTs, this.localId, this.editedAt, this.redacted = false, this.redactedAt, this.redactedBy, this.retryCount = 0, this.errorMessage, this.forwardedFromRoom, this.forwardedFromEvent, this.forwardCount = 0, this.forwardRestricted = false, this.expiresAt, this.starred = false, this.starredAt}): _content = content,super._();
+  const _RoomEvent({required this.id, required this.roomId, required this.senderId, required this.type, required  Map<String, dynamic> content, required this.createdAt, this.senderContactId, this.parentId, this.status = EventStatus.pending, this.serverTs, this.localId, this.editedAt, this.redacted = false, this.redactedAt, this.redactedBy, this.retryCount = 0, this.errorMessage, this.forwardedFromRoom, this.forwardedFromEvent, this.forwardCount = 0, this.forwardRestricted = false, this.expiresAt, this.starred = false, this.starredAt}): _content = content,super._();
   factory _RoomEvent.fromJson(Map<String, dynamic> json) => _$RoomEventFromJson(json);
 
 @override final  String id;
