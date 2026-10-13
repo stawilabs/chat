@@ -22,7 +22,7 @@ void main() {
           vaultWith('p1', v['private_key'] as String),
           gate: SigningGate.open,
         );
-        final key = (await store.load('p1'))!;
+        final key = await store.unlock('p1', reason: 'x');
         final digest = hexToBytes(v['digest'] as String);
         expect(
           bytesToHex0x(key.sign(digest)),
@@ -78,10 +78,10 @@ void main() {
       final key = await DeviceKeyStore(
         vaultWith('p1', anvilKey),
         gate: SigningGate.open,
-      ).load('p1');
+      ).unlock('p1', reason: 'x');
       final vs = <int>{};
       for (var i = 0; i < 32; i++) {
-        final signature = key!.sign(keccak256(Uint8List.fromList([i])));
+        final signature = key.sign(keccak256(Uint8List.fromList([i])));
         expect(signature, hasLength(65));
         vs.add(signature[64]);
       }
@@ -89,11 +89,24 @@ void main() {
       expect(vs, {27, 28});
     });
 
+    test('the key read without the lock is the key that signs', () async {
+      final store = DeviceKeyStore(
+        MemoryDeviceKeyVault(),
+        gate: SigningGate.open,
+      );
+      final public = await store.loadOrCreate('p');
+      final signer = await store.unlock('p', reason: 'x');
+      expect(public, isNot(isA<DeviceKeyHandle>()));
+      expect(signer.address, public.address);
+      expect(signer.publicKey, public.publicKey);
+      expect((await store.load('p'))!.keyId, public.keyId);
+    });
+
     test('a signature recovers to the device key', () async {
       final key = await DeviceKeyStore(
         MemoryDeviceKeyVault(),
         gate: SigningGate.open,
-      ).loadOrCreate('p');
+      ).unlock('p', reason: 'x');
       final digest = keccak256(Uint8List.fromList([1, 2, 3]));
       expect(recoverDeviceAddress(digest, key.sign(digest)), key.address);
     });

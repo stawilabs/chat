@@ -14,7 +14,7 @@ class _FakeAuth implements LocalAuthentication {
   _FakeAuth({this.supported = true, this.answer = true, this.supportError});
 
   final bool supported;
-  final Exception? supportError;
+  final Object? supportError;
 
   /// true or false, or an error to throw.
   final Object answer;
@@ -23,7 +23,9 @@ class _FakeAuth implements LocalAuthentication {
 
   @override
   Future<bool> isDeviceSupported() async {
-    if (supportError != null) throw supportError!;
+    final e = supportError;
+    if (e is Error) throw e;
+    if (e != null) throw e as Exception;
     return supported;
   }
 
@@ -118,6 +120,26 @@ void main() {
         );
       });
     }
+
+    test('where local_auth is unavailable, nothing is signed', () async {
+      for (final error in [
+        MissingPluginException('no local_auth here'),
+        UnimplementedError('isDeviceSupported'),
+      ]) {
+        await expectLater(
+          LocalAuthSigningGate(_FakeAuth(supportError: error)).confirm('x'),
+          refusedWith(signingUnavailableReason),
+        );
+        await expectLater(
+          LocalAuthSigningGate(_FakeAuth(answer: error)).confirm('x'),
+          refusedWith(signingUnavailableReason),
+        );
+      }
+      expect(
+        signingUnavailableReason,
+        "Signing isn't available on this device",
+      );
+    });
 
     test('any other error signs nothing', () async {
       for (final error in [

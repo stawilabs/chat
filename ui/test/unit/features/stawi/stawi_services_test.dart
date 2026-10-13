@@ -5,6 +5,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
@@ -33,7 +34,9 @@ void main() {
   late FakeConnectTransport transport;
   late RecordingActSender sender;
   late DeviceKeyStore keys;
-  late DeviceKeyHandle key;
+  late DevicePublicKey key;
+  // The same key, unlocked without a prompt, to compute expected signatures.
+  late DeviceKeyHandle signer;
   late RecordingSigningGate gate;
 
   setUp(() async {
@@ -42,6 +45,10 @@ void main() {
     sender = RecordingActSender();
     keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate);
     key = (await keys.load('p1'))!;
+    signer = await DeviceKeyStore(
+      vaultWith('p1', anvilKey),
+      gate: SigningGate.open,
+    ).unlock('p1', reason: 'expected signature');
   });
 
   StawiRoomService roomService() => StawiRoomService(
@@ -268,7 +275,7 @@ void main() {
       expect(act.content['signerKeyId'], key.keyId);
       final signature = base64Decode(act.content['signature'] as String);
       expect(recoverDeviceAddress(digest, signature), key.address);
-      expect(signature, isNot(key.sign(otherDigest)));
+      expect(signature, isNot(signer.sign(otherDigest)));
     });
 
     test('the device lock names the room being founded', () async {
@@ -296,7 +303,7 @@ void main() {
       final signature = base64Decode(
         sender.sent.single.content['signature'] as String,
       );
-      expect(signature, key.sign(digest));
+      expect(signature, signer.sign(digest));
       expect(recoverDeviceAddress(otherDigest, signature), isNot(key.address));
     });
 

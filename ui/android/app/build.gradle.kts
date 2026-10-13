@@ -110,6 +110,11 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
+    // MainActivity is a FlutterFragmentActivity and every window theme is
+    // AppCompat, so local_auth can show the device-lock prompt Stawi signs
+    // behind.
+    implementation("androidx.appcompat:appcompat:1.7.0")
+
     // Import the Firebase BoM
       implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
 

@@ -37,7 +37,7 @@ void main() {
   group('StawiAccountScreen', () {
     late FakeConnectTransport transport;
     late DeviceKeyStore keys;
-    late DeviceKeyHandle key;
+    late DevicePublicKey key;
 
     setUp(() async {
       transport = FakeConnectTransport();
@@ -148,7 +148,7 @@ void main() {
 
   group('test funds', () {
     late FakeConnectTransport transport;
-    late DeviceKeyHandle key;
+    late DevicePublicKey key;
 
     setUp(() async {
       transport = FakeConnectTransport()

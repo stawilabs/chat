@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:connectrpc/connect.dart' as connect;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
@@ -206,7 +207,7 @@ void main() {
     final v = genesis.firstWhere((v) => v.name == 'settlement_default');
     late RecordingSigningGate gate;
     late DeviceKeyStore keys;
-    late DeviceKeyHandle key;
+    late DevicePublicKey key;
 
     setUp(() async {
       gate = RecordingSigningGate();
@@ -231,26 +232,38 @@ void main() {
         );
 
     /// Settlement answers GetAccount with [states] in turn, repeating the
-    /// last; deploys answer PENDING.
-    void chainAnswers(List<settlement.AccountState> states) {
+    /// last. A deploy answers [deployState] (and [duplicate]), and from then
+    /// on GetAccount answers [afterDeploy] in turn: the server's contract, in
+    /// which a deploy of a FAILED genesis requests a new attempt.
+    void chainAnswers(
+      List<settlement.AccountState> states, {
+      List<settlement.AccountState>? afterDeploy,
+      String deployState = 'PENDING',
+      bool duplicate = false,
+    }) {
+      var script = states;
       var reads = 0;
       transport
         ..on(settlement.AccountService.getAccount, (req) {
-          final i = reads < states.length ? reads : states.length - 1;
+          final i = reads < script.length ? reads : script.length - 1;
           reads++;
-          return settlement.GetAccountResponse(account: states[i]);
+          return settlement.GetAccountResponse(account: script[i]);
         })
         ..on(
           settlement.AccountService.prepareDeployAccount,
           (req) => v.prepared,
         )
-        ..on(
-          settlement.AccountService.deployAccount,
-          (req) => settlement.DeployAccountResponse(
+        ..on(settlement.AccountService.deployAccount, (req) {
+          if (afterDeploy != null) {
+            script = afterDeploy;
+            reads = 0;
+          }
+          return settlement.DeployAccountResponse(
             address: req.address,
-            genesisState: 'PENDING',
-          ),
-        );
+            genesisState: deployState,
+            duplicate: duplicate,
+          );
+        });
     }
 
     Future<StawiAccountRef> ready({int attempts = 60}) => service(
@@ -309,10 +322,66 @@ void main() {
       },
     );
 
-    test('a failed deployment is deployed again', () async {
-      chainAnswers([undeployed('FAILED'), deployed(mine: true)]);
-      await ready();
+    test(
+      'a FAILED genesis is deployed again: PENDING, then DEPLOYED',
+      () async {
+        chainAnswers(
+          [undeployed('FAILED')],
+          afterDeploy: [undeployed('PENDING'), deployed(mine: true)],
+          duplicate: true,
+        );
+        expect((await ready()).address, v.account);
+        expect(deploys(), 1);
+        expect(reads(), 3);
+      },
+    );
+
+    test(
+      'a deployment someone else started that fails is retried once',
+      () async {
+        chainAnswers(
+          [undeployed('PENDING'), undeployed('FAILED')],
+          afterDeploy: [undeployed('PENDING'), deployed(mine: true)],
+        );
+        await ready();
+        expect(deploys(), 1);
+      },
+    );
+
+    test('a FAILED duplicate the server will not retry says so', () async {
+      chainAnswers(
+        [undeployed('FAILED')],
+        deployState: 'FAILED',
+        duplicate: true,
+      );
+      await expectLater(
+        ready(),
+        throwsA(
+          isA<StawiUnavailable>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              accountSetupFailedMessage,
+              startsWith('Setting up your Stawi account failed'),
+            ),
+          ),
+        ),
+      );
       expect(deploys(), 1);
+      expect(reads(), 1);
+    });
+
+    test('stops when nobody waits for it any more', () async {
+      chainAnswers([undeployed(''), undeployed('PENDING')]);
+      var cancel = false;
+      final done = service(
+        keys,
+        v.identity('p1'),
+      ).ensureReady(every: Duration.zero, cancelled: () => cancel);
+      cancel = true;
+      await expectLater(done, throwsA(isA<AccountSetupCancelled>()));
+      expect(deploys(), 0, reason: 'cancelled before the deploy');
+      expect(reads(), 1);
     });
 
     test(
@@ -366,8 +435,11 @@ void main() {
       expect(deploys(), 0);
     });
 
-    test('a deployment that fails while waited for says so', () async {
-      chainAnswers([undeployed(''), undeployed('FAILED')]);
+    test('a deployment that fails again is not retried in a loop', () async {
+      chainAnswers(
+        [undeployed('')],
+        afterDeploy: [undeployed('PENDING'), undeployed('FAILED')],
+      );
       await expectLater(
         ready(),
         throwsA(
@@ -379,6 +451,32 @@ void main() {
         ),
       );
       expect(deploys(), 1);
+      expect(reads(), 3);
+    });
+
+    testWidgets('the ready provider stops its loop once nobody watches', (
+      tester,
+    ) async {
+      chainAnswers([undeployed('PENDING')]);
+      final container = ProviderContainer(
+        overrides: [
+          stawiAccountServiceProvider.overrideWithValue(
+            service(keys, v.identity('p1')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final sub = container.listen(stawiAccountReadyProvider, (_, _) {});
+      await tester.pump();
+      expect(reads(), 1);
+      await tester.pump(const Duration(seconds: 3));
+      expect(reads(), 2);
+      sub.close();
+      await tester.pump();
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(seconds: 3));
+      }
+      expect(reads(), 2, reason: 'no loop left running');
     });
 
     testWidgets('by default it reads every 3 s and gives up after 3 min', (
@@ -435,7 +533,7 @@ void main() {
     final custody = Uint8List.fromList(List.filled(20, 0xc0));
     final digest = keccak256(Uint8List.fromList([1]));
     late DeviceKeyStore keys;
-    late DeviceKeyHandle key;
+    late DevicePublicKey key;
 
     setUp(() async {
       keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open);

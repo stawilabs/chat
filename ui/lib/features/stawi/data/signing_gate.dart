@@ -1,11 +1,17 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
+import '../../../core/security/biometric_service.dart';
 import '../domain/signing_checks.dart';
 
 /// Why a device with no screen lock signs nothing.
 const String screenLockRequiredReason =
     'Set a screen lock on this phone to sign';
+
+/// Why nothing is signed where the platform has no device-lock support.
+const String signingUnavailableReason =
+    "Signing isn't available on this device";
 
 /// Why a signature the person cancelled or refused was not made.
 const String notConfirmedReason = 'not confirmed on this device';
@@ -58,8 +64,8 @@ final class LocalAuthSigningGate implements SigningGate {
     final bool supported;
     try {
       supported = await _auth.isDeviceSupported();
-    } on Object {
-      throw const SigningRefused(notConfirmedReason);
+    } on Object catch (e) {
+      throw SigningRefused(_reasonFor(e));
     }
     if (!supported) throw const SigningRefused(screenLockRequiredReason);
     final bool ok;
@@ -68,19 +74,21 @@ final class LocalAuthSigningGate implements SigningGate {
         localizedReason: reason,
         persistAcrossBackgrounding: true,
       );
-    } on LocalAuthException catch (e) {
-      throw SigningRefused(
-        _noLockCodes.contains(e.code)
-            ? screenLockRequiredReason
-            : notConfirmedReason,
-      );
-    } on Object {
-      throw const SigningRefused(notConfirmedReason);
+    } on Object catch (e) {
+      throw SigningRefused(_reasonFor(e));
     }
     if (!ok) throw const SigningRefused(notConfirmedReason);
   }
+
+  static String _reasonFor(Object error) => switch (error) {
+    LocalAuthException(:final code) when _noLockCodes.contains(code) =>
+      screenLockRequiredReason,
+    MissingPluginException() ||
+    UnimplementedError() => signingUnavailableReason,
+    _ => notConfirmedReason,
+  };
 }
 
 final signingGateProvider = Provider<SigningGate>(
-  (ref) => LocalAuthSigningGate(LocalAuthentication()),
+  (ref) => LocalAuthSigningGate(ref.watch(localAuthenticationProvider)),
 );

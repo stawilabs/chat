@@ -59,7 +59,7 @@ class StawiAccountStatus {
   final settlement.AccountState? state;
 
   /// This device's key for the profile.
-  final DeviceKeyHandle deviceKey;
+  final DevicePublicKey deviceKey;
 
   bool get deployed => state?.deployed ?? false;
 
@@ -116,27 +116,45 @@ class StawiAccountService {
   /// The primary account, deployed with a key of this device: deploys it the
   /// first time money is touched (a signature, so behind the device lock) and
   /// reads the chain every [every] until it is deployed, at most [attempts]
-  /// times. Refuses a deployed account this device holds no key of, and
-  /// gives up with [accountSetupPendingMessage] when the chain is slower;
-  /// trying again picks the pending deployment up without deploying twice.
+  /// times. A FAILED genesis is deployed again, at most once per call; a
+  /// deployment that fails again ends with [accountSetupFailedMessage].
+  /// Refuses a deployed account this device holds no key of, and gives up
+  /// with [accountSetupPendingMessage] when the chain is slower; trying again
+  /// picks the pending deployment up without deploying twice. Stops with
+  /// [AccountSetupCancelled] once [cancelled] says so.
   Future<StawiAccountRef> ensureReady({
     Duration every = const Duration(seconds: 3),
     int attempts = 60,
+    bool Function()? cancelled,
   }) async {
+    void checkCancelled() {
+      if (cancelled?.call() ?? false) throw const AccountSetupCancelled();
+    }
+
     var s = await status();
     final account = s.account;
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
+    var deployed = false;
+    Future<void> deployOnce() async {
+      if (deployed) throw const StawiUnavailable(accountSetupFailedMessage);
+      deployed = true;
+      checkCancelled();
+      final response = await deploy();
+      if (response.genesisState == 'FAILED') {
+        throw const StawiUnavailable(accountSetupFailedMessage);
+      }
+    }
+
     if (!s.deployed && !_genesisUnderway.contains(s.genesisState)) {
-      await deploy();
+      await deployOnce();
     }
     for (var i = 0; !s.deployed && i < attempts; i++) {
       await Future<void>.delayed(every);
+      checkCancelled();
       s = await status();
-      if (s.genesisState == 'FAILED') {
-        throw const StawiUnavailable(accountSetupFailedMessage);
-      }
+      if (!s.deployed && s.genesisState == 'FAILED') await deployOnce();
     }
     if (!s.deployed) {
       throw const StawiUnavailable(accountSetupPendingMessage);
@@ -410,6 +428,15 @@ const String accountSetupPendingMessage =
 const String accountSetupFailedMessage =
     'Setting up your Stawi account failed; try again';
 
+/// [StawiAccountService.ensureReady] stopped because nobody is waiting for it
+/// any more.
+final class AccountSetupCancelled implements Exception {
+  const AccountSetupCancelled();
+
+  @override
+  String toString() => 'Stawi account setup stopped';
+}
+
 /// The account is deployed but this device holds none of its keys.
 const String deviceNotAKeyMessage =
     'This device is not a key of your Stawi account. Add this device from '
@@ -457,6 +484,12 @@ final stawiAccountStatusProvider =
 /// The account ready for money: watched by every money surface, so setup
 /// starts by itself the first time one opens. It fails with a message (and
 /// is retried by invalidating it) rather than waiting forever.
-final stawiAccountReadyProvider = FutureProvider.autoDispose<StawiAccountRef>(
-  (ref) => ref.watch(stawiAccountServiceProvider).ensureReady(),
-);
+final stawiAccountReadyProvider = FutureProvider.autoDispose<StawiAccountRef>((
+  ref,
+) {
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+  return ref
+      .watch(stawiAccountServiceProvider)
+      .ensureReady(cancelled: () => disposed);
+});
