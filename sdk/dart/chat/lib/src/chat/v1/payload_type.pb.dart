@@ -3983,6 +3983,7 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? founderSubscriptionIds,
     StawiJoinPolicy? joinPolicy,
     StawiGenesis? genesis,
+    $core.String? agentProfileId,
   }) {
     final result = create();
     if (templateId != null) result.templateId = templateId;
@@ -3991,6 +3992,7 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
       result.founderSubscriptionIds.addAll(founderSubscriptionIds);
     if (joinPolicy != null) result.joinPolicy = joinPolicy;
     if (genesis != null) result.genesis = genesis;
+    if (agentProfileId != null) result.agentProfileId = agentProfileId;
     return result;
   }
 
@@ -4021,6 +4023,7 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
         enumValues: StawiJoinPolicy.values)
     ..aOM<StawiGenesis>(5, _omitFieldNames ? '' : 'genesis',
         subBuilder: StawiGenesis.create)
+    ..aOS(6, _omitFieldNames ? '' : 'agentProfileId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4089,6 +4092,20 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
   void clearGenesis() => $_clearField(5);
   @$pb.TagNumber(5)
   StawiGenesis ensureGenesis() => $_ensure(4);
+
+  /// Optional: the profile of the room's Stawi agent (protocol fee spec), paid
+  /// a share of the Stawi fee for the life of the room; empty for none. Chat
+  /// accepts an active member of this room, or a DM partner of the converting
+  /// member who has taken part in that DM. Settlement resolves the profile to
+  /// its account; the founders sign it in the genesis.
+  @$pb.TagNumber(6)
+  $core.String get agentProfileId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set agentProfileId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAgentProfileId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAgentProfileId() => $_clearField(6);
 }
 
 /// StawiGenesis is a prepared room genesis awaiting founder signatures.

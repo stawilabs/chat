@@ -1553,6 +1553,14 @@ const StawiRoomConversionContent$json = {
       '6': '.chat.v1.StawiGenesis',
       '10': 'genesis'
     },
+    {
+      '1': 'agent_profile_id',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'agentProfileId'
+    },
   ],
   '3': [StawiRoomConversionContent_RuleValuesEntry$json],
 };
@@ -1576,8 +1584,9 @@ final $typed_data.Uint8List stawiRoomConversionContentDescriptor = $convert.base
     'kgEiCAEQQBgBIhpyGBADGCgyEl5bMC05YS16Xy1dezMsNDB9JFIWZm91bmRlclN1YnNjcmlwdG'
     'lvbklkcxJFCgtqb2luX3BvbGljeRgEIAEoDjIYLmNoYXQudjEuU3Rhd2lKb2luUG9saWN5Qgq6'
     'SAeCAQQQASAAUgpqb2luUG9saWN5Ei8KB2dlbmVzaXMYBSABKAsyFS5jaGF0LnYxLlN0YXdpR2'
-    'VuZXNpc1IHZ2VuZXNpcxo9Cg9SdWxlVmFsdWVzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoF'
-    'dmFsdWUYAiABKAlSBXZhbHVlOgI4AQ==');
+    'VuZXNpc1IHZ2VuZXNpcxJCChBhZ2VudF9wcm9maWxlX2lkGAYgASgJQhi6SBVyEzIRXihbMC05'
+    'YS12XXsyMH0pPyRSDmFnZW50UHJvZmlsZUlkGj0KD1J1bGVWYWx1ZXNFbnRyeRIQCgNrZXkYAS'
+    'ABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
 
 @$core.Deprecated('Use stawiGenesisDescriptor instead')
 const StawiGenesis$json = {

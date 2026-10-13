@@ -15,6 +15,7 @@ import (
 
 	"github.com/stawilabs/chat/apps/default/service"
 	"github.com/stawilabs/chat/apps/default/service/models"
+	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
@@ -111,7 +112,21 @@ func (rb *roomBusiness) directPartnerOf(
 		room.TenantID != claims.GetTenantID() || !slices.Contains(claims.GetPartitionIDs(), room.PartitionID) {
 		return "", service.ErrNoDirectPartner
 	}
-	subscriptions, err := rb.subscriptionRepo.GetByRoomID(ctx, roomID, nil)
+	return consentingPartner(ctx, rb.subscriptionRepo, rb.eventRepo, room, callerID)
+}
+
+// consentingPartner returns the profile of the other active member of the
+// caller's DM room, once that member has taken part in it, or
+// ErrNoDirectPartner. The caller has already checked the room's type and
+// tenancy.
+func consentingPartner(
+	ctx context.Context, subRepo repository.RoomSubscriptionRepository, eventRepo repository.RoomEventRepository,
+	room *models.Room, callerID string,
+) (string, error) {
+	if room.RoomType != models.RoomTypeDirect || room.DirectKey == "" || callerID == "" {
+		return "", service.ErrNoDirectPartner
+	}
+	subscriptions, err := subRepo.GetByRoomID(ctx, room.GetID(), nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to read the room's members: %w", err)
 	}
@@ -137,7 +152,7 @@ func (rb *roomBusiness) directPartnerOf(
 	default:
 		return "", service.ErrNoDirectPartner
 	}
-	tookPart, err := rb.partnerTookPart(ctx, roomID, partner)
+	tookPart, err := partnerTookPart(ctx, eventRepo, room.GetID(), partner)
 	if err != nil {
 		return "", err
 	}
@@ -150,13 +165,13 @@ func (rb *roomBusiness) directPartnerOf(
 // partnerTookPart reports whether the partner consented to the DM by taking
 // part in it: they started it (a person's DM makes its starter the owner, and
 // a DM's roles never change), or authored a message or event in it.
-func (rb *roomBusiness) partnerTookPart(
-	ctx context.Context, roomID string, partner *models.RoomSubscription,
+func partnerTookPart(
+	ctx context.Context, eventRepo repository.RoomEventRepository, roomID string, partner *models.RoomSubscription,
 ) (bool, error) {
 	if slices.Contains(strings.Split(partner.Role, ","), roleOwner) {
 		return true, nil
 	}
-	authored, err := rb.eventRepo.HasAuthoredInRoom(ctx, roomID, partner.GetID())
+	authored, err := eventRepo.HasAuthoredInRoom(ctx, roomID, partner.GetID())
 	if err != nil {
 		return false, fmt.Errorf("failed to read whether the partner took part: %w", err)
 	}

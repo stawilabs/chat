@@ -3676,9 +3676,15 @@ type StawiRoomConversionContent struct {
 	JoinPolicy             StawiJoinPolicy `protobuf:"varint,4,opt,name=join_policy,json=joinPolicy,proto3,enum=chat.v1.StawiJoinPolicy" json:"join_policy,omitempty"`
 	// Output only: the genesis settlement prepared. Set by the server on the
 	// stored event; a client that sets it is refused.
-	Genesis       *StawiGenesis `protobuf:"bytes,5,opt,name=genesis,proto3" json:"genesis,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Genesis *StawiGenesis `protobuf:"bytes,5,opt,name=genesis,proto3" json:"genesis,omitempty"`
+	// Optional: the profile of the room's Stawi agent (protocol fee spec), paid
+	// a share of the Stawi fee for the life of the room; empty for none. Chat
+	// accepts an active member of this room, or a DM partner of the converting
+	// member who has taken part in that DM. Settlement resolves the profile to
+	// its account; the founders sign it in the genesis.
+	AgentProfileId string `protobuf:"bytes,6,opt,name=agent_profile_id,json=agentProfileId,proto3" json:"agent_profile_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StawiRoomConversionContent) Reset() {
@@ -3744,6 +3750,13 @@ func (x *StawiRoomConversionContent) GetGenesis() *StawiGenesis {
 		return x.Genesis
 	}
 	return nil
+}
+
+func (x *StawiRoomConversionContent) GetAgentProfileId() string {
+	if x != nil {
+		return x.AgentProfileId
+	}
+	return ""
 }
 
 // StawiGenesis is a prepared room genesis awaiting founder signatures.
@@ -4841,7 +4854,7 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\x04data\x18\x06 \x03(\v2%.chat.v1.FinanceCardContent.DataEntryB\x17\xbaH\x14\x9a\x01\x11\x10 \"\x06r\x04\x10\x01\x18@*\x05r\x03\x18\x80\x04R\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd2\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x96\x04\n" +
 	"\x1aStawiRoomConversionContent\x12*\n" +
 	"\vtemplate_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\n" +
 	"templateId\x12m\n" +
@@ -4851,7 +4864,8 @@ const file_chat_v1_payload_type_proto_rawDesc = "" +
 	"\vjoin_policy\x18\x04 \x01(\x0e2\x18.chat.v1.StawiJoinPolicyB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\n" +
 	"joinPolicy\x12/\n" +
-	"\agenesis\x18\x05 \x01(\v2\x15.chat.v1.StawiGenesisR\agenesis\x1a=\n" +
+	"\agenesis\x18\x05 \x01(\v2\x15.chat.v1.StawiGenesisR\agenesis\x12B\n" +
+	"\x10agent_profile_id\x18\x06 \x01(\tB\x18\xbaH\x15r\x132\x11^([0-9a-v]{20})?$R\x0eagentProfileId\x1a=\n" +
 	"\x0fRuleValuesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8d\x02\n" +

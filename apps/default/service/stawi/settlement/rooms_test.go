@@ -134,9 +134,10 @@ func TestPrepareRoomGenesisNamesTheAdminAndFounders(t *testing.T) {
 
 	genesis, err := rooms.PrepareRoomGenesis(context.Background(), stawi.PrepareGenesisRequest{
 		ChatRoomID: roomID, TemplateID: "chama-basic", FounderProfileIDs: []string{adminID, memberID},
-		JoinPolicy: stawi.JoinPolicyPublic, RequestedBy: adminID,
+		JoinPolicy: stawi.JoinPolicyPublic, RequestedBy: adminID, AgentProfileID: memberID,
 	})
 	require.NoError(t, err)
+	require.Equal(t, memberID, fake.prepared.GetAgentProfileId(), "settlement resolves the agent's account")
 	require.Equal(t, roomID, fake.prepared.GetChatRoomId())
 	require.Equal(t, "chama-basic", fake.prepared.GetTemplateId())
 	require.Equal(t, []string{adminID, memberID}, fake.prepared.GetFounderProfileIds())

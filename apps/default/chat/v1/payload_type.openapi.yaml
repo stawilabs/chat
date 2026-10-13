@@ -1563,6 +1563,16 @@ components:
           description: |-
             Output only: the genesis settlement prepared. Set by the server on the
              stored event; a client that sets it is refused.
+        agentProfileId:
+          type: string
+          title: agent_profile_id
+          pattern: ^([0-9a-v]{20})?$
+          description: |-
+            Optional: the profile of the room's Stawi agent (protocol fee spec), paid
+             a share of the Stawi fee for the life of the room; empty for none. Chat
+             accepts an active member of this room, or a DM partner of the converting
+             member who has taken part in that DM. Settlement resolves the profile to
+             its account; the founders sign it in the genesis.
       title: StawiRoomConversionContent
       additionalProperties: false
       description: |-

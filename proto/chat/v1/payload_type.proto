@@ -674,6 +674,13 @@ message StawiRoomConversionContent {
   // Output only: the genesis settlement prepared. Set by the server on the
   // stored event; a client that sets it is refused.
   StawiGenesis genesis = 5;
+
+  // Optional: the profile of the room's Stawi agent (protocol fee spec), paid
+  // a share of the Stawi fee for the life of the room; empty for none. Chat
+  // accepts an active member of this room, or a DM partner of the converting
+  // member who has taken part in that DM. Settlement resolves the profile to
+  // its account; the founders sign it in the genesis.
+  string agent_profile_id = 6 [(buf.validate.field).string.pattern = "^([0-9a-v]{20})?$"];
 }
 
 // StawiGenesis is a prepared room genesis awaiting founder signatures.

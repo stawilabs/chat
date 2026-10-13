@@ -40,6 +40,7 @@ func (r *rooms) PrepareRoomGenesis(ctx context.Context, req stawi.PrepareGenesis
 		JoinPolicy:         joinPolicy(req.JoinPolicy),
 		ProfileId:          req.RequestedBy,
 		RuleValues:         req.RuleValues,
+		AgentProfileId:     req.AgentProfileID,
 	}))
 	if err != nil {
 		return nil, err

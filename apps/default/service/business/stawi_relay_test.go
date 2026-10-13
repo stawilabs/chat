@@ -282,6 +282,72 @@ func (s *MessageBusinessTestSuite) TestStawiConversionRefusals() {
 	})
 }
 
+// TestConversionCarriesTheAgent: a conversion may name the room's Stawi agent
+// by profile. Chat accepts an active member of the room, or a DM partner of
+// the converting member who has taken part in that DM, and hands the profile
+// to settlement; anyone else is refused and settlement is not asked.
+func (s *MessageBusinessTestSuite) TestConversionCarriesTheAgent() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		f.placeRoom(t, f.roomID, cardTenant, cardPartition)
+		person := func() *commonv1.ContactLink {
+			return &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		}
+		convertNaming := func(agent string) *chatv1.AckEvent {
+			payload := conversion(f.aliceSub)
+			payload.GetStawiRoomConversion().AgentProfileId = agent
+			acks, err := f.mb.SendEvents(f.as(f.alice), &chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
+				RoomId: f.roomID, Type: chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT, Payload: payload,
+			}}}, f.alice)
+			require.NoError(t, err)
+			require.Len(t, acks, 1)
+			return acks[0]
+		}
+		requireRefusedAgent := func(agent *commonv1.ContactLink) {
+			t.Helper()
+			prepared := len(f.rooms.Prepared)
+			ack := convertNaming(agent.GetProfileId())
+			requireAckRefused(t, ack, connect.CodeInvalidArgument)
+			require.Contains(t, ack.GetError().GetMessage(),
+				"the agent must be a room member or someone who has messaged you")
+			require.Len(t, f.rooms.Prepared, prepared, "settlement is not asked")
+		}
+		requireAgent := func(agent *commonv1.ContactLink) {
+			t.Helper()
+			requireAckOK(t, convertNaming(agent.GetProfileId()))
+			require.Equal(t, agent.GetProfileId(), f.rooms.Prepared[len(f.rooms.Prepared)-1].AgentProfileID)
+		}
+
+		// No agent: settlement is given none.
+		requireAckOK(t, convertNaming(""))
+		require.Empty(t, f.rooms.Prepared[0].AgentProfileID)
+
+		// A stranger.
+		requireRefusedAgent(person())
+
+		// A DM partner who never wrote, then once they have.
+		erin := person()
+		dm := f.dmOf(t, f.alice, erin)
+		requireRefusedAgent(erin)
+		f.write(t, dm, erin)
+		requireAgent(erin)
+
+		// Someone who started a DM with the converter took part by starting it.
+		frank := person()
+		f.dmOf(t, frank, f.alice)
+		requireAgent(frank)
+
+		// An active member of the room.
+		requireAgent(f.bob)
+
+		// A removed member.
+		require.NoError(t, f.rb.RemoveRoomSubscriptions(f.ctx, &chatv1.RemoveRoomSubscriptionsRequest{
+			RoomId: f.roomID, SubscriptionId: []string{f.bobSub},
+		}, f.alice))
+		requireRefusedAgent(f.bob)
+	})
+}
+
 // TestStawiGenesisSignatureOnlyFromAFounder relays a founder's signature with
 // the founder's own profile, and refuses anyone else, whatever they claim.
 func (s *MessageBusinessTestSuite) TestStawiGenesisSignatureOnlyFromAFounder() {

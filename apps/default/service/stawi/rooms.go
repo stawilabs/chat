@@ -39,6 +39,9 @@ type PrepareGenesisRequest struct {
 	JoinPolicy        JoinPolicy
 	// RequestedBy is the profile that sent the conversion.
 	RequestedBy string
+	// AgentProfileID is the room's Stawi agent, empty for none. Settlement
+	// resolves it to the account the founders sign into the genesis.
+	AgentProfileID string
 }
 
 // Genesis is a prepared room genesis awaiting founder signatures.
