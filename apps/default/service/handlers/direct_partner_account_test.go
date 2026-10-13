@@ -47,6 +47,18 @@ func (s *ChatServerTestSuite) newPartnerFixture(
 	return f
 }
 
+// write has the person of ctx send a text message into roomID.
+func (f *partnerFixture) write(ctx context.Context, t *testing.T, roomID string) {
+	t.Helper()
+	resp, err := f.server.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
+		RoomId: roomID, Type: chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
+		Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "hello"}}},
+	}}}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetAck(), 1)
+	require.Empty(t, resp.Msg.GetAck()[0].GetError())
+}
+
 func (f *partnerFixture) lookup(ctx context.Context, roomID string) (*chatv1.GetDirectPartnerAccountResponse, error) {
 	resp, err := f.server.GetDirectPartnerAccount(ctx,
 		connect.NewRequest(&chatv1.GetDirectPartnerAccountRequest{RoomId: roomID}))
@@ -56,14 +68,16 @@ func (f *partnerFixture) lookup(ctx context.Context, roomID string) (*chatv1.Get
 	return resp.Msg, nil
 }
 
-// TestGetDirectPartnerAccountAnswersADMMember: Alice gets Bob's account;
-// Bob gets Alice's, which is empty because she has none.
+// TestGetDirectPartnerAccountAnswersADMMember: once Bob has written, Alice
+// gets Bob's account;
+// Bob gets Alice's (she started the DM), which is empty because she has none.
 func (s *ChatServerTestSuite) TestGetDirectPartnerAccountAnswersADMMember() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
 		f := s.newPartnerFixture(ctx, t, svc)
 		bobAccount := []byte{0xb0, 0xb0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02}
 		f.partners.Set(f.bob, bobAccount, false)
+		f.write(f.bobCtx, t, f.dm)
 
 		got, err := f.lookup(f.aliceCtx, f.dm)
 		require.NoError(t, err)
@@ -85,9 +99,15 @@ func (s *ChatServerTestSuite) TestGetDirectPartnerAccountRefusesOutsideTheDM() {
 		ctx, svc := s.CreateService(t, dep)
 		f := s.newPartnerFixture(ctx, t, svc)
 		f.partners.Set(f.bob, []byte{1}, true)
+		f.write(f.bobCtx, t, f.dm)
 
 		_, err := f.lookup(ctx, f.dm)
 		require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+
+		_, err = f.lookup(s.withSystemAuth(ctx, f.alice), f.dm)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "a service caller")
+		_, err = f.lookup(s.WithAuthClaims(ctx, "", "", f.alice), f.dm)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "claims without a tenancy")
 
 		_, err = f.lookup(f.aliceCtx, "")
 		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -119,12 +139,33 @@ func (s *ChatServerTestSuite) TestGetDirectPartnerAccountRefusesOutsideTheDM() {
 	})
 }
 
+// TestGetDirectPartnerAccountNeedsThePartnerToTakePart: a DM an attacker
+// started with a victim reveals nothing until the victim writes in it.
+func (s *ChatServerTestSuite) TestGetDirectPartnerAccountNeedsThePartnerToTakePart() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		f := s.newPartnerFixture(ctx, t, svc) // Alice (attacker) started a DM with Bob (victim).
+		f.partners.Set(f.bob, []byte{0xb0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}, true)
+		f.write(f.aliceCtx, t, f.dm)
+
+		_, err := f.lookup(f.aliceCtx, f.dm)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "the victim never wrote")
+		require.Empty(t, f.partners.Asked)
+
+		f.write(f.bobCtx, t, f.dm)
+		got, err := f.lookup(f.aliceCtx, f.dm)
+		require.NoError(t, err)
+		require.Equal(t, f.bob, got.GetProfileId())
+	})
+}
+
 // TestGetDirectPartnerAccountDuringASettlementOutage is Unavailable.
 func (s *ChatServerTestSuite) TestGetDirectPartnerAccountDuringASettlementOutage() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
 		f := s.newPartnerFixture(ctx, t, svc)
 		f.partners.Fail(connect.NewError(connect.CodeUnavailable, errors.New("settlement is down")))
+		f.write(f.bobCtx, t, f.dm)
 
 		_, err := f.lookup(f.aliceCtx, f.dm)
 		require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))

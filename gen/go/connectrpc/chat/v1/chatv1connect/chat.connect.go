@@ -122,10 +122,11 @@ type ChatServiceClient interface {
 	RemoveRoomSubscriptions(context.Context, *connect.Request[v1.RemoveRoomSubscriptionsRequest]) (*connect.Response[v1.RemoveRoomSubscriptionsResponse], error)
 	UpdateSubscriptionRole(context.Context, *connect.Request[v1.UpdateSubscriptionRoleRequest]) (*connect.Response[v1.UpdateSubscriptionRoleResponse], error)
 	// The Stawi account of the other person in the caller's DM. The caller
-	// must be an active member of the DIRECT room, and the room must hold
-	// exactly two active members; anything else is refused without saying
-	// anything about the room. An empty account means the partner has no
-	// Stawi account yet.
+	// must be a person and an active member of the DIRECT room, the room must
+	// hold exactly two active members, and the partner must have taken part
+	// (started the DM or written in it); anything else is refused without
+	// saying anything about the room. An empty account means the partner has
+	// no Stawi account yet.
 	GetDirectPartnerAccount(context.Context, *connect.Request[v1.GetDirectPartnerAccountRequest]) (*connect.Response[v1.GetDirectPartnerAccountResponse], error)
 	SearchRoomSubscriptions(context.Context, *connect.Request[v1.SearchRoomSubscriptionsRequest]) (*connect.Response[v1.SearchRoomSubscriptionsResponse], error)
 	// Get per-room subscription settings for a member (notification preferences, mute, archive)
@@ -446,10 +447,11 @@ type ChatServiceHandler interface {
 	RemoveRoomSubscriptions(context.Context, *connect.Request[v1.RemoveRoomSubscriptionsRequest]) (*connect.Response[v1.RemoveRoomSubscriptionsResponse], error)
 	UpdateSubscriptionRole(context.Context, *connect.Request[v1.UpdateSubscriptionRoleRequest]) (*connect.Response[v1.UpdateSubscriptionRoleResponse], error)
 	// The Stawi account of the other person in the caller's DM. The caller
-	// must be an active member of the DIRECT room, and the room must hold
-	// exactly two active members; anything else is refused without saying
-	// anything about the room. An empty account means the partner has no
-	// Stawi account yet.
+	// must be a person and an active member of the DIRECT room, the room must
+	// hold exactly two active members, and the partner must have taken part
+	// (started the DM or written in it); anything else is refused without
+	// saying anything about the room. An empty account means the partner has
+	// no Stawi account yet.
 	GetDirectPartnerAccount(context.Context, *connect.Request[v1.GetDirectPartnerAccountRequest]) (*connect.Response[v1.GetDirectPartnerAccountResponse], error)
 	SearchRoomSubscriptions(context.Context, *connect.Request[v1.SearchRoomSubscriptionsRequest]) (*connect.Response[v1.SearchRoomSubscriptionsResponse], error)
 	// Get per-room subscription settings for a member (notification preferences, mute, archive)

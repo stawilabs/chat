@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"github.com/pitabwire/frame/v2/datastore"
 	"github.com/pitabwire/frame/v2/datastore/pool"
 	"github.com/pitabwire/frame/v2/workerpool"
@@ -132,6 +133,23 @@ func (rer *roomEventRepository) CountByRoomID(ctx context.Context, roomID string
 		Where("room_id = ? AND deleted_at IS NULL", roomID).
 		Count(&count).Error
 	return count, err
+}
+
+// HasAuthoredInRoom is a single EXISTS over room_events: an event of the room
+// sent by the subscription that is not a system event. A deleted message still
+// counts: its author took part.
+func (rer *roomEventRepository) HasAuthoredInRoom(
+	ctx context.Context, roomID, subscriptionID string,
+) (bool, error) {
+	if roomID == "" || subscriptionID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := rer.Pool().DB(ctx, true).Raw(
+		"SELECT EXISTS (SELECT 1 FROM room_events WHERE room_id = ? AND sender_id = ? AND event_type <> ?)",
+		roomID, subscriptionID, int32(chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM),
+	).Scan(&exists).Error
+	return exists, err
 }
 
 // CreateIgnoringDuplicates inserts events individually with ON CONFLICT DO NOTHING.

@@ -128,6 +128,40 @@ func (s *EventRepositoryTestSuite) TestCountByRoomID() {
 	})
 }
 
+// TestHasAuthoredInRoom: only a message or event the subscription sent in that
+// room counts; a system event attributed to it, or its message in another
+// room, does not.
+func (s *EventRepositoryTestSuite) TestHasAuthoredInRoom() {
+	s.withRepo(func(t *testing.T, ctx context.Context, repo repository.RoomEventRepository) {
+		roomID, otherRoom, sender := util.IDString(), util.IDString(), util.IDString()
+		put := func(room string, eventType chatv1.RoomEventType) {
+			event := &models.RoomEvent{RoomID: room, SenderID: sender, EventType: int32(eventType.Number()),
+				Content: data.JSONMap{"text": "x"}}
+			event.GenID(ctx)
+			require.NoError(t, repo.Create(ctx, event))
+		}
+
+		authored, err := repo.HasAuthoredInRoom(ctx, roomID, sender)
+		require.NoError(t, err)
+		require.False(t, authored)
+
+		put(roomID, chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM)
+		put(otherRoom, chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE)
+		authored, err = repo.HasAuthoredInRoom(ctx, roomID, sender)
+		require.NoError(t, err)
+		require.False(t, authored, "a system event or another room's message is not taking part")
+
+		put(roomID, chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT)
+		authored, err = repo.HasAuthoredInRoom(ctx, roomID, sender)
+		require.NoError(t, err)
+		require.True(t, authored)
+
+		authored, err = repo.HasAuthoredInRoom(ctx, roomID, "")
+		require.NoError(t, err)
+		require.False(t, authored)
+	})
+}
+
 func (s *EventRepositoryTestSuite) TestGetByEventID() {
 	s.withRepo(func(t *testing.T, ctx context.Context, repo repository.RoomEventRepository) {
 		roomID := util.IDString()

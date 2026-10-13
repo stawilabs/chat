@@ -201,10 +201,11 @@ extension type ChatServiceClient (connect.Transport _transport) {
   }
 
   /// The Stawi account of the other person in the caller's DM. The caller
-  /// must be an active member of the DIRECT room, and the room must hold
-  /// exactly two active members; anything else is refused without saying
-  /// anything about the room. An empty account means the partner has no
-  /// Stawi account yet.
+  /// must be a person and an active member of the DIRECT room, the room must
+  /// hold exactly two active members, and the partner must have taken part
+  /// (started the DM or written in it); anything else is refused without
+  /// saying anything about the room. An empty account means the partner has
+  /// no Stawi account yet.
   Future<chatv1chat.GetDirectPartnerAccountResponse> getDirectPartnerAccount(
     chatv1chat.GetDirectPartnerAccountRequest input, {
     connect.Headers? headers,

@@ -3624,7 +3624,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x0eProposalAction\x12\x1f\n" +
 	"\x1bPROPOSAL_ACTION_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17PROPOSAL_ACTION_APPROVE\x10\x01\x12\x1a\n" +
-	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xc0<\n" +
+	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xf6<\n" +
 	"\vChatService\x12\xa1\x02\n" +
 	"\tSendEvent\x12\x19.chat.v1.SendEventRequest\x1a\x1a.chat.v1.SendEventResponse\"\xdc\x01\xbaG\xc8\x01\n" +
 	"\bMessages\x12\x17Send an event to a room\x1a\x97\x01Sends one or more events to chat rooms. Supports text, attachments, reactions, and system messages. Idempotent when idempotency_key header is provided.*\tsendEvent\x82\xb5\x18\f\n" +
@@ -3669,9 +3669,9 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x13subscription_manage\x12\xca\x02\n" +
 	"\x16UpdateSubscriptionRole\x12&.chat.v1.UpdateSubscriptionRoleRequest\x1a'.chat.v1.UpdateSubscriptionRoleResponse\"\xde\x01\xbaG\xc1\x01\n" +
 	"\rSubscriptions\x12 Update a member's role in a room\x1avUpdates the role(s) of a user in a chat room. The requesting user must have owner or moderator privileges in the room.*\x16updateSubscriptionRole\x82\xb5\x18\x15\n" +
-	"\x13subscription_manage\x12\x9b\x03\n" +
-	"\x17GetDirectPartnerAccount\x12'.chat.v1.GetDirectPartnerAccountRequest\x1a(.chat.v1.GetDirectPartnerAccountResponse\"\xac\x02\xbaG\x84\x02\n" +
-	"\x05Rooms\x122Read the Stawi account of the other person in a DM\x1a\xad\x01Returns the profile and primary Stawi account of the other active member of a DIRECT room the caller is an active member of. An empty account means the partner has none yet.*\x17getDirectPartnerAccount\x82\xb5\x18\x1d\n" +
+	"\x13subscription_manage\x12\xd1\x03\n" +
+	"\x17GetDirectPartnerAccount\x12'.chat.v1.GetDirectPartnerAccountRequest\x1a(.chat.v1.GetDirectPartnerAccountResponse\"\xe2\x02\xbaG\xba\x02\n" +
+	"\x05Rooms\x122Read the Stawi account of the other person in a DM\x1a\xe3\x01Returns the profile and primary Stawi account of the other active member of a DIRECT room the caller is an active member of, once that member has started the DM or written in it. An empty account means the partner has none yet.*\x17getDirectPartnerAccount\x82\xb5\x18\x1d\n" +
 	"\x1bdirect_partner_account_view\x90\x02\x01\x12\xb4\x02\n" +
 	"\x17SearchRoomSubscriptions\x12'.chat.v1.SearchRoomSubscriptionsRequest\x1a(.chat.v1.SearchRoomSubscriptionsResponse\"\xc5\x01\xbaG\xa7\x01\n" +
 	"\rSubscriptions\x12\x11List room members\x1ajRetrieves a paginated list of users subscribed to a room, along with their roles and activity information.*\x17searchRoomSubscriptions\x82\xb5\x18\x13\n" +

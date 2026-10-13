@@ -329,10 +329,11 @@ service ChatService {
   }
 
   // The Stawi account of the other person in the caller's DM. The caller
-  // must be an active member of the DIRECT room, and the room must hold
-  // exactly two active members; anything else is refused without saying
-  // anything about the room. An empty account means the partner has no
-  // Stawi account yet.
+  // must be a person and an active member of the DIRECT room, the room must
+  // hold exactly two active members, and the partner must have taken part
+  // (started the DM or written in it); anything else is refused without
+  // saying anything about the room. An empty account means the partner has
+  // no Stawi account yet.
   rpc GetDirectPartnerAccount(GetDirectPartnerAccountRequest) returns (GetDirectPartnerAccountResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
     option (common.v1.method_permissions) = {
@@ -341,7 +342,7 @@ service ChatService {
     option (gnostic.openapi.v3.operation) = {
       operation_id: "getDirectPartnerAccount"
       summary: "Read the Stawi account of the other person in a DM"
-      description: "Returns the profile and primary Stawi account of the other active member of a DIRECT room the caller is an active member of. An empty account means the partner has none yet."
+      description: "Returns the profile and primary Stawi account of the other active member of a DIRECT room the caller is an active member of, once that member has started the DM or written in it. An empty account means the partner has none yet."
       tags: "Rooms"
     };
   }
