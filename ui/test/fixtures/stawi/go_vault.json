@@ -1,5 +1,5 @@
 {
-  "description": "Go-produced vectors (pkg/evm/stawi) for the PersonalVault: id = StandingOrderID(book, pool, loan_id) = keccak256(abi.encode(\"STAWI_LOAN_STANDING_V1\", book, pool, loan_id)); a deposit is VaultDepositIntent(base, vault, pocket, amount): base as TRANSFER with destination {PERSONAL_VAULT, vault, bucket}, no room, the amount; bucket is \"\" for the free balance (pocket zero) or \"0x\" and the goal id in 64 lowercase hex digits; digest is the deposit intent's digest. A standing grant is a personal loan's standing order: LoanStandingParams (target the vault, selector receiveDeposit, authorization id StandingOrderID, period every_days x 86400, max_per_period rules.LargestInstalment(amount, terms), the policy asset) as the GRANT_STANDING op whose ManagementOpHash (keccak256(abi.encode(ManagementOp)), policy zero) is the AUTHORIZATION_GRANT intent's authorization_id; digest is that intent's digest. A standing revoke is the REVOKE_STANDING op {kind 11, key 0, authorization_id StandingOrderID, grant params and policy zero} whose ManagementOpHash is the AUTHORIZATION_REVOKE intent's authorization_id (no room, zero amount, the policy asset); digest is that intent's digest.",
+  "description": "Go-produced vectors (pkg/evm/stawi) for the PersonalVault: id = StandingOrderID(book, pool, loan_id) = keccak256(abi.encode(\"STAWI_LOAN_STANDING_V1\", book, pool, loan_id)); a deposit is VaultDepositIntent(base, vault, pocket, amount): base as TRANSFER with destination {PERSONAL_VAULT, vault, bucket}, no room, the amount; bucket is \"\" for the free balance (pocket zero) or \"0x\" and the goal id in 64 lowercase hex digits; digest is the deposit intent's digest. A standing grant is a personal loan's standing order: LoanStandingParams (target the vault, selector receiveDeposit, authorization id StandingOrderID, period every_days x 86400, max_per_period rules.LargestInstalment(amount, terms), the policy asset) as the GRANT_STANDING op whose ManagementOpHash (keccak256(abi.encode(ManagementOp)), policy zero) is the AUTHORIZATION_GRANT intent's authorization_id; digest is that intent's digest. A standing revoke is the REVOKE_STANDING op {kind 11, key 0, authorization_id StandingOrderID, grant params and policy zero} whose ManagementOpHash is the AUTHORIZATION_REVOKE intent's authorization_id (no room, zero amount, the policy asset); digest is that intent's digest. An add key is the ADD_KEY op {kind 0, key} (ADD_KEY_P256: kind 12, the P-256 key id) with every other field zero, whose ManagementOpHash is the KEY_CHANGE intent's authorization_id (no room, no asset, zero amount, the account as source and destination); digest is that intent's digest.",
   "standing_orders": [
     {
       "book": "0x101112131415161718191a1b1c1d1e1f20212223",
@@ -759,6 +759,232 @@
         "compliance_required": false
       },
       "digest": "0xfdf7b59d48ebabb32b9d0cfad9551d5e1155bccc3fbde907b63f4076cb8b9e8b"
+    }
+  ],
+  "add_keys": [
+    {
+      "name": "secp256k1_key",
+      "kind": 0,
+      "p256": false,
+      "key": "0x0e0f101112131415161718191a1b1c1d1e1f2021",
+      "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "op_hash": "0xa4082c4c7c7f4aafe494b172ee280e824b5200817c2c09a7ee9c4dd61dd8003e",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0ba0",
+        "type": 14,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xa4082c4c7c7f4aafe494b172ee280e824b5200817c2c09a7ee9c4dd61dd8003e",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xe32092651f5f613bcab4109aba55356647f72076cc66d582a7e32ff085513623"
+    },
+    {
+      "name": "anvil_1_key",
+      "kind": 0,
+      "p256": false,
+      "key": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "op_hash": "0x73380a1256bc17fece97e611ba9c5bfb522305f5eb697fb37b12e32f785ecd92",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0ba1",
+        "type": 14,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x73380a1256bc17fece97e611ba9c5bfb522305f5eb697fb37b12e32f785ecd92",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xe2682faa30413544f7030df66a8205da85d598199f5ddf2c6c412c4f3aef29ae"
+    },
+    {
+      "name": "high_bytes_key",
+      "kind": 0,
+      "p256": false,
+      "key": "0xffffffffffffffffffffffffffffffffffffffff",
+      "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "op_hash": "0xf88d7fe6f8bfe4d3ce1fce59703c643d88db58255ae3aad35875993045abb7b3",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0ba2",
+        "type": 14,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xf88d7fe6f8bfe4d3ce1fce59703c643d88db58255ae3aad35875993045abb7b3",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x22a51aa83b3c52ee94b7686ff1f413bb86b5e705ba5582ccd60a85c85e40c669"
+    },
+    {
+      "name": "p256_key_id",
+      "kind": 12,
+      "p256": true,
+      "key": "0xd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3",
+      "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+      "op_hash": "0x5ff5cc84b32e8f0a02e308c66dd414e7aa0ed1a5b80aa4f2c9199df1c1c6792c",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0ba3",
+        "type": 14,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x5ff5cc84b32e8f0a02e308c66dd414e7aa0ed1a5b80aa4f2c9199df1c1c6792c",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x67a2f14ff31f016f8c2c9f31c07517b04eb3b212018d67b914c44b8fea963239"
     }
   ]
 }

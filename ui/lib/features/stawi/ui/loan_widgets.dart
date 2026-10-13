@@ -50,23 +50,31 @@ const String waitingForCompletion = 'Waiting for this to complete…';
 
 /// Follows the submitted [call] until it is final (or failed, expired, or
 /// the follow gave up), and only then reads [providers] again through
-/// [container] (taken before the action's first await). Returns the call as
-/// it ended; null when it could not be read.
+/// [container] (taken before the action's first await) and says how it
+/// ended: the review's "done" only once it is final, the failure otherwise.
+/// [onProgress] sees each read. Returns the call as it ended; null when it
+/// could not be read.
 Future<settlement.AccountCall?> settleThenRefresh(
   ProviderContainer container,
   StawiAccountService service,
   settlement.AccountCall call,
-  Iterable<ProviderBase<Object?>> providers,
-) async {
+  Iterable<ProviderBase<Object?>> providers, {
+  void Function(settlement.AccountCall call)? onProgress,
+}) async {
   settlement.AccountCall? last;
   try {
-    last = await service
-        .followAccountCall(call.callId, every: service.followEvery)
-        .last;
+    await for (final read in service.followAccountCall(
+      call.callId,
+      every: service.followEvery,
+    )) {
+      last = read;
+      onProgress?.call(read);
+    }
   } on Object {
     last = null;
   }
   invalidateAll(container, providers);
+  reportOutcome(call, last);
   return last;
 }
 
@@ -126,7 +134,9 @@ class LoanCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(formatMoney(loan.requested, assets)),
-            if (active && next != null)
+            if (active && view.instalmentsUnavailable)
+              const Text('Next: —', key: Key('loan-next'))
+            else if (active && next != null)
               Text(
                 'Next: ${next.hasDueAt() ? _date(next) : 'after payout'}'
                 ' · ${_money(view.nextOwed, loan.requested.assetId, assets)}',
@@ -140,21 +150,52 @@ class LoanCard extends StatelessWidget {
   }
 }
 
-/// A loan's schedule, or a quote's.
+/// Said when finance could not read a loan's schedule.
+const String scheduleUnavailableText =
+    'The schedule could not be read just now';
+
+/// A loan's schedule, or a quote's. When finance could not read it
+/// ([unavailable]) it shows "—" and a way to read it again ([onRetry]),
+/// never an empty schedule.
 class ScheduleView extends StatelessWidget {
   const ScheduleView({
     required this.instalments,
     required this.assets,
     this.emptyText,
+    this.unavailable = false,
+    this.onRetry,
     super.key,
   });
 
   final List<finance.LoanInstalment> instalments;
   final StawiAssets assets;
   final String? emptyText;
+  final bool unavailable;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
+    if (unavailable) {
+      return Row(
+        key: const Key('schedule-unavailable'),
+        children: [
+          const Text('—'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              scheduleUnavailableText,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          if (onRetry != null)
+            TextButton(
+              key: const Key('schedule-retry'),
+              onPressed: onRetry,
+              child: const Text('Try again'),
+            ),
+        ],
+      );
+    }
     if (instalments.isEmpty) {
       return emptyText == null ? const SizedBox.shrink() : Text(emptyText!);
     }

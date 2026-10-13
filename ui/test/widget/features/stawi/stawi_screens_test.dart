@@ -266,26 +266,13 @@ void main() {
     tester,
   ) async {
     final custody = Uint8List.fromList(List.filled(20, 0xc0));
-    final digest = keccak256(Uint8List.fromList([7]));
     final transport = FakeConnectTransport()
       ..on(
         settlement.AccountService.prepareAccountCall,
-        (req) => settlement.PrepareAccountCallResponse(
-          callId: 'acct000000000000000c',
-          intentDigest: digest,
-          financialIntent: finance.FinancialIntent(
-            type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
-            destination: finance.ValueLocation(
-              kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
-              address: req.params.room,
-            ),
-            amount: req.params.amount,
-          ),
-          call: settlement.AccountCall(
-            callId: 'acct000000000000000c',
-            address: req.address,
-            kind: req.kind,
-          ),
+        (req) => preparedContribution(
+          account: req.address,
+          custody: req.params.room,
+          amount: req.params.amount,
         ),
       )
       ..on(
@@ -354,6 +341,11 @@ void main() {
     final submit = transport
         .requestsTo(settlement.AccountService.submitAccountCall)
         .single;
+    final digest = preparedContribution(
+      account: account,
+      custody: custody,
+      amount: '500000000',
+    ).intentDigest;
     expect(
       recoverDeviceAddress(digest, submit.authorization),
       (await keys.load('p1'))!.address,

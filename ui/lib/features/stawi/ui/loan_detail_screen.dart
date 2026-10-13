@@ -36,8 +36,10 @@ final loanQuoteProvider = FutureProvider.autoDispose
           ),
     );
 
-/// After a loan the person borrows was accepted or taken ([callId], the
-/// account call that did it): follows it until it is active and then asks
+/// After a loan the person borrows was accepted or taken ([call], the
+/// account call that did it): follows the call until it is final (saying
+/// then that it is done, or why not) and the loan until it is active, and
+/// then asks
 /// for its automatic payment, a second signature reviewed on its own, itself
 /// followed until it is final. Money is read again through [container] only
 /// once each call is final. A loan still not active when the follow gives up
@@ -47,12 +49,26 @@ Future<void> followAndOfferAutoPay(
   WidgetRef ref,
   LoanRef loanRef, {
   required ProviderContainer container,
-  String? callId,
+  settlement.AccountCall? call,
 }) async {
   final service = ref.read(stawiAccountServiceProvider);
+  if (call != null) {
+    // The call first, until it is final: that is when it is said to be done
+    // (or why it failed), and a call that did not go through ends here.
+    final last = await settleThenRefresh(
+      container,
+      service,
+      call,
+      moneyProviders(loanRef),
+    );
+    if (last?.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL ||
+        !context.mounted) {
+      return;
+    }
+  }
   final loan = await runStawiAction(
     context,
-    () => service.followUntilActive(loanRef, callId: callId),
+    () => service.followUntilActive(loanRef),
   );
   invalidateAll(container, moneyProviders(loanRef));
   if (loan == null || !context.mounted) return;
@@ -70,13 +86,18 @@ Future<void> followAndOfferAutoPay(
     }
     return;
   }
-  final call = await runMoneyAction(
+  final autoPay = await runMoneyAction(
     context,
     ref,
     () => service.prepareStandingOrder(loan, on: true, title: autoPayTitle),
   );
-  if (call != null) {
-    await settleThenRefresh(container, service, call, moneyProviders(loanRef));
+  if (autoPay != null) {
+    await settleThenRefresh(
+      container,
+      service,
+      autoPay,
+      moneyProviders(loanRef),
+    );
   }
 }
 
@@ -162,7 +183,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
         ref,
         widget.ref,
         container: container,
-        callId: call.callId,
+        call: call,
       );
       return null;
     });
@@ -289,7 +310,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           if (mine == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          final view = LoanView(r.loan, mine: mine, instalments: r.instalments);
+          final view = LoanView.of(r, mine: mine);
           return RefreshIndicator(
             onRefresh: () => ref.refresh(loanProvider(widget.ref).future),
             child: ListView(
@@ -336,7 +357,14 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
         ),
       const SizedBox(height: 8),
       Text('Schedule', style: heading),
-      if (view.instalments.isNotEmpty)
+      if (view.instalmentsUnavailable)
+        ScheduleView(
+          instalments: const [],
+          assets: assets,
+          unavailable: true,
+          onRetry: () => ref.invalidate(loanProvider(widget.ref)),
+        )
+      else if (view.instalments.isNotEmpty)
         ScheduleView(instalments: view.instalments, assets: assets)
       else if (pending && view.isPersonal && loan.hasTerms())
         _QuotedSchedule(loan: loan, assets: assets)
@@ -437,8 +465,11 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
     }
     if (active && role == LoanRole.borrower) {
       final on = ref.watch(standingOrderOnProvider(widget.ref));
+      // One control for automatic payment: the banner offers it while it is
+      // off, the switch (which also turns it off) otherwise.
+      final off = on.asData?.value == false && !on.isLoading;
       return [
-        if (on.asData?.value == false)
+        if (off)
           Card(
             key: const Key('loan-autopay-banner'),
             child: ListTile(
@@ -467,7 +498,11 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
               : () => _act((_) => showPayOff(context, ref, view)),
           child: const Text('Pay off the loan'),
         ),
-        StandingOrderSwitch(key: const Key('loan-standing-switch'), loan: loan),
+        if (!off)
+          StandingOrderSwitch(
+            key: const Key('loan-standing-switch'),
+            loan: loan,
+          ),
       ];
     }
     return const [];

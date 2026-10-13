@@ -21,6 +21,7 @@ import 'package:stawi/features/stawi/domain/signing_checks.dart'
     show bytesEqual;
 import 'package:stawi/features/stawi/ui/dm_money_sheet.dart';
 import 'package:stawi/features/stawi/ui/loan_detail_screen.dart';
+import 'package:stawi/features/stawi/ui/money_review_sheet.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_api/well_known.dart' as wkt;
@@ -462,6 +463,11 @@ void main() {
         hasLength(1),
       );
       expect(gate.reasons, ['Lend 300.00 USDC to Bob']);
+      // Sent at submit; "Offer sent" only once the call is final.
+      expect(find.text(sentWaitingMessage), findsOneWidget);
+      expect(find.text('Offer sent to Bob'), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
       expect(find.text('Offer sent to Bob'), findsOneWidget);
       expect(find.byType(DmLoanScreen), findsNothing);
     });
@@ -522,6 +528,9 @@ void main() {
           findsOneWidget,
         );
         await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+        expect(find.text(sentWaitingMessage), findsOneWidget);
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
         expect(find.text('Request sent to Bob'), findsOneWidget);
       },
     );

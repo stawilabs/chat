@@ -16,9 +16,8 @@ import 'package:flutter_test/flutter_test.dart';
 const Set<String> deviceSignSites = {
   // Account deployment (the account's genesis).
   'lib/features/stawi/data/stawi_account_service.dart deploy',
-  // ADD_KEY.
-  'lib/features/stawi/data/stawi_account_service.dart addDeviceKey',
-  // Money: every prepared and checked call (loans, savings, wallet).
+  // Money and ADD_KEY: every prepared and checked call (loans, savings,
+  // wallet, another device's key).
   'lib/features/stawi/data/stawi_account_service.dart submit',
   // Room genesis.
   'lib/features/stawi/data/stawi_room_service.dart submitGenesisSignature',

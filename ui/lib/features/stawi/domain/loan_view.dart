@@ -23,10 +23,30 @@ BigInt instalmentOwed(finance.LoanInstalment i) {
 
 /// A loan as the person looking at it sees it.
 final class LoanView {
-  LoanView(this.loan, {required this._mine, this.instalments = const []});
+  LoanView(
+    this.loan, {
+    required this._mine,
+    this.instalments = const [],
+    this.instalmentsUnavailable = false,
+  });
+
+  /// [loan] with its schedule as finance's GetLoan answered it.
+  factory LoanView.of(
+    finance.GetLoanResponse r, {
+    required List<Uint8List> mine,
+  }) => LoanView(
+    r.loan,
+    mine: mine,
+    instalments: r.instalments,
+    instalmentsUnavailable: r.instalmentsUnavailable,
+  );
 
   final finance.Loan loan;
   final List<finance.LoanInstalment> instalments;
+
+  /// Finance could not read the schedule (GetLoan instalments_unavailable):
+  /// what is due is unknown, never nothing.
+  final bool instalmentsUnavailable;
   final List<Uint8List> _mine;
 
   bool _isMine(List<int> account) =>
@@ -104,11 +124,17 @@ final class LoanView {
     return null;
   }
 
-  /// What is left on [next]: principal + interest + fee − paid.
+  /// What is left on [next]: principal + interest + fee − paid. Zero when
+  /// nothing is due or when the schedule is unavailable: check
+  /// [instalmentsUnavailable] (or use [nextOwedIfKnown]) before reading zero
+  /// as "nothing is due".
   BigInt get nextOwed {
     final n = next;
     return n == null ? BigInt.zero : instalmentOwed(n);
   }
+
+  /// [nextOwed], or null when the schedule could not be read.
+  BigInt? get nextOwedIfKnown => instalmentsUnavailable ? null : nextOwed;
 
   /// The largest instalment, for the standing order line: the SDK's figure
   /// for a personal loan, the schedule's own for a group loan.

@@ -31,6 +31,26 @@ List<ProviderBase<Object?>> roomLoanProviders(String roomId) => [
   stawiMemberBalancesProvider(roomId),
 ];
 
+/// What a group loan request's review adds from finance's quote: what is
+/// paid out (less a fee taken at payout) and what is repaid. A figure the
+/// quote leaves empty is left out, never shown as 0.
+List<(String, String)> groupQuoteLines(
+  finance.QuoteLoanResponse q,
+  StawiAsset asset,
+) {
+  String? money(finance.Money m) {
+    final v = BigInt.tryParse(m.amount);
+    return v == null ? null : formatUnits(v, asset);
+  }
+
+  final paidOut = q.hasPaidOut() ? money(q.paidOut) : null;
+  final repay = q.hasTotalRepayable() ? money(q.totalRepayable) : null;
+  return [
+    if (paidOut != null) ('Paid out to you', paidOut),
+    if (repay != null) ('You repay', repay),
+  ];
+}
+
 /// A loan from the room on one of its loan forms: the amount and the number
 /// of instalments (within the form's bounds), finance's quote with the Stawi
 /// fee, then review and sign (LOAN_REQUEST).
@@ -199,6 +219,7 @@ class _GroupLoanRequestScreenState
           request,
           engines: engines,
           feeLine: _feeLine(q, asset),
+          quoteLines: groupQuoteLines(q, asset),
         ),
       );
       if (call == null) return;

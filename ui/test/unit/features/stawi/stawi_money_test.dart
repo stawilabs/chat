@@ -89,9 +89,8 @@ void main() {
       // A policy other than the one hashed: the digest no longer matches.
       final otherPolicy = v.prepared
         ..initialPolicy.periodLimit = '1'
-        ..initialPolicyHash = accountPolicyFrom(
-          v.policy..periodLimit = '1',
-        ).hash;
+        ..initialPolicyHash = accountPolicyFrom(v.policy..periodLimit = '1')
+            .hash;
       expect(
         refusal(
           () => checkedDeployDigest(
@@ -531,7 +530,8 @@ void main() {
   group('contribute', () {
     final account = Uint8List.fromList(List.filled(20, 0xac));
     final custody = Uint8List.fromList(List.filled(20, 0xc0));
-    final digest = keccak256(Uint8List.fromList([1]));
+    // The digest of the contribution settlement last prepared.
+    var digest = Uint8List(32);
     late DeviceKeyStore keys;
     late DevicePublicKey key;
 
@@ -547,29 +547,15 @@ void main() {
           settlement.AccountService.getAsset,
           (req) => settlement.GetAssetResponse(asset: usdcInfo),
         )
-        ..on(
-          settlement.AccountService.prepareAccountCall,
-          (req) => settlement.PrepareAccountCallResponse(
-            callId: 'acct000000000000000c',
-            intentDigest: digest,
-            financialIntent: finance.FinancialIntent(
-              type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
-              account: req.address,
-              destination: finance.ValueLocation(
-                kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
-                address: destination ?? req.params.room,
-                bucket: 'SAVINGS',
-              ),
-              amount: amount ?? req.params.amount,
-            ),
-            call: settlement.AccountCall(
-              callId: 'acct000000000000000c',
-              address: req.address,
-              kind: req.kind,
-              intentDigest: digest,
-            ),
-          ),
-        )
+        ..on(settlement.AccountService.prepareAccountCall, (req) {
+          final p = preparedContribution(
+            account: req.address,
+            custody: destination ?? req.params.room,
+            amount: amount ?? req.params.amount,
+          );
+          digest = Uint8List.fromList(p.intentDigest);
+          return p;
+        })
         ..on(
           settlement.AccountService.submitAccountCall,
           (req) => settlement.SubmitAccountCallResponse(

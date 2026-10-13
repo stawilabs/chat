@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderBase;
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -18,6 +19,8 @@ import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/payoff_top_up.dart';
 import '../domain/stawi_money.dart';
+import 'group_loan_request_screen.dart' show roomLoanProviders;
+import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
 import 'money_review_sheet.dart';
 import 'room_loans_tab.dart';
 import 'stawi_feedback.dart';
@@ -133,13 +136,61 @@ class _Heading extends StatelessWidget {
   );
 }
 
-class _SavingsTab extends ConsumerWidget {
+/// What is read again after a money action in a room: the room's loans and
+/// balances, the member's own dues and share-outs, and the person's money.
+List<ProviderBase<Object?>> roomMoneyProviders(String roomId) => [
+  ...roomLoanProviders(roomId),
+  stawiMyDuesProvider(roomId),
+  stawiEntitlementsProvider(roomId),
+];
+
+/// Opens the form for [call] in the room and follows the call it submits
+/// until it is final; only then are the room's money and the person's read
+/// again (and the outcome said). [onSettling] is told while it is followed.
+Future<settlement.AccountCall?> runRoomEngineDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required String roomId,
+  required AccountEngineCall call,
+  finance.Loan? loan,
+  List<ProviderBase<Object?>> also = const [],
+  void Function(bool settling)? onSettling,
+}) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
+  final submitted = await showDialog<settlement.AccountCall>(
+    context: context,
+    builder: (_) => AccountEngineDialog(roomId: roomId, call: call, loan: loan),
+  );
+  if (submitted == null) return null;
+  onSettling?.call(true);
+  try {
+    return await settleThenRefresh(container, service, submitted, [
+      ...roomMoneyProviders(roomId),
+      ...also,
+    ]);
+  } finally {
+    onSettling?.call(false);
+  }
+}
+
+class _SavingsTab extends ConsumerStatefulWidget {
   const _SavingsTab({required this.roomId});
 
   final String roomId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SavingsTab> createState() => _SavingsTabState();
+}
+
+class _SavingsTabState extends ConsumerState<_SavingsTab> {
+  /// While a submitted call is followed: no other amount call is offered
+  /// against figures not read again yet.
+  bool _settling = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final roomId = widget.roomId;
     return ListView(
       children: [
         const _Heading('My dues'),
@@ -172,16 +223,28 @@ class _SavingsTab extends ConsumerWidget {
               ])
                 OutlinedButton(
                   key: Key('engine-${call.name}'),
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) =>
-                        AccountEngineDialog(roomId: roomId, call: call),
-                  ),
+                  onPressed: _settling
+                      ? null
+                      : () => runRoomEngineDialog(
+                          context,
+                          ref,
+                          roomId: roomId,
+                          call: call,
+                          onSettling: (on) {
+                            if (mounted) setState(() => _settling = on);
+                          },
+                        ),
                   child: Text(call.label),
                 ),
             ],
           ),
         ),
+        if (_settling)
+          const Padding(
+            key: Key('money-settling'),
+            padding: EdgeInsets.all(16),
+            child: Text(waitingForCompletion),
+          ),
       ],
     );
   }
@@ -627,42 +690,36 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     final request = _request!;
     final topUp = _topUp!.topUp;
     setState(() => _busy = true);
+    final container = moneyContainer(context);
     final service = ref.read(stawiAccountServiceProvider);
-    final landed =
-        await runMoneyAction(
-          context,
-          ref,
-          // The button that asked for the top-up names its amount; the review
-          // and the device lock show the same amount before signing.
-          () => service.prepareContribution(
-            custody: request.custody,
-            amount: topUp.toString(),
-          ),
-        ).then<settlement.AccountCall?>((submitted) async {
-          if (submitted == null) return null;
-          final last = await service.followAccountCall(submitted.callId).last;
-          if (last.state !=
-              settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
-            if (mounted) {
-              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                SnackBar(
-                  content: Text(
-                    last.failureReason.isNotEmpty
-                        ? 'The top-up did not go through: ${last.failureReason}'
-                        : 'The top-up did not go through; try again',
-                  ),
-                ),
-              );
-            }
-            return null;
-          }
-          return last;
-        });
+    final submitted = await runMoneyAction(
+      context,
+      ref,
+      // The button that asked for the top-up names its amount; the review
+      // and the device lock show the same amount before signing.
+      () => service.prepareContribution(
+        custody: request.custody,
+        amount: topUp.toString(),
+        roomName: 'the room',
+        title: (amount) => 'Top up $amount before paying off',
+      ),
+    );
+    // Followed until it is final, which says how it ended; the balances are
+    // read again then.
+    final last = submitted == null
+        ? null
+        : await settleThenRefresh(
+            container,
+            service,
+            submitted,
+            roomMoneyProviders(widget.roomId),
+          );
     if (!mounted) return;
-    ref.invalidate(stawiMemberBalancesProvider(widget.roomId));
     setState(() {
       _busy = false;
-      if (landed != null) _toppedUp = true;
+      if (last?.state == settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
+        _toppedUp = true;
+      }
     });
   }
 

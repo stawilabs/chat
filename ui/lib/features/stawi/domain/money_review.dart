@@ -24,13 +24,15 @@ final class MoneyReview {
   });
 
   /// A personal loan or savings call. [counterpartyName] names the other
-  /// person, [pocketName] the pocket the money leaves or enters.
+  /// person, [pocketName] the pocket the money leaves or enters. [me] is the
+  /// account making the call: a cancel says whose offer or request it ends.
   factory MoneyReview.personal(
     PersonalRequest r,
     sdk.EngineCall call, {
     required StawiAsset asset,
     String? counterpartyName,
     String? pocketName,
+    List<int>? me,
   }) {
     String money(BigInt v) => formatUnits(v, asset);
     final other = counterpartyName ?? 'them';
@@ -113,15 +115,10 @@ final class MoneyReview {
           title: 'Pay an instalment',
           lines: [('Amount', money(amount))],
           signLabel: _sign,
-          done: 'Payment sent',
+          done: 'Instalment paid',
         );
       case PersonalCall.cancel:
-        return const MoneyReview(
-          title: 'Cancel this request',
-          lines: [],
-          signLabel: _sign,
-          done: 'Cancelled',
-        );
+        return _cancelReview(r.loan, me: me, other: other);
       case PersonalCall.payoff:
         return MoneyReview(
           title: 'Pay off the loan',
@@ -162,11 +159,14 @@ final class MoneyReview {
     }
   }
 
-  /// A loan, withdrawal or amount choice on a room's engines.
+  /// A loan, withdrawal or amount choice on a room's engines. [quoteLines]
+  /// are finance's quote of a loan request ("Paid out to you", "You repay"),
+  /// shown after the checked lines.
   factory MoneyReview.engine(
     AccountEngineRequest r,
     sdk.EngineCall call, {
     String? feeLine,
+    List<(String, String)> quoteLines = const [],
   }) {
     final asset = r.asset;
     final amount = call.amount > BigInt.zero
@@ -189,9 +189,10 @@ final class MoneyReview {
         if (r.call.takesLoan) ('Loan', '#${r.loanId}'),
         if (call.instalments > 0) ('Instalments', '${call.instalments}'),
         if (feeLine != null) ('Stawi fee', feeLine),
+        ...quoteLines,
       ],
       signLabel: _sign,
-      done: 'Signed and submitted: ${r.summary}',
+      done: 'Done: ${r.summary}',
     );
   }
 
@@ -246,7 +247,7 @@ final class MoneyReview {
       lines: [('To', roomName), ('Amount', shown)],
       notes: [note ?? 'The room\'s rules apply it: dues and penalties first.'],
       signLabel: _sign,
-      done: 'Payment sent to $roomName',
+      done: 'Paid into $roomName',
     );
   }
 
@@ -268,6 +269,24 @@ final class MoneyReview {
     done: 'Money sent',
   );
 
+  /// Adding another device's key to the person's account. It becomes
+  /// active only after the account's key-change delay.
+  factory MoneyReview.addKey({required Uint8List key}) {
+    final id = sdk.bytesToHex0x(key).toLowerCase();
+    return MoneyReview(
+      title: 'Add a device to your Stawi account',
+      lines: [
+        ('Device key', id),
+        ('Becomes active', 'after ${_delay(keyChangeDelay)}'),
+      ],
+      notes: const [_addKeyNote],
+      signLabel: _sign,
+      done:
+          'Device key added; it becomes active in '
+          '${_delay(keyChangeDelay)}',
+    );
+  }
+
   /// "Lend 300.00 USDC to Bob".
   final String title;
 
@@ -281,6 +300,60 @@ final class MoneyReview {
   /// Shown after the call is submitted.
   final String done;
 }
+
+/// The cancel of a personal loan not accepted yet, worded for who ends it:
+/// the borrower declines an offer or cancels their request; the lender
+/// cancels their offer or declines a request.
+MoneyReview _cancelReview(
+  finance.Loan? loan, {
+  required List<int>? me,
+  required String other,
+}) {
+  bool same(List<int> a, List<int> b) =>
+      a.isNotEmpty && a.length == b.length && _eq(a, b);
+  final offer = loan != null && same(loan.offeredBy, loan.lender);
+  final ask = loan != null && same(loan.offeredBy, loan.borrowerAccount);
+  final borrower = loan != null && me != null && same(me, loan.borrowerAccount);
+  final lender =
+      loan != null &&
+      me != null &&
+      (same(me, loan.lender) || same(me, loan.pool));
+  final (title, done) = switch ((offer, ask)) {
+    (true, _) when borrower => ('Decline $other\'s offer', 'Offer declined'),
+    (true, _) when lender => ('Cancel my offer to $other', 'Offer cancelled'),
+    (_, true) when lender => ('Decline $other\'s request', 'Request declined'),
+    (_, true) when borrower => (
+      'Cancel my request to $other',
+      'Request cancelled',
+    ),
+    _ => ('Cancel this loan before it starts', 'Cancelled'),
+  };
+  return MoneyReview(
+    title: title,
+    lines: const [],
+    signLabel: _sign,
+    done: done,
+  );
+}
+
+bool _eq(List<int> a, List<int> b) {
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+const String _addKeyNote =
+    'That device can then sign for your account: move money, take loans and '
+    'add other devices. Add only a device you hold.';
+
+/// StawiAccount's key-change delay (AccountPolicyLib.CHANGE_DELAY): a key
+/// added now becomes active this long after the change is made.
+const Duration keyChangeDelay = Duration(hours: 24);
+
+String _delay(Duration d) => d.inHours % 24 == 0
+    ? (d.inDays == 1 ? '24 hours' : '${d.inDays} days')
+    : '${d.inHours} hours';
 
 /// Why the signed ceiling is not the price.
 const String _ceilingNote =

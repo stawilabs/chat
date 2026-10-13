@@ -16,6 +16,7 @@ import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
 import 'package:stawi/features/stawi/ui/agent_picker.dart';
 import 'package:stawi/features/stawi/ui/loan_detail_screen.dart'
     show autoPayTitle;
+import 'package:stawi/features/stawi/ui/money_review_sheet.dart';
 import 'package:stawi/features/stawi/ui/room_loans_tab.dart'
     show groupInstalmentNote;
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -279,6 +280,10 @@ void main() {
       await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
       expect(h.gate.reasons, ['Lend 300.00 USDC to Bob']);
       expect(bytesToHex0x(h.submitted.single.authorization), vector.signature);
+      // Sent at submit; "Offer sent" once the call is final.
+      expect(find.text(sentWaitingMessage), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
       expect(find.text('Offer sent to Bob'), findsOneWidget);
     },
   );
@@ -412,6 +417,9 @@ void main() {
     expect(h.submitted, isEmpty, reason: 'the review comes first');
     await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
     expect(bytesToHex0x(h.submitted.single.authorization), ask.signature);
+    expect(find.text(sentWaitingMessage), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
     expect(find.text('Request sent to Bob'), findsOneWidget);
 
     // Bob asks me: his card reaches the DM.
@@ -586,7 +594,7 @@ void main() {
     // My loans in this room: an instalment is paid as a contribution.
     expect(find.byKey(const Key('my-loan-1')), findsOneWidget);
     await tapAndSettle(tester, find.byKey(const Key('loan-1-pay')));
-    expect(inReview('Contribute 137.50 USDC to Chama'), findsOneWidget);
+    expect(inReview('Pay 137.50 USDC toward loan #1 in Chama'), findsOneWidget);
     expect(inReview(groupInstalmentNote), findsOneWidget);
     expect(h.submitted, hasLength(1), reason: 'the review comes first');
     await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
@@ -598,7 +606,7 @@ void main() {
     );
     expect(h.gate.reasons, [
       'Request a loan of 500.00 USDC',
-      'Contribute 137.50 USDC to Chama',
+      'Pay 137.50 USDC toward loan #1 in Chama',
     ]);
   });
 

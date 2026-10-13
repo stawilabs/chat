@@ -197,6 +197,65 @@ Uint8List checkedAccountCallDigest({
   return digest;
 }
 
+/// Why an add-key call that does not add the typed key is refused.
+const String notTheTypedKey =
+    'this would not add the device key you typed to your account';
+
+/// The digest to sign for adding the device key [key] (a secp256k1 key's
+/// 20-byte address) to [account]: an ADD_KEY whose op adds exactly [key] and
+/// whose KEY_CHANGE intent binds that op (stawi_finance_sdk verifyAddKey),
+/// with the digest the intent's own.
+Uint8List checkedAddKey({
+  required settlement.PrepareAccountCallResponse prepared,
+  required Uint8List account,
+  required Uint8List key,
+}) {
+  if (key.length != 20 || key.every((b) => b == 0)) {
+    throw const SigningRefused('that is not a device key id');
+  }
+  final digest = checkedAccountCallDigest(
+    prepared: prepared,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY,
+    account: account,
+  );
+  final intent = _intentOf(prepared, digest, account);
+  final op = prepared.managementOp;
+  if (!prepared.hasManagementOp() ||
+      op.authorizationId.isNotEmpty ||
+      op.hasAuth() ||
+      op.hasPolicy()) {
+    throw const SigningRefused(notTheTypedKey);
+  }
+  try {
+    return verifyAddKey(
+      intent,
+      opKind: op.kind,
+      opKey: op.key,
+      expectedKey: key,
+      account: account,
+      // The app holds no chain id of its own: the account (the intent's
+      // verifying contract) and the intent's digest bind the one it names.
+      chainId: intent.domain.chainId,
+      preparedDigest: digest,
+    );
+  } on KeyChangeException catch (e) {
+    throw SigningRefused(switch (e.error) {
+      KeyChangeError.notAnAddKey ||
+      KeyChangeError.notTheKey ||
+      KeyChangeError.opNotBound => notTheTypedKey,
+      KeyChangeError.notThisAccount => 'the key change is for another account',
+      KeyChangeError.notAKeyChange =>
+        'settlement prepared something other than a key change',
+      KeyChangeError.digestMismatch =>
+        'the digest is not the prepared intent\'s',
+    });
+    // verifyAddKey reports malformed inputs as an ArgumentError.
+    // ignore: avoid_catching_errors
+  } on ArgumentError {
+    throw const SigningRefused(notTheTypedKey);
+  }
+}
+
 /// The genesis digest to sign for a deployment. It is rebuilt here from the
 /// policy settlement showed, this device's key, the identity salt hash profile
 /// lists for the account and the account address

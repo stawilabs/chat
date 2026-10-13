@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 
 import 'package:connectrpc/connect.dart' as connect;
@@ -650,22 +649,11 @@ void main() {
               settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE) {
             return payoff.prepared(req.kind);
           }
-          return settlement.PrepareAccountCallResponse(
+          return preparedContribution(
+            account: req.address,
+            custody: req.params.room,
+            amount: req.params.amount,
             callId: 'acct00000000000000c1',
-            intentDigest: keccak256(Uint8List.fromList([7])),
-            financialIntent: finance.FinancialIntent(
-              type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
-              destination: finance.ValueLocation(
-                kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
-                address: req.params.room,
-              ),
-              amount: req.params.amount,
-            ),
-            call: settlement.AccountCall(
-              callId: 'acct00000000000000c1',
-              address: req.address,
-              kind: req.kind,
-            ),
           );
         })
         ..on(

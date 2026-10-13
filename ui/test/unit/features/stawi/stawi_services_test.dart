@@ -484,62 +484,113 @@ void main() {
       expect(status.account!.address, account);
     });
 
-    test('adding a device key signs the prepared intent digest', () async {
-      final newKey = Uint8List.fromList(List.filled(20, 0x42));
-      transport.on(
-        settlement.AccountService.prepareAccountCall,
-        (req) => settlement.PrepareAccountCallResponse(
-          callId: 'acct000000000000000a',
-          intentDigest: digest,
-          call: settlement.AccountCall(
-            callId: 'acct000000000000000a',
-            address: req.address,
-            kind: req.kind,
-            intentDigest: digest,
-          ),
-        ),
+    group('adding a device key', () {
+      final v = GoVaultVectors.load().addKeys.firstWhere((k) => !k.p256);
+      StawiAccountService service() => StawiAccountService(
+        accounts: settlement.AccountServiceClient(transport),
+        keys: keys,
+        proofs: ({required Uint8List deviceAddress}) async => Uint8List(0),
+        identity: () async => identityWith('p1', v.account),
       );
-      transport.on(
-        settlement.AccountService.submitAccountCall,
-        (req) => settlement.SubmitAccountCallResponse(
-          call: settlement.AccountCall(
-            callId: req.callId,
-            state: settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
-          ),
-        ),
-      );
+      void prepares(settlement.PrepareAccountCallResponse prepared) {
+        transport
+          ..on(settlement.AccountService.prepareAccountCall, (req) => prepared)
+          ..on(
+            settlement.AccountService.submitAccountCall,
+            (req) => settlement.SubmitAccountCallResponse(
+              call: settlement.AccountCall(
+                callId: req.callId,
+                state: settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+              ),
+            ),
+          );
+      }
 
-      final call = await accountService().addDeviceKey(newKey);
-      expect(
-        call.state,
-        settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
-      );
+      test('prepares, checks, reviews, then signs behind the lock', () async {
+        prepares(v.prepared());
+        final prepared = await service().prepareAddKey(v.key);
+        // Nothing is signed while the person reviews it.
+        expect(gate.reasons, isEmpty);
+        expect(prepared.digest, v.digest);
+        expect(prepared.review.title, 'Add a device to your Stawi account');
+        expect(prepared.review.lines, [
+          ('Device key', bytesToHex0x(v.key).toLowerCase()),
+          ('Becomes active', 'after 24 hours'),
+        ]);
+        final request = transport
+            .requestsTo(settlement.AccountService.prepareAccountCall)
+            .single;
+        expect(
+          request.kind,
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY,
+        );
+        expect(request.params.key, v.key);
 
-      final prepare = transport
-          .requestsTo(settlement.AccountService.prepareAccountCall)
-          .single;
-      expect(
-        prepare.kind,
-        settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY,
-      );
-      expect(prepare.params.key, newKey);
-      final submit = transport
-          .requestsTo(settlement.AccountService.submitAccountCall)
-          .single;
-      expect(recoverDeviceAddress(digest, submit.authorization), key.address);
-      expect(gate.reasons, ['Add a device to your Stawi account']);
-    });
+        final call = await service().submit(prepared);
+        expect(
+          call.state,
+          settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+        );
+        final submit = transport
+            .requestsTo(settlement.AccountService.submitAccountCall)
+            .single;
+        expect(
+          recoverDeviceAddress(v.digest, submit.authorization),
+          key.address,
+        );
+        expect(gate.reasons, ['Add a device to your Stawi account']);
+      });
 
-    test('a refused device lock adds no key', () async {
-      gate.refuse = true;
-      await expectLater(
-        accountService().addDeviceKey(Uint8List(20)),
-        throwsA(isA<SigningRefused>()),
-      );
-      expect(
-        transport.requestsTo(settlement.AccountService.submitAccountCall),
-        isEmpty,
-      );
+      final other = Uint8List(20)..[19] = 0x99;
+      final cases = <String, settlement.PrepareAccountCallResponse Function()>{
+        'the op adds another key': () => v.prepared(opKey: other),
+        'the op is not an add-key': () => v.prepared(opKind: opAddKeyP256),
+        'no op is returned': () => v.prepared(withOp: false),
+        'the intent binds another op': () =>
+            v.prepared(intent: v.intent..authorizationId = addKeyOpHash(other)),
+        'the digest is not the intent\'s': () =>
+            v.prepared(digestOverride: Uint8List(32)..[0] = 1),
+        'the intent is for another account': () =>
+            v.prepared(intent: v.intent..account = other),
+        'the intent moves money': () =>
+            v.prepared(intent: v.intent..amount = '1'),
+      };
+      for (final MapEntry(key: name, value: build) in cases.entries) {
+        test('refused when $name; nothing is signed', () async {
+          prepares(build());
+          await expectLater(
+            service().prepareAddKey(v.key),
+            throwsA(isA<SigningRefused>()),
+          );
+          expect(gate.reasons, isEmpty);
+          expect(
+            transport.requestsTo(settlement.AccountService.submitAccountCall),
+            isEmpty,
+          );
+        });
+      }
+
+      test('a refused device lock adds no key', () async {
+        prepares(v.prepared());
+        final prepared = await service().prepareAddKey(v.key);
+        gate.refuse = true;
+        await expectLater(
+          service().submit(prepared),
+          throwsA(isA<SigningRefused>()),
+        );
+        expect(
+          transport.requestsTo(settlement.AccountService.submitAccountCall),
+          isEmpty,
+        );
+      });
+
+      test('a malformed key id is never prepared', () async {
+        await expectLater(
+          service().prepareAddKey(Uint8List(20)),
+          throwsA(isA<FormatException>()),
+        );
+        expect(transport.calls, isEmpty);
+      });
     });
 
     test('a refused device lock deploys nothing', () async {

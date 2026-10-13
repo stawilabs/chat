@@ -542,8 +542,13 @@ void main() {
     await tester.enterText(find.byKey(const Key('goal-target')), '300');
     await tap(tester, find.byKey(const Key('goal-create')));
     await tap(tester, find.byKey(const Key('money-review-sign')));
-    await tester.pump(const Duration(seconds: 5));
-    await settle(tester);
+    // "Sent; waiting for confirmation", then "Savings goal started" once
+    // final, then why it is not named.
+    final unclear = find.textContaining('which one it is is not clear yet');
+    for (var i = 0; i < 12 && unclear.evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
+    }
 
     expect(transport.requestsTo(finance.VaultService.nameGoal), isEmpty);
     expect(

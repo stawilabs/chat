@@ -169,22 +169,11 @@ void main() {
       ..on(settlement.AccountService.prepareAccountCall, (req) {
         switch (req.kind) {
           case _contribute:
-            return settlement.PrepareAccountCallResponse(
+            return preparedContribution(
+              account: req.address,
+              custody: req.params.room,
+              amount: req.params.amount,
               callId: 'acct00000000000000c1',
-              intentDigest: keccak256(Uint8List.fromList([7])),
-              financialIntent: finance.FinancialIntent(
-                type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
-                destination: finance.ValueLocation(
-                  kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
-                  address: req.params.room,
-                ),
-                amount: req.params.amount,
-              ),
-              call: settlement.AccountCall(
-                callId: 'acct00000000000000c1',
-                address: req.address,
-                kind: req.kind,
-              ),
             );
           case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_REQUEST:
             return request.prepared(req.kind);
@@ -708,7 +697,10 @@ void main() {
     );
     expect(find.byKey(const Key('schedule-paid-0')), findsOneWidget);
     await tapAndSettle(tester, find.byKey(const Key('loan-1-pay')));
-    expect(inReview('Contribute 77.50 USDC to Chama'), findsOneWidget);
+    expect(
+      inReview('Pay 77.50 USDC toward loan #1 in Chama'),
+      findsOneWidget,
+    );
     expect(
       find.descendant(
         of: find.byKey(const Key('money-review')),

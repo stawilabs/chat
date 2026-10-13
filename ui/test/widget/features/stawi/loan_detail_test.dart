@@ -14,6 +14,7 @@ import 'package:stawi/features/stawi/data/stawi_vault_service.dart';
 import 'package:stawi/features/stawi/domain/loan_terms.dart';
 import 'package:stawi/features/stawi/domain/personal_calls.dart';
 import 'package:stawi/features/stawi/ui/loan_detail_screen.dart';
+import 'package:stawi/features/stawi/ui/money_review_sheet.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_api/well_known.dart' as wkt;
@@ -403,7 +404,12 @@ void main() {
 
       expect(prepared(), [_acceptOffer]);
       expect(find.byKey(const Key('money-review')), findsNothing);
-      // After the "Loan accepted" snack bar.
+      // "Sent; waiting for confirmation", then "Loan accepted" once the call
+      // is final, then that the loan is not active yet.
+      expect(find.text(sentWaitingMessage), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
+      expect(find.text('Loan accepted'), findsOneWidget);
       await tester.pump(const Duration(seconds: 5));
       await settle(tester);
       expect(find.textContaining('The loan is not active yet'), findsOneWidget);
@@ -673,11 +679,9 @@ void main() {
       instalments = [due(0)];
       await open(tester, service);
 
-      final toggle = find.descendant(
-        of: find.byKey(const Key('loan-standing-switch')),
-        matching: find.byType(Switch),
-      );
-      expect(tester.widget<Switch>(toggle).value, isFalse);
+      // One control: the banner offers it; the switch is not shown too.
+      expect(find.byKey(const Key('loan-autopay-banner')), findsOneWidget);
+      expect(find.byKey(const Key('loan-standing-switch')), findsNothing);
       await tapAndSettle(tester, find.byKey(const Key('loan-autopay-on')));
       expect(inReview('Pay automatically for this loan'), findsOneWidget);
       expect(prepared(), [_grant]);

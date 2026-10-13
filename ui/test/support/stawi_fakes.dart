@@ -307,6 +307,87 @@ class GoVaultVectors {
     for (final r in _section('standing_revokes')) GoStandingRevokeVector(r),
   ];
   List<Map<String, dynamic>> get standingOrders => _section('standing_orders');
+  List<GoAddKeyVector> get addKeys => [
+    for (final k in _section('add_keys')) GoAddKeyVector(k),
+  ];
+}
+
+/// What settlement's PrepareAccountCall returns for a CONTRIBUTE from
+/// [account] of [amount] into [custody]: a whole intent (the Go deposit
+/// vector's, retyped) whose digest is its own, as the device checks it.
+settlement.PrepareAccountCallResponse preparedContribution({
+  required List<int> account,
+  required List<int> custody,
+  required String amount,
+  String callId = 'acct000000000000000c',
+}) {
+  final intent = GoVaultVectors.load().deposits.first.intent
+    ..type = finance.IntentType.INTENT_TYPE_CONTRIBUTION
+    ..account = account
+    ..destination = finance.ValueLocation(
+      kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+      address: custody,
+      bucket: 'SAVINGS',
+    )
+    ..amount = amount;
+  final digest = sdkIntentOf(intent).digest();
+  return settlement.PrepareAccountCallResponse(
+    callId: callId,
+    intentDigest: digest,
+    financialIntent: intent,
+    call: settlement.AccountCall(
+      callId: callId,
+      address: account,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+      intentDigest: digest,
+    ),
+  );
+}
+
+/// One Go-produced ADD_KEY: the op adding [key] to [account] and the
+/// KEY_CHANGE intent binding it (pkg/evm/stawi ManagementOpHash).
+class GoAddKeyVector {
+  GoAddKeyVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  int get kind => json['kind'] as int;
+  bool get p256 => json['p256'] as bool;
+  Uint8List get key => hexToBytes(json['key'] as String);
+  Uint8List get account => hexToBytes(json['account'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+
+  /// What settlement's PrepareAccountCall returns for this add; [opKey] and
+  /// [opKind] replace the op's, [intent] the intent (its digest recomputed
+  /// unless [digestOverride] is given).
+  settlement.PrepareAccountCallResponse prepared({
+    List<int>? opKey,
+    int? opKind,
+    finance.FinancialIntent? intent,
+    List<int>? digestOverride,
+    bool withOp = true,
+  }) {
+    final i = intent ?? this.intent;
+    final d = digestOverride ?? sdkIntentOf(i).digest();
+    return settlement.PrepareAccountCallResponse(
+      callId: 'acct000000000000000a',
+      intentDigest: d,
+      financialIntent: i,
+      managementOp: withOp
+          ? finance.AccountManagementOp(kind: opKind ?? kind, key: opKey ?? key)
+          : null,
+      call: settlement.AccountCall(
+        callId: 'acct000000000000000a',
+        address: account,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY,
+        intentDigest: d,
+      ),
+    );
+  }
 }
 
 /// One Go-produced REVOKE_STANDING of a personal loan's standing order.

@@ -7,6 +7,8 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 import '../../../core/networking/api_config.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/stawi_money.dart';
+import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
+import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
 
 /// The profile's Stawi account: its address, whether it is deployed on chain,
@@ -58,6 +60,9 @@ class _AccountView extends ConsumerStatefulWidget {
 
 class _AccountViewState extends ConsumerState<_AccountView> {
   bool _busy = false;
+
+  /// While an added key's call is followed until it is final.
+  bool _settling = false;
 
   Future<void> _deploy() async {
     setState(() => _busy = true);
@@ -113,15 +118,31 @@ class _AccountViewState extends ConsumerState<_AccountView> {
       builder: (context) => const _AddKeyDialog(),
     );
     if (keyId == null || !mounted) return;
+    final container = moneyContainer(context);
+    final service = ref.read(stawiAccountServiceProvider);
     setState(() => _busy = true);
-    await runStawiAction(
-      context,
-      () => ref
-          .read(stawiAccountServiceProvider)
-          .addDeviceKey(parseKeyAddress(keyId)),
-      success: 'Device key submitted; it becomes active after its delay',
-    );
-    if (mounted) setState(() => _busy = false);
+    try {
+      // prepare → check on the device (the op adds exactly the typed key) →
+      // review (the key and the delay) → device lock → submit → follow until
+      // final, then read the account again.
+      final call = await runMoneyAction(
+        context,
+        ref,
+        () => service.prepareAddKey(parseKeyAddress(keyId)),
+      );
+      if (call == null) return;
+      if (mounted) setState(() => _settling = true);
+      await settleThenRefresh(container, service, call, [
+        stawiAccountStatusProvider,
+      ]);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _settling = false;
+        });
+      }
+    }
   }
 
   @override
@@ -213,6 +234,12 @@ class _AccountViewState extends ConsumerState<_AccountView> {
             icon: const Icon(Icons.add),
             label: const Text('Add another device key'),
           ),
+        if (_settling)
+          const Padding(
+            key: Key('stawi-add-key-settling'),
+            padding: EdgeInsets.only(top: 8),
+            child: Text(waitingForCompletion),
+          ),
         if (status.deployed && !status.deviceRegistered)
           Text(
             'To sign from this device, add its key id from a device that is '
@@ -286,6 +313,7 @@ class _AddKeyDialogState extends State<_AddKeyDialog> {
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Add device key'),
     content: TextField(
+      key: const Key('stawi-add-key-id'),
       controller: _controller,
       decoration: InputDecoration(
         labelText: 'Device key id (0x…)',
@@ -298,7 +326,11 @@ class _AddKeyDialogState extends State<_AddKeyDialog> {
         onPressed: () => Navigator.of(context).pop(),
         child: const Text('Cancel'),
       ),
-      FilledButton(onPressed: _submit, child: const Text('Sign and add')),
+      FilledButton(
+        key: const Key('stawi-add-key-review'),
+        onPressed: _submit,
+        child: const Text('Review'),
+      ),
     ],
   );
 }

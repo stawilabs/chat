@@ -637,8 +637,8 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
   /// Pays the next instalment still owed: a contribution of that amount,
   /// which the room's rules apply (dues and penalties first).
   Future<void> _payInstalment(LoanView view) => _run(() async {
-    final owed = view.nextOwed;
-    if (owed <= BigInt.zero) return;
+    final owed = view.nextOwedIfKnown;
+    if (owed == null || owed <= BigInt.zero) return;
     final container = moneyContainer(context);
     final service = ref.read(stawiAccountServiceProvider);
     final custody = await ref.read(roomCustodyProvider(widget.roomId).future);
@@ -656,7 +656,9 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
         custody: custody,
         amount: owed.toString(),
         roomName: widget.roomName,
-        title: (amount) => 'Contribute $amount to ${widget.roomName}',
+        title: (amount) =>
+            'Pay $amount toward loan #${widget.loan.onchainLoanId} in '
+            '${widget.roomName}',
         note: groupInstalmentNote,
       ),
     );
@@ -710,6 +712,8 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
       loan,
       mine: mine ?? const [],
       instalments: detail.asData?.value.instalments ?? const [],
+      instalmentsUnavailable:
+          detail.asData?.value.instalmentsUnavailable ?? false,
     );
     final assets = watchRoomAssets(ref, widget.roomId);
     final id = widget.loan.onchainLoanId;
@@ -736,6 +740,8 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
                 instalments: view.instalments,
                 assets: assets,
                 emptyText: 'No schedule yet',
+                unavailable: view.instalmentsUnavailable,
+                onRetry: () => ref.invalidate(loanProvider(loanRef)),
               ),
             ),
             if (_settling) const _Settling(key: Key('loan-settling')),
@@ -745,7 +751,9 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
                 if (active) ...[
                   FilledButton(
                     key: Key('loan-$id-pay'),
-                    onPressed: _busy || view.nextOwed <= BigInt.zero
+                    onPressed:
+                        _busy ||
+                            (view.nextOwedIfKnown ?? BigInt.zero) <= BigInt.zero
                         ? null
                         : () => _payInstalment(view),
                     child: const Text('Pay an instalment'),

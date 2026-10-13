@@ -13,7 +13,6 @@ import 'package:stawi/features/stawi/domain/money_review.dart';
 import 'package:stawi/features/stawi/ui/contribute_screen.dart';
 import 'package:stawi/features/stawi/ui/money_review_sheet.dart';
 import 'package:stawi/features/stawi/ui/stawi_feedback.dart';
-import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
@@ -27,7 +26,6 @@ void main() {
   );
   final account = hexToBytes(wrapped['account'] as String);
   final custody = Uint8List.fromList(List.filled(20, 0xc0));
-  final digest = keccak256(Uint8List.fromList([7]));
 
   testWidgets('the review shows what will be signed and signs nothing when '
       'dismissed', (tester) async {
@@ -79,22 +77,10 @@ void main() {
               'your account is being brought up to date',
             );
           }
-          return settlement.PrepareAccountCallResponse(
-            callId: 'acct000000000000000c',
-            intentDigest: digest,
-            financialIntent: finance.FinancialIntent(
-              type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
-              destination: finance.ValueLocation(
-                kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
-                address: req.params.room,
-              ),
-              amount: req.params.amount,
-            ),
-            call: settlement.AccountCall(
-              callId: 'acct000000000000000c',
-              address: req.address,
-              kind: req.kind,
-            ),
+          return preparedContribution(
+            account: req.address,
+            custody: req.params.room,
+            amount: req.params.amount,
           );
         })
         ..on(

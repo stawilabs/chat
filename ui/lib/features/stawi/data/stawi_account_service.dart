@@ -235,10 +235,14 @@ class StawiAccountService {
     );
   }
 
-  /// Adds another device's key to the account, signed by this device (an
-  /// active key). The account applies it after its key-change delay.
-  Future<settlement.AccountCall> addDeviceKey(Uint8List keyAddress) async {
-    if (keyAddress.length != 20) {
+  /// Prepares adding another device's key, [keyAddress] (the 20-byte key id
+  /// the person typed), to the account and checks it on the device: the op
+  /// adds exactly that key and the signed intent binds it. Nothing is signed
+  /// yet: [PreparedMoneyCall.review] names the key and the delay, and
+  /// [submit] signs it behind the device lock. The account applies it after
+  /// its key-change delay.
+  Future<PreparedMoneyCall> prepareAddKey(Uint8List keyAddress) async {
+    if (keyAddress.length != 20 || keyAddress.every((b) => b == 0)) {
       throw const FormatException('A device key id is a 20-byte address');
     }
     final me = await _identity();
@@ -246,10 +250,6 @@ class StawiAccountService {
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
-    final key = await _keys.unlock(
-      me.profileId,
-      reason: 'Add a device to your Stawi account',
-    );
     const kind = settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY;
     final prepared = await _accounts.prepareAccountCall(
       settlement.PrepareAccountCallRequest(
@@ -262,18 +262,17 @@ class StawiAccountService {
         ),
       ),
     );
-    final digest = checkedAccountCallDigest(
+    final digest = checkedAddKey(
       prepared: prepared,
-      kind: kind,
       account: account.address,
+      key: keyAddress,
     );
-    final submitted = await _accounts.submitAccountCall(
-      settlement.SubmitAccountCallRequest(
-        callId: prepared.callId,
-        authorization: key.sign(digest),
-      ),
+    return PreparedMoneyCall._(
+      callId: prepared.callId,
+      digest: digest,
+      kind: kind,
+      review: MoneyReview.addKey(key: keyAddress),
     );
-    return submitted.call;
   }
 
   Future<settlement.AccountCall> accountCall(String callId) async =>
@@ -336,6 +335,7 @@ class StawiAccountService {
         asset: await _asset(),
         counterpartyName: counterpartyName,
         pocketName: pocketName,
+        me: account.address,
       ),
     );
   }
@@ -535,6 +535,7 @@ class StawiAccountService {
     AccountEngineRequest request, {
     required RoomEngineTargets? engines,
     String? feeLine,
+    List<(String, String)> quoteLines = const [],
   }) async {
     if (engines == null) throw const SigningRefused(enginesUnknownReason);
     final account = await ensureReady();
@@ -565,7 +566,12 @@ class StawiAccountService {
       digest: checked.digest,
       kind: request.call.kind,
       call: checked.call,
-      review: MoneyReview.engine(request, checked.call, feeLine: feeLine),
+      review: MoneyReview.engine(
+        request,
+        checked.call,
+        feeLine: feeLine,
+        quoteLines: quoteLines,
+      ),
     );
   }
 

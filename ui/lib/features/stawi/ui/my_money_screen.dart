@@ -291,9 +291,8 @@ class _FreeSavingsView extends ConsumerWidget {
   }
 }
 
-String _money(finance.Money m, StawiAssets assets) => m.amount.isEmpty
-    ? formatMoney(finance.Money(amount: '0', assetId: m.assetId), assets)
-    : formatMoney(m, assets);
+/// An empty amount is unknown: "—", never 0.
+String _money(finance.Money m, StawiAssets assets) => formatMoney(m, assets);
 
 /// [m] without its symbol, for "50.00 of 200.00 USDC".
 String _number(finance.Money m, StawiAssets assets) {

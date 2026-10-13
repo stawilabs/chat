@@ -7,7 +7,9 @@ import '../data/stawi_account_service.dart';
 import '../data/stawi_custody.dart';
 import '../data/stawi_finance_service.dart';
 import '../domain/stawi_money.dart';
+import 'loan_widgets.dart' show settleThenRefresh;
 import 'money_review_sheet.dart';
+import 'room_money_screen.dart' show roomMoneyProviders;
 import 'stawi_feedback.dart';
 
 /// Pays into a Stawi room's savings straight from the member's account. The
@@ -29,7 +31,10 @@ class ContributeScreen extends ConsumerStatefulWidget {
 class _ContributeScreenState extends ConsumerState<ContributeScreen> {
   final _amount = TextEditingController();
   bool _sending = false;
-  Stream<settlement.AccountCall>? _progress;
+
+  /// Once a contribution is submitted: true, and [_last] is where it stands.
+  bool _submitted = false;
+  settlement.AccountCall? _last;
 
   @override
   void dispose() {
@@ -41,6 +46,7 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
     final custody = ref.read(roomCustodyProvider(widget.roomId)).asData?.value;
     if (custody == null) return;
     setState(() => _sending = true);
+    final container = moneyContainer(context);
     final service = ref.read(stawiAccountServiceProvider);
     final call = await runMoneyAction(context, ref, () async {
       final asset = await ref.read(
@@ -58,16 +64,28 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
     if (!mounted) return;
     setState(() {
       _sending = false;
-      if (call != null) _progress = service.followAccountCall(call.callId);
+      _submitted = call != null;
     });
+    if (call == null) return;
+    // Followed until it is final; only then are the dues and balances read
+    // again, and the outcome said.
+    final last = await settleThenRefresh(
+      container,
+      service,
+      call,
+      roomMoneyProviders(widget.roomId),
+      onProgress: (c) {
+        if (mounted) setState(() => _last = c);
+      },
+    );
+    if (mounted) setState(() => _last = last ?? _last);
   }
 
   @override
   Widget build(BuildContext context) {
     final custody = ref.watch(roomCustodyProvider(widget.roomId));
     final theme = Theme.of(context);
-    final ready =
-        custody.asData?.value != null && !_sending && _progress == null;
+    final ready = custody.asData?.value != null && !_sending && !_submitted;
 
     return Scaffold(
       appBar: AppBar(title: Text('Contribute · ${widget.roomName}')),
@@ -93,7 +111,7 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
           TextField(
             key: const Key('contribute-amount'),
             controller: _amount,
-            enabled: _progress == null,
+            enabled: !_submitted,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: 'Amount',
@@ -117,24 +135,14 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
             'rules decide how it is applied.',
             style: theme.textTheme.bodySmall,
           ),
-          if (_progress != null)
-            StreamBuilder<settlement.AccountCall>(
-              stream: _progress,
-              builder: (context, snapshot) {
-                final call = snapshot.data;
-                return Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: Text(
-                    snapshot.hasError
-                        ? stawiErrorMessage(snapshot.error!)
-                        : call == null
-                        ? 'Submitted'
-                        : describeAccountCall(call),
-                    key: const Key('contribute-state'),
-                    style: theme.textTheme.titleMedium,
-                  ),
-                );
-              },
+          if (_submitted)
+            Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: Text(
+                _last == null ? 'Submitted' : describeAccountCall(_last!),
+                key: const Key('contribute-state'),
+                style: theme.textTheme.titleMedium,
+              ),
             ),
         ],
       ),

@@ -23,7 +23,7 @@ void main() {
       expect(formatMoney(usdcMoney('1234567'), usdcAssets), '1.234567 USDC');
       expect(formatMoney(usdcMoney('500000'), usdcAssets), '0.50 USDC');
       expect(formatMoney(usdcMoney('1'), usdcAssets), '0.000001 USDC');
-      expect(formatMoney(usdcMoney(''), usdcAssets), '0.00 USDC');
+      expect(formatMoney(usdcMoney(''), usdcAssets), '—');
       expect(formatUnits(BigInt.from(-2500000), usdc), '-2.50 USDC');
     });
 

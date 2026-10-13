@@ -90,10 +90,14 @@ String formatUnits(BigInt units, StawiAsset asset, {String? locale}) {
   return '$number ${asset.symbol}';
 }
 
-/// A finance.v1 Money, formatted from its minor units ("0" when empty) in the
-/// asset [assets] describes for its asset id.
+/// What an amount that is not known shows: never 0.
+const String unknownAmount = '—';
+
+/// A finance.v1 Money, formatted from its minor units in the asset [assets]
+/// describes for its asset id. An empty amount is unknown ("—"), never 0.
 String formatMoney(finance.Money money, StawiAssets assets, {String? locale}) {
-  final units = BigInt.tryParse(money.amount.isEmpty ? '0' : money.amount);
+  if (money.amount.isEmpty) return unknownAmount;
+  final units = BigInt.tryParse(money.amount);
   if (units == null) return money.amount;
   if (money.assetId.isEmpty) return units.toString();
   return formatUnits(units, assets.of(money.assetId), locale: locale);

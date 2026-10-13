@@ -9,6 +9,7 @@ import '../domain/account_engine_calls.dart';
 import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart';
 import '../domain/stawi_money.dart';
+import 'loan_widgets.dart' show scheduleUnavailableText;
 import 'money_review_sheet.dart';
 import 'room_money_screen.dart';
 import 'stawi_feedback.dart';
@@ -38,7 +39,15 @@ Future<settlement.AccountCall?> showPayInstalment(
   WidgetRef ref,
   LoanView view,
 ) async {
-  final owed = view.nextOwed;
+  final owed = view.nextOwedIfKnown;
+  if (owed == null) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text('$scheduleUnavailableText; try again shortly'),
+      ),
+    );
+    return null;
+  }
   if (owed <= BigInt.zero) {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       const SnackBar(content: Text('Nothing is due on this loan')),
@@ -78,15 +87,17 @@ Future<settlement.AccountCall?> showPayInstalment(
 }
 
 /// Pays the whole loan off. The review shows the most it can take. The
-/// submitted call; null when nothing was signed, or for a group loan (its
-/// dialog follows its own call).
+/// submitted call, for the caller to follow until it is final; null when
+/// nothing was signed.
 Future<settlement.AccountCall?> showPayOff(
   BuildContext context,
   WidgetRef ref,
   LoanView view,
 ) async {
   if (view.isGroup) {
-    await showDialog<void>(
+    // The room's payoff form (with its top-up) signs it and hands the call
+    // back.
+    return showDialog<settlement.AccountCall>(
       context: context,
       builder: (_) => AccountEngineDialog(
         roomId: view.loan.roomId,
@@ -94,7 +105,6 @@ Future<settlement.AccountCall?> showPayOff(
         loan: view.loan,
       ),
     );
-    return null;
   }
   final service = ref.read(stawiAccountServiceProvider);
   return runMoneyAction(
