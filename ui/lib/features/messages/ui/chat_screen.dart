@@ -20,6 +20,7 @@ import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_repository.dart';
 import '../../rooms/data/room_subscription_service.dart';
 import '../../settings/data/settings_providers.dart';
+import '../../stawi/ui/dm_money_sheet.dart';
 import '../data/message_providers.dart';
 import '../data/message_sending_service.dart';
 import '../data/typing_provider.dart';
@@ -696,6 +697,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         onPressed: _toggleEncryption,
       ),
+      ChatMoneyButton(roomId: widget.roomId, roomName: widget.roomName),
       IconButton(
         icon: const Icon(Icons.videocam_outlined),
         onPressed: _startCall,

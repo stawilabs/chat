@@ -801,3 +801,7 @@ final stawiAccountReadyProvider = FutureProvider.autoDispose<StawiAccountRef>((
 final stawiWalletBalanceProvider = FutureProvider.autoDispose<BigInt?>(
   (ref) => ref.watch(stawiAccountServiceProvider).walletBalance(),
 );
+
+/// The clock money screens read "now" from (an offer's expiry, for one), so
+/// tests can fix it.
+final stawiClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);

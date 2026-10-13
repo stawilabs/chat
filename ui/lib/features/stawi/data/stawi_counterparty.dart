@@ -1,11 +1,13 @@
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 
 import '../../../core/networking/client.dart';
 import '../../rooms/data/room_service.dart';
 import 'stawi_identity.dart';
+import 'stawi_loan_service.dart';
 
 /// Another person's Stawi account: the other member of one of the person's
 /// DMs. Only the counterparty lookup ([counterpartyAccountProvider]) builds
@@ -73,8 +75,9 @@ final class DirectPartnerAccount {
 /// it checks that the caller is an active member of that DIRECT room of two
 /// people and that the partner has taken part (started the DM or written in
 /// it), then asks settlement. A DM is the only way to name a counterparty.
-typedef CounterpartyAccounts =
-    Future<DirectPartnerAccount> Function(String roomId);
+typedef CounterpartyAccounts = Future<DirectPartnerAccount> Function(
+  String roomId,
+);
 
 /// Chat refused the lookup. It says nothing about why; the usual reason is
 /// that the partner has not written in the DM yet (a partner's account is
@@ -167,3 +170,18 @@ final directRoomsProvider = FutureProvider.autoDispose<List<DirectRoomRef>>((
         ),
   ];
 });
+
+/// The person-to-person loans between the person and the other member of the
+/// DM `roomId`, either way; empty when the partner has no Stawi account.
+final dmPairLoansProvider = FutureProvider.autoDispose
+    .family<List<finance.Loan>, String>((ref, roomId) async {
+      final partner = await ref.watch(
+        counterpartyAccountProvider(roomId).future,
+      );
+      if (partner == null) return const [];
+      final me = (await ref.watch(stawiIdentityProvider.future)).primary;
+      if (me == null) return const [];
+      return ref
+          .watch(stawiLoanServiceProvider)
+          .between(me.address, partner.address);
+    });
