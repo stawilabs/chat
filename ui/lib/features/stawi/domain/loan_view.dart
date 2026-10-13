@@ -56,6 +56,19 @@ final class LoanView {
       loan.offeredBy.isNotEmpty &&
       bytesEqual(loan.offeredBy, loan.borrowerAccount);
 
+  /// The other person of a person-to-person loan: its lender to the
+  /// borrower, its borrower to the lender; null for any other loan.
+  List<int>? get counterparty {
+    if (loan.kind != finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON) return null;
+    final lender = loan.lender.isNotEmpty ? loan.lender : loan.pool;
+    final other = switch (role) {
+      LoanRole.borrower => lender,
+      LoanRole.lender => loan.borrowerAccount,
+      LoanRole.member => const <int>[],
+    };
+    return other.length == 20 ? other : null;
+  }
+
   /// An open offer made to me, or an open ask made of me.
   bool get awaitsMe =>
       (isOpenOffer && role == LoanRole.borrower) ||

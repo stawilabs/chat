@@ -69,14 +69,24 @@ class _GenesisCardState extends ConsumerState<GenesisCard> {
           .read(roomByIdProvider(widget.event.roomId).future)
           .catchError((Object _) => null);
       final roomName = (room?.name ?? '').isEmpty ? 'this room' : room!.name;
-      Future<String> nameOf(String profileId) => ref
-          .read(
-            stawiMemberNameProvider((
-              roomId: widget.event.roomId,
-              profileId: profileId,
-            )).future,
-          )
-          .catchError((Object _) => 'Member');
+      // The name is held while it is read: an auto-disposed read is
+      // disposed at its first await, and a name from the profile store (an
+      // agent who is not a member) would always read as "Member".
+      Future<String> nameOf(String profileId) async {
+        final name = stawiMemberNameProvider((
+          roomId: widget.event.roomId,
+          profileId: profileId,
+        ));
+        final held = ref.listenManual(name, (_, _) {});
+        try {
+          return await ref.read(name.future);
+        } on Object {
+          return 'Member';
+        } finally {
+          held.close();
+        }
+      }
+
       final founderNames = [
         for (final f in prepared.genesis.founders) await nameOf(f.profileId),
       ];

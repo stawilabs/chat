@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
-import '../../../core/db/database.dart';
 import '../../../core/networking/client.dart';
+import '../../profile/data/profile_providers.dart';
 import '../../rooms/data/room_service.dart';
 import 'stawi_identity.dart';
 import 'stawi_loan_service.dart';
@@ -148,28 +149,135 @@ final counterpartyAccountProvider = FutureProvider.autoDispose
 /// One of the person's DMs, as a destination picker lists it before the
 /// partner's account is looked up.
 final class DirectRoomRef {
-  const DirectRoomRef({required this.roomId, required this.name});
+  const DirectRoomRef({
+    required this.roomId,
+    required this.name,
+    this.named = true,
+  });
 
   final String roomId;
 
   /// How the DM is shown (the partner's name).
   final String name;
+
+  /// Whether [name] is the room's own name, not a stand-in for a room that
+  /// has none.
+  final bool named;
 }
+
+/// Lists the person's DMs, newest first.
+typedef DirectRoomLister = Future<List<DirectRoomRef>> Function();
+
+/// The person's DMs from the local room store.
+final directRoomListerProvider = Provider<DirectRoomLister>(
+  (ref) => () async {
+    final rooms = await ref.read(roomRepositoryProvider).getAllRooms();
+    return [
+      for (final room in rooms)
+        if (room.type == 'direct')
+          DirectRoomRef(
+            roomId: room.id,
+            name: room.name.isEmpty ? 'Direct message' : room.name,
+            named: room.name.isNotEmpty,
+          ),
+    ];
+  },
+);
 
 /// The person's DMs, newest first: where money can be sent. Each partner's
 /// account is looked up only when its row is shown.
-final directRoomsProvider = FutureProvider.autoDispose<List<DirectRoomRef>>((
+final directRoomsProvider = FutureProvider.autoDispose<List<DirectRoomRef>>(
+  (ref) => ref.watch(directRoomListerProvider)(),
+);
+
+/// One of the person's DMs with chat's answer for its partner.
+final class DmPartner {
+  const DmPartner({
+    required this.room,
+    this.profileId,
+    this.account,
+    this.refused = false,
+  });
+
+  final DirectRoomRef room;
+
+  /// The partner's profile; null when chat did not answer.
+  final String? profileId;
+
+  /// The partner's Stawi account; null when they have none or chat did not
+  /// answer.
+  final Uint8List? account;
+
+  /// Chat refused: the partner has not written in the DM yet.
+  final bool refused;
+
+  /// Whether chat named the partner and their 20-byte account: someone this
+  /// device can confirm.
+  bool get known =>
+      (profileId ?? '').isNotEmpty &&
+      account != null &&
+      account!.length == 20 &&
+      account!.any((b) => b != 0);
+}
+
+/// Asks chat, through [lookup], for the partner of each of [rooms]. A DM chat
+/// refuses is [DmPartner.refused]; one it could not answer is unknown.
+Future<List<DmPartner>> lookUpDmPartners(
+  List<DirectRoomRef> rooms,
+  CounterpartyAccounts lookup,
+) => Future.wait([
+  for (final room in rooms)
+    () async {
+      try {
+        final found = await lookup(room.roomId);
+        return DmPartner(
+          room: room,
+          profileId: found.profileId.isEmpty ? null : found.profileId,
+          account: found.account.isEmpty
+              ? null
+              : Uint8List.fromList(found.account),
+        );
+      } on DirectPartnerRefused {
+        return DmPartner(room: room, refused: true);
+      } on Object {
+        return DmPartner(room: room);
+      }
+    }(),
+]);
+
+/// Every DM partner of the person, as chat answers for each DM.
+final dmPartnersProvider = FutureProvider.autoDispose<List<DmPartner>>(
+  (ref) async => lookUpDmPartners(
+    await ref.watch(directRoomsProvider.future),
+    ref.watch(counterpartyAccountsProvider),
+  ),
+);
+
+/// The names of the person's DM partners by their Stawi account (lowercase
+/// 0x hex): the DM's own name, else the partner's profile name when this
+/// device has it. A partner chat does not name, or whose name is not known,
+/// is left out.
+final dmPartnerNamesProvider = FutureProvider.autoDispose<Map<String, String>>((
   ref,
 ) async {
-  final rooms = await ref.watch(roomRepositoryProvider).getAllRooms();
-  return [
-    for (final room in rooms)
-      if (room.type == 'direct')
-        DirectRoomRef(
-          roomId: room.id,
-          name: room.name.isEmpty ? 'Direct message' : room.name,
-        ),
-  ];
+  final partners = await ref.watch(dmPartnersProvider.future);
+  final names = <String, String>{};
+  for (final p in partners) {
+    if (!p.known) continue;
+    var name = p.room.named ? p.room.name.trim() : '';
+    if (name.isEmpty) {
+      try {
+        final profile = await ref.watch(
+          profileByIdProvider(p.profileId!).future,
+        );
+        name = profile?.name?.trim() ?? '';
+      } on Object {
+        name = '';
+      }
+    }
+    if (name.isNotEmpty) names[bytesToHex0x(p.account!).toLowerCase()] = name;
+  }
+  return names;
 });
 
 /// The person-to-person loans between the person and the other member of the
@@ -192,24 +300,19 @@ final dmPairLoansProvider = FutureProvider.autoDispose
 /// (the partner has not written) for every one that does.
 typedef DmPartnerAccountOf = Future<Uint8List?> Function(String profileId);
 
-/// Finds the person's DMs holding the profile in the local store and asks
-/// chat for that partner's account ([counterpartyAccountsProvider]).
+/// Asks chat for the partner of each of the person's DMs until one is the
+/// profile ([counterpartyAccountsProvider]): the answer names the partner,
+/// so no DM is taken for theirs on the local store's word.
 final dmPartnerAccountOfProvider = Provider<DmPartnerAccountOf>(
   (ref) => (profileId) async {
     if (profileId.isEmpty) return null;
-    final db = AppDatabase.instance;
-    final rooms = await ref.read(roomRepositoryProvider).getAllRooms();
-    for (final room in rooms.where((r) => r.type == 'direct')) {
-      final held =
-          await (db.select(db.roomSubscriptions)
-                ..where((t) => t.roomId.equals(room.id))
-                ..where((t) => t.profileId.equals(profileId)))
-              .get();
-      if (held.isEmpty) continue;
+    final rooms = await ref.read(directRoomListerProvider)();
+    final lookup = ref.read(counterpartyAccountsProvider);
+    for (final room in rooms) {
       try {
-        final found = await ref.read(counterpartyAccountsProvider)(room.id);
+        final found = await lookup(room.roomId);
         if (found.profileId == profileId && found.account.length == 20) {
-          return found.account;
+          return Uint8List.fromList(found.account);
         }
       } on DirectPartnerRefused {
         continue;

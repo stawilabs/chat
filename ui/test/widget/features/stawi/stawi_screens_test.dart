@@ -17,6 +17,7 @@ import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
+import 'package:stawi/features/stawi/ui/agent_picker.dart';
 import 'package:stawi/features/stawi/ui/contribute_screen.dart';
 import 'package:stawi/features/stawi/ui/convert_room_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_account_screen.dart';
@@ -598,8 +599,25 @@ void main() {
     await tester.tap(agent);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('agent-none')), findsOneWidget);
-    expect(find.byKey(const Key('agent-member-sub-me')), findsOneWidget);
-    expect(find.byKey(const Key('agent-member-sub-2')), findsOneWidget);
+    // Only someone the founders can confirm is offered: a founder (me), or
+    // a DM partner who has written. Amina is neither yet.
+    bool enabled(String key) =>
+        tester.widget<ListTile>(find.byKey(Key(key))).enabled;
+    expect(enabled('agent-member-sub-me'), isTrue);
+    expect(enabled('agent-member-sub-2'), isFalse);
+    expect(find.text(agentUnconfirmableReason), findsOneWidget);
+    await tester.tap(find.byKey(const Key('agent-member-sub-2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('stawi-agent-picker')), findsOneWidget);
+    Navigator.of(tester.element(find.byKey(const Key('agent-none')))).pop();
+    await tester.pumpAndSettle();
+
+    // As a founder she can be the agent; no longer one, she is chosen again.
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(enabled('agent-member-sub-2'), isTrue);
     expect(
       tester
           .widget<ListTile>(find.byKey(const Key('agent-dm-dm-carol')))
@@ -617,6 +635,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.descendant(of: agent, matching: find.text('Amina')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: agent, matching: find.text('No agent')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Amina is no longer a founder; choose the agent again'),
       findsOneWidget,
     );
     await tester.tap(agent);

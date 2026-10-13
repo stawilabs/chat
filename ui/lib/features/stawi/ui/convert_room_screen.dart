@@ -32,6 +32,10 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
   final Set<String> _founders = {};
   StawiJoinPolicy _joinPolicy = StawiJoinPolicy.private;
   StawiAgentChoice _agent = noStawiAgent;
+
+  /// Whether the agent was offered as a founder: no longer one, they are
+  /// chosen again (a DM partner who has written still can be).
+  bool _agentAsFounder = false;
   bool _sending = false;
 
   @override
@@ -52,6 +56,21 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  /// The agent was chosen as the founder [member], who is not one any
+  /// more: the founders could not confirm them now, so they are chosen again.
+  void _agentFounderRemoved(RoomSubscriptionInfo member) {
+    if (!_agentAsFounder || _agent.profileId != member.profileId) return;
+    _agent = noStawiAgent;
+    _agentAsFounder = false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${member.name} is no longer a founder; choose the agent again',
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -182,6 +201,7 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
                               _founders.add(member.id);
                             } else {
                               _founders.remove(member.id);
+                              _agentFounderRemoved(member);
                             }
                           }),
                   ),
@@ -231,8 +251,20 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
               final chosen = await showStawiAgentPicker(
                 context,
                 members: members.asData?.value ?? const [],
+                founders: Set.of(_founders),
               );
-              if (chosen != null && mounted) setState(() => _agent = chosen);
+              if (chosen != null && mounted) {
+                setState(() {
+                  _agent = chosen;
+                  _agentAsFounder =
+                      members.asData?.value.any(
+                        (m) =>
+                            _founders.contains(m.id) &&
+                            m.profileId == chosen.profileId,
+                      ) ??
+                      false;
+                });
+              }
             },
           ),
           const SizedBox(height: 24),

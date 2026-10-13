@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Refreshable;
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../../core/networking/api_config.dart';
 import '../data/stawi_account_service.dart';
+import '../data/stawi_counterparty.dart';
 import '../data/stawi_identity.dart';
 import '../data/stawi_loan_service.dart';
 import '../data/stawi_vault_service.dart';
@@ -486,6 +488,21 @@ class _MyLoansState extends ConsumerState<_MyLoans>
     );
     final mine = ref.watch(stawiIdentityProvider).asData?.value.addresses;
     final assets = watchLoanAssets(ref);
+    // The other person of a loan between two, by their DM's name; asked of
+    // chat only when there is such a loan.
+    final hasPair =
+        loans.asData?.value.any(
+          (l) => l.kind == finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+        ) ??
+        false;
+    final names = hasPair
+        ? ref.watch(dmPartnerNamesProvider).asData?.value ?? const {}
+        : const <String, String>{};
+    String? nameOf(LoanView v) {
+      final other = v.counterparty;
+      return other == null ? null : names[bytesToHex0x(other).toLowerCase()];
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -545,10 +562,13 @@ class _MyLoansState extends ConsumerState<_MyLoans>
                       LoanCard(
                         view: v,
                         assets: assets,
+                        counterpartyName: nameOf(v),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) =>
-                                LoanDetailScreen(ref: LoanRef.of(v.loan)),
+                            builder: (_) => LoanDetailScreen(
+                              ref: LoanRef.of(v.loan),
+                              counterpartyName: nameOf(v),
+                            ),
                           ),
                         ),
                       ),
