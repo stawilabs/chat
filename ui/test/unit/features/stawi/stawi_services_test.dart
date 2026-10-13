@@ -914,18 +914,19 @@ void main() {
             final container = ProviderContainer(
               overrides: [
                 counterpartyAccountsProvider.overrideWithValue(
-                  (profileId) async => bad,
+                  (roomId) async =>
+                      DirectPartnerAccount(profileId: 'p2', account: bad),
                 ),
               ],
             );
             addTearDown(container.dispose);
             final sub = container.listen(
-              counterpartyAccountProvider('p2'),
+              counterpartyAccountProvider('dm-1'),
               (_, _) {},
             );
             addTearDown(sub.close);
             await expectLater(
-              container.read(counterpartyAccountProvider('p2').future),
+              container.read(counterpartyAccountProvider('dm-1').future),
               throwsA(isA<StawiUnavailable>()),
             );
           }
