@@ -259,6 +259,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.chat.v1.StawiGenesisSignatureContent': $4.StawiGenesisSignatureContent$json,
   '.chat.v1.StawiSignedCallContent': $4.StawiSignedCallContent$json,
   '.chat.v1.StawiCallOutcomeContent': $4.StawiCallOutcomeContent$json,
+  '.chat.v1.StawiAgentInvitationContent': $4.StawiAgentInvitationContent$json,
+  '.chat.v1.StawiAgentAcceptanceContent': $4.StawiAgentAcceptanceContent$json,
   '.chat.v1.StreamResponse': StreamResponse$json,
 };
 

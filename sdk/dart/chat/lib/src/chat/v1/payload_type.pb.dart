@@ -4096,7 +4096,9 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
   /// Optional: the profile of the room's Stawi agent (protocol fee spec), paid
   /// a share of the Stawi fee for the life of the room; empty for none. Chat
   /// accepts an active member of this room, or a DM partner of the converting
-  /// member who has taken part in that DM. Settlement resolves the profile to
+  /// member who has accepted, in that DM, the converter's agent invitation for
+  /// this room (StawiAgentInvitationContent, StawiAgentAcceptanceContent) and
+  /// whose acceptance has not expired. Settlement resolves the profile to
   /// its account; the founders sign it in the genesis.
   @$pb.TagNumber(6)
   $core.String get agentProfileId => $_getSZ(5);
@@ -4695,6 +4697,213 @@ class StawiCallOutcomeContent extends $pb.GeneratedMessage {
   void clearLogIndex() => $_clearField(10);
 }
 
+/// StawiAgentInvitationContent is sent in a DM: the sender, an owner or admin
+/// of a group room, invites the other person in the DM to be that room's Stawi
+/// agent. A converting member may name a DM partner who is not a room member
+/// as the agent only once the partner has accepted an invitation for exactly
+/// that room (StawiAgentAcceptanceContent) in the same DM.
+class StawiAgentInvitationContent extends $pb.GeneratedMessage {
+  factory StawiAgentInvitationContent({
+    $core.String? roomId,
+    $core.String? roomName,
+    $1.Timestamp? expiresAt,
+  }) {
+    final result = create();
+    if (roomId != null) result.roomId = roomId;
+    if (roomName != null) result.roomName = roomName;
+    if (expiresAt != null) result.expiresAt = expiresAt;
+    return result;
+  }
+
+  StawiAgentInvitationContent._();
+
+  factory StawiAgentInvitationContent.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory StawiAgentInvitationContent.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StawiAgentInvitationContent',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'roomId')
+    ..aOS(2, _omitFieldNames ? '' : 'roomName')
+    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'expiresAt',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StawiAgentInvitationContent clone() =>
+      StawiAgentInvitationContent()..mergeFromMessage(this);
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StawiAgentInvitationContent copyWith(
+          void Function(StawiAgentInvitationContent) updates) =>
+      super.copyWith(
+              (message) => updates(message as StawiAgentInvitationContent))
+          as StawiAgentInvitationContent;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiAgentInvitationContent create() =>
+      StawiAgentInvitationContent._();
+  @$core.override
+  StawiAgentInvitationContent createEmptyInstance() => create();
+  static $pb.PbList<StawiAgentInvitationContent> createRepeated() =>
+      $pb.PbList<StawiAgentInvitationContent>();
+  @$core.pragma('dart2js:noInline')
+  static StawiAgentInvitationContent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StawiAgentInvitationContent>(create);
+  static StawiAgentInvitationContent? _defaultInstance;
+
+  /// The room the sender is converting to a Stawi room. The sender must be its
+  /// owner or an admin.
+  @$pb.TagNumber(1)
+  $core.String get roomId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set roomId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRoomId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRoomId() => $_clearField(1);
+
+  /// Output only: the room's name, as chat holds it. Set by the server on the
+  /// stored event; whatever the client sends is replaced.
+  @$pb.TagNumber(2)
+  $core.String get roomName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set roomName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRoomName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRoomName() => $_clearField(2);
+
+  /// Output only: until when the invitation may be accepted. Set by the
+  /// server.
+  @$pb.TagNumber(3)
+  $1.Timestamp get expiresAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set expiresAt($1.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasExpiresAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearExpiresAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $1.Timestamp ensureExpiresAt() => $_ensure(2);
+}
+
+/// StawiAgentAcceptanceContent is sent in the same DM by the invited person:
+/// they accept an agent invitation. Only the person the invitation was sent to
+/// may accept it, before it expires. The acceptance lets the inviter name them
+/// the room's agent until the acceptance itself expires.
+class StawiAgentAcceptanceContent extends $pb.GeneratedMessage {
+  factory StawiAgentAcceptanceContent({
+    $core.String? invitationEventId,
+    $core.String? roomId,
+    $core.String? roomName,
+    $1.Timestamp? expiresAt,
+  }) {
+    final result = create();
+    if (invitationEventId != null) result.invitationEventId = invitationEventId;
+    if (roomId != null) result.roomId = roomId;
+    if (roomName != null) result.roomName = roomName;
+    if (expiresAt != null) result.expiresAt = expiresAt;
+    return result;
+  }
+
+  StawiAgentAcceptanceContent._();
+
+  factory StawiAgentAcceptanceContent.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory StawiAgentAcceptanceContent.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StawiAgentAcceptanceContent',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'invitationEventId')
+    ..aOS(2, _omitFieldNames ? '' : 'roomId')
+    ..aOS(3, _omitFieldNames ? '' : 'roomName')
+    ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'expiresAt',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StawiAgentAcceptanceContent clone() =>
+      StawiAgentAcceptanceContent()..mergeFromMessage(this);
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StawiAgentAcceptanceContent copyWith(
+          void Function(StawiAgentAcceptanceContent) updates) =>
+      super.copyWith(
+              (message) => updates(message as StawiAgentAcceptanceContent))
+          as StawiAgentAcceptanceContent;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static StawiAgentAcceptanceContent create() =>
+      StawiAgentAcceptanceContent._();
+  @$core.override
+  StawiAgentAcceptanceContent createEmptyInstance() => create();
+  static $pb.PbList<StawiAgentAcceptanceContent> createRepeated() =>
+      $pb.PbList<StawiAgentAcceptanceContent>();
+  @$core.pragma('dart2js:noInline')
+  static StawiAgentAcceptanceContent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StawiAgentAcceptanceContent>(create);
+  static StawiAgentAcceptanceContent? _defaultInstance;
+
+  /// The event id of the StawiAgentInvitationContent being accepted, in this
+  /// DM.
+  @$pb.TagNumber(1)
+  $core.String get invitationEventId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set invitationEventId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasInvitationEventId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearInvitationEventId() => $_clearField(1);
+
+  /// Output only: the room the accepted invitation names. Set by the server.
+  @$pb.TagNumber(2)
+  $core.String get roomId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set roomId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRoomId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRoomId() => $_clearField(2);
+
+  /// Output only: that room's name. Set by the server.
+  @$pb.TagNumber(3)
+  $core.String get roomName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set roomName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRoomName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRoomName() => $_clearField(3);
+
+  /// Output only: until when the inviter may name the acceptor the room's
+  /// agent. Set by the server.
+  @$pb.TagNumber(4)
+  $1.Timestamp get expiresAt => $_getN(3);
+  @$pb.TagNumber(4)
+  set expiresAt($1.Timestamp value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExpiresAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpiresAt() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $1.Timestamp ensureExpiresAt() => $_ensure(3);
+}
+
 enum Payload_Data {
   default_7,
   roomChange,
@@ -4715,6 +4924,8 @@ enum Payload_Data {
   stawiGenesisSignature,
   stawiSignedCall,
   stawiCallOutcome,
+  stawiAgentInvitation,
+  stawiAgentAcceptance,
   notSet
 }
 
@@ -4740,6 +4951,8 @@ class Payload extends $pb.GeneratedMessage {
     StawiGenesisSignatureContent? stawiGenesisSignature,
     StawiSignedCallContent? stawiSignedCall,
     StawiCallOutcomeContent? stawiCallOutcome,
+    StawiAgentInvitationContent? stawiAgentInvitation,
+    StawiAgentAcceptanceContent? stawiAgentAcceptance,
   }) {
     final result = create();
     if (type != null) result.type = type;
@@ -4765,6 +4978,10 @@ class Payload extends $pb.GeneratedMessage {
       result.stawiGenesisSignature = stawiGenesisSignature;
     if (stawiSignedCall != null) result.stawiSignedCall = stawiSignedCall;
     if (stawiCallOutcome != null) result.stawiCallOutcome = stawiCallOutcome;
+    if (stawiAgentInvitation != null)
+      result.stawiAgentInvitation = stawiAgentInvitation;
+    if (stawiAgentAcceptance != null)
+      result.stawiAgentAcceptance = stawiAgentAcceptance;
     return result;
   }
 
@@ -4797,6 +5014,8 @@ class Payload extends $pb.GeneratedMessage {
     42: Payload_Data.stawiGenesisSignature,
     43: Payload_Data.stawiSignedCall,
     44: Payload_Data.stawiCallOutcome,
+    45: Payload_Data.stawiAgentInvitation,
+    46: Payload_Data.stawiAgentAcceptance,
     0: Payload_Data.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
@@ -4822,7 +5041,9 @@ class Payload extends $pb.GeneratedMessage {
       41,
       42,
       43,
-      44
+      44,
+      45,
+      46
     ])
     ..e<PayloadType>(1, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE,
         defaultOrMaker: PayloadType.PAYLOAD_TYPE_UNSPECIFIED,
@@ -4870,6 +5091,12 @@ class Payload extends $pb.GeneratedMessage {
     ..aOM<StawiCallOutcomeContent>(
         44, _omitFieldNames ? '' : 'stawiCallOutcome',
         subBuilder: StawiCallOutcomeContent.create)
+    ..aOM<StawiAgentInvitationContent>(
+        45, _omitFieldNames ? '' : 'stawiAgentInvitation',
+        subBuilder: StawiAgentInvitationContent.create)
+    ..aOM<StawiAgentAcceptanceContent>(
+        46, _omitFieldNames ? '' : 'stawiAgentAcceptance',
+        subBuilder: StawiAgentAcceptanceContent.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5135,6 +5362,32 @@ class Payload extends $pb.GeneratedMessage {
   void clearStawiCallOutcome() => $_clearField(44);
   @$pb.TagNumber(44)
   StawiCallOutcomeContent ensureStawiCallOutcome() => $_ensure(19);
+
+  /// type = PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+  @$pb.TagNumber(45)
+  StawiAgentInvitationContent get stawiAgentInvitation => $_getN(20);
+  @$pb.TagNumber(45)
+  set stawiAgentInvitation(StawiAgentInvitationContent value) =>
+      $_setField(45, value);
+  @$pb.TagNumber(45)
+  $core.bool hasStawiAgentInvitation() => $_has(20);
+  @$pb.TagNumber(45)
+  void clearStawiAgentInvitation() => $_clearField(45);
+  @$pb.TagNumber(45)
+  StawiAgentInvitationContent ensureStawiAgentInvitation() => $_ensure(20);
+
+  /// type = PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+  @$pb.TagNumber(46)
+  StawiAgentAcceptanceContent get stawiAgentAcceptance => $_getN(21);
+  @$pb.TagNumber(46)
+  set stawiAgentAcceptance(StawiAgentAcceptanceContent value) =>
+      $_setField(46, value);
+  @$pb.TagNumber(46)
+  $core.bool hasStawiAgentAcceptance() => $_has(21);
+  @$pb.TagNumber(46)
+  void clearStawiAgentAcceptance() => $_clearField(46);
+  @$pb.TagNumber(46)
+  StawiAgentAcceptanceContent ensureStawiAgentAcceptance() => $_ensure(21);
 }
 
 const $core.bool _omitFieldNames =

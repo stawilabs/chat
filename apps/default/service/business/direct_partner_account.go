@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
@@ -39,6 +40,10 @@ func WithProfileAccounts(accounts stawi.ProfileAccounts) RoomBusinessOption {
 //     message or event in it. Anyone may start a DM with any profile, so
 //     membership alone would let a stranger read anyone's account.
 //
+// Each person may look up at most defaultPartnerLookupsPerWindow partners'
+// accounts a minute (ResourceExhausted beyond), since every lookup costs
+// settlement a profile lookup and chain reads.
+//
 // Every other case is ErrNoDirectPartner, whatever the reason, and settlement
 // is not asked. A partner without an account is answered with an empty
 // account.
@@ -54,6 +59,9 @@ func (rb *roomBusiness) GetDirectPartnerAccount(
 	claims, err := personCaller(ctx, caller)
 	if err != nil {
 		return nil, err
+	}
+	if !rb.partnerLookups.allow(claims.GetProfileID(), time.Now()) {
+		return nil, service.ErrPartnerLookupsExhausted
 	}
 	partnerID, err := rb.directPartnerOf(ctx, claims, roomID, caller.GetProfileId())
 	if err != nil {

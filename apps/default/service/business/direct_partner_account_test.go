@@ -213,3 +213,33 @@ func (s *MessageBusinessTestSuite) TestADMPartnerLookupDuringASettlementOutageIs
 		require.Empty(t, got.GetAccount())
 	})
 }
+
+// TestADMPartnerLookupsAreRateLimited: each person may look up partners'
+// accounts 60 times a minute; beyond that they are told to wait, settlement
+// is not asked, and other people are unaffected.
+func (s *MessageBusinessTestSuite) TestADMPartnerLookupsAreRateLimited() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		dm := f.dmOf(t, f.alice, f.bob)
+		f.write(t, dm, f.bob)
+		f.partners.Set(f.bob.GetProfileId(), []byte{1}, true)
+
+		// The bucket regains one call a second, so a slow run gets a few more
+		// than 60 before it is refused.
+		answered := 0
+		var err error
+		for range 200 {
+			if _, err = f.rb.GetDirectPartnerAccount(f.as(f.alice), dm, f.alice); err != nil {
+				break
+			}
+			answered++
+		}
+		require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+		require.GreaterOrEqual(t, answered, 60)
+		require.Less(t, answered, 200)
+		require.Len(t, f.partners.Asked, answered, "settlement is not asked beyond the limit")
+
+		_, err = f.rb.GetDirectPartnerAccount(f.as(f.bob), dm, f.bob)
+		require.NoError(t, err, "each person has their own limit")
+	})
+}

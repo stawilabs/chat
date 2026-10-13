@@ -37,6 +37,8 @@ const PayloadType$json = {
     {'1': 'PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE', '2': 42},
     {'1': 'PAYLOAD_TYPE_STAWI_SIGNED_CALL', '2': 43},
     {'1': 'PAYLOAD_TYPE_STAWI_CALL_OUTCOME', '2': 44},
+    {'1': 'PAYLOAD_TYPE_STAWI_AGENT_INVITATION', '2': 45},
+    {'1': 'PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE', '2': 46},
   ],
 };
 
@@ -52,7 +54,9 @@ final $typed_data.Uint8List payloadTypeDescriptor = $convert.base64Decode(
     'ZPUk1fU1VCTUlTU0lPTl9SRVNVTFQQHxIdChlQQVlMT0FEX1RZUEVfRklOQU5DRV9DQVJEECgS'
     'JgoiUEFZTE9BRF9UWVBFX1NUQVdJX1JPT01fQ09OVkVSU0lPThApEigKJFBBWUxPQURfVFlQRV'
     '9TVEFXSV9HRU5FU0lTX1NJR05BVFVSRRAqEiIKHlBBWUxPQURfVFlQRV9TVEFXSV9TSUdORURf'
-    'Q0FMTBArEiMKH1BBWUxPQURfVFlQRV9TVEFXSV9DQUxMX09VVENPTUUQLA==');
+    'Q0FMTBArEiMKH1BBWUxPQURfVFlQRV9TVEFXSV9DQUxMX09VVENPTUUQLBInCiNQQVlMT0FEX1'
+    'RZUEVfU1RBV0lfQUdFTlRfSU5WSVRBVElPThAtEicKI1BBWUxPQURfVFlQRV9TVEFXSV9BR0VO'
+    'VF9BQ0NFUFRBTkNFEC4=');
 
 @$core.Deprecated('Use roomChangeActionDescriptor instead')
 const RoomChangeAction$json = {
@@ -1770,6 +1774,63 @@ final $typed_data.Uint8List stawiCallOutcomeContentDescriptor = $convert.base64D
     'YXNoEiEKDGJsb2NrX251bWJlchgJIAEoBFILYmxvY2tOdW1iZXISGwoJbG9nX2luZGV4GAogAS'
     'gEUghsb2dJbmRleA==');
 
+@$core.Deprecated('Use stawiAgentInvitationContentDescriptor instead')
+const StawiAgentInvitationContent$json = {
+  '1': 'StawiAgentInvitationContent',
+  '2': [
+    {'1': 'room_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
+    {'1': 'room_name', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomName'},
+    {
+      '1': 'expires_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+  ],
+};
+
+/// Descriptor for `StawiAgentInvitationContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiAgentInvitationContentDescriptor = $convert.base64Decode(
+    'ChtTdGF3aUFnZW50SW52aXRhdGlvbkNvbnRlbnQSNgoHcm9vbV9pZBgBIAEoCUIdukgachgQAx'
+    'goMhJeWzAtOWEtel8tXXszLDQwfSRSBnJvb21JZBIlCglyb29tX25hbWUYAiABKAlCCLpIBXID'
+    'GIACUghyb29tTmFtZRI5CgpleHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbW'
+    'VzdGFtcFIJZXhwaXJlc0F0');
+
+@$core.Deprecated('Use stawiAgentAcceptanceContentDescriptor instead')
+const StawiAgentAcceptanceContent$json = {
+  '1': 'StawiAgentAcceptanceContent',
+  '2': [
+    {
+      '1': 'invitation_event_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'invitationEventId'
+    },
+    {'1': 'room_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
+    {'1': 'room_name', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'roomName'},
+    {
+      '1': 'expires_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+  ],
+};
+
+/// Descriptor for `StawiAgentAcceptanceContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiAgentAcceptanceContentDescriptor = $convert.base64Decode(
+    'ChtTdGF3aUFnZW50QWNjZXB0YW5jZUNvbnRlbnQSTQoTaW52aXRhdGlvbl9ldmVudF9pZBgBIA'
+    'EoCUIdukgachgQAxgoMhJeWzAtOWEtel8tXXszLDQwfSRSEWludml0YXRpb25FdmVudElkEiAK'
+    'B3Jvb21faWQYAiABKAlCB7pIBHICGChSBnJvb21JZBIlCglyb29tX25hbWUYAyABKAlCCLpIBX'
+    'IDGIACUghyb29tTmFtZRI5CgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRp'
+    'bWVzdGFtcFIJZXhwaXJlc0F0');
+
 @$core.Deprecated('Use payloadDescriptor instead')
 const Payload$json = {
   '1': 'Payload',
@@ -1953,6 +2014,24 @@ const Payload$json = {
       '9': 0,
       '10': 'stawiCallOutcome'
     },
+    {
+      '1': 'stawi_agent_invitation',
+      '3': 45,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiAgentInvitationContent',
+      '9': 0,
+      '10': 'stawiAgentInvitation'
+    },
+    {
+      '1': 'stawi_agent_acceptance',
+      '3': 46,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiAgentAcceptanceContent',
+      '9': 0,
+      '10': 'stawiAgentAcceptance'
+    },
   ],
   '8': [
     {'1': 'data'},
@@ -1983,5 +2062,8 @@ final $typed_data.Uint8List payloadDescriptor = $convert.base64Decode(
     '52MS5TdGF3aUdlbmVzaXNTaWduYXR1cmVDb250ZW50SABSFXN0YXdpR2VuZXNpc1NpZ25hdHVy'
     'ZRJNChFzdGF3aV9zaWduZWRfY2FsbBgrIAEoCzIfLmNoYXQudjEuU3Rhd2lTaWduZWRDYWxsQ2'
     '9udGVudEgAUg9zdGF3aVNpZ25lZENhbGwSUAoSc3Rhd2lfY2FsbF9vdXRjb21lGCwgASgLMiAu'
-    'Y2hhdC52MS5TdGF3aUNhbGxPdXRjb21lQ29udGVudEgAUhBzdGF3aUNhbGxPdXRjb21lQgYKBG'
-    'RhdGE=');
+    'Y2hhdC52MS5TdGF3aUNhbGxPdXRjb21lQ29udGVudEgAUhBzdGF3aUNhbGxPdXRjb21lElwKFn'
+    'N0YXdpX2FnZW50X2ludml0YXRpb24YLSABKAsyJC5jaGF0LnYxLlN0YXdpQWdlbnRJbnZpdGF0'
+    'aW9uQ29udGVudEgAUhRzdGF3aUFnZW50SW52aXRhdGlvbhJcChZzdGF3aV9hZ2VudF9hY2NlcH'
+    'RhbmNlGC4gASgLMiQuY2hhdC52MS5TdGF3aUFnZW50QWNjZXB0YW5jZUNvbnRlbnRIAFIUc3Rh'
+    'd2lBZ2VudEFjY2VwdGFuY2VCBgoEZGF0YQ==');

@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"github.com/pitabwire/frame/v2/data"
@@ -159,6 +160,48 @@ func (s *EventRepositoryTestSuite) TestHasAuthoredInRoom() {
 		authored, err = repo.HasAuthoredInRoom(ctx, roomID, "")
 		require.NoError(t, err)
 		require.False(t, authored)
+	})
+}
+
+// TestAuthoredOfPayloadType reads one sender's events of one payload type in
+// one room, newest first, deleted ones excluded.
+func (s *EventRepositoryTestSuite) TestAuthoredOfPayloadType() {
+	s.withRepo(func(t *testing.T, ctx context.Context, repo repository.RoomEventRepository) {
+		roomID, otherRoom, sender, other := util.IDString(), util.IDString(), util.IDString(), util.IDString()
+		acceptance := chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+		put := func(room, from string, payloadType chatv1.PayloadType) *models.RoomEvent {
+			event := &models.RoomEvent{RoomID: room, SenderID: from,
+				EventType: int32(chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT.Number()),
+				Content:   data.JSONMap{models.PayloadTypeField: payloadType.Number()}}
+			event.GenID(ctx)
+			require.NoError(t, repo.Create(ctx, event))
+			return event
+		}
+		since := time.Now().Add(-time.Hour)
+
+		first := put(roomID, sender, acceptance)
+		put(roomID, sender, chatv1.PayloadType_PAYLOAD_TYPE_TEXT)
+		put(roomID, other, acceptance)
+		put(otherRoom, sender, acceptance)
+		deleted := put(roomID, sender, acceptance)
+		require.NoError(t, repo.Delete(ctx, deleted.GetID()))
+		second := put(roomID, sender, acceptance)
+
+		got, err := repo.AuthoredOfPayloadType(ctx, roomID, sender, acceptance, since, 10)
+		require.NoError(t, err)
+		ids := make([]string, 0, len(got))
+		for _, event := range got {
+			ids = append(ids, event.GetID())
+		}
+		require.ElementsMatch(t, []string{second.GetID(), first.GetID()}, ids)
+
+		got, err = repo.AuthoredOfPayloadType(ctx, roomID, sender, acceptance, since, 1)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+
+		got, err = repo.AuthoredOfPayloadType(ctx, roomID, sender, acceptance, time.Now().Add(time.Hour), 10)
+		require.NoError(t, err)
+		require.Empty(t, got, "nothing at or after since")
 	})
 }
 

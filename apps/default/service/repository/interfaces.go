@@ -5,6 +5,7 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"github.com/pitabwire/frame/v2/datastore"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
@@ -58,6 +59,12 @@ type RoomEventRepository interface {
 	// message or event (not a system event) in the room, deleted ones
 	// included: whether that member has taken part.
 	HasAuthoredInRoom(ctx context.Context, roomID, subscriptionID string) (bool, error)
+	// AuthoredOfPayloadType lists the room's events of one payload type the
+	// subscription sent at or after since, newest first, deleted ones
+	// excluded, at most limit.
+	AuthoredOfPayloadType(
+		ctx context.Context, roomID, subscriptionID string, payloadType chatv1.PayloadType, since time.Time, limit int,
+	) ([]*models.RoomEvent, error)
 	// ExistsByIDs checks if any of the given event IDs already exist.
 	// Returns a map of eventID -> exists for deduplication.
 	ExistsByIDs(ctx context.Context, eventIDs []string) (map[string]bool, error)

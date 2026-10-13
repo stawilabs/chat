@@ -54,6 +54,8 @@ type roomBusiness struct {
 	// profileAccounts answers GetDirectPartnerAccount's settlement lookup;
 	// nil answers every entitled lookup Unavailable.
 	profileAccounts stawi.ProfileAccounts
+	// partnerLookups limits each person's GetDirectPartnerAccount calls.
+	partnerLookups *callerLimiter
 }
 
 // RoomBusinessOption configures optional room business behaviour.
@@ -90,6 +92,7 @@ func NewRoomBusiness(
 		messageBusiness:  messageBusiness,
 		profileCli:       profileCli,
 		authzMiddleware:  authzMiddleware,
+		partnerLookups:   newCallerLimiter(defaultPartnerLookupsPerWindow, defaultPartnerLookupWindow),
 	}
 	for _, opt := range opts {
 		if opt != nil {

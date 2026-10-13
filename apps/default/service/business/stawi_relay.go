@@ -13,7 +13,6 @@ import (
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"connectrpc.com/connect"
 	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/security"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -214,6 +213,10 @@ func (sr *stawiRelay) relay(ctx context.Context, act *stawiAct) stawiRelayResult
 		return sr.relayGenesisSignature(ctx, act, content, bound)
 	case *chatv1.StawiSignedCallContent:
 		return sr.relaySignedCall(ctx, act, content, bound)
+	case *chatv1.StawiAgentInvitationContent:
+		return sr.relayAgentInvitation(ctx, act, content)
+	case *chatv1.StawiAgentAcceptanceContent:
+		return sr.relayAgentAcceptance(ctx, act, content)
 	default:
 		return stawiRelayResult{ack: invalidStawiPayload(errors.New("not a Stawi act"))}
 	}
@@ -336,52 +339,10 @@ func (sr *stawiRelay) checkAgent(ctx context.Context, room *models.Room, convert
 		return err
 	}
 	if !accepted {
-		return invalidStawiPayload(errors.New("the agent must be a room member or someone who has messaged you"))
+		return invalidStawiPayload(errors.New(
+			"the agent must be a room member or someone who accepted your agent invitation for this room"))
 	}
 	return nil
-}
-
-// mayBeAgent reports whether agentID may be named the room's Stawi agent by
-// the converting member: an active member of the room, or the converter's DM
-// partner who has taken part in that DM (the consent GetDirectPartnerAccount
-// asks for). The agent is named by profile, never by subscription, so the
-// genesis reveals no one's membership of a room they are not in.
-func (sr *stawiRelay) mayBeAgent(ctx context.Context, room *models.Room, converterID, agentID string) (bool, error) {
-	members, err := sr.subRepo.GetByContactLinkAndRooms(ctx, &commonv1.ContactLink{ProfileId: agentID}, room.GetID())
-	if err != nil {
-		return false, fmt.Errorf("failed to read the agent's membership: %w", err)
-	}
-	for _, sub := range members {
-		if sub.IsActive() && sub.ProfileID == agentID {
-			return true, nil
-		}
-	}
-	if agentID == converterID || room.TenantID == "" {
-		return false, nil
-	}
-
-	// The DM is looked for in the converting room's tenancy only.
-	partitions := []string{room.PartitionID}
-	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetTenantID() == room.TenantID {
-		partitions = append(partitions, claims.GetPartitionIDs()...)
-	}
-	dms, err := sr.roomRepo.DirectRooms(ctx, models.DirectKey(converterID, agentID), room.TenantID, partitions)
-	if err != nil {
-		return false, fmt.Errorf("failed to read the converter's DMs: %w", err)
-	}
-	for _, dm := range dms {
-		partner, partnerErr := consentingPartner(ctx, sr.subRepo, sr.eventRepo, dm, converterID)
-		if errors.Is(partnerErr, service.ErrNoDirectPartner) {
-			continue
-		}
-		if partnerErr != nil {
-			return false, partnerErr
-		}
-		if partner == agentID {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func (sr *stawiRelay) relayGenesisSignature(

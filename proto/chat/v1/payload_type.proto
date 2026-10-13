@@ -49,6 +49,11 @@ enum PayloadType {
   PAYLOAD_TYPE_STAWI_SIGNED_CALL = 43;
   // Server-generated: what became of a genesis or a signed call.
   PAYLOAD_TYPE_STAWI_CALL_OUTCOME = 44;
+  // In a DM: the sender invites the other person to be the Stawi agent of a
+  // room the sender is converting.
+  PAYLOAD_TYPE_STAWI_AGENT_INVITATION = 45;
+  // In a DM: the invited person accepts an agent invitation.
+  PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE = 46;
 }
 
 enum RoomChangeAction {
@@ -678,7 +683,9 @@ message StawiRoomConversionContent {
   // Optional: the profile of the room's Stawi agent (protocol fee spec), paid
   // a share of the Stawi fee for the life of the room; empty for none. Chat
   // accepts an active member of this room, or a DM partner of the converting
-  // member who has taken part in that DM. Settlement resolves the profile to
+  // member who has accepted, in that DM, the converter's agent invitation for
+  // this room (StawiAgentInvitationContent, StawiAgentAcceptanceContent) and
+  // whose acceptance has not expired. Settlement resolves the profile to
   // its account; the founders sign it in the genesis.
   string agent_profile_id = 6 [(buf.validate.field).string.pattern = "^([0-9a-v]{20})?$"];
 }
@@ -810,6 +817,53 @@ message StawiCallOutcomeContent {
   uint64 log_index = 10;
 }
 
+// StawiAgentInvitationContent is sent in a DM: the sender, an owner or admin
+// of a group room, invites the other person in the DM to be that room's Stawi
+// agent. A converting member may name a DM partner who is not a room member
+// as the agent only once the partner has accepted an invitation for exactly
+// that room (StawiAgentAcceptanceContent) in the same DM.
+message StawiAgentInvitationContent {
+  // The room the sender is converting to a Stawi room. The sender must be its
+  // owner or an admin.
+  string room_id = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 40
+    pattern: "^[0-9a-z_-]{3,40}$"
+  }];
+
+  // Output only: the room's name, as chat holds it. Set by the server on the
+  // stored event; whatever the client sends is replaced.
+  string room_name = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Output only: until when the invitation may be accepted. Set by the
+  // server.
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// StawiAgentAcceptanceContent is sent in the same DM by the invited person:
+// they accept an agent invitation. Only the person the invitation was sent to
+// may accept it, before it expires. The acceptance lets the inviter name them
+// the room's agent until the acceptance itself expires.
+message StawiAgentAcceptanceContent {
+  // The event id of the StawiAgentInvitationContent being accepted, in this
+  // DM.
+  string invitation_event_id = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 40
+    pattern: "^[0-9a-z_-]{3,40}$"
+  }];
+
+  // Output only: the room the accepted invitation names. Set by the server.
+  string room_id = 2 [(buf.validate.field).string.max_len = 40];
+
+  // Output only: that room's name. Set by the server.
+  string room_name = 3 [(buf.validate.field).string.max_len = 256];
+
+  // Output only: until when the inviter may name the acceptor the room's
+  // agent. Set by the server.
+  google.protobuf.Timestamp expires_at = 4;
+}
+
 message Payload {
   // The `type` MUST correspond to the populated payload.
   // Servers MUST reject mismatches.
@@ -871,5 +925,11 @@ message Payload {
 
     // type = PAYLOAD_TYPE_STAWI_CALL_OUTCOME
     StawiCallOutcomeContent stawi_call_outcome = 44;
+
+    // type = PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+    StawiAgentInvitationContent stawi_agent_invitation = 45;
+
+    // type = PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+    StawiAgentAcceptanceContent stawi_agent_acceptance = 46;
   }
 }

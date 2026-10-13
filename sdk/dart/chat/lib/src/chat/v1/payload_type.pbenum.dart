@@ -63,6 +63,15 @@ class PayloadType extends $pb.ProtobufEnum {
   static const PayloadType PAYLOAD_TYPE_STAWI_CALL_OUTCOME = PayloadType._(
       44, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_CALL_OUTCOME');
 
+  /// In a DM: the sender invites the other person to be the Stawi agent of a
+  /// room the sender is converting.
+  static const PayloadType PAYLOAD_TYPE_STAWI_AGENT_INVITATION = PayloadType._(
+      45, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_AGENT_INVITATION');
+
+  /// In a DM: the invited person accepts an agent invitation.
+  static const PayloadType PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE = PayloadType._(
+      46, _omitEnumNames ? '' : 'PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE');
+
   static const $core.List<PayloadType> values = <PayloadType>[
     PAYLOAD_TYPE_UNSPECIFIED,
     PAYLOAD_TYPE_ROOM_CHANGE,
@@ -83,6 +92,8 @@ class PayloadType extends $pb.ProtobufEnum {
     PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
     PAYLOAD_TYPE_STAWI_SIGNED_CALL,
     PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
+    PAYLOAD_TYPE_STAWI_AGENT_INVITATION,
+    PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE,
   ];
 
   static final $core.Map<$core.int, PayloadType> _byValue =

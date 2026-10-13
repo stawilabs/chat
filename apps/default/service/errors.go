@@ -176,6 +176,11 @@ var (
 	// answer; the caller may retry.
 	ErrPartnerAccountUnavailable = connect.NewError(connect.CodeUnavailable,
 		errors.New("the partner's Stawi account cannot be read right now"))
+	// ErrPartnerLookupsExhausted refuses a caller who looked up DM partners'
+	// accounts too often; each lookup costs settlement a profile lookup and
+	// chain reads. The caller may retry shortly.
+	ErrPartnerLookupsExhausted = connect.NewError(connect.CodeResourceExhausted,
+		errors.New("too many partner account lookups; try again in a minute"))
 	// ErrPersonalRoomNotStawi refuses a conversion of a DM or a bot room: neither
 	// is ever a Stawi room (person to person money is the personal loan book's).
 	ErrPersonalRoomNotStawi = connect.NewError(connect.CodeFailedPrecondition,

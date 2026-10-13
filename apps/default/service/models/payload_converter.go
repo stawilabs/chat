@@ -193,7 +193,9 @@ func (c *PayloadConverter) FromProto(protoEvent *chatv1.Payload) (data.JSONMap, 
 	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
-		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE:
 		payload = StawiContent(protoEvent)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		payload = protoEvent.GetDefault()
@@ -264,6 +266,10 @@ func inferPayloadType(protoEvent *chatv1.Payload) chatv1.PayloadType {
 		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL
 	case *chatv1.Payload_StawiCallOutcome:
 		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+	case *chatv1.Payload_StawiAgentInvitation:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+	case *chatv1.Payload_StawiAgentAcceptance:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
 	case *chatv1.Payload_Default:
 		return chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED
 	default:
@@ -387,7 +393,9 @@ func (c *PayloadConverter) setTypedContent(
 	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
-		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE:
 		return setStawiContent(protoEvent, payloadType, content)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		var payload structpb.Struct
@@ -414,6 +422,8 @@ var stawiContentTypes = map[chatv1.PayloadType]func() proto.Message{
 	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE: func() proto.Message { return &chatv1.StawiGenesisSignatureContent{} },
 	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL:       func() proto.Message { return &chatv1.StawiSignedCallContent{} },
 	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:      func() proto.Message { return &chatv1.StawiCallOutcomeContent{} },
+	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION:  func() proto.Message { return &chatv1.StawiAgentInvitationContent{} },
+	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE:  func() proto.Message { return &chatv1.StawiAgentAcceptanceContent{} },
 }
 
 // IsStawiPayload reports whether a payload type is one of the Stawi room acts
@@ -436,6 +446,10 @@ func StawiMemberType(payload *chatv1.Payload) chatv1.PayloadType {
 		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL
 	case *chatv1.Payload_StawiCallOutcome:
 		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+	case *chatv1.Payload_StawiAgentInvitation:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+	case *chatv1.Payload_StawiAgentAcceptance:
+		return chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
 	default:
 		return chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED
 	}
@@ -454,6 +468,10 @@ func StawiContent(payload *chatv1.Payload) proto.Message {
 		content = data.StawiSignedCall
 	case *chatv1.Payload_StawiCallOutcome:
 		content = data.StawiCallOutcome
+	case *chatv1.Payload_StawiAgentInvitation:
+		content = data.StawiAgentInvitation
+	case *chatv1.Payload_StawiAgentAcceptance:
+		content = data.StawiAgentAcceptance
 	default:
 		return nil
 	}
@@ -487,6 +505,10 @@ func setStawiContent(protoEvent *chatv1.Payload, payloadType chatv1.PayloadType,
 		protoEvent.Data = &chatv1.Payload_StawiSignedCall{StawiSignedCall: typed}
 	case *chatv1.StawiCallOutcomeContent:
 		protoEvent.Data = &chatv1.Payload_StawiCallOutcome{StawiCallOutcome: typed}
+	case *chatv1.StawiAgentInvitationContent:
+		protoEvent.Data = &chatv1.Payload_StawiAgentInvitation{StawiAgentInvitation: typed}
+	case *chatv1.StawiAgentAcceptanceContent:
+		protoEvent.Data = &chatv1.Payload_StawiAgentAcceptance{StawiAgentAcceptance: typed}
 	}
 	return nil
 }

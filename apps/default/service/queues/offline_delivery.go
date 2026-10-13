@@ -178,6 +178,10 @@ func stawiBody(eventPayload *chatv1.Payload) string {
 		return "Signed a room action"
 	case eventPayload.GetStawiCallOutcome() != nil:
 		return stawiOutcomeBody(eventPayload.GetStawiCallOutcome())
+	case eventPayload.GetStawiAgentInvitation() != nil:
+		return "Invited you to be a Stawi room's agent"
+	case eventPayload.GetStawiAgentAcceptance() != nil:
+		return "Accepted being a Stawi room's agent"
 	default:
 		return ""
 	}
@@ -264,7 +268,9 @@ func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payl
 	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
-		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE:
 		return stawiBody(eventPayload)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		// No body for unspecified type
