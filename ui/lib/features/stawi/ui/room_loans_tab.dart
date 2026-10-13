@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../data/stawi_account_service.dart';
@@ -17,7 +18,6 @@ import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart' show LoanRef;
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
-import 'governance_sheet.dart';
 import 'group_loan_request_screen.dart';
 import 'loan_widgets.dart';
 import 'money_review_sheet.dart';
@@ -56,7 +56,13 @@ class RoomLoansTab extends ConsumerWidget {
     bool isMine(finance.Loan l) =>
         mine.any((a) => bytesEqual(a, l.borrowerAccount));
     return RefreshIndicator(
-      onRefresh: () => ref.refresh(stawiLoansProvider(roomId).future),
+      onRefresh: () {
+        // The fee and the loan types are read again with the loans.
+        ref
+          ..invalidate(roomProtocolFeeProvider(roomId))
+          ..invalidate(roomProductsProvider(roomId));
+        return ref.refresh(stawiLoansProvider(roomId).future);
+      },
       child: ListView(
         children: [
           Padding(
@@ -290,6 +296,7 @@ Future<void> _engineAction(
   AccountEngineCall call,
   finance.Loan loan, {
   String amount = '',
+  void Function(bool settling)? onSettling,
 }) async {
   final container = moneyContainer(context);
   final service = ref.read(stawiAccountServiceProvider);
@@ -321,12 +328,36 @@ Future<void> _engineAction(
       engines: engines,
     ),
   );
-  if (submitted != null) {
+  if (submitted == null) return;
+  onSettling?.call(true);
+  try {
     await settleThenRefresh(container, service, submitted, [
       ...roomLoanProviders(roomId),
       loanProvider(LoanRef.of(loan)),
     ]);
+  } finally {
+    onSettling?.call(false);
   }
+}
+
+/// Shown while a submitted call is followed until it is final.
+class _Settling extends StatelessWidget {
+  const _Settling({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        SizedBox.square(
+          dimension: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        SizedBox(width: 8),
+        Expanded(child: Text(waitingForCompletion)),
+      ],
+    ),
+  );
 }
 
 /// Another member's request waiting for approval: who asks, how much, their
@@ -345,6 +376,11 @@ class _PendingLoan extends ConsumerStatefulWidget {
 class _PendingLoanState extends ConsumerState<_PendingLoan> {
   final _amount = TextEditingController();
   bool _busy = false;
+  bool _settling = false;
+
+  void _onSettling(bool on) {
+    if (mounted) setState(() => _settling = on);
+  }
 
   @override
   void dispose() {
@@ -385,6 +421,7 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
       AccountEngineCall.loanPledge,
       widget.loan,
       amount: units,
+      onSettling: _onSettling,
     );
   });
 
@@ -425,22 +462,12 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
               name: name,
             ),
             const SizedBox(height: 8),
+            if (_settling) const _Settling(key: Key('pending-settling')),
             if (byVote) ...[
-              const Text('Decided by a room vote'),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  key: Key('loan-$id-vote'),
-                  icon: const Icon(Icons.how_to_vote_outlined),
-                  label: const Text('Review and vote'),
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => GovernanceDialog(
-                      roomId: widget.roomId,
-                      action: GovernanceAction.vote,
-                    ),
-                  ),
-                ),
+              const Text(
+                "Decided by a room vote. Vote from the loan's vote card in "
+                'the chat.',
+                key: Key('loan-vote-note'),
               ),
             ] else if (officer)
               Align(
@@ -456,6 +483,7 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
                             widget.roomId,
                             AccountEngineCall.loanApprove,
                             loan,
+                            onSettling: _onSettling,
                           ),
                         ),
                   child: const Text('Approve'),
@@ -511,6 +539,7 @@ class _MyGroupLoan extends ConsumerStatefulWidget {
 
 class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
   bool _busy = false;
+  bool _settling = false;
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
@@ -530,9 +559,6 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
     final container = moneyContainer(context);
     final service = ref.read(stawiAccountServiceProvider);
     final custody = await ref.read(roomCustodyProvider(widget.roomId).future);
-    final asset = await ref
-        .read(stawiRoomAssetProvider(widget.roomId).future)
-        .catchError((Object _) => null);
     if (!mounted) return;
     if (custody == null) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -540,7 +566,6 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
       );
       return;
     }
-    final shown = asset == null ? '$owed' : formatUnits(owed, asset);
     final call = await runMoneyAction(
       context,
       ref,
@@ -548,17 +573,49 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
         custody: custody,
         amount: owed.toString(),
         roomName: widget.roomName,
-        title: 'Contribute $shown to ${widget.roomName}',
+        title: (amount) => 'Contribute $amount to ${widget.roomName}',
         note: groupInstalmentNote,
       ),
     );
-    if (call != null) {
+    await _settle(container, service, call);
+  });
+
+  /// Pays the loan off: the payoff form (with its top-up when the credit
+  /// falls short) reviews and signs it; the call it submits is followed
+  /// until it is final before anything is read again, and nothing else on
+  /// the loan can be paid meanwhile.
+  Future<void> _payOff(finance.Loan loan) => _run(() async {
+    final container = moneyContainer(context);
+    final service = ref.read(stawiAccountServiceProvider);
+    final call = await showDialog<settlement.AccountCall>(
+      context: context,
+      builder: (_) => AccountEngineDialog(
+        roomId: widget.roomId,
+        call: AccountEngineCall.loanPayoff,
+        loan: loan,
+      ),
+    );
+    await _settle(container, service, call);
+  });
+
+  /// Follows [call], when one was submitted, until it is final, showing that
+  /// it is under way, then reads the room's loans and this loan again.
+  Future<void> _settle(
+    ProviderContainer container,
+    StawiAccountService service,
+    settlement.AccountCall? call,
+  ) async {
+    if (call == null) return;
+    if (mounted) setState(() => _settling = true);
+    try {
       await settleThenRefresh(container, service, call, [
         ...roomLoanProviders(widget.roomId),
         loanProvider(LoanRef.of(widget.loan)),
       ]);
+    } finally {
+      if (mounted) setState(() => _settling = false);
     }
-  });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -598,6 +655,7 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
                 emptyText: 'No schedule yet',
               ),
             ),
+            if (_settling) const _Settling(key: Key('loan-settling')),
             Wrap(
               spacing: 8,
               children: [
@@ -611,16 +669,7 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
                   ),
                   OutlinedButton(
                     key: Key('loan-$id-payoff'),
-                    onPressed: _busy
-                        ? null
-                        : () => showDialog<void>(
-                            context: context,
-                            builder: (_) => AccountEngineDialog(
-                              roomId: widget.roomId,
-                              call: AccountEngineCall.loanPayoff,
-                              loan: loan,
-                            ),
-                          ),
+                    onPressed: _busy ? null : () => _payOff(loan),
                     child: const Text('Pay off the loan'),
                   ),
                 ],
@@ -636,6 +685,9 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
                               widget.roomId,
                               AccountEngineCall.loanCancel,
                               loan,
+                              onSettling: (on) {
+                                if (mounted) setState(() => _settling = on);
+                              },
                             ),
                           ),
                     child: const Text('Cancel my request'),

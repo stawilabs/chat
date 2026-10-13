@@ -197,6 +197,14 @@ void main() {
       active: active,
     );
 
+    /// The next due date, or null when nothing more falls due; fails the
+    /// test when it could not be worked out.
+    DateTime? next(finance.ListRoomProductsResponse r, DateTime now) {
+      final n = nextDuesDate(r, now);
+      expect(n.unknown, isFalse);
+      return n.at;
+    }
+
     finance.ListRoomProductsResponse room(
       finance.RoomCalendar c,
       List<finance.RoomDuesProduct> products,
@@ -229,12 +237,31 @@ void main() {
       );
       // Period 9 is October; its due (5 days in) has passed on the 13th.
       expect(
-        nextDuesDate(room(c, [dues(offset: 5 * 86400)]), at(2026, 10, 13)),
+        next(room(c, [dues(offset: 5 * 86400)]), at(2026, 10, 13)),
         at(2026, 11, 6),
       );
       expect(
-        nextDuesDate(room(c, [dues(offset: 20 * 86400)]), at(2026, 10, 13)),
+        next(room(c, [dues(offset: 20 * 86400)]), at(2026, 10, 13)),
         at(2026, 10, 21),
+      );
+    });
+
+    test('a calendar behind the clock: could not be worked out', () {
+      // The calendar says period 1 while the clock is weeks later: both
+      // candidates have passed, so no date is made up.
+      final c = finance.RoomCalendar(
+        unit: finance.PeriodUnit.PERIOD_UNIT_WEEK,
+        length: 1,
+        anchor: ts(at(2026, 10, 5)),
+        currentPeriod: 1,
+      );
+      final n = nextDuesDate(room(c, [dues()]), at(2026, 12, 1));
+      expect(n.unknown, isTrue);
+      expect(n.at, isNull);
+      // An ended product beside it still leaves it unknown.
+      expect(
+        nextDuesDate(room(c, [dues(), dues(last: 1)]), at(2026, 12, 1)).unknown,
+        isTrue,
       );
     });
 
@@ -247,18 +274,15 @@ void main() {
       );
       final now = at(2026, 10, 13);
       // Due in even weeks from week 0: week 2 begins on 19 October.
-      expect(nextDuesDate(room(c, [dues(every: 2)]), now), at(2026, 10, 19));
+      expect(next(room(c, [dues(every: 2)]), now), at(2026, 10, 19));
       expect(
-        nextDuesDate(room(c, [dues(every: 2), dues(first: 3)]), now),
+        next(room(c, [dues(every: 2), dues(first: 3)]), now),
         at(2026, 10, 19),
       );
-      expect(nextDuesDate(room(c, [dues(last: 1)]), now), isNull);
-      expect(nextDuesDate(room(c, [dues(active: false)]), now), isNull);
+      expect(next(room(c, [dues(last: 1)]), now), isNull);
+      expect(next(room(c, [dues(active: false)]), now), isNull);
       expect(
-        nextDuesDate(
-          finance.ListRoomProductsResponse(rulesConfigured: false),
-          now,
-        ),
+        next(finance.ListRoomProductsResponse(rulesConfigured: false), now),
         isNull,
       );
     });

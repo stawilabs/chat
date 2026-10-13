@@ -14,6 +14,7 @@ import '../data/stawi_loan_service.dart';
 import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/loan_view.dart';
+import '../domain/personal_calls.dart' show LoanRef;
 import '../domain/stawi_money.dart';
 import '../domain/stawi_payloads.dart';
 import 'governance_sheet.dart';
@@ -392,34 +393,27 @@ class FinanceCardBubble extends ConsumerWidget {
 
   final RoomEvent event;
 
-  /// Data a card carries for the app, not for the person: ids, the loan's
-  /// address and number, and the record's raw counts.
-  static const _hidden = {
-    'action',
-    'payload_hash',
-    'asset_id',
-    'loan_book',
-    'pool',
-    'loan_id',
-    'kind',
-    'event',
-    'instalment',
-    'record_loans',
-    'record_late',
-    'record_defaults',
-  };
-
-  /// A data value as shown: an amount in its asset when the card names one.
-  static String _shown(
+  /// The card's data lines a person reads, as (label, value). Only what can
+  /// be shown in words is: an amount in its asset when the card names one
+  /// (else the title already states it, formatted), and a number of
+  /// instalments. Ids, addresses, raw minor units and the record's counts
+  /// are for the app.
+  static List<(String, String)> shownLines(
     FinanceCardView card,
-    String key,
-    String value,
     StawiAssets assets,
   ) {
     final asset = card.data['asset_id'] ?? '';
-    return key == 'amount' && asset.isNotEmpty
-        ? formatMoney(finance.Money(assetId: asset, amount: value), assets)
-        : value;
+    final amount = card.data['amount'] ?? '';
+    final instalments = card.data['instalments'] ?? '';
+    return [
+      if (asset.isNotEmpty && amount.isNotEmpty)
+        (
+          'amount',
+          formatMoney(finance.Money(assetId: asset, amount: amount), assets),
+        ),
+      if (RegExp(r'^[1-9][0-9]{0,4}$').hasMatch(instalments))
+        ('instalments', instalments),
+    ];
   }
 
   @override
@@ -465,13 +459,8 @@ class FinanceCardBubble extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Text(card.body, style: theme.textTheme.bodyMedium),
                 ],
-                for (final entry in card.data.entries.where(
-                  (e) => !_hidden.contains(e.key),
-                ))
-                  _Line(
-                    entry.key.replaceAll('_', ' '),
-                    _shown(card, entry.key, entry.value, assets),
-                  ),
+                for (final (label, value) in shownLines(card, assets))
+                  _Line(label, value),
                 if (card.opensLoan) ...[
                   const SizedBox(height: 8),
                   _OpenLoanButton(card: card, roomId: event.roomId),
@@ -540,6 +529,7 @@ IconData iconForCard(String kind) => switch (kind) {
   'LOAN_DEFAULTED' => Icons.report_gmailerrorred,
   'LOAN_RECOVERED' => Icons.restore,
   'LOAN_REPAID' => Icons.verified_outlined,
+  'LOAN_CLOSED' || 'LOAN_CLOSED_UNACCEPTED' => Icons.cancel_outlined,
   'CONTRIBUTION' || 'CONTRIBUTION_MISSED' => Icons.savings_outlined,
   'CONTRIBUTION_FAILED' => Icons.event_busy,
   _ when kind.startsWith('LOAN') => Icons.request_quote_outlined,
@@ -556,9 +546,24 @@ bool alarmingCard(String kind) =>
 String cardTitle(FinanceCardView card) =>
     card.kind == 'CONTRIBUTION_FAILED' ? 'Contribution missed' : card.title;
 
+/// The loan a card names, read once per loan for the session: a timeline
+/// scrolling past its cards does not read the loan again for each. Null
+/// when it cannot be read (the card then offers Open loan).
+final cardLoanProvider = FutureProvider.family<finance.Loan?, LoanRef>((
+  ref,
+  loanRef,
+) async {
+  try {
+    return (await ref.watch(stawiLoanServiceProvider).loan(loanRef)).loan;
+  } on Object {
+    return null;
+  }
+});
+
 /// Opens the loan a card names. On an offer or an ask, the person it waits
 /// for (the borrower of an offer, the lender of an ask) sees Review instead;
-/// both open the loan's page, where it is decided.
+/// both open the loan's page, where it is decided. In a DM the other person
+/// is named on that page.
 class _OpenLoanButton extends ConsumerWidget {
   const _OpenLoanButton({required this.card, required this.roomId});
 
@@ -570,18 +575,27 @@ class _OpenLoanButton extends ConsumerWidget {
     final loanRef = card.loanRef!;
     var review = false;
     if (card.kind == 'LOAN_OFFERED' || card.kind == 'LOAN_REQUESTED') {
-      final loan = ref.watch(loanProvider(loanRef)).asData?.value.loan;
+      final loan = ref.watch(cardLoanProvider(loanRef)).asData?.value;
       final mine = ref.watch(stawiIdentityProvider).asData?.value.addresses;
       review =
           loan != null && mine != null && LoanView(loan, mine: mine).awaitsMe;
     }
+    final room = ref.watch(roomByIdProvider(roomId)).asData?.value;
+    final partner =
+        room != null && room.type == 'direct' && room.name.isNotEmpty
+        ? room.name
+        : null;
     return OutlinedButton.icon(
       key: const Key('finance-card-open-loan'),
       icon: Icon(review ? Icons.rate_review_outlined : Icons.open_in_new),
       label: Text(review ? 'Review' : 'Open loan'),
       onPressed: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => LoanDetailScreen(ref: loanRef, roomId: roomId),
+          builder: (_) => LoanDetailScreen(
+            ref: loanRef,
+            roomId: roomId,
+            counterpartyName: partner,
+          ),
         ),
       ),
     );

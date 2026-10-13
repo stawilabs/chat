@@ -13,7 +13,6 @@ import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
-import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
 import 'package:stawi/features/stawi/domain/personal_calls.dart';
@@ -158,7 +157,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('New proposal: buy a tent'), findsOneWidget);
     expect(find.text('Voting happens in Stawi.'), findsOneWidget);
-    expect(find.text('prop0000000000000001'), findsOneWidget);
+    // An id is the app's, never a line.
+    expect(find.textContaining('prop0000000000000001'), findsNothing);
     expect(find.text('0x01'), findsNothing);
     expect(find.text('2,500.00 USDC'), findsOneWidget);
     expect(find.text('USDC.146'), findsNothing);
@@ -169,9 +169,27 @@ void main() {
     const book = '0x101112131415161718191a1b1c1d1e1f20212223';
     const pool = '0xb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3';
 
+    /// Card data as finance's projection records it (apps/finance/service/
+    /// business/projection/loans.go recordCard and renderLoan): the loan's
+    /// reference and step, then the card's own fields.
+    Map<String, dynamic> loanData(
+      String event, [
+      Map<String, dynamic> own = const {},
+    ]) => {
+      'loan_book': book,
+      'pool': pool,
+      'loan_id': '7',
+      'kind': 'PERSON_TO_PERSON',
+      'event': event,
+      'instalment': '-',
+      'action': 'open_loan',
+      ...own,
+    };
+
     RoomEvent loanCard({
       String kind = 'LOAN_OFFERED',
-      String title = 'Bob offers you a loan of 300.00 USDC',
+      String title = 'Loan offer: 300.00 USDC',
+      String body = 'Offered: 4 instalments every two weeks.',
       Map<String, dynamic>? data,
     }) => RoomEvent(
       id: 'card-$kind',
@@ -183,23 +201,157 @@ void main() {
         'cardId': 'k-$kind',
         'kind': kind,
         'title': title,
-        'body': '',
+        'body': body,
         'data':
             data ??
-            {
-              'loan_book': book,
-              'pool': pool,
-              'loan_id': '7',
-              'kind': 'PERSON_TO_PERSON',
-              'event': 'LoanOffered',
-              'instalment': '0',
-              'action': 'open_loan',
-              'record_loans': '2',
-              'record_late': '0',
-              'record_defaults': '0',
-            },
+            loanData('LoanOffered', {
+              'amount': '300000000',
+              'instalments': '4',
+            }),
       },
     );
+
+    /// Every card finance sends that carries data (loans.go renderLoan,
+    /// service.go's contribution and proposal cards), as finance words it.
+    final realCards = <RoomEvent>[
+      loanCard(),
+      loanCard(
+        kind: 'LOAN_REQUESTED',
+        title: 'Loan request: 500.00 USDC',
+        body: 'A member asked to borrow 500.00 USDC',
+        data: loanData('LoanRequested', {
+          'amount': '500000000',
+          'member_id': 'mem00000000000000001',
+          'record_loans': '3',
+          'record_late': '1',
+          'record_defaults': '0',
+        })..['kind'] = 'GROUP',
+      ),
+      loanCard(
+        kind: 'LOAN_PAID_OUT',
+        title: 'Loan paid out: 295.00 USDC',
+        body: 'The loan was accepted and 295.00 USDC paid out.',
+        data: loanData('LoanDisbursed', {'amount': '295000000'}),
+      ),
+      loanCard(
+        kind: 'LOAN_PAYMENT',
+        title: 'Payment received: 77.50 USDC',
+        body: '77.50 USDC was paid towards the loan.',
+        data: loanData('LoanRepaid', {'amount': '77500000'})
+          ..['instalment'] = '0x1234:5',
+      ),
+      loanCard(
+        kind: 'LOAN_LATE',
+        title: 'Instalment 2 of 4 is late',
+        body: 'The instalment was not paid on time.',
+        data: loanData('LoanPenaltyAssessed', {'amount': '3875000'})
+          ..['instalment'] = '1',
+      ),
+      loanCard(
+        kind: 'LOAN_RECOVERED',
+        title: 'Recovered: 40.00 USDC',
+        body: '40.00 USDC was recovered towards the defaulted loan.',
+        data: loanData('LoanRecovered', {'amount': '40000000'}),
+      ),
+      loanCard(
+        kind: 'LOAN_CLOSED_UNACCEPTED',
+        title: 'Loan offer closed: 300.00 USDC',
+        body: 'The offer was withdrawn or expired.',
+        data: loanData('PersonalLoanCancelled'),
+      ),
+      loanCard(
+        kind: 'CONTRIBUTION',
+        title: 'Contribution received',
+        body: '',
+        data: {
+          'contribution_id': 'con00000000000000001',
+          'member_id': 'mem00000000000000001',
+          'amount': '25000000',
+          'asset_id': 'USDC.146',
+        },
+      ),
+      loanCard(
+        kind: 'CONTRIBUTION_FAILED',
+        title: 'Contribution not collected',
+        body: 'Cause: INSUFFICIENT_FUNDS.',
+        data: {
+          'contribution_id': 'con00000000000000002',
+          'member_id': 'mem00000000000000001',
+        },
+      ),
+      loanCard(
+        kind: 'PROPOSAL',
+        title: 'New proposal: buy a tent',
+        body: 'Voting happens in Stawi.',
+        data: {
+          'proposal_id': 'prop0000000000000001',
+          'payload_hash': '0x01',
+          'action': 'open_signing_flow',
+        },
+      ),
+    ];
+
+    testWidgets('no line on a real card shows raw units or an id', (
+      tester,
+    ) async {
+      for (final event in realCards) {
+        await tester.pumpWidget(
+          host(
+            StawiTimelineItem(
+              key: ValueKey(event.id),
+              event: event,
+              isMe: false,
+            ),
+            overrides: [
+              stawiRoomAssetsProvider.overrideWith(
+                (ref, id) async => usdcAssets,
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        final data = (event.content['data'] as Map).cast<String, dynamic>();
+        for (final MapEntry(:key, :value) in data.entries) {
+          // A count of instalments is a number a person reads as it is.
+          if (key == 'instalments') continue;
+          final raw = '$value';
+          if (raw.length < 2) continue;
+          expect(
+            find.textContaining(raw),
+            findsNothing,
+            reason: '${event.content['kind']}: $key = $raw',
+          );
+        }
+        for (final label in [
+          'member id',
+          'contribution id',
+          'proposal id',
+          'loan id',
+          'record loans',
+        ]) {
+          expect(find.textContaining(label), findsNothing);
+        }
+      }
+      // The contribution's amount, named in its asset, is the one amount line.
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: realCards[7], isMe: false),
+          overrides: [
+            stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('25.00 USDC'), findsOneWidget);
+    });
+
+    testWidgets('a closed offer has its own icon', (tester) async {
+      await tester.pumpWidget(
+        host(StawiTimelineItem(event: realCards[6], isMe: false)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.cancel_outlined), findsOneWidget);
+    });
 
     testWidgets('an offer shows its icon, hides the ids and opens the loan', (
       tester,
@@ -208,7 +360,8 @@ void main() {
         host(StawiTimelineItem(event: loanCard(), isMe: false)),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Bob offers you a loan of 300.00 USDC'), findsOneWidget);
+      expect(find.text('Loan offer: 300.00 USDC'), findsOneWidget);
+      expect(find.text('4'), findsOneWidget);
       expect(find.byIcon(Icons.volunteer_activism_outlined), findsOneWidget);
       for (final hidden in [
         book,
@@ -253,18 +406,16 @@ void main() {
             stawiIdentityProvider.overrideWith(
               (ref) async => identityWith('p1', me),
             ),
-            loanProvider.overrideWith(
-              (ref, loanRef) async => finance.GetLoanResponse(
-                loan: finance.Loan(
-                  loanBook: hexToBytes(book),
-                  pool: bob,
-                  lender: bob,
-                  offeredBy: bob,
-                  borrowerAccount: me,
-                  onchainLoanId: Int64(7),
-                  kind: finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
-                  state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
-                ),
+            cardLoanProvider.overrideWith(
+              (ref, loanRef) async => finance.Loan(
+                loanBook: hexToBytes(book),
+                pool: bob,
+                lender: bob,
+                offeredBy: bob,
+                borrowerAccount: me,
+                onchainLoanId: Int64(7),
+                kind: finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+                state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
               ),
             ),
           ],
@@ -309,7 +460,7 @@ void main() {
           StawiTimelineItem(
             event: loanCard(
               kind: 'CONTRIBUTION_FAILED',
-              title: 'Your contribution could not be taken',
+              title: 'Contribution not collected',
               data: const {},
             ),
             isMe: false,
@@ -318,7 +469,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Contribution missed'), findsOneWidget);
-      expect(find.text('Your contribution could not be taken'), findsNothing);
+      expect(find.text('Contribution not collected'), findsNothing);
       final icon = tester.widget<Icon>(
         find.byKey(const Key('finance-card-icon')),
       );

@@ -560,6 +560,7 @@ void main() {
           'LOAN_DEFAULTED': 'Loan in default',
           'LOAN_RECOVERED': 'Recovered',
           'LOAN_REPAID': 'Loan repaid',
+          'LOAN_CLOSED_UNACCEPTED': 'Loan closed',
           'CONTRIBUTION_FAILED': 'Contribution missed',
           'PROPOSAL': 'Stawi update',
           '': 'Stawi update',
@@ -568,11 +569,21 @@ void main() {
           final result = formatter.format(
             event: card(kind, 'Bob offers you 300.00 USDC'),
             senderName: 'Stawi',
-            roomName: 'Chama',
           );
           expect(result.title, title, reason: kind);
           expect(result.body, 'Bob offers you 300.00 USDC', reason: kind);
         }
+      });
+
+      test('in a group, name the room', () {
+        final result = formatter.format(
+          event: card('LOAN_REQUESTED', 'Loan request: 500.00 USDC'),
+          senderName: 'Stawi',
+          roomName: 'Chama',
+        );
+        expect(result.title, 'Loan request @ Chama');
+        expect(result.body, 'Loan request: 500.00 USDC');
+        expect(result.isGroupMessage, isTrue);
       });
 
       test('say nothing of the card in privacy mode', () {

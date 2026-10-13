@@ -787,6 +787,14 @@ void main() {
         find.descendant(of: dues, matching: find.text('Nov 6, 2026')),
         findsOneWidget,
       );
+      // The room's date, not the member's own: said so.
+      expect(
+        find.descendant(
+          of: dues,
+          matching: find.text("The room's next due date"),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('My dues says what could not be read, never zero', (

@@ -250,52 +250,62 @@ class _GroupLoanRequestScreenState
           : null,
     );
     final quote = _quote;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const AccountSetupBanner(),
-        Text(plainLoanType(_p, assets, cal), key: const Key('group-loan-type')),
-        const SizedBox(height: 12),
-        TextField(
-          key: const Key('group-loan-amount'),
-          controller: _amount,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(labelText: 'Amount (${asset.symbol})'),
-          onChanged: (_) => _edited(asset),
-        ),
-        TextField(
-          key: const Key('group-loan-instalments'),
-          controller: _instalments,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Instalments'),
-          onChanged: (_) => _edited(asset),
-        ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              _error!,
-              key: const Key('group-loan-error'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
+    return RefreshIndicator(
+      // Pulling down reads the fee and quotes the draft again.
+      onRefresh: () async {
+        ref.invalidate(roomProtocolFeeProvider(widget.roomId));
+        if (_units != null && _count != null) _retry();
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const AccountSetupBanner(),
+          Text(
+            plainLoanType(_p, assets, cal),
+            key: const Key('group-loan-type'),
           ),
-        const SizedBox(height: 12),
-        _quoteView(context, asset),
-        const SizedBox(height: 12),
-        Text(
-          groupRecordNote,
-          key: const Key('group-loan-record-note'),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 16),
-        FilledButton(
-          key: const Key('group-loan-submit'),
-          onPressed: quote == null || _busy
-              ? null
-              : () => _request(asset, quote),
-          child: const Text('Request'),
-        ),
-      ],
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('group-loan-amount'),
+            controller: _amount,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: 'Amount (${asset.symbol})'),
+            onChanged: (_) => _edited(asset),
+          ),
+          TextField(
+            key: const Key('group-loan-instalments'),
+            controller: _instalments,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Instalments'),
+            onChanged: (_) => _edited(asset),
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                _error!,
+                key: const Key('group-loan-error'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          const SizedBox(height: 12),
+          _quoteView(context, asset),
+          const SizedBox(height: 12),
+          Text(
+            groupRecordNote,
+            key: const Key('group-loan-record-note'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            key: const Key('group-loan-submit'),
+            onPressed: quote == null || _busy
+                ? null
+                : () => _request(asset, quote),
+            child: const Text('Request'),
+          ),
+        ],
+      ),
     );
   }
 

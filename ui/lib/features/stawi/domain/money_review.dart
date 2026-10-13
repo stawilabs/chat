@@ -229,20 +229,26 @@ final class MoneyReview {
     done: on ? 'Automatic payment is on' : 'Automatic payment is off',
   );
 
-  /// A payment into a room.
+  /// A payment into a room. Its title is built from the checked [amount],
+  /// formatted the same way as its Amount line: [title] words it around that
+  /// amount ("Contribute 77.50 USDC to Chama"); by default "Pay {amount} into
+  /// {room}".
   factory MoneyReview.contribution({
     required BigInt amount,
     required String roomName,
     required StawiAsset asset,
     String? note,
-    String? title,
-  }) => MoneyReview(
-    title: title ?? 'Pay ${formatUnits(amount, asset)} into $roomName',
-    lines: [('To', roomName), ('Amount', formatUnits(amount, asset))],
-    notes: [note ?? 'The room\'s rules apply it: dues and penalties first.'],
-    signLabel: _sign,
-    done: 'Payment sent to $roomName',
-  );
+    String Function(String amount)? title,
+  }) {
+    final shown = formatUnits(amount, asset);
+    return MoneyReview(
+      title: title?.call(shown) ?? 'Pay $shown into $roomName',
+      lines: [('To', roomName), ('Amount', shown)],
+      notes: [note ?? 'The room\'s rules apply it: dues and penalties first.'],
+      signLabel: _sign,
+      done: 'Payment sent to $roomName',
+    );
+  }
 
   /// Sending money to another Stawi account.
   factory MoneyReview.transferOut({

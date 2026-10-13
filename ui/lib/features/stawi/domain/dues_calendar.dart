@@ -43,8 +43,28 @@ bool _dueIn(finance.RoomDuesProduct p, int x) {
   return (x - p.firstPeriod) % p.everyPeriods == 0;
 }
 
-/// When [p] next falls due after [now] (unix seconds), from the calendar's
-/// current period on; null when it falls due no more.
+/// When a room's dues next fall due, as far as its calendar tells.
+final class NextDue {
+  const NextDue._(this.at, {this.unknown = false});
+
+  /// It falls due at [at] (UTC).
+  const NextDue.at(DateTime at) : this._(at);
+
+  /// Nothing more falls due.
+  static const NextDue none = NextDue._(null);
+
+  /// It could not be worked out: the calendar's current period is behind
+  /// (every candidate has already passed), or the calendar is not one the
+  /// engine accepts.
+  static const NextDue notWorkedOut = NextDue._(null, unknown: true);
+
+  final DateTime? at;
+  final bool unknown;
+}
+
+/// Seconds of [p]'s next due after [now] (unix seconds), from the calendar's
+/// current period on: null when it falls due no more, -1 when it could not
+/// be worked out.
 int? nextDueOf(finance.RoomDuesProduct p, finance.RoomCalendar c, int now) {
   if (!p.active) return null;
   var x = c.currentPeriod > p.firstPeriod ? c.currentPeriod : p.firstPeriod;
@@ -52,35 +72,40 @@ int? nextDueOf(finance.RoomDuesProduct p, finance.RoomCalendar c, int now) {
     final off = (x - p.firstPeriod) % p.everyPeriods;
     if (off != 0) x += p.everyPeriods - off;
   }
-  // At most two candidates: this one, or the next when this one has passed.
+  // Two candidates: this one, or the next when this one has passed. When
+  // both have passed the calendar's current period is behind the chain's
+  // time, and the next due cannot be worked out from it.
   for (var tries = 0; tries < 2; tries++) {
     if (!_dueIn(p, x)) return null;
     final start = periodStart(c, x);
-    if (start == null) return null;
+    if (start == null) return -1;
     final due = start + p.dueOffsetSeconds;
     if (due > now) return due;
     if (p.everyPeriods == 0) return null;
     x += p.everyPeriods;
   }
-  return null;
+  return -1;
 }
 
-/// The next time any of the room's active dues falls due after [now]; null
-/// when none does (or the room has no rules yet).
-DateTime? nextDuesDate(
-  finance.ListRoomProductsResponse products,
-  DateTime now,
-) {
-  if (!products.rulesConfigured || !products.hasCalendar()) return null;
+/// When any of the room's active dues next falls due after [now]: none when
+/// nothing does (or the room has no rules yet), not worked out when any
+/// product's could not be (an earlier date might be missed).
+NextDue nextDuesDate(finance.ListRoomProductsResponse products, DateTime now) {
+  if (!products.rulesConfigured || !products.hasCalendar()) {
+    return NextDue.none;
+  }
   final t = now.toUtc().millisecondsSinceEpoch ~/ 1000;
   int? best;
   for (final p in products.duesProducts) {
     final due = nextDueOf(p, products.calendar, t);
+    if (due == -1) return NextDue.notWorkedOut;
     if (due != null && (best == null || due < best)) best = due;
   }
   return best == null
-      ? null
-      : DateTime.fromMillisecondsSinceEpoch(best * 1000, isUtc: true);
+      ? NextDue.none
+      : NextDue.at(
+          DateTime.fromMillisecondsSinceEpoch(best * 1000, isUtc: true),
+        );
 }
 
 /// Howard Hinnant's days_from_civil: days since 1970-01-01.

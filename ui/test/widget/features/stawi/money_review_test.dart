@@ -211,4 +211,16 @@ void main() {
     expect(review.title, 'Pay 500.00 USDC into Chama');
     expect(review.lines, contains(('To', 'Chama')));
   });
+
+  test('a worded contribution title states the same amount as its line', () {
+    final review = MoneyReview.contribution(
+      amount: BigInt.from(77500000),
+      roomName: 'Chama',
+      asset: usdc,
+      title: (amount) => 'Contribute $amount to Chama',
+    );
+    expect(review.title, 'Contribute 77.50 USDC to Chama');
+    expect(review.lines, contains(('Amount', '77.50 USDC')));
+    expect(review.title, isNot(contains('77500000')));
+  });
 }

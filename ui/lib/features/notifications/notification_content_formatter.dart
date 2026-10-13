@@ -42,6 +42,7 @@ String financeCardNotificationTitle(String kind) => switch (kind) {
   'LOAN_DEFAULTED' => 'Loan in default',
   'LOAN_RECOVERED' => 'Recovered',
   'LOAN_REPAID' => 'Loan repaid',
+  'LOAN_CLOSED' || 'LOAN_CLOSED_UNACCEPTED' => 'Loan closed',
   'CONTRIBUTION_FAILED' => 'Contribution missed',
   _ => 'Stawi update',
 };
@@ -84,12 +85,13 @@ class NotificationContentFormatter {
       );
     }
 
-    // A finance card is titled by what happened; its body is the card's
-    // own title.
+    // A finance card is titled by what happened (and, in a group, where);
+    // its body is the card's own title.
     if (event.type == RoomEventType.financeCard) {
       final card = FinanceCardView.fromContent(event.content);
+      final what = financeCardNotificationTitle(card.kind);
       return NotificationContent(
-        title: financeCardNotificationTitle(card.kind),
+        title: isGroupMessage ? '$what @ $roomName' : what,
         body: _truncate(card.title, maxNotificationTextLength),
         isGroupMessage: isGroupMessage,
       );

@@ -189,6 +189,10 @@ class _SavingsTab extends ConsumerWidget {
   }
 }
 
+/// The room's next due date: the room's, not the member's own (finance
+/// does not say when this member next owes, nor how much).
+const String _nextLabel = "The room's next due date";
+
 /// The member's own dues in the room: what they owe now (their live book on
 /// the RulesEngine) and when dues next fall due (the room's calendar and dues
 /// products). Either part that cannot be read says so; nothing reads as zero.
@@ -214,8 +218,11 @@ class MyDuesSummary extends ConsumerWidget {
         ],
       ),
     );
-    Widget retry(VoidCallback onPressed) => TextButton(
-      key: const Key('my-dues-retry'),
+    Widget retry(
+      VoidCallback onPressed, {
+      Key key = const Key('my-dues-retry'),
+    }) => TextButton(
+      key: key,
       onPressed: onPressed,
       child: const Text('Try again'),
     );
@@ -289,31 +296,37 @@ class MyDuesSummary extends ConsumerWidget {
     );
 
     final next = products.when<List<Widget>>(
-      loading: () => [row('Next due', '…', const Key('my-dues-next'))],
+      loading: () => [row(_nextLabel, '…', const Key('my-dues-next'))],
       error: (e, _) => [
         row(
-          'Next due',
+          _nextLabel,
           'could not be read just now',
           const Key('my-dues-next'),
         ),
-        retry(() => ref.invalidate(roomProductsProvider(roomId))),
+        retry(
+          () => ref.invalidate(roomProductsProvider(roomId)),
+          key: const Key('my-dues-next-retry'),
+        ),
       ],
       data: (p) {
         if (!p.rulesConfigured) {
           return [
-            row('Next due', 'no dues set yet', const Key('my-dues-next')),
+            row(_nextLabel, 'no dues set yet', const Key('my-dues-next')),
           ];
         }
-        final at = nextDuesDate(p, now);
+        final next = nextDuesDate(p, now);
+        final at = next.at;
         return [
           row(
-            'Next due',
+            _nextLabel,
             // The date in the room's own time zone, as its calendar keeps it.
-            at == null
-                ? 'nothing more falls due'
-                : _dates.format(
+            at != null
+                ? _dates.format(
                     at.add(Duration(seconds: p.calendar.tzOffsetSeconds)),
-                  ),
+                  )
+                : next.unknown
+                ? 'could not be worked out'
+                : 'nothing more falls due',
             const Key('my-dues-next'),
           ),
         ];
@@ -699,7 +712,9 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     final call = await reviewAndSubmit(context, ref, prepared);
     if (!mounted) return;
     if (call != null) {
-      Navigator.of(context).pop();
+      // The submitted call goes back to whoever opened the form, to follow
+      // until it is final.
+      Navigator.of(context).pop(call);
     } else {
       setState(() {
         _busy = false;

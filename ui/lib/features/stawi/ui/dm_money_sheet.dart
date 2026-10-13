@@ -190,13 +190,23 @@ class _PairLoans extends ConsumerWidget {
     return loans.when(
       loading: () => const Padding(
         padding: EdgeInsets.all(16),
-        child: Text('Finding your loans with them…'),
+        child: Center(
+          child: CircularProgressIndicator(key: Key('dm-loans-loading')),
+        ),
       ),
       error: (e, _) => Padding(
         padding: const EdgeInsets.all(16),
         child: Text(stawiErrorMessage(e)),
       ),
-      data: (loans) => loans.isEmpty || mine == null
+      data: (loans) => mine == null
+          // Who is who is not known yet: not "no loans".
+          ? const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: CircularProgressIndicator(key: Key('dm-loans-loading')),
+              ),
+            )
+          : loans.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(16),
               child: Text(

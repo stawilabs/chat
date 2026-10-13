@@ -483,13 +483,14 @@ class StawiAccountService {
   }
 
   /// Pays [amount] (integer minor units) from the person's account into the
-  /// room whose custody is [custody]; the room's rules apply it.
+  /// room whose custody is [custody]; the room's rules apply it. [title]
+  /// words the review around the checked amount, formatted.
   Future<PreparedMoneyCall> prepareContribution({
     required Uint8List custody,
     required String amount,
     String roomName = 'this room',
     String? note,
-    String? title,
+    String Function(String amount)? title,
   }) async {
     if (custody.length != 20) {
       throw const FormatException('A room custody is a 20-byte address');

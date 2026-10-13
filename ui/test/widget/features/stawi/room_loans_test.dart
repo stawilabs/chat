@@ -80,12 +80,20 @@ void main() {
   late RecordingSigningGate gate;
   late List<String> roles;
   late finance.RoomLoanProduct product;
+  // Whether submitted calls read FINAL yet; how often the room's loans and
+  // its fee were read.
+  late bool finalNow;
+  late int loanReads;
+  late List<finance.RoomProtocolFee?> fees;
   late Object Function() quote;
 
   setUp(() async {
     gate = RecordingSigningGate();
     roles = ['treasurer'];
     product = normal;
+    finalNow = true;
+    loanReads = 0;
+    fees = [finance.RoomProtocolFee(incomeFeeBps: 1000)];
     quote = () => finance.QuoteLoanResponse(
       instalments: [
         for (var i = 0; i < 4; i++)
@@ -115,7 +123,10 @@ void main() {
           loan: groupLoan(
             id: req.onchainLoanId.toInt(),
             borrower: me,
-            state: finance.LoanState.LOAN_STATE_FUNDED,
+            // Loan 9 is a request still waiting; the others are active.
+            state: req.onchainLoanId.toInt() == 9
+                ? finance.LoanState.LOAN_STATE_PENDING_APPROVAL
+                : finance.LoanState.LOAN_STATE_FUNDED,
           ),
           instalments: [
             finance.LoanInstalment(
@@ -172,6 +183,10 @@ void main() {
             return vectors['loan_approve']!.prepared(req.kind);
           case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_PLEDGE:
             return vectors['loan_pledge']!.prepared(req.kind);
+          case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_CANCEL:
+            return vectors['loan_cancel']!.prepared(req.kind);
+          case settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_PAYOFF:
+            return vectors['loan_payoff']!.prepared(req.kind);
           default:
             throw connect.ConnectException(connect.Code.unimplemented, '');
         }
@@ -187,7 +202,9 @@ void main() {
         (req) => settlement.GetAccountCallResponse(
           call: settlement.AccountCall(
             callId: req.callId,
-            state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+            state: finalNow
+                ? settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL
+                : settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
           ),
         ),
       );
@@ -232,9 +249,12 @@ void main() {
             ),
           ),
           roomProtocolFeeProvider.overrideWith(
-            (ref, id) async => finance.RoomProtocolFee(incomeFeeBps: 1000),
+            (ref, id) async => fees.length > 1 ? fees.removeAt(0) : fees.first,
           ),
-          stawiLoansProvider.overrideWith((ref, id) async => loans),
+          stawiLoansProvider.overrideWith((ref, id) async {
+            loanReads++;
+            return loans;
+          }),
           stawiMembersProvider.overrideWith(
             (ref, id) async => [
               finance.Member(
@@ -288,7 +308,9 @@ void main() {
               ),
               proofs: refusingSessionProofs,
               identity: identity,
-              followEvery: const Duration(milliseconds: 10),
+              // Slow enough that a call held SUBMITTED is still followed
+              // while the test looks; a FINAL call ends at its first read.
+              followEvery: const Duration(milliseconds: 300),
             ),
           ),
         ],
@@ -505,7 +527,7 @@ void main() {
     },
   );
 
-  testWidgets('a request decided by a room vote offers the vote', (
+  testWidgets('a request decided by a room vote points to its vote card', (
     tester,
   ) async {
     product = finance.RoomLoanProduct()
@@ -521,9 +543,13 @@ void main() {
         ),
       ],
     );
-    expect(find.text('Decided by a room vote'), findsOneWidget);
-    expect(find.byKey(const Key('loan-3-vote')), findsOneWidget);
-    expect(find.text('Review and vote'), findsOneWidget);
+    expect(
+      find.text(
+        "Decided by a room vote. Vote from the loan's vote card in the chat.",
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Review and vote'), findsNothing);
     expect(find.byKey(const Key('loan-3-approve')), findsNothing);
   });
 
@@ -589,5 +615,192 @@ void main() {
     expect(p.params.room, custody);
     expect(p.params.amount, '77500000');
     expect(submitted(), hasLength(1));
+  });
+
+  /// Holds submitted calls SUBMITTED, runs [act] (which ends signed), checks
+  /// that nothing is read again and [waiting] shows until the call is FINAL,
+  /// then lets it be final and checks the room's loans are read again.
+  Future<void> followedToFinal(
+    WidgetTester tester,
+    Future<void> Function() act, {
+    Finder? waiting,
+  }) async {
+    finalNow = false;
+    await act();
+    final before = loanReads;
+    await settle(tester);
+    expect(submitted(), isNotEmpty);
+    expect(loanReads, before, reason: 'read again before the call was final');
+    if (waiting != null) expect(waiting, findsOneWidget);
+    finalNow = true;
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(loanReads, greaterThan(before));
+  }
+
+  group('each action is followed to FINAL before the loans are read again', () {
+    testWidgets('a request', (tester) async {
+      await open(tester);
+      await followedToFinal(tester, () async {
+        await tapAndSettle(
+          tester,
+          find.byKey(Key('loan-type-request-${bytesToHex0x(productId)}')),
+        );
+        await tester.enterText(
+          find.byKey(const Key('group-loan-amount')),
+          '500',
+        );
+        await tester.enterText(
+          find.byKey(const Key('group-loan-instalments')),
+          '4',
+        );
+        await settle(tester);
+        await tapAndSettle(tester, find.byKey(const Key('group-loan-submit')));
+        await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+        // Still open, its button off, until the request is final.
+        expect(find.byType(GroupLoanRequestScreen), findsOneWidget);
+        expect(
+          tester
+              .widget<FilledButton>(find.byKey(const Key('group-loan-submit')))
+              .onPressed,
+          isNull,
+        );
+      });
+      expect(find.byType(GroupLoanRequestScreen), findsNothing);
+    });
+
+    testWidgets('an approval', (tester) async {
+      await open(
+        tester,
+        loans: [
+          groupLoan(
+            id: 3,
+            borrower: amina,
+            state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+          ),
+        ],
+      );
+      await followedToFinal(tester, () async {
+        await tapAndSettle(tester, find.byKey(const Key('loan-3-approve')));
+        await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      }, waiting: find.byKey(const Key('pending-settling')));
+    });
+
+    testWidgets('a pledge', (tester) async {
+      roles = [];
+      await open(
+        tester,
+        loans: [
+          groupLoan(
+            id: 3,
+            borrower: amina,
+            state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+          ),
+        ],
+      );
+      await followedToFinal(tester, () async {
+        await tester.enterText(
+          find.byKey(const Key('loan-3-guarantee-amount')),
+          '150',
+        );
+        await tapAndSettle(tester, find.byKey(const Key('loan-3-guarantee')));
+        await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      }, waiting: find.byKey(const Key('pending-settling')));
+    });
+
+    testWidgets('a cancelled request', (tester) async {
+      await open(
+        tester,
+        loans: [
+          groupLoan(
+            id: 9,
+            borrower: me,
+            state: finance.LoanState.LOAN_STATE_PENDING_APPROVAL,
+          ),
+        ],
+      );
+      await followedToFinal(tester, () async {
+        await tapAndSettle(tester, find.byKey(const Key('loan-9-cancel')));
+        expect(
+          prepared().single.kind,
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_CANCEL,
+        );
+        await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      }, waiting: find.byKey(const Key('loan-settling')));
+    });
+
+    testWidgets('an instalment', (tester) async {
+      await open(
+        tester,
+        loans: [
+          groupLoan(
+            id: 1,
+            borrower: me,
+            state: finance.LoanState.LOAN_STATE_FUNDED,
+          ),
+        ],
+      );
+      await followedToFinal(tester, () async {
+        await tapAndSettle(tester, find.byKey(const Key('loan-1-pay')));
+        await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      }, waiting: find.byKey(const Key('loan-settling')));
+    });
+
+    testWidgets('a payoff: nothing else is paid until it completes', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        loans: [
+          groupLoan(
+            id: 1,
+            borrower: me,
+            state: finance.LoanState.LOAN_STATE_FUNDED,
+          ),
+        ],
+      );
+      final loanReadsBefore = transport
+          .requestsTo(finance.LoanService.getLoan)
+          .length;
+      VoidCallback? pay() => tester
+          .widget<FilledButton>(find.byKey(const Key('loan-1-pay')))
+          .onPressed;
+      VoidCallback? payoff() => tester
+          .widget<OutlinedButton>(find.byKey(const Key('loan-1-payoff')))
+          .onPressed;
+      await followedToFinal(tester, () async {
+        await tapAndSettle(tester, find.byKey(const Key('loan-1-payoff')));
+        await tapAndSettle(tester, find.byKey(const Key('engine-review')));
+        await tapAndSettle(tester, find.byKey(const Key('engine-continue')));
+        await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+        expect(
+          prepared().last.kind,
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_LOAN_PAYOFF,
+        );
+        // The payoff is under way: neither it nor an instalment can be paid.
+        expect(pay(), isNull);
+        expect(payoff(), isNull);
+      }, waiting: find.byKey(const Key('loan-settling')));
+      expect(pay(), isNotNull);
+      expect(
+        transport.requestsTo(finance.LoanService.getLoan).length,
+        greaterThan(loanReadsBefore),
+      );
+    });
+  });
+
+  testWidgets('a Stawi fee that could not be read can be read again', (
+    tester,
+  ) async {
+    fees = [null, finance.RoomProtocolFee(incomeFeeBps: 1000)];
+    await open(tester);
+    expect(find.text('Stawi fee: could not be read just now'), findsOneWidget);
+    await tapAndSettle(tester, find.byKey(const Key('protocol-fee-retry')));
+    expect(
+      find.text('Stawi fee 10% of interest, fees and penalties'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('protocol-fee-retry')), findsNothing);
   });
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:connectrpc/connect.dart' as connect;
@@ -191,12 +192,15 @@ void main() {
     }
   }
 
-  List<Override> overrides(StawiAccountService service) {
+  List<Override> overrides(
+    StawiAccountService service, {
+    Future<StawiIdentity> Function()? who,
+  }) {
     Future<StawiIdentity> identity() async => identityWith('p1', me);
     final client = pb.ChatServiceClient(chat);
     return [
       chatServiceClientProvider.overrideWith((ref) async => client),
-      stawiIdentityProvider.overrideWith((ref) => identity()),
+      stawiIdentityProvider.overrideWith((ref) => (who ?? identity)()),
       stawiAccountServiceProvider.overrideWithValue(service),
       stawiClockProvider.overrideWithValue(() => now),
       stawiLoanServiceProvider.overrideWithValue(
@@ -362,6 +366,32 @@ void main() {
       );
       await tapAndSettle(tester, find.text('From Bob'));
       expect(find.byType(LoanDetailScreen), findsOneWidget);
+    });
+
+    testWidgets('while who is who loads, the loans show a loader', (
+      tester,
+    ) async {
+      tester.view
+        ..physicalSize = const Size(1080, 4000)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final service = serve();
+      await serveDeployedAccount(transport, anvilKey);
+      final never = Completer<StawiIdentity>();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: overrides(service, who: () => never.future),
+          child: const MaterialApp(
+            home: Scaffold(
+              body: DmMoneySheet(roomId: 'dm-bob', partnerName: 'Bob'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('No loans with Bob yet'), findsNothing);
+      expect(find.byKey(const Key('dm-loans-loading')), findsOneWidget);
     });
 
     testWidgets('a partner without a Stawi account: a line, no buttons', (

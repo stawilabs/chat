@@ -71,9 +71,21 @@ class RoomProtocolFeeLine extends ConsumerWidget {
       );
     }
     final value = fee.hasError ? null : fee.asData?.value;
-    return ProtocolFeeLine(
+    final line = ProtocolFeeLine(
       fee: value,
       agentName: value == null ? null : agentNameOf(ref, roomId, value.agent),
+    );
+    if (value != null) return line;
+    // Never shown as no fee: what could not be read can be read again.
+    return Row(
+      children: [
+        Expanded(child: line),
+        TextButton(
+          key: const Key('protocol-fee-retry'),
+          onPressed: () => ref.invalidate(roomProtocolFeeProvider(roomId)),
+          child: const Text('Try again'),
+        ),
+      ],
     );
   }
 }
