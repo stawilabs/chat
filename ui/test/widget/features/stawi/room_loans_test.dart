@@ -13,6 +13,10 @@ import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
+import 'package:stawi/features/stawi/data/stawi_room_service.dart';
+import 'package:stawi/features/stawi/domain/secret_ballot.dart';
+import 'package:stawi/features/stawi/domain/signing_checks.dart'
+    show RoomGovernance;
 import 'package:stawi/features/stawi/ui/group_loan_request_screen.dart';
 import 'package:stawi/features/stawi/ui/room_loans_tab.dart';
 import 'package:stawi/features/stawi/ui/room_money_screen.dart';
@@ -90,6 +94,11 @@ void main() {
   late int loanReads;
   late List<finance.RoomProtocolFee?> fees;
   late Object Function() quote;
+  // The room's governance as finance indexes it; the votes sent; the
+  // choice settlement prepares (null: the one asked for).
+  final governance = Uint8List.fromList(List.filled(20, 0x60));
+  late RecordingActSender votesSent;
+  late finance.VoteChoice? preparedChoice;
 
   setUp(() async {
     gate = RecordingSigningGate();
@@ -99,6 +108,8 @@ void main() {
     ];
     membersFail = false;
     votes = [];
+    votesSent = RecordingActSender();
+    preparedChoice = null;
     product = normal;
     finalNow = true;
     loanReads = 0;
@@ -231,7 +242,44 @@ void main() {
       ..on(
         finance.GovernanceService.listProposals,
         (req) => finance.ListProposalsResponse(proposals: votes),
-      );
+      )
+      // Settlement's CAST_VOTE, built for the choice it was asked (or
+      // [preparedChoice]) on the room's governance at chain 146.
+      ..on(settlement.RoomService.prepareRoomCall, (req) {
+        final choice = preparedChoice ?? req.params.vote.choice;
+        final vote = RoomVote.cast(
+          proposalId: BigInt.from(req.params.vote.onchainProposalId.toInt()),
+          choice: chainChoiceOf(choice),
+        );
+        final deadline = BigInt.from(4102444800);
+        final typed = roomVoteTypedHash(
+          vote,
+          verifier: governance,
+          chainId: BigInt.from(146),
+          member: req.account,
+          nonce: BigInt.zero,
+          deadline: deadline,
+        );
+        final digest = accountWrappedHash(req.account, BigInt.from(146), typed);
+        return settlement.PrepareRoomCallResponse(
+          callId: 'call0000000000000001',
+          digest: digest,
+          signer: req.account,
+          call: settlement.RoomCall(
+            callId: 'call0000000000000001',
+            chainId: Int64(146),
+            chatRoomId: roomId,
+            kind: req.kind,
+            verifier: governance,
+            signer: req.account,
+            deadline: Int64(deadline.toInt()),
+            params: vote.params,
+            typedHash: typed,
+            digest: digest,
+            requiresSignature: true,
+          ),
+        );
+      });
     await serveDeployedAccount(transport, request.devicePrivateKey);
   });
 
@@ -306,6 +354,22 @@ void main() {
             (ref, id) async => finance.ListMemberBalancesResponse(),
           ),
           roomCustodyProvider.overrideWith((ref, id) async => custody),
+          stawiRoomServiceProvider.overrideWithValue(
+            StawiRoomService(
+              rooms: settlement.RoomServiceClient(transport),
+              keys: DeviceKeyStore(
+                vaultWith('p1', request.devicePrivateKey),
+                gate: gate,
+              ),
+              identity: identity,
+              send: votesSent.call,
+              ballots: SecretBallotStore(MemoryDeviceKeyVault()),
+              governance: (id) async => RoomGovernance(
+                address: governance,
+                chainId: BigInt.from(146),
+              ),
+            ),
+          ),
           roomEnginesProvider.overrideWith(
             (ref, id) async => request.engines(),
           ),
@@ -587,13 +651,39 @@ void main() {
         ]),
       );
 
-      await tapAndSettle(tester, find.byKey(const Key('loan-3-vote')));
-      final number = tester.widget<TextField>(
-        find.byKey(const Key('governance-number')),
-      );
-      expect(number.controller!.text, '12');
-      expect(number.enabled, isFalse);
-      expect(number.readOnly, isTrue);
+      expect(find.byKey(const Key('loan-3-vote')), findsOneWidget);
+      // Yes: settlement's vote on proposal 12 is checked against the room's
+      // governance, reviewed, then signed behind the lock.
+      await tapAndSettle(tester, find.byKey(const Key('loan-3-vote-yes')));
+      final req = transport
+          .requestsTo(settlement.RoomService.prepareRoomCall)
+          .single;
+      expect(req.kind, settlement.RoomCallKind.ROOM_CALL_KIND_CAST_VOTE);
+      expect(req.params.vote.onchainProposalId, Int64(12));
+      expect(req.params.vote.choice, finance.VoteChoice.VOTE_CHOICE_APPROVE);
+      expect(inReview('Vote Yes on loan request #3 in Chama'), findsOneWidget);
+      expect(gate.reasons, isEmpty, reason: 'the review comes first');
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      expect(gate.reasons, ['Vote Yes on loan request #3 in Chama']);
+      expect(votesSent.sent.single.content['kind'], 'CAST_VOTE');
+    });
+
+    testWidgets('a No turned into a Yes by settlement is never shown or '
+        'signed', (tester) async {
+      votes = [
+        finance.Proposal(
+          proposalId: 'prop0000000000000001',
+          onchainProposalId: Int64(12),
+          ballot: finance.BallotMode.BALLOT_MODE_OPEN,
+        ),
+      ];
+      preparedChoice = finance.VoteChoice.VOTE_CHOICE_APPROVE;
+      await open(tester, loans: pending);
+      await tapAndSettle(tester, find.byKey(const Key('loan-3-vote-no')));
+      expect(find.byKey(const Key('money-review')), findsNothing);
+      expect(find.textContaining('Not signed:'), findsOneWidget);
+      expect(gate.reasons, isEmpty);
+      expect(votesSent.sent, isEmpty);
     });
 
     testWidgets("says the vote hasn't opened yet when there is none", (
@@ -697,10 +787,7 @@ void main() {
     );
     expect(find.byKey(const Key('schedule-paid-0')), findsOneWidget);
     await tapAndSettle(tester, find.byKey(const Key('loan-1-pay')));
-    expect(
-      inReview('Pay 77.50 USDC toward loan #1 in Chama'),
-      findsOneWidget,
-    );
+    expect(inReview('Pay 77.50 USDC toward loan #1 in Chama'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('money-review')),

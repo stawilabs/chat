@@ -68,6 +68,97 @@ Uint8List checkedRoomCallDigest({
   return digest;
 }
 
+/// The room's GovernanceModule and chain, as finance indexes the room
+/// (Room.governance_address, Room.chain_id): what a vote is checked against,
+/// never settlement's own word for it.
+final class RoomGovernance {
+  const RoomGovernance({required this.address, required this.chainId});
+
+  final Uint8List address;
+  final BigInt chainId;
+}
+
+/// Why a vote is refused when the room's governance is unknown.
+const String governanceUnknownReason =
+    'the room\'s governance could not be read just now, so the vote cannot '
+    'be checked against it; try again shortly';
+
+/// The digest to sign for a prepared vote (CAST_VOTE, COMMIT_VOTE or
+/// REVEAL_VOTE): stawi_finance_sdk verifyRoomVoteCall recomputes the typed
+/// hash from [expected] (the proposal and the choice, commitment or reveal
+/// the person chose), the room's GovernanceModule as finance knows it
+/// ([governance]), the voting [account] and the call's nonce and deadline,
+/// and returns its account wrapping only when settlement's call is exactly
+/// that. A deadline at or before [now] is refused.
+Uint8List checkedRoomVote({
+  required settlement.PrepareRoomCallResponse prepared,
+  required RoomVote expected,
+  required String chatRoomId,
+  required Uint8List account,
+  required RoomGovernance? governance,
+  required DateTime now,
+}) {
+  if (governance == null) {
+    throw const SigningRefused(governanceUnknownReason);
+  }
+  final call = prepared.call;
+  if (call.kind.value != expected.kind.code) {
+    throw SigningRefused(
+      'settlement prepared a ${roomCallKindName(call.kind)} call, not the '
+      'vote you chose',
+    );
+  }
+  if (call.chatRoomId.isNotEmpty && call.chatRoomId != chatRoomId) {
+    throw const SigningRefused('the call was prepared for another room');
+  }
+  if (!call.requiresSignature) {
+    throw const SigningRefused('the call takes no signature');
+  }
+  if (call.signer.isNotEmpty && !bytesEqual(call.signer, prepared.signer)) {
+    throw const SigningRefused('the call is not signed by your account');
+  }
+  if (call.digest.isNotEmpty && !bytesEqual(call.digest, prepared.digest)) {
+    throw const SigningRefused('the prepared digest is malformed');
+  }
+  try {
+    return verifyRoomVoteCall(
+      PreparedRoomCall(
+        kind: call.kind.value,
+        verifier: call.verifier,
+        chainId: _chainId(call.chainId),
+        signer: prepared.signer,
+        nonce: _u64(call.nonce),
+        deadline: _u64(call.deadline),
+        params: call.params,
+        typedHash: call.typedHash,
+        digest: prepared.digest,
+      ),
+      expected: expected,
+      governance: governance.address,
+      account: account,
+      chainId: governance.chainId,
+      now: BigInt.from(now.toUtc().millisecondsSinceEpoch ~/ 1000),
+    );
+  } on RoomVoteException catch (e) {
+    throw SigningRefused(switch (e.error) {
+      RoomVoteError.notTheVote || RoomVoteError.paramsMismatch =>
+        'settlement prepared another vote: not the proposal or choice you '
+            'chose',
+      RoomVoteError.notTheRoomsGovernance =>
+        'the vote goes to a contract that is not this room\'s governance',
+      RoomVoteError.wrongChain => 'the vote is for another chain',
+      RoomVoteError.notYourAccount => 'the call is not signed by your account',
+      RoomVoteError.typedHashMismatch || RoomVoteError.digestMismatch =>
+        'the digest is not your account\'s signature of this vote',
+      RoomVoteError.expired => 'the vote\'s deadline has passed; try again',
+    });
+    // verifyRoomVoteCall reports malformed inputs as an ArgumentError.
+    // ignore: avoid_catching_errors
+  } on ArgumentError {
+    throw const SigningRefused(governanceUnknownReason);
+  }
+}
+
 /// The digest a founder signs for a genesis, and the genesis it was checked
 /// against. [card] is the genesis card chat posted in the room; settlement's
 /// record must agree with it, and the device recomputes the genesis hash from

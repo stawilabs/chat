@@ -18,8 +18,8 @@ import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart' show LoanRef;
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
-import 'governance_sheet.dart';
 import 'group_loan_request_screen.dart';
+import 'loan_vote.dart';
 import 'loan_widgets.dart';
 import 'money_review_sheet.dart';
 import 'protocol_fee_line.dart';
@@ -121,6 +121,7 @@ class RoomLoansTab extends ConsumerWidget {
                     _PendingLoan(
                       key: Key('pending-loan-${l.onchainLoanId}'),
                       roomId: roomId,
+                      roomName: roomName,
                       loan: l,
                     ),
                 ]),
@@ -295,12 +296,19 @@ _Approver _approver(WidgetRef ref, String roomId) {
       : _Approver.member;
 }
 
-/// The vote on a loan the room decides by vote: opened with its proposal,
-/// which the person cannot change; said so while it has not opened.
+/// The vote on a loan the room decides by vote, on the proposal finance
+/// names for it: Yes or No, each prepared, checked against the room's
+/// governance, reviewed and signed (loan_vote.dart). Said so while it has
+/// not opened.
 class _LoanVote extends ConsumerWidget {
-  const _LoanVote({required this.roomId, required this.loan});
+  const _LoanVote({
+    required this.roomId,
+    required this.roomName,
+    required this.loan,
+  });
 
   final String roomId;
+  final String roomName;
   final finance.Loan loan;
 
   @override
@@ -330,26 +338,14 @@ class _LoanVote extends ConsumerWidget {
               );
             }
             return Align(
+              key: Key('loan-$id-vote'),
               alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                key: Key('loan-$id-vote'),
-                icon: const Icon(Icons.how_to_vote_outlined),
-                label: const Text('Review and vote'),
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => GovernanceDialog(
-                    roomId: roomId,
-                    action:
-                        proposal.ballot == finance.BallotMode.BALLOT_MODE_SECRET
-                        ? GovernanceAction.secretVote
-                        : GovernanceAction.vote,
-                    onchainProposalId: number,
-                    proposalFixed: true,
-                    revealClosesAt: proposal.hasRevealClosesAt()
-                        ? proposal.revealClosesAt.toDateTime()
-                        : null,
-                  ),
-                ),
+              child: LoanVoteButtons(
+                roomId: roomId,
+                roomName: roomName,
+                proposal: proposal,
+                loanNumber: '$id',
+                onVoted: () => ref.invalidate(stawiLoanVoteProvider(key)),
               ),
             );
           },
@@ -435,9 +431,15 @@ class _Settling extends StatelessWidget {
 /// record (finance shares it with those who decide while it is open), and
 /// what the person may do: approve it (an officer), or guarantee part of it.
 class _PendingLoan extends ConsumerStatefulWidget {
-  const _PendingLoan({required this.roomId, required this.loan, super.key});
+  const _PendingLoan({
+    required this.roomId,
+    required this.roomName,
+    required this.loan,
+    super.key,
+  });
 
   final String roomId;
+  final String roomName;
   final finance.Loan loan;
 
   @override
@@ -536,7 +538,11 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
             if (_settling) const _Settling(key: Key('pending-settling')),
             if (byVote) ...[
               const Text('Decided by a room vote'),
-              _LoanVote(roomId: widget.roomId, loan: loan),
+              _LoanVote(
+                roomId: widget.roomId,
+                roomName: widget.roomName,
+                loan: loan,
+              ),
             ],
             if (approver == _Approver.unknown)
               Row(

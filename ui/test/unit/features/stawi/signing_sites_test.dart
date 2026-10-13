@@ -23,6 +23,9 @@ const Set<String> deviceSignSites = {
   'lib/features/stawi/data/stawi_room_service.dart submitGenesisSignature',
   // Room calls, votes and secret-ballot commits and reveals.
   'lib/features/stawi/data/stawi_room_service.dart signedCall',
+  // Votes checked against the room's governance (a loan's vote), reviewed
+  // first.
+  'lib/features/stawi/data/stawi_room_service.dart submitVote',
 };
 
 /// Signers that are not a device key, as `file receiver`: Matrix Olm signs
@@ -39,6 +42,7 @@ const Set<String> keyReads = {
   'lib/features/stawi/data/stawi_account_service.dart status _keys.loadOrCreate',
   // The secret-ballot store's sealed vote, not a key.
   'lib/features/stawi/data/stawi_room_service.dart revealSecretVote _store.load',
+  'lib/features/stawi/data/stawi_room_service.dart prepareReveal _store.load',
   // SecretBallotStore reading its own sealed votes.
   'lib/features/stawi/domain/secret_ballot.dart markRevealed .load',
   'lib/features/stawi/domain/secret_ballot.dart pending .load',

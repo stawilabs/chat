@@ -20,6 +20,7 @@ import '../domain/stawi_payloads.dart';
 import 'genesis_review_dialog.dart';
 import 'governance_sheet.dart';
 import 'loan_detail_screen.dart';
+import 'loan_vote.dart';
 import 'stawi_feedback.dart';
 
 /// The timeline widget for a Stawi event.
@@ -540,6 +541,19 @@ class FinanceCardBubble extends ConsumerWidget {
     if (proposal.onchainProposalId.toInt() <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('The proposal is not on chain yet')),
+      );
+      return;
+    }
+    if (proposal.hasLoan()) {
+      // A loan's vote moves the room's money: it is checked and reviewed
+      // like a money call.
+      final room = ref.read(roomByIdProvider(roomId)).asData?.value;
+      await showLoanVoteSheet(
+        context,
+        roomId: roomId,
+        roomName: room == null || room.name.isEmpty ? 'this room' : room.name,
+        proposal: proposal,
+        loanNumber: proposal.loan.loanId.toStringUnsigned(),
       );
       return;
     }
