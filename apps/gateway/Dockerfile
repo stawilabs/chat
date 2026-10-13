@@ -5,7 +5,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 # ---------- Builder ----------
-FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.9 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
