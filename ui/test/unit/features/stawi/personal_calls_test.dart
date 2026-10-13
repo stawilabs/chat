@@ -1289,6 +1289,61 @@ void main() {
         );
       }
     });
+
+    test('a digest that is not the checked intent\'s is refused', () {
+      // A harmless "contribute to this room" intent next to the digest of a
+      // transfer of the wallet to another address.
+      final shown = contribution();
+      final transfer = d.intent
+        ..type = finance.IntentType.INTENT_TYPE_TRANSFER
+        ..destination = finance.ValueLocation(
+          kind: finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
+          address: Uint8List(20)..[19] = 0x66,
+        );
+      final other = sdkIntentOf(transfer).digest();
+      final p = shown.deepCopy()
+        ..intentDigest = other
+        ..call.intentDigest = other;
+      expect(
+        () => checkedContribution(
+          prepared: p,
+          account: d.account,
+          custody: custody,
+          amount: d.amount.toString(),
+        ),
+        refusedWith('the digest is not the prepared intent\'s'),
+      );
+    });
+
+    test('an intent with no account, or another, is refused', () {
+      for (final from in [<int>[], Uint8List(20)..[0] = 0x01]) {
+        final intent = contribution().financialIntent.deepCopy()
+          ..account = from;
+        // An intent with no account has no digest of its own; it rides next
+        // to the shown one.
+        final digest = from.isEmpty
+            ? contribution().intentDigest
+            : sdkIntentOf(intent).digest();
+        final p = settlement.PrepareAccountCallResponse(
+          intentDigest: digest,
+          financialIntent: intent,
+          call: settlement.AccountCall(
+            address: d.account,
+            kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+            intentDigest: digest,
+          ),
+        );
+        expect(
+          () => checkedContribution(
+            prepared: p,
+            account: d.account,
+            custody: custody,
+            amount: d.amount.toString(),
+          ),
+          throwsA(isA<SigningRefused>()),
+        );
+      }
+    });
   });
 
   group('settlement asks to retry', () {

@@ -279,17 +279,16 @@ AccountPolicy accountPolicyFrom(finance.AccountPolicyParams p) {
     kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
     account: account,
   );
-  final intent = prepared.financialIntent;
-  if (intent.type != finance.IntentType.INTENT_TYPE_CONTRIBUTION ||
-      intent.destination.kind !=
-          finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY ||
+  // The digest must be the checked intent's own, made from exactly this
+  // account: otherwise a harmless intent could ride next to the digest of
+  // another act.
+  final intent = _intentOf(prepared, digest, account);
+  if (intent.type != IntentType.contribution ||
+      intent.destination.kind != LocationKind.roomCustody ||
       !bytesEqual(intent.destination.address, custody)) {
     throw const SigningRefused('the call does not pay this room');
   }
-  if (intent.account.isNotEmpty && !bytesEqual(intent.account, account)) {
-    throw const SigningRefused('the call pays from another account');
-  }
-  if (intent.amount != amount) {
+  if (intent.amount != asked) {
     throw SigningRefused(
       'the call pays ${intent.amount}, not the $amount you asked for (minor units)',
     );
@@ -328,13 +327,7 @@ BigInt _positiveAmount(String amount) {
     kind: request.call.kind,
     account: account,
   );
-  final intent = sdkIntentOf(prepared.financialIntent);
-  if (!bytesEqual(intentDigestOf(intent), digest)) {
-    throw const SigningRefused('the digest is not the prepared intent\'s');
-  }
-  if (intent.account.isNotEmpty && !bytesEqual(intent.account, account)) {
-    throw const SigningRefused('the call is made from another account');
-  }
+  final intent = _intentOf(prepared, digest, account);
   final EngineCall call;
   try {
     call = verifyEngineCallIntent(
