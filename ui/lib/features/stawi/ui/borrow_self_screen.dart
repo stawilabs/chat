@@ -54,6 +54,8 @@ class _BorrowSelfScreenState extends ConsumerState<BorrowSelfScreen> {
     final amount = _amount;
     final terms = _terms;
     if (amount == null || terms == null || _busy) return;
+    final container = moneyContainer(context);
+    final service = ref.read(stawiAccountServiceProvider);
     setState(() => _busy = true);
     try {
       final loans = ref.read(stawiLoanServiceProvider);
@@ -63,19 +65,17 @@ class _BorrowSelfScreenState extends ConsumerState<BorrowSelfScreen> {
       final call = await runMoneyAction(
         context,
         ref,
-        () async => ref
-            .read(stawiAccountServiceProvider)
-            .preparePersonal(
-              PersonalRequest.borrowSelf(
-                pocket: pocketId(pocket),
-                amount: amount,
-                terms: terms,
-              ),
-              pocketName: pocketName(pocket),
-            ),
+        () async => service.preparePersonal(
+          PersonalRequest.borrowSelf(
+            pocket: pocketId(pocket),
+            amount: amount,
+            terms: terms,
+          ),
+          pocketName: pocketName(pocket),
+        ),
       );
       if (call == null || !mounted) return;
-      final last = await settleAndRefresh(ref, call);
+      final last = await settleAndRefresh(container, service, call);
       if (!mounted) return;
       if (last?.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
         Navigator.of(context).pop();
@@ -95,7 +95,12 @@ class _BorrowSelfScreenState extends ConsumerState<BorrowSelfScreen> {
         Navigator.of(context).pop();
         return;
       }
-      await followAndOfferAutoPay(context, ref, LoanRef.of(made));
+      await followAndOfferAutoPay(
+        context,
+        ref,
+        LoanRef.of(made),
+        container: container,
+      );
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -169,7 +174,12 @@ class _BorrowSelfScreenState extends ConsumerState<BorrowSelfScreen> {
                       ? null
                       : bytesToHexKey(pocketId(chosen)),
                   // ignore: deprecated_member_use
-                  onChanged: (_) => setState(() => _pocket = pocketId(p)),
+                  onChanged: (_) => setState(() {
+                    _pocket = pocketId(p);
+                    // A new pocket starts a new draft.
+                    _amount = null;
+                    _terms = null;
+                  }),
                   title: Text(pocketName(p)),
                   subtitle: Text('${formatMoney(p.cash, assets)} saved'),
                 ),

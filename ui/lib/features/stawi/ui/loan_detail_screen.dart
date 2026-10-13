@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
 import '../data/stawi_account_service.dart';
@@ -35,25 +36,17 @@ final loanQuoteProvider = FutureProvider.autoDispose
           ),
     );
 
-/// Reads the person's loans and savings again after a money action.
-void invalidateLoanMoney(WidgetRef ref, [LoanRef? loanRef]) {
-  invalidateSoon(ref, [
-    if (loanRef != null) loanProvider(loanRef),
-    myBorrowedLoansProvider,
-    myLentLoansProvider,
-    myVaultProvider,
-    stawiWalletBalanceProvider,
-  ]);
-}
-
 /// After a loan the person borrows was accepted or taken ([callId], the
 /// account call that did it): follows it until it is active and then asks
-/// for its automatic payment, a second signature reviewed on its own. A loan
-/// still not active when the follow gives up keeps the switch on its page.
+/// for its automatic payment, a second signature reviewed on its own, itself
+/// followed until it is final. Money is read again through [container] only
+/// once each call is final. A loan still not active when the follow gives up
+/// keeps the switch on its page.
 Future<void> followAndOfferAutoPay(
   BuildContext context,
   WidgetRef ref,
   LoanRef loanRef, {
+  required ProviderContainer container,
   String? callId,
 }) async {
   final service = ref.read(stawiAccountServiceProvider);
@@ -61,7 +54,7 @@ Future<void> followAndOfferAutoPay(
     context,
     () => service.followUntilActive(loanRef, callId: callId),
   );
-  invalidateLoanMoney(ref, loanRef);
+  invalidateSoon(container, moneyProviders(loanRef));
   if (loan == null || !context.mounted) return;
   if (loan.state != finance.LoanState.LOAN_STATE_FUNDED) {
     if (loan.state == finance.LoanState.LOAN_STATE_PENDING_APPROVAL ||
@@ -82,7 +75,9 @@ Future<void> followAndOfferAutoPay(
     ref,
     () => service.prepareStandingOrder(loan, on: true, title: autoPayTitle),
   );
-  if (call != null) invalidateSoon(ref, [standingOrderOnProvider(loan)]);
+  if (call != null) {
+    await settleThenRefresh(container, service, call, moneyProviders(loanRef));
+  }
 }
 
 /// One loan: its terms, its schedule and what the person may do with it.
@@ -109,26 +104,49 @@ class LoanDetailScreen extends ConsumerStatefulWidget {
 
 class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
   bool _busy = false;
+  bool _settling = false;
   bool _autoPay = true;
 
   String get _name => widget.counterpartyName ?? 'them';
 
-  /// Runs a money action on this loan, then reads everything again.
-  Future<void> _act(Future<void> Function() action) async {
+  /// Runs a money action on this loan. The buttons stay off until it is
+  /// done: a call it submits is followed until it is final, and only then is
+  /// anything read again. [action] gets the container (taken now, before any
+  /// await) and returns the call to follow, or null when there is none (or
+  /// it followed its calls itself).
+  Future<void> _act(
+    Future<settlement.AccountCall?> Function(ProviderContainer container)
+    action,
+  ) async {
     if (_busy) return;
+    final container = moneyContainer(context);
+    final service = ref.read(stawiAccountServiceProvider);
     setState(() => _busy = true);
     try {
-      await action();
+      final call = await action(container);
+      if (call != null) {
+        if (mounted) setState(() => _settling = true);
+        await settleThenRefresh(
+          container,
+          service,
+          call,
+          moneyProviders(widget.ref),
+        );
+      }
     } finally {
-      invalidateLoanMoney(ref, widget.ref);
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _settling = false;
+        });
+      }
     }
   }
 
   Future<void> _accept(finance.Loan loan) async {
     final service = ref.read(stawiAccountServiceProvider);
     final autoPay = _autoPay;
-    await _act(() async {
+    await _act((container) async {
       final call = await runMoneyAction(
         context,
         ref,
@@ -137,18 +155,21 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           counterpartyName: widget.counterpartyName,
         ),
       );
-      if (call == null || !autoPay || !mounted) return;
+      if (call == null || !autoPay || !mounted) return call;
+      setState(() => _settling = true);
       await followAndOfferAutoPay(
         context,
         ref,
         widget.ref,
+        container: container,
         callId: call.callId,
       );
+      return null;
     });
   }
 
   Future<void> _cancel(finance.Loan loan) => _act(
-    () async => runMoneyAction(
+    (_) => runMoneyAction(
       context,
       ref,
       () async => ref
@@ -160,16 +181,17 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
     ),
   );
 
-  Future<void> _lend(finance.Loan loan) => _act(() async {
+  Future<void> _lend(finance.Loan loan) => _act((_) async {
     final amount = moneyUnits(loan.requested);
     final vaults = ref.read(stawiVaultServiceProvider);
     final vault = await runStawiAction(context, vaults.vault);
-    if (vault == null || !mounted) return;
+    if (vault == null || !mounted) return null;
     final pockets = [
       for (final p in vault.pockets)
         if (canLendFrom(p) && moneyUnits(p.cash) >= amount) p,
     ];
-    final assets = watchLoanAssets(ref);
+    final assets =
+        ref.read(loanAssetsProvider).asData?.value ?? StawiAssets.empty;
     if (pockets.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
@@ -179,7 +201,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           ),
         ),
       );
-      return;
+      return null;
     }
     final chosen = await showModalBottomSheet<finance.SavingsPocket>(
       context: context,
@@ -207,11 +229,11 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
         ),
       ),
     );
-    if (chosen == null || !mounted) return;
+    if (chosen == null || !mounted) return null;
     // The pocket is read again: what was there when the list was shown may
     // have moved since.
     final fresh = await runStawiAction(context, vaults.vault);
-    if (fresh == null || !mounted) return;
+    if (fresh == null || !mounted) return null;
     final id = pocketId(chosen);
     final now = fresh.pockets
         .where((p) => bytesEqual(pocketId(p), id))
@@ -220,9 +242,9 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(content: Text('Not enough in ${pocketName(chosen)}')),
       );
-      return;
+      return null;
     }
-    await runMoneyAction(
+    return runMoneyAction(
       context,
       ref,
       () async => ref
@@ -235,16 +257,15 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
     );
   });
 
-  Future<void> _turnOnAutoPay(finance.Loan loan) => _act(() async {
-    final call = await runMoneyAction(
+  Future<void> _turnOnAutoPay(finance.Loan loan) => _act(
+    (_) => runMoneyAction(
       context,
       ref,
       () => ref
           .read(stawiAccountServiceProvider)
           .prepareStandingOrder(loan, on: true, title: autoPayTitle),
-    );
-    if (call != null) invalidateSoon(ref, [standingOrderOnProvider(loan)]);
-  });
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -330,6 +351,21 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           ),
         ),
       const SizedBox(height: 16),
+      if (_settling)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Row(
+            key: Key('loan-settling'),
+            children: [
+              SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 8),
+              Expanded(child: Text(waitingForCompletion)),
+            ],
+          ),
+        ),
       ..._actions(view, pending: pending, active: active),
     ];
   }
@@ -400,7 +436,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
       ];
     }
     if (active && role == LoanRole.borrower) {
-      final on = ref.watch(standingOrderOnProvider(loan));
+      final on = ref.watch(standingOrderOnProvider(widget.ref));
       return [
         if (on.asData?.value == false)
           Card(
@@ -421,14 +457,14 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
           key: const Key('loan-pay'),
           onPressed: busy
               ? null
-              : () => _act(() => showPayInstalment(context, ref, view)),
+              : () => _act((_) => showPayInstalment(context, ref, view)),
           child: const Text('Pay an instalment'),
         ),
         OutlinedButton(
           key: const Key('loan-payoff'),
           onPressed: busy
               ? null
-              : () => _act(() => showPayOff(context, ref, view)),
+              : () => _act((_) => showPayOff(context, ref, view)),
           child: const Text('Pay off the loan'),
         ),
         StandingOrderSwitch(key: const Key('loan-standing-switch'), loan: loan),

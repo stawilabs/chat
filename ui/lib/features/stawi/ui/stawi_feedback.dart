@@ -63,6 +63,12 @@ String shortHex(String hex) => hex.length <= 14
     ? hex
     : '${hex.substring(0, 6)}…${hex.substring(hex.length - 4)}';
 
+/// The provider container [context] is under, resolved now: money actions
+/// take it before their first await, so what they refresh at the end is
+/// refreshed even when the person has left the screen by then.
+ProviderContainer moneyContainer(BuildContext context) =>
+    ProviderScope.containerOf(context, listen: false);
+
 /// Reads [providers] again once the current event is done, keeping each
 /// one listened to until it has its new value.
 ///
@@ -71,15 +77,11 @@ String shortHex(String hex) => hex.length <= 14
 /// what invalidating a provider watched only by a screen under another route
 /// (its subscription paused) does. Waiting for the event to end lets pending
 /// disposals run, and the listener keeps the provider active through its
-/// refresh. The container outlives the widget, so this works after [ref]'s
-/// widget is gone.
-void invalidateSoon(WidgetRef ref, Iterable<ProviderBase<Object?>> providers) {
-  final ProviderContainer container;
-  try {
-    container = ProviderScope.containerOf(ref.context, listen: false);
-  } on Object {
-    return;
-  }
+/// refresh. [container] outlives any widget (see [moneyContainer]).
+void invalidateSoon(
+  ProviderContainer container,
+  Iterable<ProviderBase<Object?>> providers,
+) {
   final all = providers.toList();
   Future<void>.delayed(Duration.zero, () {
     for (final p in all) {

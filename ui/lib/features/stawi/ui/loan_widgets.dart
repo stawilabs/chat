@@ -2,13 +2,17 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderBase;
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
+import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../data/stawi_account_service.dart';
 import '../data/stawi_loan_service.dart';
+import '../data/stawi_vault_service.dart';
 import '../domain/loan_view.dart';
+import '../domain/personal_calls.dart' show LoanRef;
 import '../domain/stawi_money.dart';
 import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
@@ -25,10 +29,46 @@ StawiAssets watchLoanAssets(WidgetRef ref) =>
 
 /// Whether a loan's standing order is on; an error when it cannot be read.
 final standingOrderOnProvider = FutureProvider.autoDispose
-    .family<bool, finance.Loan>(
-      (ref, loan) =>
-          ref.watch(stawiAccountServiceProvider).standingOrderOn(loan),
+    .family<bool, LoanRef>(
+      (ref, loanRef) =>
+          ref.watch(stawiAccountServiceProvider).standingOrderOnRef(loanRef),
     );
+
+/// What is read again after a money action: the person's loans, savings and
+/// wallet, and [loanRef]'s loan and standing order when one is named.
+List<ProviderBase<Object?>> moneyProviders([LoanRef? loanRef]) => [
+  if (loanRef != null) loanProvider(loanRef),
+  if (loanRef != null) standingOrderOnProvider(loanRef),
+  myBorrowedLoansProvider,
+  myLentLoansProvider,
+  myVaultProvider,
+  stawiWalletBalanceProvider,
+];
+
+/// Shown while a submitted call is followed until it is final.
+const String waitingForCompletion = 'Waiting for this to complete…';
+
+/// Follows the submitted [call] until it is final (or failed, expired, or
+/// the follow gave up), and only then reads [providers] again through
+/// [container] (taken before the action's first await). Returns the call as
+/// it ended; null when it could not be read.
+Future<settlement.AccountCall?> settleThenRefresh(
+  ProviderContainer container,
+  StawiAccountService service,
+  settlement.AccountCall call,
+  Iterable<ProviderBase<Object?>> providers,
+) async {
+  settlement.AccountCall? last;
+  try {
+    last = await service
+        .followAccountCall(call.callId, every: service.followEvery)
+        .last;
+  } on Object {
+    last = null;
+  }
+  invalidateSoon(container, providers);
+  return last;
+}
 
 String _date(finance.LoanInstalment i) =>
     DateFormat('d MMM').format(i.dueAt.toDateTime().toLocal());
@@ -165,14 +205,55 @@ class ScheduleView extends StatelessWidget {
 }
 
 /// The switch that pays a loan's instalments automatically. Only an active
-/// loan can have one.
-class StandingOrderSwitch extends ConsumerWidget {
-  const StandingOrderSwitch({required this.loan, super.key});
+/// loan can have one. A change is followed until it is final before the
+/// switch reads the account again.
+class StandingOrderSwitch extends ConsumerStatefulWidget {
+  const StandingOrderSwitch({
+    required this.loan,
+    this.enabled = true,
+    super.key,
+  });
 
   final finance.Loan loan;
 
+  /// False while another action on the loan is under way.
+  final bool enabled;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StandingOrderSwitch> createState() =>
+      _StandingOrderSwitchState();
+}
+
+class _StandingOrderSwitchState extends ConsumerState<StandingOrderSwitch> {
+  bool _settling = false;
+
+  Future<void> _change(bool value) async {
+    final container = moneyContainer(context);
+    final service = ref.read(stawiAccountServiceProvider);
+    final loan = widget.loan;
+    setState(() => _settling = true);
+    try {
+      final call = await runMoneyAction(
+        context,
+        ref,
+        () => service.prepareStandingOrder(loan, on: value),
+      );
+      if (call != null) {
+        await settleThenRefresh(
+          container,
+          service,
+          call,
+          moneyProviders(LoanRef.of(loan)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _settling = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loan = widget.loan;
     const title = Text('Pay automatically');
     if (loan.state != finance.LoanState.LOAN_STATE_FUNDED) {
       return const SwitchListTile(
@@ -183,7 +264,7 @@ class StandingOrderSwitch extends ConsumerWidget {
         onChanged: null,
       );
     }
-    final on = ref.watch(standingOrderOnProvider(loan));
+    final on = ref.watch(standingOrderOnProvider(LoanRef.of(loan)));
     final assets = watchLoanAssets(ref);
     final largest = LoanView(loan, mine: const []).largestInstalment;
     final line = largest > BigInt.zero
@@ -194,22 +275,14 @@ class StandingOrderSwitch extends ConsumerWidget {
       key: const Key('standing-order-switch'),
       title: title,
       subtitle: Text(
-        on.hasError ? 'Could not be read just now; try again shortly' : line,
+        _settling
+            ? waitingForCompletion
+            : on.hasError
+            ? 'Could not be read just now; try again shortly'
+            : line,
       ),
       value: on.asData?.value ?? false,
-      onChanged: on.hasValue
-          ? (value) async {
-              final service = ref.read(stawiAccountServiceProvider);
-              final call = await runMoneyAction(
-                context,
-                ref,
-                () => service.prepareStandingOrder(loan, on: value),
-              );
-              if (call != null) {
-                invalidateSoon(ref, [standingOrderOnProvider(loan)]);
-              }
-            }
-          : null,
+      onChanged: on.hasValue && widget.enabled && !_settling ? _change : null,
     );
   }
 }

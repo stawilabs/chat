@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stawi_api/settlement_v1.dart' as settlement;
 
 import '../data/stawi_account_service.dart';
 import '../domain/account_engine_calls.dart';
@@ -30,8 +31,9 @@ String plainAmount(BigInt units, int decimals) {
 }
 
 /// Pays the next instalment. A personal loan lets the person change the
-/// amount; a group loan pays what is owed into the room.
-Future<void> showPayInstalment(
+/// amount; a group loan pays what is owed into the room. The submitted call,
+/// or null when nothing was signed.
+Future<settlement.AccountCall?> showPayInstalment(
   BuildContext context,
   WidgetRef ref,
   LoanView view,
@@ -41,11 +43,11 @@ Future<void> showPayInstalment(
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       const SnackBar(content: Text('Nothing is due on this loan')),
     );
-    return;
+    return null;
   }
   final service = ref.read(stawiAccountServiceProvider);
   if (view.isGroup) {
-    await runMoneyAction(
+    return runMoneyAction(
       context,
       ref,
       () async => service.prepareContribution(
@@ -54,20 +56,19 @@ Future<void> showPayInstalment(
         note: groupPaymentNote,
       ),
     );
-    return;
   }
   final asset = await runStawiAction(context, () async {
     final info = (await ref.read(stawiTestAssetProvider.future)).asset;
     return StawiAsset.fromInfo(info);
   });
-  if (asset == null || !context.mounted) return;
+  if (asset == null || !context.mounted) return null;
   final amount = await showModalBottomSheet<BigInt>(
     context: context,
     isScrollControlled: true,
     builder: (_) => _PayAmountSheet(owed: owed, asset: asset),
   );
-  if (amount == null || !context.mounted) return;
-  await runMoneyAction(
+  if (amount == null || !context.mounted) return null;
+  return runMoneyAction(
     context,
     ref,
     () async => service.preparePersonal(
@@ -76,8 +77,10 @@ Future<void> showPayInstalment(
   );
 }
 
-/// Pays the whole loan off. The review shows the most it can take.
-Future<void> showPayOff(
+/// Pays the whole loan off. The review shows the most it can take. The
+/// submitted call; null when nothing was signed, or for a group loan (its
+/// dialog follows its own call).
+Future<settlement.AccountCall?> showPayOff(
   BuildContext context,
   WidgetRef ref,
   LoanView view,
@@ -91,10 +94,10 @@ Future<void> showPayOff(
         loan: view.loan,
       ),
     );
-    return;
+    return null;
   }
   final service = ref.read(stawiAccountServiceProvider);
-  await runMoneyAction(
+  return runMoneyAction(
     context,
     ref,
     () async =>

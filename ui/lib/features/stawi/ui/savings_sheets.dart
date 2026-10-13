@@ -5,14 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
 import '../data/stawi_account_service.dart';
-import '../data/stawi_identity.dart' show StawiUnavailable;
+import '../data/stawi_identity.dart';
 import '../data/stawi_vault_service.dart';
 import '../domain/personal_calls.dart';
+import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
 import 'dm_partner_picker.dart';
-import 'loan_detail_screen.dart' show invalidateLoanMoney;
+import 'loan_widgets.dart' show moneyProviders, settleThenRefresh;
 import 'money_review_sheet.dart';
 import 'stawi_account_screen.dart' show TestFundsDialog;
 import 'stawi_feedback.dart';
@@ -142,24 +144,14 @@ class _AmountSheetState extends State<_AmountSheet> {
   }
 }
 
-/// Waits for a submitted call to be final, then reads the person's money
-/// again. Returns the call as it ended.
+/// Follows a submitted call until it is final, then reads the person's
+/// money again through [container] (taken before the action's first await).
+/// Returns the call as it ended.
 Future<settlement.AccountCall?> settleAndRefresh(
-  WidgetRef ref,
+  ProviderContainer container,
+  StawiAccountService service,
   settlement.AccountCall call,
-) async {
-  settlement.AccountCall? last;
-  try {
-    last = await ref
-        .read(stawiAccountServiceProvider)
-        .followAccountCall(call.callId)
-        .last;
-  } on Object {
-    last = null;
-  }
-  invalidateLoanMoney(ref);
-  return last;
-}
+) => settleThenRefresh(container, service, call, moneyProviders());
 
 /// Adds money from the wallet to [pocket] (all zero: free savings).
 Future<void> addMoney(
@@ -168,6 +160,8 @@ Future<void> addMoney(
   required Uint8List pocket,
   required String name,
 }) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
   final asset = await readMoneyAsset(context, ref);
   if (asset == null || !context.mounted) return;
   final amount = await showAmountSheet(
@@ -181,11 +175,13 @@ Future<void> addMoney(
   final call = await runMoneyAction(
     context,
     ref,
-    () => ref
-        .read(stawiAccountServiceProvider)
-        .prepareDeposit(pocket: pocket, amount: amount, pocketName: name),
+    () => service.prepareDeposit(
+      pocket: pocket,
+      amount: amount,
+      pocketName: name,
+    ),
   );
-  if (call != null) await settleAndRefresh(ref, call);
+  if (call != null) await settleAndRefresh(container, service, call);
 }
 
 /// Takes money out of [pocket] back to the wallet, at most what it holds.
@@ -194,6 +190,8 @@ Future<void> withdrawSavings(
   WidgetRef ref, {
   required finance.SavingsPocket pocket,
 }) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
   final asset = await readMoneyAsset(context, ref);
   if (asset == null || !context.mounted) return;
   final name = pocketName(pocket);
@@ -209,14 +207,12 @@ Future<void> withdrawSavings(
   final call = await runMoneyAction(
     context,
     ref,
-    () async => ref
-        .read(stawiAccountServiceProvider)
-        .preparePersonal(
-          PersonalRequest.withdraw(pocket: pocketId(pocket), amount: amount),
-          pocketName: name,
-        ),
+    () async => service.preparePersonal(
+      PersonalRequest.withdraw(pocket: pocketId(pocket), amount: amount),
+      pocketName: name,
+    ),
   );
-  if (call != null) await settleAndRefresh(ref, call);
+  if (call != null) await settleAndRefresh(container, service, call);
 }
 
 /// Moves money from free savings into the goal [goal].
@@ -226,6 +222,8 @@ Future<void> moveToGoal(
   required finance.SavingsPocket goal,
   required BigInt freeCash,
 }) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
   final asset = await readMoneyAsset(context, ref);
   if (asset == null || !context.mounted) return;
   final amount = await showAmountSheet(
@@ -239,22 +237,22 @@ Future<void> moveToGoal(
   final call = await runMoneyAction(
     context,
     ref,
-    () async => ref
-        .read(stawiAccountServiceProvider)
-        .preparePersonal(
-          PersonalRequest.move(
-            from: Uint8List(32),
-            to: pocketId(goal),
-            amount: amount,
-          ),
-        ),
+    () async => service.preparePersonal(
+      PersonalRequest.move(
+        from: Uint8List(32),
+        to: pocketId(goal),
+        amount: amount,
+      ),
+    ),
   );
-  if (call != null) await settleAndRefresh(ref, call);
+  if (call != null) await settleAndRefresh(container, service, call);
 }
 
 /// Sends money from the wallet to one of the person's DM partners. There is
 /// no typed address.
 Future<void> sendOut(BuildContext context, WidgetRef ref) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
   final to = await showDmPartnerPicker(context);
   if (to == null || !context.mounted) return;
   final asset = await readMoneyAsset(context, ref);
@@ -270,11 +268,9 @@ Future<void> sendOut(BuildContext context, WidgetRef ref) async {
   final call = await runMoneyAction(
     context,
     ref,
-    () => ref
-        .read(stawiAccountServiceProvider)
-        .prepareTransferOut(to: to, amount: amount),
+    () => service.prepareTransferOut(to: to, amount: amount),
   );
-  if (call != null) await settleAndRefresh(ref, call);
+  if (call != null) await settleAndRefresh(container, service, call);
 }
 
 /// Mints test money to the wallet (testnet only: settlement refuses it
@@ -284,6 +280,8 @@ Future<void> addTestMoney(
   WidgetRef ref,
   StawiAsset asset,
 ) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
   final amount = await showDialog<String>(
     context: context,
     builder: (_) => TestFundsDialog(asset: asset),
@@ -291,10 +289,10 @@ Future<void> addTestMoney(
   if (amount == null || !context.mounted) return;
   final funded = await runStawiAction(
     context,
-    () => ref.read(stawiAccountServiceProvider).fundTestAccount(amount, asset),
+    () => service.fundTestAccount(amount, asset),
     success: 'Test money is on its way to your wallet',
   );
-  if (funded != null) invalidateSoon(ref, [stawiWalletBalanceProvider]);
+  if (funded != null) invalidateSoon(container, [stawiWalletBalanceProvider]);
 }
 
 /// What a new savings goal is to be.
@@ -305,15 +303,34 @@ typedef NewGoal = ({
   bool loanable,
 });
 
-/// Starts a savings goal, then names it once the chain has it: the goal id
-/// is read back from the vault (the newest unnamed goal with this target and
-/// unlock time). [pollEvery] spaces those reads.
+/// The id PersonalVault.createGoal gives the [index]th goal of [owner]:
+/// keccak256(abi.encode(owner, index)).
+Uint8List goalIdOf(Uint8List owner, int index) {
+  final word = Uint8List(64)..setRange(12, 32, owner);
+  var n = index;
+  for (var i = 63; i >= 32 && n > 0; i--) {
+    word[i] = n & 0xff;
+    n >>= 8;
+  }
+  return sdk.keccak256(word);
+}
+
+/// Starts a savings goal, then names it once the chain has it. The account
+/// call carries no result, so the goal's id is the one the vault gives the
+/// next goal (keccak256(owner, number of goals before)), taken when the vault
+/// holds that pocket unnamed with the goal's target and unlock time. Failing
+/// that, a single new unnamed goal with that target and unlock time is it;
+/// when more than one matches, the goal is left unnamed rather than guessed
+/// (finance does not show a goal's name hash). [pollEvery] spaces the reads.
 Future<void> startGoal(
   BuildContext context,
   WidgetRef ref, {
   Duration pollEvery = const Duration(seconds: 2),
   int pollAttempts = 10,
 }) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
+  final vaults = ref.read(stawiVaultServiceProvider);
   final asset = await readMoneyAsset(context, ref);
   if (asset == null || !context.mounted) return;
   final goal = await showModalBottomSheet<NewGoal>(
@@ -332,44 +349,74 @@ Future<void> startGoal(
     ),
   );
   if (request == null || !context.mounted) return;
+  final before = await runStawiAction(context, () async {
+    final owner = (await ref.read(stawiIdentityProvider.future)).primary;
+    if (owner == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    return (owner: owner.address, vault: await vaults.vault());
+  });
+  if (before == null || !context.mounted) return;
   final call = await runMoneyAction(
     context,
     ref,
-    () => ref.read(stawiAccountServiceProvider).preparePersonal(request),
+    () => service.preparePersonal(request),
   );
   if (call == null) return;
-  final last = await settleAndRefresh(ref, call);
+  final last = await settleAndRefresh(container, service, call);
   if (last?.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
     return;
   }
+  final known = {
+    for (final p in before.vault.pockets)
+      if (p.isGoal) sdk.bytesToHex(pocketId(p)),
+  };
+  final expectedId = goalIdOf(before.owner, known.length);
   final unlock = request.expected.goalUnlockAt;
-  final vaults = ref.read(stawiVaultServiceProvider);
+  bool isIt(finance.SavingsPocket p) =>
+      p.isGoal &&
+      p.name.isEmpty &&
+      moneyUnits(p.target) == goal.target &&
+      BigInt.parse(p.unlockAt.seconds.toString()) == unlock;
+  var why = 'Your goal is started; its name shows once it is read';
   for (var i = 0; i < pollAttempts; i++) {
     if (i > 0) await Future<void>.delayed(pollEvery);
-    final vault = await vaults.vault();
-    final made = vault.pockets.where(
-      (p) =>
-          p.isGoal &&
-          p.name.isEmpty &&
-          moneyUnits(p.target) == goal.target &&
-          BigInt.parse(p.unlockAt.seconds.toString()) == unlock,
-    );
-    if (made.isNotEmpty) {
-      try {
-        await vaults.nameGoal(goalId: pocketId(made.last), name: goal.name);
-      } on Object {
-        break;
-      }
-      invalidateSoon(ref, [myVaultProvider]);
-      return;
+    final finance.GetVaultResponse vault;
+    try {
+      vault = await vaults.vault();
+    } on Object {
+      continue;
     }
+    final exact = vault.pockets
+        .where((p) => isIt(p) && bytesEqual(pocketId(p), expectedId))
+        .firstOrNull;
+    final fresh = [
+      for (final p in vault.pockets)
+        if (isIt(p) && !known.contains(sdk.bytesToHex(pocketId(p)))) p,
+    ];
+    final finance.SavingsPocket made;
+    if (exact != null) {
+      made = exact;
+    } else if (fresh.length == 1) {
+      made = fresh.single;
+    } else if (fresh.length > 1) {
+      why = 'Your goal is started, but which one it is is not clear yet';
+      break;
+    } else {
+      continue;
+    }
+    try {
+      await vaults.nameGoal(goalId: pocketId(made), name: goal.name);
+    } on Object {
+      break;
+    }
+    invalidateSoon(container, [myVaultProvider]);
+    return;
   }
   if (context.mounted) {
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('Your goal is started; its name shows once it is read'),
-      ),
-    );
+    ScaffoldMessenger.maybeOf(
+      context,
+    )?.showSnackBar(SnackBar(content: Text(why)));
   }
 }
 

@@ -125,6 +125,9 @@ class StawiAccountService {
   /// How [followUntilActive] reads the call and the loan.
   final Duration _followEvery;
 
+  /// How a submitted call is read until it is final.
+  Duration get followEvery => _followEvery;
+
   /// The account and this device's key. Reads only: nothing is signed, so
   /// the device lock is not asked.
   Future<StawiAccountStatus> status() async {
@@ -585,8 +588,11 @@ class StawiAccountService {
 
   /// Whether [loan]'s standing order (automatic payment) is on, read off the
   /// account's authorizations.
-  Future<bool> standingOrderOn(finance.Loan loan) async {
-    final ref = LoanRef.of(loan);
+  Future<bool> standingOrderOn(finance.Loan loan) =>
+      standingOrderOnRef(LoanRef.of(loan));
+
+  /// Whether the standing order of the loan [ref] names is on.
+  Future<bool> standingOrderOnRef(LoanRef ref) async {
     final id = standingOrderId(ref.loanBook, ref.pool, ref.loanId);
     final state = (await status()).state;
     return state?.authorizationIds.any((a) => bytesEqual(a, id)) ?? false;

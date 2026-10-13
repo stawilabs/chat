@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Refreshable;
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
@@ -73,8 +74,22 @@ class MyMoneyScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('My money')),
       body: RefreshIndicator(
         onRefresh: () async {
-          invalidateLoanMoney(ref);
           ref.invalidate(stawiAccountReadyProvider);
+          Future<void> again<T>(Refreshable<Future<T>> p) async {
+            final next = ref.refresh(p);
+            try {
+              await next;
+            } on Object {
+              // The section shows its own error.
+            }
+          }
+
+          await Future.wait([
+            again(myVaultProvider.future),
+            again(myBorrowedLoansProvider.future),
+            again(myLentLoansProvider.future),
+            again(stawiWalletBalanceProvider.future),
+          ]);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -494,8 +509,20 @@ class _MyLoansState extends ConsumerState<_MyLoans>
           ),
           data: (list) {
             if (mine == null) return const SizedBox.shrink();
+            // Waiting for me first, then newest first; the loan id breaks
+            // ties so the order does not change between reads.
             final views = [for (final l in list) LoanView(l, mine: mine)]
-              ..sort((a, b) => (b.awaitsMe ? 1 : 0) - (a.awaitsMe ? 1 : 0));
+              ..sort((a, b) {
+                final needs = (b.awaitsMe ? 1 : 0) - (a.awaitsMe ? 1 : 0);
+                if (needs != 0) return needs;
+                final byId = b.loan.onchainLoanId.compareTo(
+                  a.loan.onchainLoanId,
+                );
+                if (byId != 0) return byId;
+                return bytesToHexKey(
+                  b.loan.pool,
+                ).compareTo(bytesToHexKey(a.loan.pool));
+              });
             if (views.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.all(12),

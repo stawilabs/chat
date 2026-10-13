@@ -111,11 +111,19 @@ void main() {
   late List<finance.LoanInstalment> instalments;
   late List<finance.GetVaultResponse> vaults;
   late Object? record;
+  // Whether an accepted offer pays out; whether submitted calls are final.
+  late bool payOut;
+  late bool finalNow;
+  // Called once a call is reported final.
+  late void Function() onFinal;
 
   Future<StawiAccountService> serve({
     List<List<int>> authorizationIds = const [],
   }) async {
     gate = RecordingSigningGate();
+    payOut = true;
+    finalNow = true;
+    onFinal = () {};
     instalments = const [];
     vaults = [];
     record = finance.GetCreditRecordResponse(
@@ -198,7 +206,12 @@ void main() {
         }
       })
       ..on(settlement.AccountService.submitAccountCall, (req) {
-        if (req.callId == 'acct00000000000000e1' &&
+        final lastKind = transport
+            .requestsTo(settlement.AccountService.prepareAccountCall)
+            .last
+            .kind;
+        if (payOut &&
+            lastKind == _acceptOffer &&
             served.state == finance.LoanState.LOAN_STATE_PENDING_APPROVAL) {
           // The accepted offer pays out.
           served = (finance.Loan()..mergeFromMessage(served))
@@ -211,15 +224,17 @@ void main() {
           ),
         );
       })
-      ..on(
-        settlement.AccountService.getAccountCall,
-        (req) => settlement.GetAccountCallResponse(
+      ..on(settlement.AccountService.getAccountCall, (req) {
+        if (finalNow) onFinal();
+        return settlement.GetAccountCallResponse(
           call: settlement.AccountCall(
             callId: req.callId,
-            state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+            state: finalNow
+                ? settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL
+                : settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
           ),
-        ),
-      );
+        );
+      });
     await serveDeployedAccount(
       transport,
       anvilKey,
@@ -372,6 +387,127 @@ void main() {
       expect(prepared(), [_cancel]);
       expect(find.byKey(const Key('money-review')), findsOneWidget);
     });
+  });
+
+  group('after accepting', () {
+    testWidgets('no automatic payment when the loan is not active in time', (
+      tester,
+    ) async {
+      final service = await serve();
+      served = offerToMe();
+      payOut = false;
+      await open(tester, service);
+
+      await tapAndSettle(tester, find.byKey(const Key('loan-accept')));
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+
+      expect(prepared(), [_acceptOffer]);
+      expect(find.byKey(const Key('money-review')), findsNothing);
+      // After the "Loan accepted" snack bar.
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
+      expect(find.textContaining('The loan is not active yet'), findsOneWidget);
+      expect(prepared(), [_acceptOffer]);
+    });
+
+    testWidgets('cancelling the automatic payment signs nothing more', (
+      tester,
+    ) async {
+      final service = await serve();
+      served = offerToMe();
+      await open(tester, service);
+
+      await tapAndSettle(tester, find.byKey(const Key('loan-accept')));
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      expect(inReview('Pay automatically for this loan'), findsOneWidget);
+      await tapAndSettle(tester, find.byKey(const Key('money-review-cancel')));
+
+      expect(submitted(), ['acct00000000000000e1']);
+      expect(gate.reasons, ['Accept a loan of 300.00 USDC from Bob']);
+      expect(find.byKey(const Key('loan-accept')), findsNothing);
+    });
+  });
+
+  testWidgets('the page is read again only once the call is final', (
+    tester,
+  ) async {
+    final service = await serve();
+    served = offerToMe();
+    finalNow = false;
+    await open(tester, service);
+
+    await tapAndSettle(tester, find.byKey(const Key('loan-decline')));
+    final readsAtSubmit = transport
+        .requestsTo(finance.LoanService.getLoan)
+        .length;
+    await tester.tap(find.byKey(const Key('money-review-sign')));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    expect(submitted(), ['acct00000000000000e1']);
+    expect(find.byKey(const Key('loan-settling')), findsOneWidget);
+    expect(find.text('Waiting for this to complete…'), findsOneWidget);
+    expect(find.text('Waiting for Bob'), findsWidgets);
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('loan-decline')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      transport.requestsTo(finance.LoanService.getLoan),
+      hasLength(readsAtSubmit),
+    );
+
+    // Finance has the cancellation once the call is final.
+    onFinal = () =>
+        served = (finance.Loan()..mergeFromMessage(served))
+          ..state = finance.LoanState.LOAN_STATE_CANCELLED;
+    finalNow = true;
+    await settle(tester);
+
+    expect(find.byKey(const Key('loan-settling')), findsNothing);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('loan-state'))).data,
+      'Cancelled',
+    );
+    expect(find.byKey(const Key('loan-decline')), findsNothing);
+  });
+
+  group('a group loan has no actions here', () {
+    finance.Loan group(List<int> borrower) => finance.Loan(
+      kind: finance.LoanKind.LOAN_KIND_GROUP,
+      state: finance.LoanState.LOAN_STATE_FUNDED,
+      pool: hexToBytes('0xc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3'),
+      borrowerAccount: borrower,
+      loanBook: book,
+      onchainLoanId: Int64(3),
+      requested: usd(500000000),
+      roomId: 'room00000000000000aa',
+    );
+
+    for (final (who, borrower) in [('mine', me), ('a member\'s', bob)]) {
+      testWidgets(who, (tester) async {
+        final service = await serve();
+        served = group(borrower);
+        await open(tester, service);
+
+        expect(find.text('From the room'), findsOneWidget);
+        for (final key in [
+          'loan-accept',
+          'loan-decline',
+          'loan-cancel',
+          'loan-lend',
+          'loan-pay',
+          'loan-payoff',
+          'loan-standing-switch',
+          'loan-autopay-banner',
+        ]) {
+          expect(find.byKey(Key(key)), findsNothing, reason: key);
+        }
+      });
+    }
   });
 
   group('an ask of me', () {

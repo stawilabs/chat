@@ -23,6 +23,7 @@ import 'package:stawi/features/stawi/data/stawi_vault_service.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/loan_terms.dart';
 import 'package:stawi/features/stawi/ui/my_money_screen.dart';
+import 'package:stawi/features/stawi/ui/savings_sheets.dart' show goalIdOf;
 import 'package:stawi/widgets/app_drawer.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -59,7 +60,12 @@ void main() {
   );
   final schoolId = Uint8List.fromList(List.filled(32, 0x51));
   final carId = Uint8List.fromList(List.filled(32, 0x52));
-  final newGoalId = Uint8List.fromList(List.filled(32, 0x53));
+  // The id the vault gives my third goal: keccak256(abi.encode(me, 2)).
+  final newGoalId = goalIdOf(me, 2);
+  final otherIds = [
+    Uint8List.fromList(List.filled(32, 0x53)),
+    Uint8List.fromList(List.filled(32, 0x54)),
+  ];
 
   finance.Money usd(int units) =>
       finance.Money(amount: '$units', assetId: 'USDC.146');
@@ -107,10 +113,16 @@ void main() {
   late FakeConnectTransport transport;
   late RecordingSigningGate gate;
   late List<finance.SavingsPocket> pockets;
+  // The ids the created goal shows under (more than one: two look alike).
+  late List<Uint8List> createdIds;
   // The self-loan the borrow-self vector makes, once it is made.
   finance.Loan? madeSelfLoan;
 
-  Future<StawiAccountService> serve({bool deployed = true}) async {
+  Future<StawiAccountService> serve({
+    bool deployed = true,
+    String balance = '75000000',
+  }) async {
+    createdIds = [newGoalId];
     gate = RecordingSigningGate();
     pockets = [freeSavings(), school(), car()];
     madeSelfLoan = null;
@@ -254,14 +266,15 @@ void main() {
           final g = created.last.params.goal;
           pockets = [
             ...pockets,
-            finance.SavingsPocket(
-              pocket: newGoalId,
-              cash: usd(0),
-              isGoal: true,
-              target: usd(int.parse(g.target)),
-              unlockAt: g.unlockAt,
-              loanable: g.loanable,
-            ),
+            for (final id in createdIds)
+              finance.SavingsPocket(
+                pocket: id,
+                cash: usd(0),
+                isGoal: true,
+                target: usd(int.parse(g.target)),
+                unlockAt: g.unlockAt,
+                loanable: g.loanable,
+              ),
           ];
         }
         return settlement.SubmitAccountCallResponse(
@@ -284,7 +297,7 @@ void main() {
       await serveDeployedAccount(
         transport,
         anvilKey,
-        balance: '75000000',
+        balance: balance,
         policyAsset: selfGrant.asset,
       );
       return StawiAccountService(
@@ -515,6 +528,39 @@ void main() {
     final named = transport.requestsTo(finance.VaultService.nameGoal).single;
     expect(named.name, 'New bike');
     expect(named.goalId, newGoalId);
+  });
+
+  testWidgets('a new goal that cannot be told apart is left unnamed', (
+    tester,
+  ) async {
+    final service = await serve();
+    createdIds = otherIds;
+    await open(tester, service);
+
+    await tap(tester, find.byKey(const Key('money-new-goal')));
+    await tester.enterText(find.byKey(const Key('goal-name')), 'New bike');
+    await tester.enterText(find.byKey(const Key('goal-target')), '300');
+    await tap(tester, find.byKey(const Key('goal-create')));
+    await tap(tester, find.byKey(const Key('money-review-sign')));
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
+
+    expect(transport.requestsTo(finance.VaultService.nameGoal), isEmpty);
+    expect(
+      find.textContaining('which one it is is not clear yet'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the wallet shows "—" when its balance is unknown', (
+    tester,
+  ) async {
+    await open(tester, await serve(balance: ''));
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('wallet-balance'))).data,
+      '—',
+    );
   });
 
   testWidgets('borrowing from savings offers only pockets that may lend', (
