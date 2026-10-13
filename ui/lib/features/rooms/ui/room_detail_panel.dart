@@ -11,6 +11,12 @@ import '../data/room_service.dart';
 import '../domain/room.dart';
 import 'member_action_sheet.dart';
 
+/// Whether a room of [type] offers group actions (Stawi, Add Members): not a
+/// DM or a bot room, whose members are fixed and which are never converted,
+/// and not a room whose type is not known yet.
+bool offersGroupActions(String? type) =>
+    type != null && type != 'direct' && type != 'bot';
+
 /// Room detail panel showing room information and media
 /// Displayed in the right panel on desktop layouts
 class RoomDetailPanel extends ConsumerStatefulWidget {
@@ -45,6 +51,8 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Kept loaded: the settings sheet offers group actions by its type.
+    ref.watch(roomByIdProvider(widget.roomId));
 
     return Scaffold(
       appBar: AppBar(
@@ -86,6 +94,12 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
 
   void _showSettingsMenu(BuildContext context) {
     final muteStateAsync = ref.watch(roomMuteStateProvider(widget.roomId));
+    final roomType = ref
+        .read(roomByIdProvider(widget.roomId))
+        .asData
+        ?.value
+        ?.type;
+    final grouped = offersGroupActions(roomType);
 
     showModalBottomSheet(
       context: context,
@@ -105,26 +119,32 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.savings_outlined),
-              title: const Text('Stawi'),
-              subtitle: const Text('Savings room on chain'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                context.navigateToStawiRoom(
-                  roomId: widget.roomId,
-                  roomName: widget.roomName,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_add),
-              title: const Text('Add Members'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                context.navigateToContactSelection();
-              },
-            ),
+            // A DM's and a bot's members are fixed and neither is ever
+            // converted: the server refuses both, so neither is offered.
+            if (grouped)
+              ListTile(
+                key: const Key('room-settings-stawi'),
+                leading: const Icon(Icons.savings_outlined),
+                title: const Text('Stawi'),
+                subtitle: const Text('Savings room on chain'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.navigateToStawiRoom(
+                    roomId: widget.roomId,
+                    roomName: widget.roomName,
+                  );
+                },
+              ),
+            if (grouped)
+              ListTile(
+                key: const Key('room-settings-add-members'),
+                leading: const Icon(Icons.person_add),
+                title: const Text('Add Members'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.navigateToContactSelection();
+                },
+              ),
             // Mute/Unmute option
             muteStateAsync.when(
               data: (isMuted) => ListTile(
