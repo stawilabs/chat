@@ -247,9 +247,9 @@ func (mb *messageBusiness) prepareServiceCard(
 
 // refuseUnlessCardRoom refuses a card for a room (already known to be in the
 // caller's tenancy) that is neither a Stawi room on chain nor a person's
-// personal room. A DM takes cards from any service of its tenancy holding
-// the grant; a bot room only from the service it belongs to, the one its key
-// names.
+// personal room. A DIRECT room takes cards from any service of its tenancy
+// holding stawi_card_post, not only the one that resolved it; a bot room only
+// from the service it belongs to, the one its key names.
 func refuseUnlessCardRoom(
 	ctx context.Context, bindings repository.StawiRoomRepository, room *models.Room, caller *serviceCaller,
 ) error {

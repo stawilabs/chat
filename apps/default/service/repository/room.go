@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -37,26 +38,33 @@ func (rr *roomRepository) GetRoomsByProfileID(ctx context.Context, profileID str
 	return rooms, err
 }
 
-// directRoomsLimit bounds a key's lookup: a pair recreates its DM only when
-// someone left, so a key names a handful of rooms at most.
-const directRoomsLimit = 20
-
 // DirectRooms lists the rooms keyed by key in the tenant and partitions given,
-// oldest first. The caller names the tenancy explicitly, so the read is not
-// scoped by the context's tenancy. It reads the primary: a personal room made
-// a moment ago must be found, or a second would be made beside it.
+// oldest first, as KeyedRoomStore.Rooms does (the same query, uncapped). The
+// caller names the tenancy explicitly, so the read is not scoped by the
+// context's tenancy. It reads the primary.
 func (rr *roomRepository) DirectRooms(
 	ctx context.Context, key, tenantID string, partitions []string,
 ) ([]*models.Room, error) {
-	if key == "" || len(partitions) == 0 {
+	if key == "" {
+		return nil, nil
+	}
+	return keyedRooms(rr.Pool().DB(ctx, false), key, tenantID, partitions)
+}
+
+// keyedRooms is the rooms of key in the tenancy, oldest first, deleted rooms
+// excluded. Uncapped: a key gains a room only when a person left the previous
+// one (a room never regains a member), so a key names a handful of rooms; a
+// cap would make resolution create a new room on every call once a key
+// passed it.
+func keyedRooms(db *gorm.DB, key, tenantID string, partitions []string) ([]*models.Room, error) {
+	if len(partitions) == 0 {
 		return nil, nil
 	}
 	var rooms []*models.Room
-	err := rr.Pool().DB(ctx, false).
+	err := db.
 		Where("direct_key = ? AND tenant_id = ? AND partition_id IN ? AND deleted_at IS NULL",
 			key, tenantID, partitions).
 		Order("created_at ASC, id ASC").
-		Limit(directRoomsLimit).
 		Find(&rooms).Error
 	return rooms, err
 }
@@ -70,20 +78,7 @@ type keyedRoomStore struct {
 }
 
 func (s *keyedRoomStore) Rooms() ([]*models.Room, error) {
-	if len(s.partitions) == 0 {
-		return nil, nil
-	}
-	var rooms []*models.Room
-	// Unbounded: a key gains a room only when a person left the previous one
-	// (a room never regains a member), so a key names a handful of rooms; a
-	// cap would make resolution create a new room on every call once a key
-	// passed it.
-	err := s.tx.
-		Where("direct_key = ? AND tenant_id = ? AND partition_id IN ? AND deleted_at IS NULL",
-			s.key, s.tenantID, s.partitions).
-		Order("created_at ASC, id ASC").
-		Find(&rooms).Error
-	return rooms, err
+	return keyedRooms(s.tx, s.key, s.tenantID, s.partitions)
 }
 
 func (s *keyedRoomStore) ActiveSubscriptions(roomID string) ([]*models.RoomSubscription, error) {
@@ -129,12 +124,17 @@ func (rr *roomRepository) WithDirectKeyLock(
 	if key == "" {
 		return errors.New("a keyed room lock needs a key")
 	}
+	// READ COMMITTED is required, not incidental: each statement takes a
+	// fresh snapshot, so the reads made after the lock is granted see what
+	// the previous holder committed. Under REPEATABLE READ or SERIALIZABLE
+	// the snapshot could predate that commit and a second room would be
+	// made. It is pinned rather than left to the server's default.
 	return rr.Pool().DB(ctx, false).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", key).Error; err != nil {
 			return fmt.Errorf("failed to lock the room key: %w", err)
 		}
 		return fn(&keyedRoomStore{tx: tx, key: key, tenantID: tenantID, partitions: partitions})
-	})
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
 
 // NewRoomRepository creates a new room repository instance.

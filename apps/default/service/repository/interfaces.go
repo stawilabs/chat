@@ -16,7 +16,8 @@ type RoomRepository interface {
 	GetByTenantAndType(ctx context.Context, tenantID, roomType string) ([]*models.Room, error)
 	GetRoomsByProfileID(ctx context.Context, profileID string) ([]*models.Room, error)
 	// DirectRooms lists the personal rooms (DIRECT, BOT) keyed by key within
-	// the tenant and partitions given, oldest first, deleted rooms excluded.
+	// the tenant and partitions given, oldest first, deleted rooms excluded,
+	// uncapped, from the primary (KeyedRoomStore.Rooms outside the lock).
 	DirectRooms(ctx context.Context, key, tenantID string, partitions []string) ([]*models.Room, error)
 	// WithDirectKeyLock runs fn in one primary transaction holding an
 	// advisory lock on key: resolutions of one key are serialised, and fn

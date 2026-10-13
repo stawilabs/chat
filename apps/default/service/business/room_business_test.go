@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -205,7 +204,6 @@ func (s *RoomBusinessTestSuite) TestPersonalRoomsAreHardened() {
 		known := util.IDString()
 		partnerContact := util.IDString()
 		partnerProfile := util.IDString()
-		var partnerLookups atomic.Int32
 		profiles := &mockProfileClient{
 			getByContactFunc: func(_ context.Context, req *connect.Request[profilev1.GetByContactRequest],
 			) (*connect.Response[profilev1.GetByContactResponse], error) {
@@ -214,12 +212,7 @@ func (s *RoomBusinessTestSuite) TestPersonalRoomsAreHardened() {
 					return connect.NewResponse(&profilev1.GetByContactResponse{
 						Data: &profilev1.ProfileObject{Id: alice.GetProfileId()}}), nil
 				case partnerContact:
-					// The partner resolves when the DM is typed, then fails when
-					// they are subscribed.
-					if partnerLookups.Add(1) == 1 {
-						return connect.NewResponse(&profilev1.GetByContactResponse{
-							Data: &profilev1.ProfileObject{Id: partnerProfile}}), nil
-					}
+					// The partner cannot be checked: the profile service is down.
 					return nil, connect.NewError(connect.CodeUnavailable, errors.New("profile service down"))
 				}
 				return nil, connect.NewError(connect.CodeNotFound, errors.New("no such contact"))
@@ -291,7 +284,10 @@ func (s *RoomBusinessTestSuite) TestPersonalRoomsAreHardened() {
 			require.Equal(t, chatv1.RoomType_ROOM_TYPE_DIRECT, room.GetType())
 		})
 
-		t.Run("a DM whose partner was not subscribed is not left behind", func(t *testing.T) {
+		// A DM is made whole in one transaction (room, both subscriptions and
+		// their relations), so one whose partner cannot be checked is refused
+		// and nothing of it is left.
+		t.Run("a DM whose partner cannot be checked is not made", func(t *testing.T) {
 			_, err := dm("Half made", &commonv1.ContactLink{ContactId: partnerContact})
 			require.ErrorIs(t, err, service.ErrDirectRoomMembers)
 			var live int64
@@ -2974,5 +2970,109 @@ func (s *RoomBusinessTestSuite) TestCreateRoom_CallerSuppliedID() {
 			}
 			require.Equal(t, int64(1), countRooms(roomID))
 		})
+	})
+}
+
+// TestOneDMPerPair: a person's DM with another is the pair's one live DM,
+// WhatsApp-like: either side asking gets the same room, unchanged by the
+// name or description asked for; after someone left, a new one is made; and
+// concurrent asks of the pair answer one room.
+func (s *RoomBusinessTestSuite) TestOneDMPerPair() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		rb := s.setupBusinessLayer(ctx, svc)
+		dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+		roomRepo := repository.NewRoomRepository(ctx, dbPool, svc.WorkManager())
+		subRepo := repository.NewRoomSubscriptionRepository(ctx, dbPool, svc.WorkManager())
+		const tenant, partition = "tenant-dm", "partition-dm"
+		alice := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		bob := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		aliceCtx := s.WithAuthClaims(ctx, tenant, partition, alice.GetProfileId())
+		bobCtx := s.WithAuthClaims(ctx, tenant, partition, bob.GetProfileId())
+		dmWith := func(ctx context.Context, name string, from, to *commonv1.ContactLink) *chatv1.Room {
+			t.Helper()
+			room, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{
+				Name: name, Description: name + " desc", Type: chatv1.RoomType_ROOM_TYPE_DIRECT,
+				Members: []*commonv1.ContactLink{{ProfileId: to.GetProfileId()}},
+			}, from)
+			require.NoError(t, err)
+			return room
+		}
+		activeOf := func(roomID string) []string {
+			subs, err := subRepo.GetByRoomID(ctx, roomID, nil)
+			require.NoError(t, err)
+			var profiles []string
+			for _, sub := range subs {
+				profiles = append(profiles, sub.ProfileID)
+			}
+			return profiles
+		}
+		key := models.DirectKey(alice.GetProfileId(), bob.GetProfileId())
+
+		first := dmWith(aliceCtx, "Bob", alice, bob)
+		require.ElementsMatch(t, []string{alice.GetProfileId(), bob.GetProfileId()}, activeOf(first.GetId()))
+		stored, err := roomRepo.GetByID(ctx, first.GetId())
+		require.NoError(t, err)
+		require.Equal(t, tenant, stored.TenantID, "the DM is in the person's tenancy")
+		require.Equal(t, partition, stored.PartitionID)
+
+		again := dmWith(aliceCtx, "Renamed", alice, bob)
+		require.Equal(t, first.GetId(), again.GetId(), "asked again, the same DM")
+		require.Equal(t, "Bob", again.GetName(), "the existing DM is answered unchanged")
+		require.Equal(t, "Bob desc", again.GetDescription())
+		fromBob := dmWith(bobCtx, "Alice", bob, alice)
+		require.Equal(t, first.GetId(), fromBob.GetId(), "the other side gets the same DM")
+		found, err := roomRepo.DirectRooms(ctx, key, tenant, []string{partition})
+		require.NoError(t, err)
+		require.Len(t, found, 1)
+
+		// Bob leaves: the next ask makes a new DM holding both.
+		subs, err := subRepo.GetByContactLinkAndRooms(ctx, &commonv1.ContactLink{ProfileId: bob.GetProfileId()},
+			first.GetId())
+		require.NoError(t, err)
+		require.Len(t, subs, 1)
+		require.NoError(t, subRepo.Deactivate(ctx, subs[0].GetID()))
+		renewed := dmWith(aliceCtx, "Bob again", alice, bob)
+		require.NotEqual(t, first.GetId(), renewed.GetId())
+		require.ElementsMatch(t, []string{alice.GetProfileId(), bob.GetProfileId()}, activeOf(renewed.GetId()))
+		require.Equal(t, renewed.GetId(), dmWith(bobCtx, "x", bob, alice).GetId())
+
+		// Concurrent asks, from both sides, answer one new pair's DM.
+		carol := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		dave := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		carolCtx := s.WithAuthClaims(ctx, tenant, partition, carol.GetProfileId())
+		daveCtx := s.WithAuthClaims(ctx, tenant, partition, dave.GetProfileId())
+		const callers = 10
+		ids := make([]string, callers)
+		errs := make([]error, callers)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for i := range callers {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				callCtx, from, to := carolCtx, carol, dave
+				if i%2 == 1 {
+					callCtx, from, to = daveCtx, dave, carol
+				}
+				room, callErr := rb.CreateRoom(callCtx, &chatv1.CreateRoomRequest{
+					Name: "DM", Type: chatv1.RoomType_ROOM_TYPE_DIRECT,
+					Members: []*commonv1.ContactLink{{ProfileId: to.GetProfileId()}},
+				}, from)
+				errs[i] = callErr
+				ids[i] = room.GetId()
+			}()
+		}
+		close(start)
+		wg.Wait()
+		for i := range callers {
+			require.NoError(t, errs[i], "caller %d", i)
+			require.Equal(t, ids[0], ids[i], "caller %d answered another DM", i)
+		}
+		found, err = roomRepo.DirectRooms(ctx, models.DirectKey(carol.GetProfileId(), dave.GetProfileId()),
+			tenant, []string{partition})
+		require.NoError(t, err)
+		require.Len(t, found, 1, "exactly one DM made")
 	})
 }

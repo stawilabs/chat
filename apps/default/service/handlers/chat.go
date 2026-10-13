@@ -395,8 +395,10 @@ func (ps *ChatServer) CreateRoom(
 	ctx context.Context,
 	req *connect.Request[chatv1.CreateRoomRequest],
 ) (*connect.Response[chatv1.CreateRoomResponse], error) {
-	// A service principal (no contact) does not create rooms of its own: it
-	// resolves a person's DM or its room with a person, separately authorized.
+	// A contactless internal caller (a service principal) never creates a
+	// group or channel here: its CreateRoom is always a personal-room
+	// resolution (a person's DM, or its own room with a person), authorized
+	// by stawi_room_resolve. Any other type it asks for is refused.
 	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetContactID() == "" &&
 		claims.IsInternalSystem() {
 		if req.Msg == nil {

@@ -18,6 +18,7 @@ import (
 	"github.com/pitabwire/frame/v2"
 	"github.com/pitabwire/frame/v2/data"
 	frevents "github.com/pitabwire/frame/v2/events"
+	"github.com/pitabwire/frame/v2/security"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 
@@ -185,15 +186,22 @@ func (rb *roomBusiness) CreateRoom(
 	if err != nil {
 		return nil, err
 	}
+	if roomType == models.RoomTypeDirect {
+		var dm *models.Room
+		dm, err = rb.resolvePersonsDM(ctx, req, createdBy, members[0], directKey)
+		if err != nil {
+			return nil, err
+		}
+		return dm.ToAPI(), nil
+	}
 
 	// Create the room
 	createdRoom := &models.Room{
 		RoomType:         roomType,
 		Name:             req.GetName(),
 		Description:      req.GetDescription(),
-		IsPublic:         !req.GetIsPrivate() && roomType != models.RoomTypeDirect,
+		IsPublic:         !req.GetIsPrivate(),
 		RequiresApproval: req.GetRequiresApproval(),
-		DirectKey:        directKey,
 	}
 	// Room metadata is persisted so it survives the request: consumers of the
 	// durable room fact stream opt in through it (events.GroupMetadataKey).
@@ -238,22 +246,48 @@ func (rb *roomBusiness) CreateRoom(
 	return createdRoom.ToAPI(), nil
 }
 
+// resolvePersonsDM answers a person's DM with other, WhatsApp-like: the
+// pair's oldest DM in the person's tenancy whose active members are exactly
+// the two, unchanged (the request's name and description do not alter it);
+// else a new one, the person its owner. Resolved under the pair's key lock,
+// so concurrent calls of either person answer one room.
+func (rb *roomBusiness) resolvePersonsDM(ctx context.Context, req *chatv1.CreateRoomRequest,
+	createdBy, other *commonv1.ContactLink, key string) (*models.Room, error) {
+	spec := &keyedRoom{
+		roomType: models.RoomTypeDirect,
+		key:      key,
+		want: []personalMember{
+			{profileID: createdBy.GetProfileId(), contactID: createdBy.GetContactId(), role: roleOwner},
+			{profileID: other.GetProfileId(), contactID: other.GetContactId(), role: roleMember},
+		},
+		actorFirst:  true,
+		name:        req.GetName(),
+		description: req.GetDescription(),
+		partitions:  []string{""},
+	}
+	if metadata := req.GetMetadata(); metadata != nil {
+		spec.properties = data.JSONMap(metadata.AsMap())
+	}
+	if claims := security.ClaimsFromContext(ctx); claims != nil {
+		spec.tenantID, spec.partitionID, spec.accessID = claims.GetTenantID(), claims.GetPartitionID(),
+			claims.GetAccessID()
+		spec.partitions = []string{claims.GetPartitionID()}
+	}
+	return rb.resolveKeyedRoom(ctx, spec)
+}
+
 // settleCreatedMembers decides a new room's fate after its members were
 // added (addErr). A room whose creator could not be made its owner is deleted
 // and refused: it would exist with members and nobody able to administer it.
-// A personal room is all or nothing: one whose other member failed is deleted
-// too, so no half-made keyed DM is left for resolution to find. Otherwise a
-// partial failure keeps the room with the members that succeeded.
+// Otherwise a partial failure keeps the room with the members that succeeded.
+// (A DM never comes here: it is made whole in one transaction.)
 func (rb *roomBusiness) settleCreatedMembers(ctx context.Context, room *models.Room, addErr error) error {
 	if addErr == nil {
 		return nil
 	}
 	partErr, ok := service.IsPartialBatchError(addErr)
-	if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) || room.DirectKey != "" {
+	if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) {
 		_ = rb.roomRepo.Delete(ctx, room.GetID())
-		if room.DirectKey != "" {
-			return fmt.Errorf("%w: %w", service.ErrDirectRoomMembers, addErr)
-		}
 		return fmt.Errorf("failed to create room: %w", addErr)
 	}
 

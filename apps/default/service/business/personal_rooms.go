@@ -10,6 +10,7 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect"
+	"github.com/pitabwire/frame/v2/data"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
@@ -36,7 +37,31 @@ func WithPersonalRooms(checker FunctionPermissionChecker) RoomBusinessOption {
 // personalMember is one subscription a personal room must hold.
 type personalMember struct {
 	profileID string
-	role      string
+	contactID string
+	// role is the role a new room gives the member.
+	role string
+	// mustOwn makes an existing room answer only while this member owns it
+	// (a bot room's service). A DM's roles are not checked: whoever started
+	// it owns it.
+	mustOwn bool
+}
+
+// keyedRoom is what a personal room resolution looks for, and makes when
+// nothing of its key holds exactly its people: the room's type, key and
+// tenancy, the subscriptions it must hold (the first is the creating actor
+// when actorFirst), and what a new room is called.
+type keyedRoom struct {
+	roomType    string
+	key         string
+	want        []personalMember
+	actorFirst  bool
+	name        string
+	description string
+	properties  data.JSONMap
+	tenantID    string
+	partitionID string
+	accessID    string
+	partitions  []string
 }
 
 // ResolvePersonalRoom answers a service's CreateRoom of a DIRECT or BOT room:
@@ -68,21 +93,45 @@ func (rb *roomBusiness) ResolvePersonalRoom(
 		}
 	}
 
+	name := req.GetName()
+	if name == "" {
+		name = defaultDirectRoomName
+		if roomType == models.RoomTypeBot {
+			name = defaultBotRoomName
+		}
+	}
+	room, err := rb.resolveKeyedRoom(ctx, &keyedRoom{
+		roomType: roomType, key: key, want: want, name: name, description: req.GetDescription(),
+		tenantID: caller.tenantID, partitionID: caller.partitionID, accessID: caller.accessID,
+		partitions: caller.partitions,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return room.ToAPI(), nil
+}
+
+// resolveKeyedRoom returns the oldest room of spec's key, in its tenancy,
+// whose active subscriptions are exactly spec.want, else a new one holding
+// them. The lookup and the create run in one primary transaction holding the
+// key's advisory lock, so callers resolving the same people at once get the
+// same room; an existing room is answered unchanged.
+func (rb *roomBusiness) resolveKeyedRoom(ctx context.Context, spec *keyedRoom) (*models.Room, error) {
 	var room *models.Room
-	err = rb.roomRepo.WithDirectKeyLock(ctx, key, caller.tenantID, caller.partitions,
+	err := rb.roomRepo.WithDirectKeyLock(ctx, spec.key, spec.tenantID, spec.partitions,
 		func(store repository.KeyedRoomStore) error {
 			var lockErr error
-			room, lockErr = findPersonalRoom(store, want)
+			room, lockErr = findPersonalRoom(store, spec.want)
 			if lockErr != nil || room != nil {
 				return lockErr
 			}
-			room, lockErr = rb.createPersonalRoom(ctx, store, req, caller, roomType, key, want)
+			room, lockErr = rb.createKeyedRoom(ctx, store, spec)
 			return lockErr
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve the personal room: %w", err)
 	}
-	return room.ToAPI(), nil
+	return room, nil
 }
 
 // personalShape validates a service's personal-room request and returns the
@@ -135,7 +184,7 @@ func personalShape(
 				errors.New("a bot room is exactly one person"))
 		}
 		return models.RoomTypeBot, models.BotKey(callerID, people[0]), []personalMember{
-			{profileID: callerID, role: roleOwner},
+			{profileID: callerID, role: roleOwner, mustOwn: true},
 			{profileID: people[0], role: roleMember},
 		}, nil
 	case chatv1.RoomType_ROOM_TYPE_UNSPECIFIED, chatv1.RoomType_ROOM_TYPE_GROUP, chatv1.RoomType_ROOM_TYPE_CHANNEL:
@@ -166,8 +215,7 @@ func findPersonalRoom(store repository.KeyedRoomStore, want []personalMember) (*
 }
 
 // holdsExactly reports whether subscriptions are exactly one per wanted
-// person, each holding the wanted role (a member's role is not checked: a
-// person's own DM made them its owner).
+// person, and each member that must own the room still does.
 func holdsExactly(subscriptions []*models.RoomSubscription, want []personalMember) bool {
 	if len(subscriptions) != len(want) {
 		return false
@@ -179,7 +227,7 @@ func holdsExactly(subscriptions []*models.RoomSubscription, want []personalMembe
 		if idx < 0 {
 			return false
 		}
-		if member.role == roleOwner &&
+		if member.mustOwn &&
 			!slices.Contains(strings.Split(subscriptions[idx].Role, ","), roleOwner) {
 			return false
 		}
@@ -187,38 +235,30 @@ func holdsExactly(subscriptions []*models.RoomSubscription, want []personalMembe
 	return true
 }
 
-// createPersonalRoom inserts a new private room of the key, in the caller's
-// tenancy, with its subscriptions and their authorization, all inside the
-// key's lock. Any failure undoes all of it: a personal room missing a person
-// is never left for resolution to find.
-func (rb *roomBusiness) createPersonalRoom(
-	ctx context.Context, store repository.KeyedRoomStore, req *chatv1.CreateRoomRequest,
-	caller *serviceCaller, roomType, key string, want []personalMember,
+// createKeyedRoom inserts a new private room of spec's key in spec's
+// tenancy, with its subscriptions, its announcement and their
+// authorization, all inside the key's lock. Any failure undoes all of it: a
+// personal room missing a person is never left for resolution to find.
+func (rb *roomBusiness) createKeyedRoom(
+	ctx context.Context, store repository.KeyedRoomStore, spec *keyedRoom,
 ) (*models.Room, error) {
-	name := req.GetName()
-	if name == "" {
-		name = defaultDirectRoomName
-		if roomType == models.RoomTypeBot {
-			name = defaultBotRoomName
-		}
-	}
 	room := &models.Room{
-		RoomType:    roomType,
-		Name:        name,
-		Description: req.GetDescription(),
+		RoomType:    spec.roomType,
+		Name:        spec.name,
+		Description: spec.description,
 		IsPublic:    false,
-		DirectKey:   key,
+		DirectKey:   spec.key,
+		Properties:  spec.properties,
 	}
 	room.ID = util.IDString()
-	// The room is the people's, in the caller's tenancy: the tenancy cards
-	// are later checked against.
-	room.TenantID, room.PartitionID, room.AccessID = caller.tenantID, caller.partitionID, caller.accessID
+	room.TenantID, room.PartitionID, room.AccessID = spec.tenantID, spec.partitionID, spec.accessID
 
-	subscriptions := make([]*models.RoomSubscription, 0, len(want))
-	for _, member := range want {
+	subscriptions := make([]*models.RoomSubscription, 0, len(spec.want))
+	for _, member := range spec.want {
 		sub := &models.RoomSubscription{
 			RoomID:            room.GetID(),
 			ProfileID:         member.profileID,
+			ContactID:         member.contactID,
 			SubscriptionState: models.RoomSubscriptionStateActive,
 			Role:              member.role,
 		}
@@ -229,9 +269,18 @@ func (rb *roomBusiness) createPersonalRoom(
 	if err := store.Insert(room, subscriptions); err != nil {
 		return nil, fmt.Errorf("failed to save the personal room: %w", err)
 	}
-	if err := announcePersonalRoom(ctx, store, room, subscriptions); err != nil {
+	actor := ""
+	if spec.actorFirst {
+		actor = subscriptions[0].GetID()
+	}
+	if err := announcePersonalRoom(ctx, store, room, actor, subscriptions); err != nil {
 		return nil, err
 	}
+	// Keto is written inside the lock, before the commit: a room another
+	// resolution can find is always one its people may already use. The
+	// lock is held for these calls at most as long as ctx lives (the
+	// handlers bound it at 30s); a cancelled ctx aborts the transaction and
+	// releases the lock, and the relations written are removed.
 	if err := rb.authorizePersonalMembers(ctx, room.GetID(), subscriptions); err != nil {
 		return nil, err
 	}
@@ -263,10 +312,11 @@ func (rb *roomBusiness) authorizePersonalMembers(
 }
 
 // announcePersonalRoom posts the new room's member-added change as a server
-// event (no member added anyone) in the creating transaction, so the people's
+// event (actor: the person who started a DM, else none) in the creating
+// transaction, so the people's
 // devices pick the room up exactly when it exists.
 func announcePersonalRoom(
-	ctx context.Context, store repository.KeyedRoomStore, room *models.Room,
+	ctx context.Context, store repository.KeyedRoomStore, room *models.Room, actorSubscriptionID string,
 	subscriptions []*models.RoomSubscription,
 ) error {
 	ids := make([]string, 0, len(subscriptions))
@@ -277,6 +327,7 @@ func announcePersonalRoom(
 		Type: chatv1.PayloadType_PAYLOAD_TYPE_ROOM_CHANGE,
 		Data: &chatv1.Payload_RoomChange{RoomChange: &chatv1.RoomChangeContent{
 			Action:                chatv1.RoomChangeAction_ROOM_CHANGE_ACTION_MEMBER_ADDED,
+			ActorSubscriptionId:   actorSubscriptionID,
 			TargetSubscriptionIds: ids,
 			Body:                  "Member(s) added to room",
 		}},
