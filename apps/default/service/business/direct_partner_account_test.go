@@ -7,9 +7,9 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/frametests/definition"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/frametests/definition"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
@@ -196,8 +196,8 @@ func (s *MessageBusinessTestSuite) TestADMPartnerLookupDuringASettlementOutageIs
 		f.write(t, dm, f.bob)
 
 		for _, cause := range []error{
-			connect.NewError(connect.CodeUnavailable, errors.New("settlement is down")),
-			connect.NewError(connect.CodePermissionDenied, errors.New("chat lacks profile_account_view")),
+			connect.NewError(connect.CodeUnavailable, "settlement is down"),
+			connect.NewError(connect.CodePermissionDenied, "chat lacks profile_account_view"),
 			errors.New("connection reset"),
 		} {
 			f.partners.Fail(cause)
@@ -206,7 +206,7 @@ func (s *MessageBusinessTestSuite) TestADMPartnerLookupDuringASettlementOutageIs
 		}
 
 		// Settlement knowing no such profile is "no account", not an outage.
-		f.partners.Fail(connect.NewError(connect.CodeNotFound, errors.New("no such profile")))
+		f.partners.Fail(connect.NewError(connect.CodeNotFound, "no such profile"))
 		got, err := f.rb.GetDirectPartnerAccount(f.as(f.alice), dm, f.alice)
 		require.NoError(t, err)
 		require.Equal(t, f.bob.GetProfileId(), got.GetProfileId())

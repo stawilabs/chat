@@ -2,7 +2,6 @@ package business
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -10,9 +9,9 @@ import (
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -56,7 +55,7 @@ func (mb *messageBusiness) SendServiceEvents(
 		return nil, err
 	}
 	if len(req.GetEvent()) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one event must be provided"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "at least one event must be provided")
 	}
 
 	acks := make([]*chatv1.AckEvent, len(req.GetEvent()))
@@ -85,7 +84,7 @@ func (mb *messageBusiness) SendServiceEvents(
 	if _, saveErr := mb.outboxRepo.SaveEventsWithOutbox(ctx, events, payloads); saveErr != nil {
 		for _, event := range events {
 			acks[indexByID[event.GetID()]] = ackEventError(event.GetID(),
-				connect.NewError(connect.CodeInternal, fmt.Errorf("failed to save event: %w", saveErr)))
+				connect.NewError(connect.CodeInternal, fmt.Errorf("failed to save event: %w", saveErr).Error()))
 		}
 		return acks, nil
 	}
@@ -119,24 +118,24 @@ func authorizeService(
 ) (*serviceCaller, error) {
 	claims := security.ClaimsFromContext(ctx)
 	if claims == nil || claims.GetProfileID() == "" {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("request needs to be authenticated"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, "request needs to be authenticated")
 	}
 	if !claims.IsInternalSystem() {
-		return nil, connect.NewError(connect.CodePermissionDenied,
-			fmt.Errorf("only a service principal may use %s", permission))
+		return nil, connect.Errorf(connect.CodePermissionDenied,
+			"only a service principal may use %s", permission)
 	}
 	if claims.GetTenantID() == "" || claims.GetPartitionID() == "" {
 		return nil, connect.NewError(connect.CodePermissionDenied,
-			errors.New("a service principal acts only within its own tenant and partition"))
+			"a service principal acts only within its own tenant and partition")
 	}
 	if checker == nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%s is not enabled", permission))
+		return nil, connect.Errorf(connect.CodePermissionDenied, "%s is not enabled", permission)
 	}
 	// The functional permission is checked at the caller's own
 	// tenant/partition; the room must then be in that tenancy too.
 	if err := checker.Check(ctx, permission); err != nil {
 		return nil, connect.NewError(connect.CodePermissionDenied,
-			fmt.Errorf("the caller does not hold %s: %w", permission, err))
+			fmt.Errorf("the caller does not hold %s: %w", permission, err).Error())
 	}
 	return &serviceCaller{
 		profileID:   claims.GetProfileID(),
@@ -170,17 +169,17 @@ func validateServiceCard(reqEvt *chatv1.RoomEvent) error {
 		if payload.GetType() != chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD ||
 			reqEvt.GetType() != chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT {
 			return connect.NewError(connect.CodeInvalidArgument,
-				errors.New("a finance card is a FINANCE_CARD payload in a ROOM_EVENT_TYPE_EVENT"))
+				"a finance card is a FINANCE_CARD payload in a ROOM_EVENT_TYPE_EVENT")
 		}
 	case *chatv1.Payload_Text:
 		if payload.GetType() != chatv1.PayloadType_PAYLOAD_TYPE_TEXT ||
 			reqEvt.GetType() != chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE {
 			return connect.NewError(connect.CodeInvalidArgument,
-				errors.New("text is a TEXT payload in a ROOM_EVENT_TYPE_MESSAGE"))
+				"text is a TEXT payload in a ROOM_EVENT_TYPE_MESSAGE")
 		}
 	default:
 		return connect.NewError(connect.CodeInvalidArgument,
-			errors.New("a service may post only FINANCE_CARD and TEXT payloads"))
+			"a service may post only FINANCE_CARD and TEXT payloads")
 	}
 	if err := validateFinanceCardPayload(reqEvt); err != nil {
 		return err
@@ -189,7 +188,7 @@ func validateServiceCard(reqEvt *chatv1.RoomEvent) error {
 		return err
 	}
 	if err := protovalidate.Validate(reqEvt); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 	}
 	return nil
 }
@@ -200,7 +199,7 @@ func (mb *messageBusiness) prepareServiceCard(
 	if reqEvt.GetId() == "" {
 		reqEvt.Id = util.IDString()
 	} else if !chatutil.IsValidEventID(reqEvt.GetId()) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("event id must be a valid xid"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, "event id must be a valid xid")
 	}
 
 	if err := validateServiceCard(reqEvt); err != nil {
@@ -214,7 +213,7 @@ func (mb *messageBusiness) prepareServiceCard(
 	if err != nil {
 		if data.ErrorIsNoRows(err) {
 			return nil, connect.NewError(connect.CodePermissionDenied,
-				errors.New("the room is outside the caller's tenant and partition"))
+				"the room is outside the caller's tenant and partition")
 		}
 		return nil, fmt.Errorf("failed to load the room: %w", err)
 	}
@@ -222,7 +221,7 @@ func (mb *messageBusiness) prepareServiceCard(
 	// so the room's tenancy is checked here against the caller's.
 	if !caller.owns(room) {
 		return nil, connect.NewError(connect.CodePermissionDenied,
-			errors.New("the room is outside the caller's tenant and partition"))
+			"the room is outside the caller's tenant and partition")
 	}
 
 	if err = refuseUnlessCardRoom(ctx, mb.stawi.bindings, room, caller); err != nil {
@@ -231,7 +230,7 @@ func (mb *messageBusiness) prepareServiceCard(
 
 	content, err := mb.payloadConverter.FromProto(reqEvt.GetPayload())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to convert event: %w", err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to convert event: %w", err).Error())
 	}
 	event := &models.RoomEvent{
 		RoomID:     room.GetID(),
@@ -264,7 +263,7 @@ func refuseUnlessCardRoom(
 				}
 			}
 			return connect.NewError(connect.CodePermissionDenied,
-				errors.New("a bot room takes cards only from its own service"))
+				"a bot room takes cards only from its own service")
 		}
 	}
 	bound, err := bindings.IsBound(ctx, room.GetID())
@@ -273,7 +272,7 @@ func refuseUnlessCardRoom(
 	}
 	if !bound {
 		return connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("service cards are posted only into Stawi rooms that are on chain and people's personal rooms"))
+			"service cards are posted only into Stawi rooms that are on chain and people's personal rooms")
 	}
 	return nil
 }

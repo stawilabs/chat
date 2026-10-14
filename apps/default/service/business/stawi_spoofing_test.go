@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 )

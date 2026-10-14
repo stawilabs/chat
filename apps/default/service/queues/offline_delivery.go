@@ -3,13 +3,12 @@ package queues
 import (
 	"context"
 
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/queue"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/queue"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -124,7 +123,7 @@ func (dq *offlineDeliveryQueueHandler) Handle(
 		KeyType:       devicev1.KeyType_FCM_TOKEN,
 		Notifications: messages,
 	}
-	resp, err := dq.deviceCli.Notify(ctx, connect.NewRequest(notification))
+	resp, err := dq.deviceCli.Notify(ctx, notification)
 	if err != nil {
 		chattel.NotificationsFailedCounter.Add(ctx, 1)
 		// Retryable: increment retry count and republish

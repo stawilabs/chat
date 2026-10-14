@@ -2,15 +2,14 @@ package business
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/data"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
@@ -144,35 +143,35 @@ func personalShape(
 ) (string, string, []personalMember, error) {
 	if req.GetId() != "" {
 		return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("a personal room is found by its people, never by a supplied id"))
+			"a personal room is found by its people, never by a supplied id")
 	}
 	if !validPersonalKeyID(callerID) {
 		return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("the caller's profile id cannot name a personal room"))
+			"the caller's profile id cannot name a personal room")
 	}
 	people := make([]string, 0, len(req.GetMembers()))
 	for _, member := range req.GetMembers() {
 		if member == nil || member.GetContactId() != "" || !validPersonalKeyID(member.GetProfileId()) {
 			return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("a personal room's people are named by a valid profile id alone"))
+				"a personal room's people are named by a valid profile id alone")
 		}
 		if member.GetProfileId() == callerID {
 			return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("the calling service is not one of a personal room's people"))
+				"the calling service is not one of a personal room's people")
 		}
 		people = append(people, member.GetProfileId())
 	}
 	slices.Sort(people)
 	if len(slices.Compact(slices.Clone(people))) != len(people) {
 		return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("a personal room names each person once"))
+			"a personal room names each person once")
 	}
 
 	switch req.GetType() {
 	case chatv1.RoomType_ROOM_TYPE_DIRECT:
 		if len(people) != 2 { //nolint:mnd // a DM is two people
 			return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("a DM is exactly two people"))
+				"a DM is exactly two people")
 		}
 		return models.RoomTypeDirect, models.DirectKey(people[0], people[1]), []personalMember{
 			{profileID: people[0], role: roleMember},
@@ -181,7 +180,7 @@ func personalShape(
 	case chatv1.RoomType_ROOM_TYPE_BOT:
 		if len(people) != 1 {
 			return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-				errors.New("a bot room is exactly one person"))
+				"a bot room is exactly one person")
 		}
 		return models.RoomTypeBot, models.BotKey(callerID, people[0]), []personalMember{
 			{profileID: callerID, role: roleOwner, mustOwn: true},
@@ -189,8 +188,8 @@ func personalShape(
 		}, nil
 	case chatv1.RoomType_ROOM_TYPE_UNSPECIFIED, chatv1.RoomType_ROOM_TYPE_GROUP, chatv1.RoomType_ROOM_TYPE_CHANNEL:
 	}
-	return "", "", nil, connect.NewError(connect.CodeInvalidArgument,
-		fmt.Errorf("a service resolves only DIRECT and BOT rooms, not %s", req.GetType()))
+	return "", "", nil, connect.Errorf(connect.CodeInvalidArgument,
+		"a service resolves only DIRECT and BOT rooms, not %s", req.GetType())
 }
 
 // findPersonalRoom returns the oldest of the key's rooms whose active

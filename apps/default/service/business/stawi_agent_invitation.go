@@ -8,9 +8,9 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/security"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stawilabs/chat/apps/default/service"
@@ -32,15 +32,15 @@ const agentAcceptanceSkew = time.Hour
 
 var (
 	errAgentInvitationOutsideDM = connect.NewError(connect.CodeFailedPrecondition,
-		errors.New("an agent invitation is sent and accepted in a direct message"))
+		"an agent invitation is sent and accepted in a direct message")
 	errAgentInvitationRoom = connect.NewError(connect.CodePermissionDenied,
-		errors.New("only the room's owner or an admin may invite its agent"))
+		"only the room's owner or an admin may invite its agent")
 	errNoAgentInvitation = invalidStawiPayload(
 		errors.New("there is no such agent invitation in this chat"))
 	errAgentInvitationNotYours = connect.NewError(connect.CodePermissionDenied,
-		errors.New("only the person invited may accept an agent invitation"))
+		"only the person invited may accept an agent invitation")
 	errAgentInvitationExpired = connect.NewError(connect.CodeFailedPrecondition,
-		errors.New("the agent invitation has expired"))
+		"the agent invitation has expired")
 )
 
 // directRoom loads the DM an agent invitation or acceptance is sent in.
@@ -96,7 +96,7 @@ func (sr *stawiRelay) relayAgentInvitation(
 	}
 	if bound {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("the room is already a Stawi room"))}
+			"the room is already a Stawi room")}
 	}
 
 	content.RoomName = room.Name

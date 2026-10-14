@@ -7,7 +7,6 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -64,18 +63,18 @@ func (t *CreateRoomWithApprovalFlagTest) Run(ctx context.Context, client *Client
 	}
 
 	roomID := util.IDString()
-	resp, err := client.Chat().CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	resp, err := client.Chat().CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Id:          roomID,
 		Name:        client.config.TestDataPrefix + "approval-room",
 		Description: "Room that requires approval for changes",
 		IsPrivate:   true,
 		Metadata:    metadata,
-	}))
+	})
 	if err := a.NoError(err, "CreateRoom with approval flag should succeed"); err != nil {
 		return err
 	}
 
-	room := resp.Msg.GetRoom()
+	room := resp.GetRoom()
 	client.TrackRoom(room.GetId())
 
 	if err := a.NotNil(room, "Room should be created"); err != nil {
@@ -122,18 +121,18 @@ func (t *RoomMetadataApprovalFlagTest) Run(ctx context.Context, client *Client) 
 		},
 	})
 
-	resp, err := client.Chat().CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	resp, err := client.Chat().CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Id:          util.IDString(),
 		Name:        client.config.TestDataPrefix + "approval-config-room",
 		Description: "Room with detailed approval configuration",
 		IsPrivate:   true,
 		Metadata:    metadata,
-	}))
+	})
 	if err := a.NoError(err, "CreateRoom should succeed"); err != nil {
 		return err
 	}
 
-	room := resp.Msg.GetRoom()
+	room := resp.GetRoom()
 	client.TrackRoom(room.GetId())
 
 	// Verify the room was created
@@ -163,14 +162,14 @@ func (t *ListProposalsEmptyTest) Run(ctx context.Context, client *Client) error 
 	}
 
 	// List proposals - should be empty
-	resp, err := client.Chat().ListProposals(ctx, connect.NewRequest(&chatv1.ListProposalsRequest{
+	resp, err := client.Chat().ListProposals(ctx, &chatv1.ListProposalsRequest{
 		RoomId: room.GetId(),
-	}))
+	})
 	if err := a.NoError(err, "ListProposals should succeed"); err != nil {
 		return err
 	}
 
-	proposals := resp.Msg.GetProposals()
+	proposals := resp.GetProposals()
 	if err := a.Equal(len(proposals), 0, "Should have no proposals"); err != nil {
 		return err
 	}
@@ -193,9 +192,9 @@ func (t *ListProposalsRequiresRoomIDTest) Run(ctx context.Context, client *Clien
 	var a Assert
 
 	// Try to list proposals without room_id
-	_, err := client.Chat().ListProposals(ctx, connect.NewRequest(&chatv1.ListProposalsRequest{
+	_, err := client.Chat().ListProposals(ctx, &chatv1.ListProposalsRequest{
 		RoomId: "", // Empty room ID
-	}))
+	})
 
 	if err := a.Error(err, "ListProposals without room_id should fail"); err != nil {
 		return err
@@ -232,7 +231,7 @@ func (t *MotionBasedApprovalTest) Run(ctx context.Context, client *Client) error
 	motionID := util.IDString()
 
 	// Create a motion representing a proposal that needs approval
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -257,13 +256,13 @@ func (t *MotionBasedApprovalTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Creating motion should succeed"); err != nil {
 		return err
 	}
 
 	// Cast an approval vote
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -277,7 +276,7 @@ func (t *MotionBasedApprovalTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Casting vote should succeed"); err != nil {
 		return err
 	}
@@ -334,7 +333,7 @@ func (t *MotionWithPercentageRuleTest) Run(ctx context.Context, client *Client) 
 	eligibleVotes := uint32(10)
 
 	// Create a motion requiring 60% approval
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -360,7 +359,7 @@ func (t *MotionWithPercentageRuleTest) Run(ctx context.Context, client *Client) 
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Creating motion with percentage rule should succeed"); err != nil {
 		return err
 	}
@@ -413,7 +412,7 @@ func (t *MotionWithDeadlineTest) Run(ctx context.Context, client *Client) error 
 	// Set deadline to 24 hours from now
 	closesAt := time.Now().Add(24 * time.Hour).Unix()
 
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -438,7 +437,7 @@ func (t *MotionWithDeadlineTest) Run(ctx context.Context, client *Client) error 
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Creating motion with deadline should succeed"); err != nil {
 		return err
 	}
@@ -489,7 +488,7 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 	motionID := util.IDString()
 
 	// Create motion requiring 3 approvals
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -513,13 +512,13 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Creating multi-approver motion should succeed"); err != nil {
 		return err
 	}
 
 	// Cast first vote
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -533,13 +532,13 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "First vote should succeed"); err != nil {
 		return err
 	}
 
 	// Cast second vote
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -553,13 +552,13 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Second vote should succeed"); err != nil {
 		return err
 	}
 
 	// Send tally showing 2/3 approvals (not yet passed)
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -581,13 +580,13 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Intermediate tally should succeed"); err != nil {
 		return err
 	}
 
 	// Cast third vote to reach threshold
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -601,13 +600,13 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Third vote should succeed"); err != nil {
 		return err
 	}
 
 	// Send final tally showing motion passed
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -629,7 +628,7 @@ func (t *MultiApproverMotionTest) Run(ctx context.Context, client *Client) error
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Final tally should succeed"); err != nil {
 		return err
 	}
@@ -689,7 +688,7 @@ func (t *VoteChangeNotAllowedTest) Run(ctx context.Context, client *Client) erro
 	motionID := util.IDString()
 
 	// Create a motion
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -712,13 +711,13 @@ func (t *VoteChangeNotAllowedTest) Run(ctx context.Context, client *Client) erro
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Creating motion should succeed"); err != nil {
 		return err
 	}
 
 	// Cast first vote (yes)
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -732,14 +731,14 @@ func (t *VoteChangeNotAllowedTest) Run(ctx context.Context, client *Client) erro
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "First vote should succeed"); err != nil {
 		return err
 	}
 
 	// Attempt to cast a different vote (no) - behavior may vary by implementation
 	// Some systems allow vote changes, others don't
-	_, secondVoteErr := client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, secondVoteErr := client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -753,7 +752,7 @@ func (t *VoteChangeNotAllowedTest) Run(ctx context.Context, client *Client) erro
 				},
 			},
 		}},
-	}))
+	})
 
 	// Either success (vote change allowed) or error (vote change not allowed) is acceptable
 	// The key is that the system handles it gracefully

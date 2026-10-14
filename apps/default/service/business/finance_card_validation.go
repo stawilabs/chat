@@ -1,10 +1,8 @@
 package business
 
 import (
-	"errors"
-
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 // maxFinanceCardDataEntries mirrors the proto constraint on
@@ -29,7 +27,7 @@ func validateFinanceCardPayload(reqEvt *chatv1.RoomEvent) error {
 	if reqEvt.GetType() != chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("finance card event type must be ROOM_EVENT_TYPE_EVENT"),
+			"finance card event type must be ROOM_EVENT_TYPE_EVENT",
 		)
 	}
 
@@ -37,7 +35,7 @@ func validateFinanceCardPayload(reqEvt *chatv1.RoomEvent) error {
 	if card == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("finance card payload is required"),
+			"finance card payload is required",
 		)
 	}
 
@@ -50,7 +48,7 @@ func validateFinanceCardPayload(reqEvt *chatv1.RoomEvent) error {
 		if value == "" {
 			return connect.NewError(
 				connect.CodeInvalidArgument,
-				errors.New(name+" is required"),
+				name+" is required",
 			)
 		}
 	}
@@ -58,7 +56,7 @@ func validateFinanceCardPayload(reqEvt *chatv1.RoomEvent) error {
 	if len(card.GetData()) > maxFinanceCardDataEntries {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("finance card data has too many entries"),
+			"finance card data has too many entries",
 		)
 	}
 

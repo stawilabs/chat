@@ -7,9 +7,9 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/frametests/definition"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/frametests/definition"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 

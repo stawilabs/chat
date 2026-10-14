@@ -6,9 +6,9 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	"github.com/pitabwire/frame/v2/workerpool"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	"github.com/pitabwire/frame/v3/workerpool"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

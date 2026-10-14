@@ -2,15 +2,14 @@ package business_test
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	financev1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/finance/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -386,7 +385,7 @@ func (s *MessageBusinessTestSuite) TestChainNeverSkipsAFactWhenProfileIsDown() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		cf := s.newChainFixture(t, dep)
 		cf.deliver(t, f2(cf.activated()))
-		cf.accounts.Fail(connect.NewError(connect.CodeUnavailable, errors.New("profile down")))
+		cf.accounts.Fail(connect.NewError(connect.CodeUnavailable, "profile down"))
 		name, payload := cf.stateChanged(cf.roomID, carolAddr, none, active, 7, 0)
 		require.Error(t, cf.chain.Receive(cf.ctx, name, payload))
 		require.Nil(t, cf.subscription(t, cf.carol.GetProfileId()))

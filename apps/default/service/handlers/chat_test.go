@@ -6,10 +6,10 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/frametests/definition"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/frametests/definition"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -41,12 +41,12 @@ func (s *ChatServerTestSuite) createRoomAndWait(
 	svc *frame.Service,
 	chatServer *handlers.ChatServer,
 	profileID string,
-	req *connect.Request[chatv1.CreateRoomRequest],
+	req *chatv1.CreateRoomRequest,
 ) string {
 	t.Helper()
 	createResp, err := chatServer.CreateRoom(ctx, req)
 	require.NoError(t, err)
-	roomID := createResp.Msg.GetRoom().GetId()
+	roomID := createResp.GetRoom().GetId()
 	s.WaitForMemberSubscription(ctx, svc, roomID, profileID, t)
 	s.WaitForAuthzAccess(ctx, svc, profileID, roomID, t)
 	return roomID
@@ -60,18 +60,18 @@ func (s *ChatServerTestSuite) TestCreateRoom() {
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
-		req := connect.NewRequest(&chatv1.CreateRoomRequest{
+		req := &chatv1.CreateRoomRequest{
 			Name:        "Test Room",
 			Description: "A test room",
 			IsPrivate:   false,
 			Metadata:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
-		})
+		}
 
 		resp, err := chatServer.CreateRoom(ctx, req)
 		require.NoError(t, err)
 		s.NotNil(resp)
-		s.NotEmpty(resp.Msg.GetRoom().GetId())
-		s.Equal("Test Room", resp.Msg.GetRoom().GetName())
+		s.NotEmpty(resp.GetRoom().GetId())
+		s.Equal("Test Room", resp.GetRoom().GetName())
 	})
 }
 
@@ -80,10 +80,10 @@ func (s *ChatServerTestSuite) TestCreateRoomUnauthenticated() {
 		ctx, svc := s.CreateService(t, dep)
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
-		req := connect.NewRequest(&chatv1.CreateRoomRequest{
+		req := &chatv1.CreateRoomRequest{
 			Name:      "Test Room",
 			IsPrivate: false,
-		})
+		}
 
 		_, err := chatServer.CreateRoom(ctx, req)
 		require.Error(t, err)
@@ -99,21 +99,21 @@ func (s *ChatServerTestSuite) TestUpdateRoom() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Original Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Update the room
-		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+		updateReq := &chatv1.UpdateRoomRequest{
 			RoomId:      roomID,
 			Name:        "Updated Room",
 			Description: "Updated topic",
-		})
+		}
 
 		updateResp, err := chatServer.UpdateRoom(ctx, updateReq)
 		require.NoError(t, err)
-		s.Equal("Updated Room", updateResp.Msg.GetRoom().GetName())
+		s.Equal("Updated Room", updateResp.GetRoom().GetName())
 	})
 }
 
@@ -126,15 +126,15 @@ func (s *ChatServerTestSuite) TestDeleteRoom() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Room to Delete",
 				IsPrivate: false,
-			}))
+			})
 
 		// Delete the room
-		deleteReq := connect.NewRequest(&chatv1.DeleteRoomRequest{
+		deleteReq := &chatv1.DeleteRoomRequest{
 			RoomId: roomID,
-		})
+		}
 
 		_, err := chatServer.DeleteRoom(ctx, deleteReq)
 		require.NoError(t, err)
@@ -150,13 +150,13 @@ func (s *ChatServerTestSuite) TestSendEvent() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Message Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Send message
-		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
 				{
 					RoomId: roomID,
@@ -166,13 +166,13 @@ func (s *ChatServerTestSuite) TestSendEvent() {
 					},
 				},
 			},
-		})
+		}
 
 		msgResp, err := chatServer.SendEvent(ctx, msgReq)
 		require.NoError(t, err)
-		s.Len(msgResp.Msg.GetAck(), 1)
-		s.NotEmpty(msgResp.Msg.GetAck()[0].GetEventId())
-		s.Len(msgResp.Msg.GetAck()[0].GetEventId(), 1)
+		s.Len(msgResp.GetAck(), 1)
+		s.NotEmpty(msgResp.GetAck()[0].GetEventId())
+		s.Len(msgResp.GetAck()[0].GetEventId(), 1)
 	})
 }
 
@@ -185,14 +185,14 @@ func (s *ChatServerTestSuite) TestGetHistory() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "History Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Send messages
 		for range 5 {
-			msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+			msgReq := &chatv1.SendEventRequest{
 				Event: []*chatv1.RoomEvent{
 					{
 						RoomId: roomID,
@@ -202,21 +202,21 @@ func (s *ChatServerTestSuite) TestGetHistory() {
 						},
 					},
 				},
-			})
+			}
 
 			_, err := chatServer.SendEvent(ctx, msgReq)
 			require.NoError(t, err)
 		}
 
 		// Get history
-		historyReq := connect.NewRequest(&chatv1.GetHistoryRequest{
+		historyReq := &chatv1.GetHistoryRequest{
 			RoomId: roomID,
 			Cursor: &commonv1.PageCursor{Limit: 10, Page: ""},
-		})
+		}
 
 		historyResp, err := chatServer.GetHistory(ctx, historyReq)
 		require.NoError(t, err)
-		s.GreaterOrEqual(len(historyResp.Msg.GetEvents()), 5)
+		s.GreaterOrEqual(len(historyResp.GetEvents()), 5)
 	})
 }
 
@@ -229,15 +229,15 @@ func (s *ChatServerTestSuite) TestAddRoomSubscriptions() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Subscription Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Add member
 		memberID := util.IDString()
 		memberContactID := util.IDString()
-		addReq := connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+		addReq := &chatv1.AddRoomSubscriptionsRequest{
 			RoomId: roomID,
 			Members: []*chatv1.RoomSubscription{
 				{
@@ -245,7 +245,7 @@ func (s *ChatServerTestSuite) TestAddRoomSubscriptions() {
 					Roles:  []string{"member"},
 				},
 			},
-		})
+		}
 
 		_, err := chatServer.AddRoomSubscriptions(ctx, addReq)
 		require.NoError(t, err)
@@ -261,15 +261,15 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Removal Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Add member
 		memberID := util.IDString()
 		memberContactID := util.IDString()
-		addReq := connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+		addReq := &chatv1.AddRoomSubscriptionsRequest{
 			RoomId: roomID,
 			Members: []*chatv1.RoomSubscription{
 				{
@@ -277,7 +277,7 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 					Roles:  []string{"member"},
 				},
 			},
-		})
+		}
 
 		_, err := chatServer.AddRoomSubscriptions(ctx, addReq)
 		require.NoError(t, err)
@@ -286,14 +286,14 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 		s.WaitForMemberSubscription(ctx, svc, roomID, memberID, t)
 
 		// Get subscription ID
-		searchReq := connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
 			RoomId: roomID,
-		})
+		}
 		searchResp, err := chatServer.SearchRoomSubscriptions(ctx, searchReq)
 		require.NoError(t, err)
 
 		var subscriptionID string
-		for _, sub := range searchResp.Msg.GetMembers() {
+		for _, sub := range searchResp.GetMembers() {
 			if sub.GetMember().GetProfileId() == memberID {
 				subscriptionID = sub.GetId()
 				break
@@ -302,10 +302,10 @@ func (s *ChatServerTestSuite) TestRemoveRoomSubscriptions() {
 		require.NotEmpty(t, subscriptionID)
 
 		// Remove member
-		removeReq := connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+		removeReq := &chatv1.RemoveRoomSubscriptionsRequest{
 			RoomId:         roomID,
 			SubscriptionId: []string{subscriptionID},
-		})
+		}
 
 		_, err = chatServer.RemoveRoomSubscriptions(ctx, removeReq)
 		require.NoError(t, err)
@@ -321,15 +321,15 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Role Update Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Add member
 		memberID := util.IDString()
 		memberContactID := util.IDString()
-		addReq := connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+		addReq := &chatv1.AddRoomSubscriptionsRequest{
 			RoomId: roomID,
 			Members: []*chatv1.RoomSubscription{
 				{
@@ -337,7 +337,7 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 					Roles:  []string{"member"},
 				},
 			},
-		})
+		}
 
 		_, err := chatServer.AddRoomSubscriptions(ctx, addReq)
 		require.NoError(t, err)
@@ -346,14 +346,14 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 		s.WaitForMemberSubscription(ctx, svc, roomID, memberID, t)
 
 		// Get subscription ID
-		searchReq := connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
 			RoomId: roomID,
-		})
+		}
 		searchResp, err := chatServer.SearchRoomSubscriptions(ctx, searchReq)
 		require.NoError(t, err)
 
 		var subscriptionID string
-		for _, sub := range searchResp.Msg.GetMembers() {
+		for _, sub := range searchResp.GetMembers() {
 			if sub.GetMember().GetProfileId() == memberID {
 				subscriptionID = sub.GetId()
 				break
@@ -363,21 +363,21 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionRole() {
 
 		// Update role to a valid role (admin). Unknown roles like "moderator"
 		// are rejected by validation — see the rejection assertion below.
-		updateReq := connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+		updateReq := &chatv1.UpdateSubscriptionRoleRequest{
 			RoomId:         roomID,
 			SubscriptionId: subscriptionID,
 			Roles:          []string{"admin"},
-		})
+		}
 
 		_, err = chatServer.UpdateSubscriptionRole(ctx, updateReq)
 		require.NoError(t, err)
 
 		// An unrecognised role is rejected rather than silently downgraded.
-		badReq := connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+		badReq := &chatv1.UpdateSubscriptionRoleRequest{
 			RoomId:         roomID,
 			SubscriptionId: subscriptionID,
 			Roles:          []string{"moderator"},
-		})
+		}
 		_, err = chatServer.UpdateSubscriptionRole(ctx, badReq)
 		require.Error(t, err)
 	})
@@ -392,19 +392,19 @@ func (s *ChatServerTestSuite) TestSearchRoomSubscriptions() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Search Subscriptions Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Search subscriptions
-		searchReq := connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+		searchReq := &chatv1.SearchRoomSubscriptionsRequest{
 			RoomId: roomID,
-		})
+		}
 
 		searchResp, err := chatServer.SearchRoomSubscriptions(ctx, searchReq)
 		require.NoError(t, err)
-		s.GreaterOrEqual(len(searchResp.Msg.GetMembers()), 1) // At least the creator
+		s.GreaterOrEqual(len(searchResp.GetMembers()), 1) // At least the creator
 	})
 }
 
@@ -440,13 +440,13 @@ func (s *ChatServerTestSuite) TestLive_TypingIndicator() {
 		profileID := security.ClaimsFromContext(ctx).ContactID
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Typing Test Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Send typing indicator via Live
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_Typing{
@@ -457,7 +457,7 @@ func (s *ChatServerTestSuite) TestLive_TypingIndicator() {
 					},
 				},
 			},
-		})
+		}
 
 		resp, err := chatServer.Live(ctx, liveReq)
 		require.NoError(t, err)
@@ -472,12 +472,12 @@ func (s *ChatServerTestSuite) TestLive_ReadMarker() {
 		profileID := security.ClaimsFromContext(ctx).ContactID
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "ReadMarker Test Room",
 				IsPrivate: false,
-			}))
+			})
 
-		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
 				{
 					RoomId:  roomID,
@@ -485,14 +485,14 @@ func (s *ChatServerTestSuite) TestLive_ReadMarker() {
 					Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "hello"}}},
 				},
 			},
-		})
+		}
 
 		msgResp, err := chatServer.SendEvent(ctx, msgReq)
 		require.NoError(t, err)
-		eventID := msgResp.Msg.GetAck()[0].GetEventId()[0]
+		eventID := msgResp.GetAck()[0].GetEventId()[0]
 
 		// Mark as read via Live
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_ReadMarker{
@@ -503,7 +503,7 @@ func (s *ChatServerTestSuite) TestLive_ReadMarker() {
 					},
 				},
 			},
-		})
+		}
 
 		resp, err := chatServer.Live(ctx, liveReq)
 		require.NoError(t, err)
@@ -515,9 +515,9 @@ func (s *ChatServerTestSuite) TestLive_EmptyClientStates() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, _, chatServer := s.setupLiveTest(t, dep)
 
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{},
-		})
+		}
 
 		_, err := chatServer.Live(ctx, liveReq)
 		require.Error(t, err)
@@ -529,7 +529,7 @@ func (s *ChatServerTestSuite) TestLive_Unauthenticated() {
 		ctx, svc := s.CreateService(t, dep)
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_Presence{
@@ -539,7 +539,7 @@ func (s *ChatServerTestSuite) TestLive_Unauthenticated() {
 					},
 				},
 			},
-		})
+		}
 
 		_, err := chatServer.Live(ctx, liveReq)
 		require.Error(t, err)
@@ -555,13 +555,13 @@ func (s *ChatServerTestSuite) TestGetEvent() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "GetEvent Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Send a message to get an event ID
-		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
 				{
 					RoomId: roomID,
@@ -571,25 +571,25 @@ func (s *ChatServerTestSuite) TestGetEvent() {
 					},
 				},
 			},
-		})
+		}
 
 		msgResp, err := chatServer.SendEvent(ctx, msgReq)
 		require.NoError(t, err)
-		require.Len(t, msgResp.Msg.GetAck(), 1)
-		require.Len(t, msgResp.Msg.GetAck()[0].GetEventId(), 1)
-		eventID := msgResp.Msg.GetAck()[0].GetEventId()[0]
+		require.Len(t, msgResp.GetAck(), 1)
+		require.Len(t, msgResp.GetAck()[0].GetEventId(), 1)
+		eventID := msgResp.GetAck()[0].GetEventId()[0]
 
 		// Get the event by ID
-		getReq := connect.NewRequest(&chatv1.GetEventRequest{
+		getReq := &chatv1.GetEventRequest{
 			RoomId:  roomID,
 			EventId: eventID,
-		})
+		}
 
 		getResp, err := chatServer.GetEvent(ctx, getReq)
 		require.NoError(t, err)
-		s.NotNil(getResp.Msg.GetEvent())
-		s.Equal(eventID, getResp.Msg.GetEvent().GetId())
-		s.Equal(roomID, getResp.Msg.GetEvent().GetRoomId())
+		s.NotNil(getResp.GetEvent())
+		s.Equal(eventID, getResp.GetEvent().GetId())
+		s.Equal(roomID, getResp.GetEvent().GetRoomId())
 	})
 }
 
@@ -601,9 +601,9 @@ func (s *ChatServerTestSuite) TestGetEvent_InvalidEventID() {
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
-		getReq := connect.NewRequest(&chatv1.GetEventRequest{
+		getReq := &chatv1.GetEventRequest{
 			EventId: "",
-		})
+		}
 
 		_, err := chatServer.GetEvent(ctx, getReq)
 		require.Error(t, err)
@@ -619,22 +619,22 @@ func (s *ChatServerTestSuite) TestGetRoom() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:        "GetRoom Test",
 				Description: "A room to retrieve",
 				IsPrivate:   false,
-			}))
+			})
 
 		// Get the room
-		getReq := connect.NewRequest(&chatv1.GetRoomRequest{
+		getReq := &chatv1.GetRoomRequest{
 			RoomId: roomID,
-		})
+		}
 
 		getResp, err := chatServer.GetRoom(ctx, getReq)
 		require.NoError(t, err)
-		s.NotNil(getResp.Msg.GetRoom())
-		s.Equal(roomID, getResp.Msg.GetRoom().GetId())
-		s.Equal("GetRoom Test", getResp.Msg.GetRoom().GetName())
+		s.NotNil(getResp.GetRoom())
+		s.Equal(roomID, getResp.GetRoom().GetId())
+		s.Equal("GetRoom Test", getResp.GetRoom().GetName())
 	})
 }
 
@@ -646,9 +646,9 @@ func (s *ChatServerTestSuite) TestGetRoom_InvalidRoomID() {
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
-		getReq := connect.NewRequest(&chatv1.GetRoomRequest{
+		getReq := &chatv1.GetRoomRequest{
 			RoomId: "",
-		})
+		}
 
 		_, err := chatServer.GetRoom(ctx, getReq)
 		require.Error(t, err)
@@ -660,9 +660,9 @@ func (s *ChatServerTestSuite) TestGetRoom_Unauthenticated() {
 		ctx, svc := s.CreateService(t, dep)
 		chatServer := handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware)
 
-		getReq := connect.NewRequest(&chatv1.GetRoomRequest{
+		getReq := &chatv1.GetRoomRequest{
 			RoomId: util.IDString(),
-		})
+		}
 
 		_, err := chatServer.GetRoom(ctx, getReq)
 		require.Error(t, err)
@@ -678,20 +678,20 @@ func (s *ChatServerTestSuite) TestGetSubscriptionSettings() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Settings Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Get subscription settings
-		getReq := connect.NewRequest(&chatv1.GetSubscriptionSettingsRequest{
+		getReq := &chatv1.GetSubscriptionSettingsRequest{
 			RoomId: roomID,
-		})
+		}
 
 		getResp, err := chatServer.GetSubscriptionSettings(ctx, getReq)
 		require.NoError(t, err)
-		s.NotNil(getResp.Msg.GetSettings())
-		s.Equal(roomID, getResp.Msg.GetSettings().GetRoomId())
+		s.NotNil(getResp.GetSettings())
+		s.Equal(roomID, getResp.GetSettings().GetRoomId())
 	})
 }
 
@@ -703,9 +703,9 @@ func (s *ChatServerTestSuite) TestGetSubscriptionSettings_InvalidRoomID() {
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
-		getReq := connect.NewRequest(&chatv1.GetSubscriptionSettingsRequest{
+		getReq := &chatv1.GetSubscriptionSettingsRequest{
 			RoomId: "",
-		})
+		}
 
 		_, err := chatServer.GetSubscriptionSettings(ctx, getReq)
 		require.Error(t, err)
@@ -721,29 +721,29 @@ func (s *ChatServerTestSuite) TestUpdateSubscriptionSettings() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Update Settings Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Update subscription settings with muted, pinned, and notification level
 		nl := chatv1.NotificationLevel_NOTIFICATION_LEVEL_MENTIONS
-		updateReq := connect.NewRequest(&chatv1.UpdateSubscriptionSettingsRequest{
+		updateReq := &chatv1.UpdateSubscriptionSettingsRequest{
 			RoomId:            roomID,
 			Muted:             proto.Bool(true),
 			Pinned:            proto.Bool(true),
 			Archived:          proto.Bool(false),
 			NotificationLevel: &nl,
-		})
+		}
 
 		updateResp, err := chatServer.UpdateSubscriptionSettings(ctx, updateReq)
 		require.NoError(t, err)
-		s.NotNil(updateResp.Msg.GetSettings())
-		s.True(updateResp.Msg.GetSettings().GetMuted())
-		s.True(updateResp.Msg.GetSettings().GetPinned())
-		s.False(updateResp.Msg.GetSettings().GetArchived())
+		s.NotNil(updateResp.GetSettings())
+		s.True(updateResp.GetSettings().GetMuted())
+		s.True(updateResp.GetSettings().GetPinned())
+		s.False(updateResp.GetSettings().GetArchived())
 		s.Equal(chatv1.NotificationLevel_NOTIFICATION_LEVEL_MENTIONS,
-			updateResp.Msg.GetSettings().GetNotificationLevel())
+			updateResp.GetSettings().GetNotificationLevel())
 	})
 }
 
@@ -754,13 +754,13 @@ func (s *ChatServerTestSuite) TestLive_DeliveryReceipt() {
 		profileID := security.ClaimsFromContext(ctx).ContactID
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Receipt Test Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// Send a message to get an event ID
-		msgReq := connect.NewRequest(&chatv1.SendEventRequest{
+		msgReq := &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{
 				{
 					RoomId: roomID,
@@ -770,14 +770,14 @@ func (s *ChatServerTestSuite) TestLive_DeliveryReceipt() {
 					},
 				},
 			},
-		})
+		}
 
 		msgResp, err := chatServer.SendEvent(ctx, msgReq)
 		require.NoError(t, err)
-		eventID := msgResp.Msg.GetAck()[0].GetEventId()[0]
+		eventID := msgResp.GetAck()[0].GetEventId()[0]
 
 		// Send delivery receipt via Live
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_Receipt{
@@ -788,7 +788,7 @@ func (s *ChatServerTestSuite) TestLive_DeliveryReceipt() {
 					},
 				},
 			},
-		})
+		}
 
 		resp, err := chatServer.Live(ctx, liveReq)
 		require.NoError(t, err)
@@ -804,12 +804,12 @@ func (s *ChatServerTestSuite) TestLive_Presence() {
 
 		// Create a room so the service is fully initialized
 		_ = s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Presence Test Room",
 				IsPrivate: false,
-			}))
+			})
 
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_Presence{
@@ -820,7 +820,7 @@ func (s *ChatServerTestSuite) TestLive_Presence() {
 					},
 				},
 			},
-		})
+		}
 
 		resp, err := chatServer.Live(ctx, liveReq)
 		require.NoError(t, err)
@@ -835,13 +835,13 @@ func (s *ChatServerTestSuite) TestLive_RoomEvent() {
 		profileID := security.ClaimsFromContext(ctx).ContactID
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Live RoomEvent Test",
 				IsPrivate: false,
-			}))
+			})
 
 		// Send a room event via Live
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_Event{
@@ -855,7 +855,7 @@ func (s *ChatServerTestSuite) TestLive_RoomEvent() {
 					},
 				},
 			},
-		})
+		}
 
 		resp, err := chatServer.Live(ctx, liveReq)
 		require.NoError(t, err)
@@ -868,11 +868,11 @@ func (s *ChatServerTestSuite) TestLive_NilClientState() {
 		ctx, _, chatServer := s.setupLiveTest(t, dep)
 
 		// Send a nil client state in the list - should result in partial failure
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				nil,
 			},
-		})
+		}
 
 		// All states failed so this returns an error
 		_, err := chatServer.Live(ctx, liveReq)
@@ -896,9 +896,9 @@ func (s *ChatServerTestSuite) TestLive_TooManyClientStates() {
 			}
 		}
 
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: states,
-		})
+		}
 
 		_, err := chatServer.Live(ctx, liveReq)
 		require.Error(t, err)
@@ -915,34 +915,34 @@ func (s *ChatServerTestSuite) TestListProposals() {
 
 		// Create a room that requires approval
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:             "Proposal Room",
 				IsPrivate:        false,
 				RequiresApproval: true,
-			}))
+			})
 
 		// Attempt to update the room — this should create a proposal instead
 		// of directly updating, and return ErrProposalRequired.
-		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+		updateReq := &chatv1.UpdateRoomRequest{
 			RoomId: roomID,
 			Name:   "Proposed Name Change",
-		})
+		}
 
 		_, updateErr := chatServer.UpdateRoom(ctx, updateReq)
 		require.Error(t, updateErr, "UpdateRoom on a RequiresApproval room should return an error")
 		s.Equal(connect.CodeFailedPrecondition, connect.CodeOf(updateErr))
 
 		// List proposals — there should be at least one pending proposal
-		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+		listReq := &chatv1.ListProposalsRequest{
 			RoomId: roomID,
-		})
+		}
 
 		listResp, err := chatServer.ListProposals(ctx, listReq)
 		require.NoError(t, err)
-		s.GreaterOrEqual(len(listResp.Msg.GetProposals()), 1)
+		s.GreaterOrEqual(len(listResp.GetProposals()), 1)
 
 		// Verify the proposal has the expected fields
-		proposal := listResp.Msg.GetProposals()[0]
+		proposal := listResp.GetProposals()[0]
 		s.Equal(roomID, proposal.GetRoomId())
 		s.NotEmpty(proposal.GetId())
 		s.Equal(profileID, proposal.GetRequestedBy())
@@ -958,9 +958,9 @@ func (s *ChatServerTestSuite) TestListProposals_InvalidRoomID() {
 		profileID := util.IDString()
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
-		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+		listReq := &chatv1.ListProposalsRequest{
 			RoomId: "",
-		})
+		}
 
 		_, err := chatServer.ListProposals(ctx, listReq)
 		require.Error(t, err)
@@ -978,45 +978,45 @@ func (s *ChatServerTestSuite) TestSubmitProposal_Approve() {
 
 		// Create a room that requires approval
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:             "Approve Proposal Room",
 				IsPrivate:        false,
 				RequiresApproval: true,
-			}))
+			})
 
 		// Trigger a proposal via UpdateRoom
-		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+		updateReq := &chatv1.UpdateRoomRequest{
 			RoomId: roomID,
 			Name:   "Approved Name",
-		})
+		}
 
 		_, updateErr := chatServer.UpdateRoom(ctx, updateReq)
 		require.Error(t, updateErr)
 		s.Equal(connect.CodeFailedPrecondition, connect.CodeOf(updateErr))
 
 		// Get the proposal ID from ListProposals
-		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+		listReq := &chatv1.ListProposalsRequest{
 			RoomId: roomID,
-		})
+		}
 
 		listResp, err := chatServer.ListProposals(ctx, listReq)
 		require.NoError(t, err)
-		require.GreaterOrEqual(t, len(listResp.Msg.GetProposals()), 1)
+		require.GreaterOrEqual(t, len(listResp.GetProposals()), 1)
 
-		proposalID := listResp.Msg.GetProposals()[0].GetId()
+		proposalID := listResp.GetProposals()[0].GetId()
 
 		// Approve the proposal
-		submitReq := connect.NewRequest(&chatv1.SubmitProposalRequest{
+		submitReq := &chatv1.SubmitProposalRequest{
 			RoomId:     roomID,
 			ProposalId: proposalID,
 			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-		})
+		}
 
 		submitResp, err := chatServer.SubmitProposal(ctx, submitReq)
 		require.NoError(t, err)
 		s.NotNil(submitResp)
 		// Successful approval returns no error detail
-		s.Nil(submitResp.Msg.GetError())
+		s.Nil(submitResp.GetError())
 	})
 }
 
@@ -1030,45 +1030,45 @@ func (s *ChatServerTestSuite) TestSubmitProposal_Reject() {
 
 		// Create a room that requires approval
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:             "Reject Proposal Room",
 				IsPrivate:        false,
 				RequiresApproval: true,
-			}))
+			})
 
 		// Trigger a proposal via UpdateRoom
-		updateReq := connect.NewRequest(&chatv1.UpdateRoomRequest{
+		updateReq := &chatv1.UpdateRoomRequest{
 			RoomId: roomID,
 			Name:   "Rejected Name",
-		})
+		}
 
 		_, updateErr := chatServer.UpdateRoom(ctx, updateReq)
 		require.Error(t, updateErr)
 		s.Equal(connect.CodeFailedPrecondition, connect.CodeOf(updateErr))
 
 		// Get the proposal ID from ListProposals
-		listReq := connect.NewRequest(&chatv1.ListProposalsRequest{
+		listReq := &chatv1.ListProposalsRequest{
 			RoomId: roomID,
-		})
+		}
 
 		listResp, err := chatServer.ListProposals(ctx, listReq)
 		require.NoError(t, err)
-		require.GreaterOrEqual(t, len(listResp.Msg.GetProposals()), 1)
+		require.GreaterOrEqual(t, len(listResp.GetProposals()), 1)
 
-		proposalID := listResp.Msg.GetProposals()[0].GetId()
+		proposalID := listResp.GetProposals()[0].GetId()
 
 		// Reject the proposal with a reason
-		submitReq := connect.NewRequest(&chatv1.SubmitProposalRequest{
+		submitReq := &chatv1.SubmitProposalRequest{
 			RoomId:     roomID,
 			ProposalId: proposalID,
 			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_REJECT,
 			Reason:     proto.String("Not appropriate at this time"),
-		})
+		}
 
 		submitResp, err := chatServer.SubmitProposal(ctx, submitReq)
 		require.NoError(t, err)
 		s.NotNil(submitResp)
-		s.Nil(submitResp.Msg.GetError())
+		s.Nil(submitResp.GetError())
 	})
 }
 
@@ -1081,29 +1081,29 @@ func (s *ChatServerTestSuite) TestSubmitProposal_InvalidArgs() {
 		ctx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, profileID)
 
 		// Empty room_id
-		_, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+		_, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 			RoomId:     "",
 			ProposalId: util.IDString(),
 			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-		}))
+		})
 		require.Error(t, err)
 		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
 
 		// Empty proposal_id
-		_, err = chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+		_, err = chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 			RoomId:     util.IDString(),
 			ProposalId: "",
 			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-		}))
+		})
 		require.Error(t, err)
 		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
 
 		// Unspecified action
-		_, err = chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+		_, err = chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 			RoomId:     util.IDString(),
 			ProposalId: util.IDString(),
 			Action:     chatv1.ProposalAction_PROPOSAL_ACTION_UNSPECIFIED,
-		}))
+		})
 		require.Error(t, err)
 		s.Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
 	})
@@ -1118,13 +1118,13 @@ func (s *ChatServerTestSuite) TestLive_MixedValidAndInvalid() {
 		profileID := security.ClaimsFromContext(ctx).ContactID
 
 		roomID := s.createRoomAndWait(ctx, t, svc, chatServer, profileID,
-			connect.NewRequest(&chatv1.CreateRoomRequest{
+			&chatv1.CreateRoomRequest{
 				Name:      "Mixed Live Test Room",
 				IsPrivate: false,
-			}))
+			})
 
 		// One valid typing + one invalid nil receipt = partial failure (returns response with error detail, not error)
-		liveReq := connect.NewRequest(&chatv1.LiveRequest{
+		liveReq := &chatv1.LiveRequest{
 			ClientStates: []*chatv1.ClientCommand{
 				{
 					State: &chatv1.ClientCommand_Typing{
@@ -1140,12 +1140,12 @@ func (s *ChatServerTestSuite) TestLive_MixedValidAndInvalid() {
 					},
 				},
 			},
-		})
+		}
 
 		resp, err := chatServer.Live(ctx, liveReq)
 		// Partial failure: one succeeded, one failed -- returns response with error detail
 		require.NoError(t, err)
-		s.NotNil(resp.Msg.GetError())
+		s.NotNil(resp.GetError())
 	})
 }
 
@@ -1172,16 +1172,16 @@ func (s *ChatServerTestSuite) TestCreateRoomRoutesAServicePrincipalToResolution(
 	svcClaims := &security.AuthenticationClaims{TenantID: testTenantID, PartitionID: testPartitionID,
 		Roles: []string{security.ConstantSystemInternalRole}}
 	svcClaims.Subject = util.IDString()
-	resp, err := chatServer.CreateRoom(svcClaims.ClaimsToContext(context.Background()), connect.NewRequest(dm))
+	resp, err := chatServer.CreateRoom(svcClaims.ClaimsToContext(context.Background()), dm)
 	require.NoError(t, err)
-	require.Equal(t, "dm-1", resp.Msg.GetRoom().GetId())
+	require.Equal(t, "dm-1", resp.GetRoom().GetId())
 	require.Len(t, resolved, 1)
 	require.Empty(t, created)
 
 	personCtx := s.WithAuthClaims(context.Background(), testTenantID, testPartitionID, util.IDString())
-	resp, err = chatServer.CreateRoom(personCtx, connect.NewRequest(&chatv1.CreateRoomRequest{Name: "Group"}))
+	resp, err = chatServer.CreateRoom(personCtx, &chatv1.CreateRoomRequest{Name: "Group"})
 	require.NoError(t, err)
-	require.Equal(t, "room-1", resp.Msg.GetRoom().GetId())
+	require.Equal(t, "room-1", resp.GetRoom().GetId())
 	require.Len(t, resolved, 1, "a person's call is not a resolution")
 	require.Len(t, created, 1)
 }

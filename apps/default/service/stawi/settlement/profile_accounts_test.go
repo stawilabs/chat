@@ -2,14 +2,14 @@ package settlement_test
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/v2/settlement/v1/settlementv1connect"
 	settlementv1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/settlement/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/service/stawi"
@@ -27,22 +27,26 @@ type fakeAccountService struct {
 }
 
 func (f *fakeAccountService) GetProfileAccount(
-	_ context.Context, req *connect.Request[settlementv1.GetProfileAccountRequest],
-) (*connect.Response[settlementv1.GetProfileAccountResponse], error) {
-	f.asked = req.Msg.GetProfileId()
+	_ context.Context, req *settlementv1.GetProfileAccountRequest,
+) (*settlementv1.GetProfileAccountResponse, error) {
+	f.asked = req.GetProfileId()
 	if f.err != nil {
 		return nil, f.err
 	}
-	return connect.NewResponse(f.resp), nil
+	return f.resp, nil
 }
 
 func newProfileAccounts(t *testing.T, fake *fakeAccountService) stawi.ProfileAccounts {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.Handle(settlementv1connect.NewAccountServiceHandler(fake))
+	srv := connect.NewServer()
+	settlementv1connect.RegisterAccountServiceHandler(srv, fake)
+	connecthttp.Mount(mux, srv)
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
-	return settlement.NewProfileAccounts(settlementv1connect.NewAccountServiceClient(server.Client(), server.URL))
+	return settlement.NewProfileAccounts(settlementv1connect.NewAccountServiceClient(
+		connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL)),
+	))
 }
 
 func TestGetProfileAccountMapsSettlementsAnswer(t *testing.T) {
@@ -63,7 +67,7 @@ func TestGetProfileAccountMapsSettlementsAnswer(t *testing.T) {
 }
 
 func TestGetProfileAccountKeepsSettlementsCode(t *testing.T) {
-	fake := &fakeAccountService{err: connect.NewError(connect.CodeUnavailable, errors.New("profile is down"))}
+	fake := &fakeAccountService{err: connect.NewError(connect.CodeUnavailable, "profile is down")}
 	_, err := newProfileAccounts(t, fake).GetProfileAccount(t.Context(), memberID)
 	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
 }

@@ -2,14 +2,13 @@ package business
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"regexp"
 	"strings"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -48,7 +47,7 @@ func (mb *messageBusiness) validateFormRequestPayload(
 	if reqEvt.GetType() != chatv1.RoomEventType_ROOM_EVENT_TYPE_FORM_REQUEST {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form request event type must be ROOM_EVENT_TYPE_FORM_REQUEST"),
+			"form request event type must be ROOM_EVENT_TYPE_FORM_REQUEST",
 		)
 	}
 
@@ -56,26 +55,26 @@ func (mb *messageBusiness) validateFormRequestPayload(
 	if content == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form request payload is required"),
+			"form request payload is required",
 		)
 	}
 
 	if content.GetFormInstanceId() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form_instance_id is required"),
+			"form_instance_id is required",
 		)
 	}
 	if content.GetSchemaId() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("schema_id is required"),
+			"schema_id is required",
 		)
 	}
 	if content.GetSchemaVersion() <= 0 {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("schema_version must be positive"),
+			"schema_version must be positive",
 		)
 	}
 
@@ -88,7 +87,7 @@ func (mb *messageBusiness) validateFormRequestPayload(
 	if schema == nil || len(schema.GetSteps()) == 0 {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form request schema must include at least one step"),
+			"form request schema must include at least one step",
 		)
 	}
 	if schema.GetFormId() == "" {
@@ -111,15 +110,14 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 	if reqEvt.GetType() != chatv1.RoomEventType_ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New(
-				"form submission result event type must be ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT",
-			),
+
+			"form submission result event type must be ROOM_EVENT_TYPE_FORM_SUBMISSION_RESULT",
 		)
 	}
 	if reqEvt.GetParentId() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form submission result requires parent_id"),
+			"form submission result requires parent_id",
 		)
 	}
 
@@ -127,13 +125,13 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 	if content == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form submission result payload is required"),
+			"form submission result payload is required",
 		)
 	}
 	if !content.GetReviewConfirmed() {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("review_confirmed must be true before submission"),
+			"review_confirmed must be true before submission",
 		)
 	}
 
@@ -141,7 +139,7 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 	if err != nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			fmt.Errorf("parent form request not found: %w", err),
+			fmt.Errorf("parent form request not found: %w", err).Error(),
 		)
 	}
 
@@ -149,7 +147,7 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 	if err != nil {
 		return connect.NewError(
 			connect.CodeInternal,
-			fmt.Errorf("failed to load parent form request: %w", err),
+			fmt.Errorf("failed to load parent form request: %w", err).Error(),
 		)
 	}
 	parentForm := parentPayload.GetFormRequest()
@@ -157,7 +155,7 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 		parentForm == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("parent event is not a form request"),
+			"parent event is not a form request",
 		)
 	}
 
@@ -165,14 +163,14 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 		parentForm.GetState() == chatv1.FormMessageState_FORM_MESSAGE_STATE_CANCELLED {
 		return connect.NewError(
 			connect.CodeFailedPrecondition,
-			errors.New("form is no longer active"),
+			"form is no longer active",
 		)
 	}
 	if assigneeID := parentForm.GetPermissions().GetAssigneeSubscriptionId(); assigneeID != "" &&
 		assigneeID != subscriptionID {
 		return connect.NewError(
 			connect.CodePermissionDenied,
-			errors.New("only the assigned subscription may submit this form"),
+			"only the assigned subscription may submit this form",
 		)
 	}
 	existingSubmission, err := mb.hasExistingFormSubmissionForSender(
@@ -184,13 +182,13 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 	if err != nil {
 		return connect.NewError(
 			connect.CodeInternal,
-			fmt.Errorf("failed checking existing form submissions: %w", err),
+			fmt.Errorf("failed checking existing form submissions: %w", err).Error(),
 		)
 	}
 	if existingSubmission {
 		return connect.NewError(
 			connect.CodeAlreadyExists,
-			errors.New("this subscription has already submitted this form"),
+			"this subscription has already submitted this form",
 		)
 	}
 
@@ -215,7 +213,7 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 		content.GetSchemaVersion() != parentForm.GetSchemaVersion() {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form submission does not match parent form schema"),
+			"form submission does not match parent form schema",
 		)
 	}
 
@@ -223,13 +221,13 @@ func (mb *messageBusiness) validateAndNormalizeFormSubmissionPayload(
 	if snapshot == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("submission_snapshot is required"),
+			"submission_snapshot is required",
 		)
 	}
 	if snapshot.GetAnswers() == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("submission answers are required"),
+			"submission answers are required",
 		)
 	}
 
@@ -296,25 +294,25 @@ func validateFormSchema(schema *chatv1.FormSchema) error {
 	if schema == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form schema is required"),
+			"form schema is required",
 		)
 	}
 	if schema.GetFormId() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form schema id is required"),
+			"form schema id is required",
 		)
 	}
 	if schema.GetFormVersion() <= 0 {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form schema version must be positive"),
+			"form schema version must be positive",
 		)
 	}
 	if len(schema.GetSteps()) == 0 {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form schema must define at least one step"),
+			"form schema must define at least one step",
 		)
 	}
 
@@ -323,7 +321,7 @@ func validateFormSchema(schema *chatv1.FormSchema) error {
 		if step.GetId() == "" {
 			return connect.NewError(
 				connect.CodeInvalidArgument,
-				errors.New("each form step requires an id"),
+				"each form step requires an id",
 			)
 		}
 		for _, section := range step.GetSections() {
@@ -346,7 +344,7 @@ func validateFormSection(
 	if section.GetId() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("each form section requires an id"),
+			"each form section requires an id",
 		)
 	}
 	for _, field := range section.GetFields() {
@@ -367,13 +365,13 @@ func validateFormField(
 	if field.GetKey() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("form field key is required"),
+			"form field key is required",
 		)
 	}
 	if _, exists := seenKeys[field.GetKey()]; exists {
-		return connect.NewError(
+		return connect.Errorf(
 			connect.CodeInvalidArgument,
-			fmt.Errorf("duplicate form field key %q", field.GetKey()),
+			"duplicate form field key %q", field.GetKey(),
 		)
 	}
 	seenKeys[field.GetKey()] = struct{}{}
@@ -399,7 +397,7 @@ func validateFormAnswers(
 	if schema == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("submission schema is required"),
+			"submission schema is required",
 		)
 	}
 
@@ -436,9 +434,9 @@ func validateAnswerForField(
 	isRequired := field.GetRequired() || hasRequiredRule(field.GetValidationRules())
 	if !hasValue || isEmptyValue(value) {
 		if isRequired {
-			return connect.NewError(
+			return connect.Errorf(
 				connect.CodeInvalidArgument,
-				fmt.Errorf("missing required form field %q", field.GetKey()),
+				"missing required form field %q", field.GetKey(),
 			)
 		}
 		return nil
@@ -450,9 +448,9 @@ func validateAnswerForField(
 		chatv1.FormFieldType_FORM_FIELD_TYPE_SECTION:
 		childMap, ok := value.(map[string]any)
 		if !ok {
-			return connect.NewError(
+			return connect.Errorf(
 				connect.CodeInvalidArgument,
-				fmt.Errorf("field %q must be an object", field.GetKey()),
+				"field %q must be an object", field.GetKey(),
 			)
 		}
 		for _, nestedField := range field.GetNestedFields() {
@@ -471,17 +469,17 @@ func validateAnswerForField(
 	case chatv1.FormFieldType_FORM_FIELD_TYPE_REPEATABLE_GROUP:
 		items, ok := value.([]any)
 		if !ok {
-			return connect.NewError(
+			return connect.Errorf(
 				connect.CodeInvalidArgument,
-				fmt.Errorf("field %q must be a list", field.GetKey()),
+				"field %q must be a list", field.GetKey(),
 			)
 		}
 		for _, item := range items {
 			itemMap, itemOK := item.(map[string]any)
 			if !itemOK {
-				return connect.NewError(
+				return connect.Errorf(
 					connect.CodeInvalidArgument,
-					fmt.Errorf("repeatable group %q items must be objects", field.GetKey()),
+					"repeatable group %q items must be objects", field.GetKey(),
 				)
 			}
 			for _, nestedField := range field.GetNestedFields() {
@@ -801,8 +799,8 @@ func compareValues(left any, right any) int {
 }
 
 func invalidFieldError(fieldKey string, message string) error {
-	return connect.NewError(
+	return connect.Errorf(
 		connect.CodeInvalidArgument,
-		fmt.Errorf("field %q %s", fieldKey, message),
+		"field %q %s", fieldKey, message,
 	)
 }

@@ -2,16 +2,16 @@ package settlement_test
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/v2/settlement/v1/settlementv1connect"
 	financev1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/finance/v1"
 	settlementv1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/settlement/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -64,68 +64,71 @@ type fakeRoomService struct {
 }
 
 func (f *fakeRoomService) PrepareRoomGenesis(
-	_ context.Context, req *connect.Request[settlementv1.PrepareRoomGenesisRequest],
-) (*connect.Response[settlementv1.PrepareRoomGenesisResponse], error) {
+	_ context.Context, req *settlementv1.PrepareRoomGenesisRequest,
+) (*settlementv1.PrepareRoomGenesisResponse, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	f.prepared = req.Msg
-	founders := make([]*settlementv1.RoomFounder, 0, len(req.Msg.GetFounderProfileIds()))
-	for _, id := range req.Msg.GetFounderProfileIds() {
+	f.prepared = req
+	founders := make([]*settlementv1.RoomFounder, 0, len(req.GetFounderProfileIds()))
+	for _, id := range req.GetFounderProfileIds() {
 		founders = append(founders, &settlementv1.RoomFounder{ProfileId: id, Account: signerAccount})
 	}
-	return connect.NewResponse(&settlementv1.PrepareRoomGenesisResponse{Genesis: &settlementv1.RoomGenesis{
-		GenesisId: genesisID, ChatRoomId: req.Msg.GetChatRoomId(),
+	return &settlementv1.PrepareRoomGenesisResponse{Genesis: &settlementv1.RoomGenesis{
+		GenesisId: genesisID, ChatRoomId: req.GetChatRoomId(),
 		State:       settlementv1.RoomGenesisState_ROOM_GENESIS_STATE_PENDING,
 		GenesisHash: []byte{1, 2, 3}, ConstitutionHash: []byte{4},
 		Founders: founders, SignaturesRequired: 2,
 		ExpiresAt: timestamppb.New(time.Unix(1_900_000_000, 0)),
-	}}), nil
+	}}, nil
 }
 
 func (f *fakeRoomService) SubmitRoomGenesisSignature(
-	_ context.Context, req *connect.Request[settlementv1.SubmitRoomGenesisSignatureRequest],
-) (*connect.Response[settlementv1.SubmitRoomGenesisSignatureResponse], error) {
+	_ context.Context, req *settlementv1.SubmitRoomGenesisSignatureRequest,
+) (*settlementv1.SubmitRoomGenesisSignatureResponse, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	f.signed = req.Msg
-	return connect.NewResponse(&settlementv1.SubmitRoomGenesisSignatureResponse{
+	f.signed = req
+	return &settlementv1.SubmitRoomGenesisSignatureResponse{
 		Genesis:   &settlementv1.RoomGenesis{GenesisId: genesisID, SignaturesRequired: 2, SignaturesCollected: 2},
 		Submitted: true,
-	}), nil
+	}, nil
 }
 
 func (f *fakeRoomService) SubmitRoomCall(
-	_ context.Context, req *connect.Request[settlementv1.SubmitRoomCallRequest],
-) (*connect.Response[settlementv1.SubmitRoomCallResponse], error) {
+	_ context.Context, req *settlementv1.SubmitRoomCallRequest,
+) (*settlementv1.SubmitRoomCallResponse, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	f.submitted = req.Msg
-	return connect.NewResponse(&settlementv1.SubmitRoomCallResponse{Call: f.call}), nil
+	f.submitted = req
+	return &settlementv1.SubmitRoomCallResponse{Call: f.call}, nil
 }
 
 func (f *fakeRoomService) GetRoomCall(
-	_ context.Context, req *connect.Request[settlementv1.GetRoomCallRequest],
-) (*connect.Response[settlementv1.GetRoomCallResponse], error) {
+	_ context.Context, req *settlementv1.GetRoomCallRequest,
+) (*settlementv1.GetRoomCallResponse, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	if req.Msg.GetCallId() != f.call.GetCallId() {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such call"))
+	if req.GetCallId() != f.call.GetCallId() {
+		return nil, connect.NewError(connect.CodeNotFound, "no such call")
 	}
-	return connect.NewResponse(&settlementv1.GetRoomCallResponse{Call: f.call}), nil
+	return &settlementv1.GetRoomCallResponse{Call: f.call}, nil
 }
 
 func newRooms(t *testing.T, fake *fakeRoomService) stawi.Rooms {
 	t.Helper()
-	path, handler := settlementv1connect.NewRoomServiceHandler(fake)
+	srv := connect.NewServer()
+	settlementv1connect.RegisterRoomServiceHandler(srv, fake)
 	mux := http.NewServeMux()
-	mux.Handle(path, handler)
+	connecthttp.Mount(mux, srv)
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
-	return settlement.NewRooms(settlementv1connect.NewRoomServiceClient(server.Client(), server.URL))
+	return settlement.NewRooms(settlementv1connect.NewRoomServiceClient(
+		connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL)),
+	))
 }
 
 func TestPrepareRoomGenesisNamesTheAdminAndFounders(t *testing.T) {
@@ -226,14 +229,14 @@ func TestSubmitAndGetRoomCallMapSettlementsRecord(t *testing.T) {
 }
 
 func TestSettlementErrorsKeepTheirCode(t *testing.T) {
-	fake := &fakeRoomService{err: connect.NewError(connect.CodeFailedPrecondition, errors.New("voting closed"))}
+	fake := &fakeRoomService{err: connect.NewError(connect.CodeFailedPrecondition, "voting closed")}
 	rooms := newRooms(t, fake)
 	_, err := rooms.GetRoomCall(context.Background(), callID)
 	require.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
 	require.False(t, stawi.IsTransient(err))
 	require.Equal(t, "voting closed", stawi.RefusalReason(err))
 
-	fake.err = connect.NewError(connect.CodeUnavailable, errors.New("down"))
+	fake.err = connect.NewError(connect.CodeUnavailable, "down")
 	_, err = rooms.SubmitRoomCall(context.Background(), stawi.CallSubmission{CallID: callID})
 	require.True(t, stawi.IsTransient(err))
 }

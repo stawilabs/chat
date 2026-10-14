@@ -3,11 +3,11 @@ package handlers
 import (
 	"context"
 
-	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/security"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -41,14 +41,14 @@ func NewGatewayServer(
 // This is the primary method for maintaining real-time connections.
 func (gs *GatewayServer) Stream(
 	ctx context.Context,
-	stream *connect.BidiStream[chatv1.StreamRequest, chatv1.StreamResponse],
+	stream chatv1connect.GatewayServiceStreamServerStream,
 ) error {
 	// Extract profile ID from context
 	authClaims := security.ClaimsFromContext(ctx)
 	if authClaims == nil {
 		return connect.NewError(
 			connect.CodeUnauthenticated,
-			status.Error(codes.Unauthenticated, "request needs to be authenticated"),
+			status.Error(codes.Unauthenticated, "request needs to be authenticated").Error(),
 		)
 	}
 
@@ -70,9 +70,9 @@ func (gs *GatewayServer) Stream(
 	return gs.cm.HandleConnection(ctx, profileID, deviceID, streamWrapper)
 }
 
-// deviceStreamImpl wraps connect.BidiStream to implement business.DeviceStream.
+// deviceStreamImpl wraps the gateway stream to implement business.DeviceStream.
 type deviceStreamImpl struct {
-	stream *connect.BidiStream[chatv1.StreamRequest, chatv1.StreamResponse]
+	stream chatv1connect.GatewayServiceStreamServerStream
 }
 
 func (w *deviceStreamImpl) Receive() (*chatv1.StreamRequest, error) {

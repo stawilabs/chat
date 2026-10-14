@@ -2,15 +2,14 @@ package handlers_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
@@ -39,10 +38,10 @@ func (s *ChatServerTestSuite) newPartnerFixture(
 	f.server = handlers.NewChatServer(ctx, svc, nil, nil, s.AuthzMiddleware, handlers.WithProfileAccounts(f.partners))
 	f.aliceCtx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, f.alice)
 	f.bobCtx = s.WithAuthClaims(ctx, testTenantID, testPartitionID, f.bob)
-	f.dm = s.createRoomAndWait(f.aliceCtx, t, svc, f.server, f.alice, connect.NewRequest(&chatv1.CreateRoomRequest{
+	f.dm = s.createRoomAndWait(f.aliceCtx, t, svc, f.server, f.alice, &chatv1.CreateRoomRequest{
 		Name: "Bob", Type: chatv1.RoomType_ROOM_TYPE_DIRECT,
 		Members: []*commonv1.ContactLink{{ProfileId: f.bob}},
-	}))
+	})
 	s.WaitForMemberSubscription(ctx, svc, f.dm, f.bob, t)
 	return f
 }
@@ -50,22 +49,22 @@ func (s *ChatServerTestSuite) newPartnerFixture(
 // write has the person of ctx send a text message into roomID.
 func (f *partnerFixture) write(ctx context.Context, t *testing.T, roomID string) {
 	t.Helper()
-	resp, err := f.server.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
+	resp, err := f.server.SendEvent(ctx, &chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
 		RoomId: roomID, Type: chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
 		Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "hello"}}},
-	}}}))
+	}}})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetAck(), 1)
-	require.Empty(t, resp.Msg.GetAck()[0].GetError())
+	require.Len(t, resp.GetAck(), 1)
+	require.Empty(t, resp.GetAck()[0].GetError())
 }
 
 func (f *partnerFixture) lookup(ctx context.Context, roomID string) (*chatv1.GetDirectPartnerAccountResponse, error) {
 	resp, err := f.server.GetDirectPartnerAccount(ctx,
-		connect.NewRequest(&chatv1.GetDirectPartnerAccountRequest{RoomId: roomID}))
+		&chatv1.GetDirectPartnerAccountRequest{RoomId: roomID})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg, nil
+	return resp, nil
 }
 
 // TestGetDirectPartnerAccountAnswersADMMember: once Bob has written, Alice
@@ -117,8 +116,8 @@ func (s *ChatServerTestSuite) TestGetDirectPartnerAccountRefusesOutsideTheDM() {
 		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "a stranger")
 
 		group := s.createRoomAndWait(f.aliceCtx, t, svc, f.server, f.alice,
-			connect.NewRequest(&chatv1.CreateRoomRequest{Name: "Pair group",
-				Members: []*commonv1.ContactLink{{ProfileId: f.bob, ContactId: f.bob}}}))
+			&chatv1.CreateRoomRequest{Name: "Pair group",
+				Members: []*commonv1.ContactLink{{ProfileId: f.bob, ContactId: f.bob}}})
 		s.WaitForMemberSubscription(ctx, svc, group, f.bob, t)
 		_, err = f.lookup(f.aliceCtx, group)
 		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "a group of two is not a DM")
@@ -164,7 +163,7 @@ func (s *ChatServerTestSuite) TestGetDirectPartnerAccountDuringASettlementOutage
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
 		f := s.newPartnerFixture(ctx, t, svc)
-		f.partners.Fail(connect.NewError(connect.CodeUnavailable, errors.New("settlement is down")))
+		f.partners.Fail(connect.NewError(connect.CodeUnavailable, "settlement is down"))
 		f.write(f.bobCtx, t, f.dm)
 
 		_, err := f.lookup(f.aliceCtx, f.dm)

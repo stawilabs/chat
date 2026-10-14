@@ -2,10 +2,9 @@ package business
 
 import (
 	"context"
-	"errors"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 type serverOriginKey struct{}
@@ -55,20 +54,20 @@ func refuseSpoofedContent(ctx context.Context, reqEvt *chatv1.RoomEvent, senderS
 	if !isServerOrigin(ctx) {
 		if isServerOnlyContent(reqEvt.GetPayload()) {
 			return connect.NewError(connect.CodePermissionDenied,
-				errors.New("this content is posted by the server or a service, not by members"))
+				"this content is posted by the server or a service, not by members")
 		}
 		if reqEvt.GetType() == chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("system events are posted by the server"))
+			return connect.NewError(connect.CodePermissionDenied, "system events are posted by the server")
 		}
 	}
 	if id := reqEvt.GetSubscriptionId(); id != "" && id != senderSubscriptionID {
 		return connect.NewError(connect.CodePermissionDenied,
-			errors.New("an event can only be sent as the caller's own subscription"))
+			"an event can only be sent as the caller's own subscription")
 	}
 	if actor := reqEvt.GetPayload().GetModeration().GetActorSubscriptionId(); actor != "" &&
 		actor != senderSubscriptionID {
 		return connect.NewError(connect.CodePermissionDenied,
-			errors.New("a moderation's actor must be the caller's own subscription"))
+			"a moderation's actor must be the caller's own subscription")
 	}
 	return nil
 }

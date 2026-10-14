@@ -19,36 +19,38 @@
 package chatv1connect
 
 import (
-	v1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	connect "connectrpc.com/connect"
 	context "context"
-	errors "errors"
-	http "net/http"
-	strings "strings"
-)
+	sync "sync"
 
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
+	v1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	connect "connectrpc.com/connect/v2"
+)
 
 const (
 	// GatewayServiceName is the fully-qualified name of the GatewayService service.
 	GatewayServiceName = "chat.v1.GatewayService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// GatewayServiceStreamProcedure is the fully-qualified name of the GatewayService's Stream RPC.
+	// GatewayServiceStreamProcedure is the procedure name of the GatewayService's Stream RPC.
 	GatewayServiceStreamProcedure = "/chat.v1.GatewayService/Stream"
+)
+
+var (
+	gatewayServiceStreamSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeBidi,
+			Schema:     v1.File_chat_v1_gateway_proto.Services().ByName("GatewayService").Methods().ByName("Stream"),
+			Procedure:  GatewayServiceStreamProcedure,
+		}
+	})
 )
 
 // GatewayServiceClient is a client for the chat.v1.GatewayService service.
@@ -56,37 +58,49 @@ type GatewayServiceClient interface {
 	// Bi-directional, long-lived connection. Client sends StreamRequest (initial auth + acks/commands).
 	// Server streams StreamResponse objects in chronological order for rooms the client is subscribed to.
 	// Stream resume: client may provide last_received_event_id or resume_token to continue after reconnect.
-	Stream(context.Context) *connect.BidiStreamForClient[v1.StreamRequest, v1.StreamResponse]
+	Stream(context.Context) (GatewayServiceStreamClientStream, error)
 }
 
-// NewGatewayServiceClient constructs a client for the chat.v1.GatewayService service. By default,
-// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
-// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
-// or connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewGatewayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GatewayServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	gatewayServiceMethods := v1.File_chat_v1_gateway_proto.Services().ByName("GatewayService").Methods()
-	return &gatewayServiceClient{
-		stream: connect.NewClient[v1.StreamRequest, v1.StreamResponse](
-			httpClient,
-			baseURL+GatewayServiceStreamProcedure,
-			connect.WithSchema(gatewayServiceMethods.ByName("Stream")),
-			connect.WithClientOptions(opts...),
-		),
+// NewGatewayServiceClient constructs a client for the chat.v1.GatewayService service. Multiple
+// service clients may share a single connect.Client.
+func NewGatewayServiceClient(client *connect.Client) GatewayServiceClient {
+	return &gatewayServiceClient{client: client}
+}
+
+// GatewayServiceStreamClientStream is the client stream for the GatewayService's Stream RPC.
+type GatewayServiceStreamClientStream struct {
+	stream connect.ClientStream
+}
+
+// SendHeaders opens the stream and flushes the request headers without a message. The first Send or
+// Receive does this implicitly.
+func (s GatewayServiceStreamClientStream) SendHeaders() error {
+	return s.stream.SendHeaders()
+}
+
+// Send sends a request message to the server.
+func (s GatewayServiceStreamClientStream) Send(req *v1.StreamRequest) error {
+	return s.stream.Send(req)
+}
+
+// CloseSend closes the request side of the stream.
+func (s GatewayServiceStreamClientStream) CloseSend() error {
+	return s.stream.CloseSend()
+}
+
+// Receive returns the next response message from the server.
+func (s GatewayServiceStreamClientStream) Receive() (*v1.StreamResponse, error) {
+	var res v1.StreamResponse
+	if err := s.stream.Receive(&res); err != nil {
+		return nil, err
 	}
+	return &res, nil
 }
 
-// gatewayServiceClient implements GatewayServiceClient.
-type gatewayServiceClient struct {
-	stream *connect.Client[v1.StreamRequest, v1.StreamResponse]
-}
-
-// Stream calls chat.v1.GatewayService.Stream.
-func (c *gatewayServiceClient) Stream(ctx context.Context) *connect.BidiStreamForClient[v1.StreamRequest, v1.StreamResponse] {
-	return c.stream.CallBidiStream(ctx)
+// Close releases the stream's resources. It is idempotent and is typically deferred to clean up a
+// stream abandoned before io.EOF.
+func (s GatewayServiceStreamClientStream) Close() error {
+	return s.stream.Close()
 }
 
 // GatewayServiceHandler is an implementation of the chat.v1.GatewayService service.
@@ -94,35 +108,63 @@ type GatewayServiceHandler interface {
 	// Bi-directional, long-lived connection. Client sends StreamRequest (initial auth + acks/commands).
 	// Server streams StreamResponse objects in chronological order for rooms the client is subscribed to.
 	// Stream resume: client may provide last_received_event_id or resume_token to continue after reconnect.
-	Stream(context.Context, *connect.BidiStream[v1.StreamRequest, v1.StreamResponse]) error
+	Stream(context.Context, GatewayServiceStreamServerStream) error
 }
 
-// NewGatewayServiceHandler builds an HTTP handler from the service implementation. It returns the
-// path on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewGatewayServiceHandler(svc GatewayServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	gatewayServiceMethods := v1.File_chat_v1_gateway_proto.Services().ByName("GatewayService").Methods()
-	gatewayServiceStreamHandler := connect.NewBidiStreamHandler(
-		GatewayServiceStreamProcedure,
-		svc.Stream,
-		connect.WithSchema(gatewayServiceMethods.ByName("Stream")),
-		connect.WithHandlerOptions(opts...),
+// RegisterGatewayServiceHandler registers svc as the chat.v1.GatewayService implementation on
+// server.
+func RegisterGatewayServiceHandler(server *connect.Server, svc GatewayServiceHandler) {
+	adapter := gatewayServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: gatewayServiceStreamSpec(), Handler: adapter.stream},
 	)
-	return "/chat.v1.GatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case GatewayServiceStreamProcedure:
-			gatewayServiceStreamHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
+}
+
+// GatewayServiceStreamServerStream is the server stream for the GatewayService's Stream RPC.
+type GatewayServiceStreamServerStream struct {
+	stream connect.ServerStream
+}
+
+// Receive returns the next request message from the client.
+func (s GatewayServiceStreamServerStream) Receive() (*v1.StreamRequest, error) {
+	var req v1.StreamRequest
+	if err := s.stream.Receive(&req); err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
+// SendHeaders flushes the response headers without a message. The first Send does this implicitly.
+func (s GatewayServiceStreamServerStream) SendHeaders() error {
+	return s.stream.SendHeaders()
+}
+
+// Send sends a response message to the client.
+func (s GatewayServiceStreamServerStream) Send(res *v1.StreamResponse) error {
+	return s.stream.Send(res)
 }
 
 // UnimplementedGatewayServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedGatewayServiceHandler struct{}
 
-func (UnimplementedGatewayServiceHandler) Stream(context.Context, *connect.BidiStream[v1.StreamRequest, v1.StreamResponse]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.GatewayService.Stream is not implemented"))
+func (UnimplementedGatewayServiceHandler) Stream(context.Context, GatewayServiceStreamServerStream) error {
+	return connect.NewError(connect.CodeUnimplemented, "chat.v1.GatewayService.Stream is not implemented")
+}
+
+type gatewayServiceClient struct {
+	client *connect.Client
+}
+
+func (c *gatewayServiceClient) Stream(ctx context.Context) (GatewayServiceStreamClientStream, error) {
+	stream, err := c.client.CallClientStream(ctx, gatewayServiceStreamSpec())
+	if err != nil {
+		return GatewayServiceStreamClientStream{}, err
+	}
+	return GatewayServiceStreamClientStream{stream: stream}, nil
+}
+
+type gatewayServiceHandler struct{ svc GatewayServiceHandler }
+
+func (h gatewayServiceHandler) stream(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	return h.svc.Stream(ctx, GatewayServiceStreamServerStream{stream: stream})
 }

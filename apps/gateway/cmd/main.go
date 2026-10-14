@@ -7,26 +7,28 @@ import (
 	"net/http"
 	"time"
 
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
-	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
-	"connectrpc.com/connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"connectrpc.com/otelconnect"
-	"github.com/antinvestor/common/v2"
-	"github.com/antinvestor/common/v2/connection"
-	"github.com/antinvestor/common/v2/servicecatalog"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/cache"
-	"github.com/pitabwire/frame/v2/cache/jetstreamkv"
-	"github.com/pitabwire/frame/v2/cache/valkey"
-	"github.com/pitabwire/frame/v2/config"
-	"github.com/pitabwire/frame/v2/data"
-	securityconnect "github.com/pitabwire/frame/v2/security/interceptors/connect"
+	"github.com/antinvestor/common/v3"
+	"github.com/antinvestor/common/v3/connection"
+	"github.com/antinvestor/common/v3/servicecatalog"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/cache"
+	"github.com/pitabwire/frame/v3/cache/jetstreamkv"
+	"github.com/pitabwire/frame/v3/cache/valkey"
+	"github.com/pitabwire/frame/v3/config"
+	"github.com/pitabwire/frame/v3/data"
+	securityconnect "github.com/pitabwire/frame/v3/security/interceptors/connect"
 	"github.com/pitabwire/util"
 
 	gtwconfig "github.com/stawilabs/chat/apps/gateway/config"
 	"github.com/stawilabs/chat/apps/gateway/service/business"
 	"github.com/stawilabs/chat/apps/gateway/service/handlers"
 	"github.com/stawilabs/chat/apps/gateway/service/queues"
+	"github.com/stawilabs/chat/pkg/connectserver"
 )
 
 //go:embed spec/chat.openapi.yaml
@@ -172,7 +174,11 @@ func setupChatServiceClient(
 		Endpoint:              cfg.ChatServiceURI,
 		WorkloadAPITargetPath: cfg.ChatServiceWorkloadAPITargetPath,
 		ServiceID:             servicecatalog.ServiceChatDrone,
-	}, chatv1connect.NewChatServiceClient)
+	}, chatv1connect.NewChatServiceClient,
+		// ChatService replies (history and replay pages) may exceed connect
+		// v2's 4 MiB default read limit.
+		common.WithConnectTransportOptions(connecthttp.WithReadMaxBytes(connectserver.ChatSendMaxBytes)),
+	)
 }
 
 // setupDeviceClient creates and configures the device service client.
@@ -196,7 +202,7 @@ func setupGatewayServer(
 ) http.Handler {
 	securityMan := svc.SecurityManager()
 
-	otelInterceptor, err := otelconnect.NewInterceptor()
+	otelInterceptor, err := otelconnect.NewServerInterceptor()
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not configure open telemetry")
 	}
@@ -207,13 +213,17 @@ func setupGatewayServer(
 
 	gatewayServer := handlers.NewGatewayServer(svc, chatServiceClient, connectionManager)
 
-	// Register as GatewayServiceHandler - handles the Connect stream for real-time communication
-	_, serverHandler := chatv1connect.NewGatewayServiceHandler(
-		gatewayServer, connect.WithInterceptors(authInterceptor, otelInterceptor, validateInterceptor),
+	// The gateway's only tracer is this otelconnect interceptor (it does not
+	// use frame's DefaultList). Tracing runs outermost so refused streams are
+	// traced too; the error interceptor is last, closest to the handler.
+	server := connect.NewServer(
+		otelInterceptor, authInterceptor, validateInterceptor, connectserver.ErrorInterceptor(),
 	)
+	// GatewayServiceHandler: the Connect stream for real-time communication.
+	chatv1connect.RegisterGatewayServiceHandler(server, gatewayServer)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", serverHandler)
+	connectserver.Mount(mux, server, connectserver.Gateway())
 	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatAPISpecFile, nil))
 
 	return mux

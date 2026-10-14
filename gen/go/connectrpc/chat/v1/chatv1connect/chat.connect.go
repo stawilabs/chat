@@ -19,736 +19,903 @@
 package chatv1connect
 
 import (
-	v1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	connect "connectrpc.com/connect"
 	context "context"
-	errors "errors"
-	http "net/http"
-	strings "strings"
-)
+	sync "sync"
 
-// This is a compile-time assertion to ensure that this generated file and the connect package are
-// compatible. If you get a compiler error that this constant is not defined, this code was
-// generated with a version of connect newer than the one compiled into your binary. You can fix the
-// problem by either regenerating this code with an older version of connect or updating the connect
-// version compiled into your binary.
-const _ = connect.IsAtLeastVersion1_13_0
+	v1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	connect "connectrpc.com/connect/v2"
+)
 
 const (
 	// ChatServiceName is the fully-qualified name of the ChatService service.
 	ChatServiceName = "chat.v1.ChatService"
 )
 
-// These constants are the fully-qualified names of the RPCs defined in this package. They're
-// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+// These constants are the procedure names of the RPCs defined in this package. They're exposed at
+// runtime as Spec.Procedure and as the final two segments of the HTTP route.
 //
 // Note that these are different from the fully-qualified method names used by
 // google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// ChatServiceSendEventProcedure is the fully-qualified name of the ChatService's SendEvent RPC.
+	// ChatServiceSendEventProcedure is the procedure name of the ChatService's SendEvent RPC.
 	ChatServiceSendEventProcedure = "/chat.v1.ChatService/SendEvent"
-	// ChatServiceGetEventProcedure is the fully-qualified name of the ChatService's GetEvent RPC.
+	// ChatServiceGetEventProcedure is the procedure name of the ChatService's GetEvent RPC.
 	ChatServiceGetEventProcedure = "/chat.v1.ChatService/GetEvent"
-	// ChatServiceGetHistoryProcedure is the fully-qualified name of the ChatService's GetHistory RPC.
+	// ChatServiceGetHistoryProcedure is the procedure name of the ChatService's GetHistory RPC.
 	ChatServiceGetHistoryProcedure = "/chat.v1.ChatService/GetHistory"
-	// ChatServiceGetRoomProcedure is the fully-qualified name of the ChatService's GetRoom RPC.
+	// ChatServiceGetRoomProcedure is the procedure name of the ChatService's GetRoom RPC.
 	ChatServiceGetRoomProcedure = "/chat.v1.ChatService/GetRoom"
-	// ChatServiceCreateRoomProcedure is the fully-qualified name of the ChatService's CreateRoom RPC.
+	// ChatServiceCreateRoomProcedure is the procedure name of the ChatService's CreateRoom RPC.
 	ChatServiceCreateRoomProcedure = "/chat.v1.ChatService/CreateRoom"
-	// ChatServiceSearchRoomsProcedure is the fully-qualified name of the ChatService's SearchRooms RPC.
+	// ChatServiceSearchRoomsProcedure is the procedure name of the ChatService's SearchRooms RPC.
 	ChatServiceSearchRoomsProcedure = "/chat.v1.ChatService/SearchRooms"
-	// ChatServiceUpdateRoomProcedure is the fully-qualified name of the ChatService's UpdateRoom RPC.
+	// ChatServiceUpdateRoomProcedure is the procedure name of the ChatService's UpdateRoom RPC.
 	ChatServiceUpdateRoomProcedure = "/chat.v1.ChatService/UpdateRoom"
-	// ChatServiceDeleteRoomProcedure is the fully-qualified name of the ChatService's DeleteRoom RPC.
+	// ChatServiceDeleteRoomProcedure is the procedure name of the ChatService's DeleteRoom RPC.
 	ChatServiceDeleteRoomProcedure = "/chat.v1.ChatService/DeleteRoom"
-	// ChatServiceAddRoomSubscriptionsProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceAddRoomSubscriptionsProcedure is the procedure name of the ChatService's
 	// AddRoomSubscriptions RPC.
 	ChatServiceAddRoomSubscriptionsProcedure = "/chat.v1.ChatService/AddRoomSubscriptions"
-	// ChatServiceRemoveRoomSubscriptionsProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceRemoveRoomSubscriptionsProcedure is the procedure name of the ChatService's
 	// RemoveRoomSubscriptions RPC.
 	ChatServiceRemoveRoomSubscriptionsProcedure = "/chat.v1.ChatService/RemoveRoomSubscriptions"
-	// ChatServiceUpdateSubscriptionRoleProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceUpdateSubscriptionRoleProcedure is the procedure name of the ChatService's
 	// UpdateSubscriptionRole RPC.
 	ChatServiceUpdateSubscriptionRoleProcedure = "/chat.v1.ChatService/UpdateSubscriptionRole"
-	// ChatServiceGetDirectPartnerAccountProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceGetDirectPartnerAccountProcedure is the procedure name of the ChatService's
 	// GetDirectPartnerAccount RPC.
 	ChatServiceGetDirectPartnerAccountProcedure = "/chat.v1.ChatService/GetDirectPartnerAccount"
-	// ChatServiceSearchRoomSubscriptionsProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceSearchRoomSubscriptionsProcedure is the procedure name of the ChatService's
 	// SearchRoomSubscriptions RPC.
 	ChatServiceSearchRoomSubscriptionsProcedure = "/chat.v1.ChatService/SearchRoomSubscriptions"
-	// ChatServiceGetSubscriptionSettingsProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceGetSubscriptionSettingsProcedure is the procedure name of the ChatService's
 	// GetSubscriptionSettings RPC.
 	ChatServiceGetSubscriptionSettingsProcedure = "/chat.v1.ChatService/GetSubscriptionSettings"
-	// ChatServiceUpdateSubscriptionSettingsProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceUpdateSubscriptionSettingsProcedure is the procedure name of the ChatService's
 	// UpdateSubscriptionSettings RPC.
 	ChatServiceUpdateSubscriptionSettingsProcedure = "/chat.v1.ChatService/UpdateSubscriptionSettings"
-	// ChatServiceLiveProcedure is the fully-qualified name of the ChatService's Live RPC.
+	// ChatServiceLiveProcedure is the procedure name of the ChatService's Live RPC.
 	ChatServiceLiveProcedure = "/chat.v1.ChatService/Live"
-	// ChatServiceListProposalsProcedure is the fully-qualified name of the ChatService's ListProposals
-	// RPC.
+	// ChatServiceListProposalsProcedure is the procedure name of the ChatService's ListProposals RPC.
 	ChatServiceListProposalsProcedure = "/chat.v1.ChatService/ListProposals"
-	// ChatServiceSubmitProposalProcedure is the fully-qualified name of the ChatService's
-	// SubmitProposal RPC.
+	// ChatServiceSubmitProposalProcedure is the procedure name of the ChatService's SubmitProposal RPC.
 	ChatServiceSubmitProposalProcedure = "/chat.v1.ChatService/SubmitProposal"
-	// ChatServiceResolveReplayCursorProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceResolveReplayCursorProcedure is the procedure name of the ChatService's
 	// ResolveReplayCursor RPC.
 	ChatServiceResolveReplayCursorProcedure = "/chat.v1.ChatService/ResolveReplayCursor"
-	// ChatServiceGetLatestReplayCursorProcedure is the fully-qualified name of the ChatService's
+	// ChatServiceGetLatestReplayCursorProcedure is the procedure name of the ChatService's
 	// GetLatestReplayCursor RPC.
 	ChatServiceGetLatestReplayCursorProcedure = "/chat.v1.ChatService/GetLatestReplayCursor"
-	// ChatServiceListReplayEventsProcedure is the fully-qualified name of the ChatService's
-	// ListReplayEvents RPC.
+	// ChatServiceListReplayEventsProcedure is the procedure name of the ChatService's ListReplayEvents
+	// RPC.
 	ChatServiceListReplayEventsProcedure = "/chat.v1.ChatService/ListReplayEvents"
+)
+
+var (
+	chatServiceSendEventSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("SendEvent"),
+			Procedure:  ChatServiceSendEventProcedure,
+		}
+	})
+	chatServiceGetEventSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("GetEvent"),
+			Procedure:        ChatServiceGetEventProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceGetHistorySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("GetHistory"),
+			Procedure:        ChatServiceGetHistoryProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceGetRoomSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("GetRoom"),
+			Procedure:        ChatServiceGetRoomProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceCreateRoomSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("CreateRoom"),
+			Procedure:  ChatServiceCreateRoomProcedure,
+		}
+	})
+	chatServiceSearchRoomsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeServer,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("SearchRooms"),
+			Procedure:        ChatServiceSearchRoomsProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceUpdateRoomSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("UpdateRoom"),
+			Procedure:  ChatServiceUpdateRoomProcedure,
+		}
+	})
+	chatServiceDeleteRoomSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("DeleteRoom"),
+			Procedure:  ChatServiceDeleteRoomProcedure,
+		}
+	})
+	chatServiceAddRoomSubscriptionsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("AddRoomSubscriptions"),
+			Procedure:  ChatServiceAddRoomSubscriptionsProcedure,
+		}
+	})
+	chatServiceRemoveRoomSubscriptionsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("RemoveRoomSubscriptions"),
+			Procedure:  ChatServiceRemoveRoomSubscriptionsProcedure,
+		}
+	})
+	chatServiceUpdateSubscriptionRoleSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("UpdateSubscriptionRole"),
+			Procedure:  ChatServiceUpdateSubscriptionRoleProcedure,
+		}
+	})
+	chatServiceGetDirectPartnerAccountSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("GetDirectPartnerAccount"),
+			Procedure:        ChatServiceGetDirectPartnerAccountProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceSearchRoomSubscriptionsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("SearchRoomSubscriptions"),
+			Procedure:        ChatServiceSearchRoomSubscriptionsProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceGetSubscriptionSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("GetSubscriptionSettings"),
+			Procedure:        ChatServiceGetSubscriptionSettingsProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceUpdateSubscriptionSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("UpdateSubscriptionSettings"),
+			Procedure:  ChatServiceUpdateSubscriptionSettingsProcedure,
+		}
+	})
+	chatServiceLiveSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("Live"),
+			Procedure:  ChatServiceLiveProcedure,
+		}
+	})
+	chatServiceListProposalsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("ListProposals"),
+			Procedure:        ChatServiceListProposalsProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceSubmitProposalSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("SubmitProposal"),
+			Procedure:  ChatServiceSubmitProposalProcedure,
+		}
+	})
+	chatServiceResolveReplayCursorSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("ResolveReplayCursor"),
+			Procedure:        ChatServiceResolveReplayCursorProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceGetLatestReplayCursorSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("GetLatestReplayCursor"),
+			Procedure:        ChatServiceGetLatestReplayCursorProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
+	chatServiceListReplayEventsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("ListReplayEvents"),
+			Procedure:        ChatServiceListReplayEventsProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
 )
 
 // ChatServiceClient is a client for the chat.v1.ChatService service.
 type ChatServiceClient interface {
 	// Send an event (unified message model). Idempotent if idempotency_key is provided.
-	SendEvent(context.Context, *connect.Request[v1.SendEventRequest]) (*connect.Response[v1.SendEventResponse], error)
+	SendEvent(context.Context, *v1.SendEventRequest) (*v1.SendEventResponse, error)
 	// Fetch a single event by ID. Used for deep-linking, thread rendering, and verification.
-	GetEvent(context.Context, *connect.Request[v1.GetEventRequest]) (*connect.Response[v1.GetEventResponse], error)
+	GetEvent(context.Context, *v1.GetEventRequest) (*v1.GetEventResponse, error)
 	// Fetch history for a room. Cursor-based paging (cursor = opaque server token).
-	GetHistory(context.Context, *connect.Request[v1.GetHistoryRequest]) (*connect.Response[v1.GetHistoryResponse], error)
+	GetHistory(context.Context, *v1.GetHistoryRequest) (*v1.GetHistoryResponse, error)
 	// Fetch a single room by ID.
-	GetRoom(context.Context, *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.GetRoomResponse], error)
-	CreateRoom(context.Context, *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.CreateRoomResponse], error)
-	SearchRooms(context.Context, *connect.Request[v1.SearchRoomsRequest]) (*connect.ServerStreamForClient[v1.SearchRoomsResponse], error)
-	UpdateRoom(context.Context, *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.UpdateRoomResponse], error)
-	DeleteRoom(context.Context, *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error)
+	GetRoom(context.Context, *v1.GetRoomRequest) (*v1.GetRoomResponse, error)
+	CreateRoom(context.Context, *v1.CreateRoomRequest) (*v1.CreateRoomResponse, error)
+	SearchRooms(context.Context, *v1.SearchRoomsRequest) (ChatServiceSearchRoomsClientStream, error)
+	UpdateRoom(context.Context, *v1.UpdateRoomRequest) (*v1.UpdateRoomResponse, error)
+	DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error)
 	// Subscriptionship & roles
-	AddRoomSubscriptions(context.Context, *connect.Request[v1.AddRoomSubscriptionsRequest]) (*connect.Response[v1.AddRoomSubscriptionsResponse], error)
-	RemoveRoomSubscriptions(context.Context, *connect.Request[v1.RemoveRoomSubscriptionsRequest]) (*connect.Response[v1.RemoveRoomSubscriptionsResponse], error)
-	UpdateSubscriptionRole(context.Context, *connect.Request[v1.UpdateSubscriptionRoleRequest]) (*connect.Response[v1.UpdateSubscriptionRoleResponse], error)
+	AddRoomSubscriptions(context.Context, *v1.AddRoomSubscriptionsRequest) (*v1.AddRoomSubscriptionsResponse, error)
+	RemoveRoomSubscriptions(context.Context, *v1.RemoveRoomSubscriptionsRequest) (*v1.RemoveRoomSubscriptionsResponse, error)
+	UpdateSubscriptionRole(context.Context, *v1.UpdateSubscriptionRoleRequest) (*v1.UpdateSubscriptionRoleResponse, error)
 	// The Stawi account of the other person in the caller's DM. The caller
 	// must be a person and an active member of the DIRECT room, the room must
 	// hold exactly two active members, and the partner must have taken part
 	// (started the DM or written in it); anything else is refused without
 	// saying anything about the room. An empty account means the partner has
 	// no Stawi account yet.
-	GetDirectPartnerAccount(context.Context, *connect.Request[v1.GetDirectPartnerAccountRequest]) (*connect.Response[v1.GetDirectPartnerAccountResponse], error)
-	SearchRoomSubscriptions(context.Context, *connect.Request[v1.SearchRoomSubscriptionsRequest]) (*connect.Response[v1.SearchRoomSubscriptionsResponse], error)
+	GetDirectPartnerAccount(context.Context, *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error)
+	SearchRoomSubscriptions(context.Context, *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error)
 	// Get per-room subscription settings for a member (notification preferences, mute, archive)
-	GetSubscriptionSettings(context.Context, *connect.Request[v1.GetSubscriptionSettingsRequest]) (*connect.Response[v1.GetSubscriptionSettingsResponse], error)
+	GetSubscriptionSettings(context.Context, *v1.GetSubscriptionSettingsRequest) (*v1.GetSubscriptionSettingsResponse, error)
 	// Update per-room subscription settings for a member
-	UpdateSubscriptionSettings(context.Context, *connect.Request[v1.UpdateSubscriptionSettingsRequest]) (*connect.Response[v1.UpdateSubscriptionSettingsResponse], error)
+	UpdateSubscriptionSettings(context.Context, *v1.UpdateSubscriptionSettingsRequest) (*v1.UpdateSubscriptionSettingsResponse, error)
 	// Update different states that the client can be in for room subscriptions awareness
-	Live(context.Context, *connect.Request[v1.LiveRequest]) (*connect.Response[v1.LiveResponse], error)
+	Live(context.Context, *v1.LiveRequest) (*v1.LiveResponse, error)
 	// List pending proposals for a room
-	ListProposals(context.Context, *connect.Request[v1.ListProposalsRequest]) (*connect.Response[v1.ListProposalsResponse], error)
+	ListProposals(context.Context, *v1.ListProposalsRequest) (*v1.ListProposalsResponse, error)
 	// Submit a decision on a pending proposal (approve or reject)
-	SubmitProposal(context.Context, *connect.Request[v1.SubmitProposalRequest]) (*connect.Response[v1.SubmitProposalResponse], error)
+	SubmitProposal(context.Context, *v1.SubmitProposalRequest) (*v1.SubmitProposalResponse, error)
 	// Resolve a resume token or event ID to a replay cursor for a device.
-	ResolveReplayCursor(context.Context, *connect.Request[v1.ResolveReplayCursorRequest]) (*connect.Response[v1.ResolveReplayCursorResponse], error)
+	ResolveReplayCursor(context.Context, *v1.ResolveReplayCursorRequest) (*v1.ResolveReplayCursorResponse, error)
 	// Get the latest replay cursor for a device (used as upper bound during replay).
-	GetLatestReplayCursor(context.Context, *connect.Request[v1.GetLatestReplayCursorRequest]) (*connect.Response[v1.GetLatestReplayCursorResponse], error)
+	GetLatestReplayCursor(context.Context, *v1.GetLatestReplayCursorRequest) (*v1.GetLatestReplayCursorResponse, error)
 	// List replay events after a cursor for a device (paginated catch-up).
-	ListReplayEvents(context.Context, *connect.Request[v1.ListReplayEventsRequest]) (*connect.Response[v1.ListReplayEventsResponse], error)
+	ListReplayEvents(context.Context, *v1.ListReplayEventsRequest) (*v1.ListReplayEventsResponse, error)
 }
 
-// NewChatServiceClient constructs a client for the chat.v1.ChatService service. By default, it uses
-// the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
-// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
-// connect.WithGRPCWeb() options.
-//
-// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.com or https://acme.com/grpc).
-func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ChatServiceClient {
-	baseURL = strings.TrimRight(baseURL, "/")
-	chatServiceMethods := v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods()
-	return &chatServiceClient{
-		sendEvent: connect.NewClient[v1.SendEventRequest, v1.SendEventResponse](
-			httpClient,
-			baseURL+ChatServiceSendEventProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("SendEvent")),
-			connect.WithClientOptions(opts...),
-		),
-		getEvent: connect.NewClient[v1.GetEventRequest, v1.GetEventResponse](
-			httpClient,
-			baseURL+ChatServiceGetEventProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("GetEvent")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		getHistory: connect.NewClient[v1.GetHistoryRequest, v1.GetHistoryResponse](
-			httpClient,
-			baseURL+ChatServiceGetHistoryProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("GetHistory")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		getRoom: connect.NewClient[v1.GetRoomRequest, v1.GetRoomResponse](
-			httpClient,
-			baseURL+ChatServiceGetRoomProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("GetRoom")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		createRoom: connect.NewClient[v1.CreateRoomRequest, v1.CreateRoomResponse](
-			httpClient,
-			baseURL+ChatServiceCreateRoomProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("CreateRoom")),
-			connect.WithClientOptions(opts...),
-		),
-		searchRooms: connect.NewClient[v1.SearchRoomsRequest, v1.SearchRoomsResponse](
-			httpClient,
-			baseURL+ChatServiceSearchRoomsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("SearchRooms")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		updateRoom: connect.NewClient[v1.UpdateRoomRequest, v1.UpdateRoomResponse](
-			httpClient,
-			baseURL+ChatServiceUpdateRoomProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("UpdateRoom")),
-			connect.WithClientOptions(opts...),
-		),
-		deleteRoom: connect.NewClient[v1.DeleteRoomRequest, v1.DeleteRoomResponse](
-			httpClient,
-			baseURL+ChatServiceDeleteRoomProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("DeleteRoom")),
-			connect.WithClientOptions(opts...),
-		),
-		addRoomSubscriptions: connect.NewClient[v1.AddRoomSubscriptionsRequest, v1.AddRoomSubscriptionsResponse](
-			httpClient,
-			baseURL+ChatServiceAddRoomSubscriptionsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("AddRoomSubscriptions")),
-			connect.WithClientOptions(opts...),
-		),
-		removeRoomSubscriptions: connect.NewClient[v1.RemoveRoomSubscriptionsRequest, v1.RemoveRoomSubscriptionsResponse](
-			httpClient,
-			baseURL+ChatServiceRemoveRoomSubscriptionsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("RemoveRoomSubscriptions")),
-			connect.WithClientOptions(opts...),
-		),
-		updateSubscriptionRole: connect.NewClient[v1.UpdateSubscriptionRoleRequest, v1.UpdateSubscriptionRoleResponse](
-			httpClient,
-			baseURL+ChatServiceUpdateSubscriptionRoleProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("UpdateSubscriptionRole")),
-			connect.WithClientOptions(opts...),
-		),
-		getDirectPartnerAccount: connect.NewClient[v1.GetDirectPartnerAccountRequest, v1.GetDirectPartnerAccountResponse](
-			httpClient,
-			baseURL+ChatServiceGetDirectPartnerAccountProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("GetDirectPartnerAccount")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		searchRoomSubscriptions: connect.NewClient[v1.SearchRoomSubscriptionsRequest, v1.SearchRoomSubscriptionsResponse](
-			httpClient,
-			baseURL+ChatServiceSearchRoomSubscriptionsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("SearchRoomSubscriptions")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		getSubscriptionSettings: connect.NewClient[v1.GetSubscriptionSettingsRequest, v1.GetSubscriptionSettingsResponse](
-			httpClient,
-			baseURL+ChatServiceGetSubscriptionSettingsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("GetSubscriptionSettings")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		updateSubscriptionSettings: connect.NewClient[v1.UpdateSubscriptionSettingsRequest, v1.UpdateSubscriptionSettingsResponse](
-			httpClient,
-			baseURL+ChatServiceUpdateSubscriptionSettingsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("UpdateSubscriptionSettings")),
-			connect.WithClientOptions(opts...),
-		),
-		live: connect.NewClient[v1.LiveRequest, v1.LiveResponse](
-			httpClient,
-			baseURL+ChatServiceLiveProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("Live")),
-			connect.WithClientOptions(opts...),
-		),
-		listProposals: connect.NewClient[v1.ListProposalsRequest, v1.ListProposalsResponse](
-			httpClient,
-			baseURL+ChatServiceListProposalsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("ListProposals")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		submitProposal: connect.NewClient[v1.SubmitProposalRequest, v1.SubmitProposalResponse](
-			httpClient,
-			baseURL+ChatServiceSubmitProposalProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("SubmitProposal")),
-			connect.WithClientOptions(opts...),
-		),
-		resolveReplayCursor: connect.NewClient[v1.ResolveReplayCursorRequest, v1.ResolveReplayCursorResponse](
-			httpClient,
-			baseURL+ChatServiceResolveReplayCursorProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("ResolveReplayCursor")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		getLatestReplayCursor: connect.NewClient[v1.GetLatestReplayCursorRequest, v1.GetLatestReplayCursorResponse](
-			httpClient,
-			baseURL+ChatServiceGetLatestReplayCursorProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("GetLatestReplayCursor")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		listReplayEvents: connect.NewClient[v1.ListReplayEventsRequest, v1.ListReplayEventsResponse](
-			httpClient,
-			baseURL+ChatServiceListReplayEventsProcedure,
-			connect.WithSchema(chatServiceMethods.ByName("ListReplayEvents")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
+// NewChatServiceClient constructs a client for the chat.v1.ChatService service. Multiple service
+// clients may share a single connect.Client.
+func NewChatServiceClient(client *connect.Client) ChatServiceClient {
+	return &chatServiceClient{client: client}
+}
+
+// ChatServiceSearchRoomsClientStream is the client stream for the ChatService's SearchRooms RPC.
+type ChatServiceSearchRoomsClientStream struct {
+	stream connect.ClientStream
+}
+
+// Receive returns the next response message from the server.
+func (s ChatServiceSearchRoomsClientStream) Receive() (*v1.SearchRoomsResponse, error) {
+	var res v1.SearchRoomsResponse
+	if err := s.stream.Receive(&res); err != nil {
+		return nil, err
 	}
+	return &res, nil
 }
 
-// chatServiceClient implements ChatServiceClient.
-type chatServiceClient struct {
-	sendEvent                  *connect.Client[v1.SendEventRequest, v1.SendEventResponse]
-	getEvent                   *connect.Client[v1.GetEventRequest, v1.GetEventResponse]
-	getHistory                 *connect.Client[v1.GetHistoryRequest, v1.GetHistoryResponse]
-	getRoom                    *connect.Client[v1.GetRoomRequest, v1.GetRoomResponse]
-	createRoom                 *connect.Client[v1.CreateRoomRequest, v1.CreateRoomResponse]
-	searchRooms                *connect.Client[v1.SearchRoomsRequest, v1.SearchRoomsResponse]
-	updateRoom                 *connect.Client[v1.UpdateRoomRequest, v1.UpdateRoomResponse]
-	deleteRoom                 *connect.Client[v1.DeleteRoomRequest, v1.DeleteRoomResponse]
-	addRoomSubscriptions       *connect.Client[v1.AddRoomSubscriptionsRequest, v1.AddRoomSubscriptionsResponse]
-	removeRoomSubscriptions    *connect.Client[v1.RemoveRoomSubscriptionsRequest, v1.RemoveRoomSubscriptionsResponse]
-	updateSubscriptionRole     *connect.Client[v1.UpdateSubscriptionRoleRequest, v1.UpdateSubscriptionRoleResponse]
-	getDirectPartnerAccount    *connect.Client[v1.GetDirectPartnerAccountRequest, v1.GetDirectPartnerAccountResponse]
-	searchRoomSubscriptions    *connect.Client[v1.SearchRoomSubscriptionsRequest, v1.SearchRoomSubscriptionsResponse]
-	getSubscriptionSettings    *connect.Client[v1.GetSubscriptionSettingsRequest, v1.GetSubscriptionSettingsResponse]
-	updateSubscriptionSettings *connect.Client[v1.UpdateSubscriptionSettingsRequest, v1.UpdateSubscriptionSettingsResponse]
-	live                       *connect.Client[v1.LiveRequest, v1.LiveResponse]
-	listProposals              *connect.Client[v1.ListProposalsRequest, v1.ListProposalsResponse]
-	submitProposal             *connect.Client[v1.SubmitProposalRequest, v1.SubmitProposalResponse]
-	resolveReplayCursor        *connect.Client[v1.ResolveReplayCursorRequest, v1.ResolveReplayCursorResponse]
-	getLatestReplayCursor      *connect.Client[v1.GetLatestReplayCursorRequest, v1.GetLatestReplayCursorResponse]
-	listReplayEvents           *connect.Client[v1.ListReplayEventsRequest, v1.ListReplayEventsResponse]
-}
-
-// SendEvent calls chat.v1.ChatService.SendEvent.
-func (c *chatServiceClient) SendEvent(ctx context.Context, req *connect.Request[v1.SendEventRequest]) (*connect.Response[v1.SendEventResponse], error) {
-	return c.sendEvent.CallUnary(ctx, req)
-}
-
-// GetEvent calls chat.v1.ChatService.GetEvent.
-func (c *chatServiceClient) GetEvent(ctx context.Context, req *connect.Request[v1.GetEventRequest]) (*connect.Response[v1.GetEventResponse], error) {
-	return c.getEvent.CallUnary(ctx, req)
-}
-
-// GetHistory calls chat.v1.ChatService.GetHistory.
-func (c *chatServiceClient) GetHistory(ctx context.Context, req *connect.Request[v1.GetHistoryRequest]) (*connect.Response[v1.GetHistoryResponse], error) {
-	return c.getHistory.CallUnary(ctx, req)
-}
-
-// GetRoom calls chat.v1.ChatService.GetRoom.
-func (c *chatServiceClient) GetRoom(ctx context.Context, req *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.GetRoomResponse], error) {
-	return c.getRoom.CallUnary(ctx, req)
-}
-
-// CreateRoom calls chat.v1.ChatService.CreateRoom.
-func (c *chatServiceClient) CreateRoom(ctx context.Context, req *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.CreateRoomResponse], error) {
-	return c.createRoom.CallUnary(ctx, req)
-}
-
-// SearchRooms calls chat.v1.ChatService.SearchRooms.
-func (c *chatServiceClient) SearchRooms(ctx context.Context, req *connect.Request[v1.SearchRoomsRequest]) (*connect.ServerStreamForClient[v1.SearchRoomsResponse], error) {
-	return c.searchRooms.CallServerStream(ctx, req)
-}
-
-// UpdateRoom calls chat.v1.ChatService.UpdateRoom.
-func (c *chatServiceClient) UpdateRoom(ctx context.Context, req *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.UpdateRoomResponse], error) {
-	return c.updateRoom.CallUnary(ctx, req)
-}
-
-// DeleteRoom calls chat.v1.ChatService.DeleteRoom.
-func (c *chatServiceClient) DeleteRoom(ctx context.Context, req *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error) {
-	return c.deleteRoom.CallUnary(ctx, req)
-}
-
-// AddRoomSubscriptions calls chat.v1.ChatService.AddRoomSubscriptions.
-func (c *chatServiceClient) AddRoomSubscriptions(ctx context.Context, req *connect.Request[v1.AddRoomSubscriptionsRequest]) (*connect.Response[v1.AddRoomSubscriptionsResponse], error) {
-	return c.addRoomSubscriptions.CallUnary(ctx, req)
-}
-
-// RemoveRoomSubscriptions calls chat.v1.ChatService.RemoveRoomSubscriptions.
-func (c *chatServiceClient) RemoveRoomSubscriptions(ctx context.Context, req *connect.Request[v1.RemoveRoomSubscriptionsRequest]) (*connect.Response[v1.RemoveRoomSubscriptionsResponse], error) {
-	return c.removeRoomSubscriptions.CallUnary(ctx, req)
-}
-
-// UpdateSubscriptionRole calls chat.v1.ChatService.UpdateSubscriptionRole.
-func (c *chatServiceClient) UpdateSubscriptionRole(ctx context.Context, req *connect.Request[v1.UpdateSubscriptionRoleRequest]) (*connect.Response[v1.UpdateSubscriptionRoleResponse], error) {
-	return c.updateSubscriptionRole.CallUnary(ctx, req)
-}
-
-// GetDirectPartnerAccount calls chat.v1.ChatService.GetDirectPartnerAccount.
-func (c *chatServiceClient) GetDirectPartnerAccount(ctx context.Context, req *connect.Request[v1.GetDirectPartnerAccountRequest]) (*connect.Response[v1.GetDirectPartnerAccountResponse], error) {
-	return c.getDirectPartnerAccount.CallUnary(ctx, req)
-}
-
-// SearchRoomSubscriptions calls chat.v1.ChatService.SearchRoomSubscriptions.
-func (c *chatServiceClient) SearchRoomSubscriptions(ctx context.Context, req *connect.Request[v1.SearchRoomSubscriptionsRequest]) (*connect.Response[v1.SearchRoomSubscriptionsResponse], error) {
-	return c.searchRoomSubscriptions.CallUnary(ctx, req)
-}
-
-// GetSubscriptionSettings calls chat.v1.ChatService.GetSubscriptionSettings.
-func (c *chatServiceClient) GetSubscriptionSettings(ctx context.Context, req *connect.Request[v1.GetSubscriptionSettingsRequest]) (*connect.Response[v1.GetSubscriptionSettingsResponse], error) {
-	return c.getSubscriptionSettings.CallUnary(ctx, req)
-}
-
-// UpdateSubscriptionSettings calls chat.v1.ChatService.UpdateSubscriptionSettings.
-func (c *chatServiceClient) UpdateSubscriptionSettings(ctx context.Context, req *connect.Request[v1.UpdateSubscriptionSettingsRequest]) (*connect.Response[v1.UpdateSubscriptionSettingsResponse], error) {
-	return c.updateSubscriptionSettings.CallUnary(ctx, req)
-}
-
-// Live calls chat.v1.ChatService.Live.
-func (c *chatServiceClient) Live(ctx context.Context, req *connect.Request[v1.LiveRequest]) (*connect.Response[v1.LiveResponse], error) {
-	return c.live.CallUnary(ctx, req)
-}
-
-// ListProposals calls chat.v1.ChatService.ListProposals.
-func (c *chatServiceClient) ListProposals(ctx context.Context, req *connect.Request[v1.ListProposalsRequest]) (*connect.Response[v1.ListProposalsResponse], error) {
-	return c.listProposals.CallUnary(ctx, req)
-}
-
-// SubmitProposal calls chat.v1.ChatService.SubmitProposal.
-func (c *chatServiceClient) SubmitProposal(ctx context.Context, req *connect.Request[v1.SubmitProposalRequest]) (*connect.Response[v1.SubmitProposalResponse], error) {
-	return c.submitProposal.CallUnary(ctx, req)
-}
-
-// ResolveReplayCursor calls chat.v1.ChatService.ResolveReplayCursor.
-func (c *chatServiceClient) ResolveReplayCursor(ctx context.Context, req *connect.Request[v1.ResolveReplayCursorRequest]) (*connect.Response[v1.ResolveReplayCursorResponse], error) {
-	return c.resolveReplayCursor.CallUnary(ctx, req)
-}
-
-// GetLatestReplayCursor calls chat.v1.ChatService.GetLatestReplayCursor.
-func (c *chatServiceClient) GetLatestReplayCursor(ctx context.Context, req *connect.Request[v1.GetLatestReplayCursorRequest]) (*connect.Response[v1.GetLatestReplayCursorResponse], error) {
-	return c.getLatestReplayCursor.CallUnary(ctx, req)
-}
-
-// ListReplayEvents calls chat.v1.ChatService.ListReplayEvents.
-func (c *chatServiceClient) ListReplayEvents(ctx context.Context, req *connect.Request[v1.ListReplayEventsRequest]) (*connect.Response[v1.ListReplayEventsResponse], error) {
-	return c.listReplayEvents.CallUnary(ctx, req)
+// Close releases the stream's resources. It is idempotent and is typically deferred to clean up a
+// stream abandoned before io.EOF.
+func (s ChatServiceSearchRoomsClientStream) Close() error {
+	return s.stream.Close()
 }
 
 // ChatServiceHandler is an implementation of the chat.v1.ChatService service.
 type ChatServiceHandler interface {
 	// Send an event (unified message model). Idempotent if idempotency_key is provided.
-	SendEvent(context.Context, *connect.Request[v1.SendEventRequest]) (*connect.Response[v1.SendEventResponse], error)
+	SendEvent(context.Context, *v1.SendEventRequest) (*v1.SendEventResponse, error)
 	// Fetch a single event by ID. Used for deep-linking, thread rendering, and verification.
-	GetEvent(context.Context, *connect.Request[v1.GetEventRequest]) (*connect.Response[v1.GetEventResponse], error)
+	GetEvent(context.Context, *v1.GetEventRequest) (*v1.GetEventResponse, error)
 	// Fetch history for a room. Cursor-based paging (cursor = opaque server token).
-	GetHistory(context.Context, *connect.Request[v1.GetHistoryRequest]) (*connect.Response[v1.GetHistoryResponse], error)
+	GetHistory(context.Context, *v1.GetHistoryRequest) (*v1.GetHistoryResponse, error)
 	// Fetch a single room by ID.
-	GetRoom(context.Context, *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.GetRoomResponse], error)
-	CreateRoom(context.Context, *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.CreateRoomResponse], error)
-	SearchRooms(context.Context, *connect.Request[v1.SearchRoomsRequest], *connect.ServerStream[v1.SearchRoomsResponse]) error
-	UpdateRoom(context.Context, *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.UpdateRoomResponse], error)
-	DeleteRoom(context.Context, *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error)
+	GetRoom(context.Context, *v1.GetRoomRequest) (*v1.GetRoomResponse, error)
+	CreateRoom(context.Context, *v1.CreateRoomRequest) (*v1.CreateRoomResponse, error)
+	SearchRooms(context.Context, *v1.SearchRoomsRequest, ChatServiceSearchRoomsServerStream) error
+	UpdateRoom(context.Context, *v1.UpdateRoomRequest) (*v1.UpdateRoomResponse, error)
+	DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error)
 	// Subscriptionship & roles
-	AddRoomSubscriptions(context.Context, *connect.Request[v1.AddRoomSubscriptionsRequest]) (*connect.Response[v1.AddRoomSubscriptionsResponse], error)
-	RemoveRoomSubscriptions(context.Context, *connect.Request[v1.RemoveRoomSubscriptionsRequest]) (*connect.Response[v1.RemoveRoomSubscriptionsResponse], error)
-	UpdateSubscriptionRole(context.Context, *connect.Request[v1.UpdateSubscriptionRoleRequest]) (*connect.Response[v1.UpdateSubscriptionRoleResponse], error)
+	AddRoomSubscriptions(context.Context, *v1.AddRoomSubscriptionsRequest) (*v1.AddRoomSubscriptionsResponse, error)
+	RemoveRoomSubscriptions(context.Context, *v1.RemoveRoomSubscriptionsRequest) (*v1.RemoveRoomSubscriptionsResponse, error)
+	UpdateSubscriptionRole(context.Context, *v1.UpdateSubscriptionRoleRequest) (*v1.UpdateSubscriptionRoleResponse, error)
 	// The Stawi account of the other person in the caller's DM. The caller
 	// must be a person and an active member of the DIRECT room, the room must
 	// hold exactly two active members, and the partner must have taken part
 	// (started the DM or written in it); anything else is refused without
 	// saying anything about the room. An empty account means the partner has
 	// no Stawi account yet.
-	GetDirectPartnerAccount(context.Context, *connect.Request[v1.GetDirectPartnerAccountRequest]) (*connect.Response[v1.GetDirectPartnerAccountResponse], error)
-	SearchRoomSubscriptions(context.Context, *connect.Request[v1.SearchRoomSubscriptionsRequest]) (*connect.Response[v1.SearchRoomSubscriptionsResponse], error)
+	GetDirectPartnerAccount(context.Context, *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error)
+	SearchRoomSubscriptions(context.Context, *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error)
 	// Get per-room subscription settings for a member (notification preferences, mute, archive)
-	GetSubscriptionSettings(context.Context, *connect.Request[v1.GetSubscriptionSettingsRequest]) (*connect.Response[v1.GetSubscriptionSettingsResponse], error)
+	GetSubscriptionSettings(context.Context, *v1.GetSubscriptionSettingsRequest) (*v1.GetSubscriptionSettingsResponse, error)
 	// Update per-room subscription settings for a member
-	UpdateSubscriptionSettings(context.Context, *connect.Request[v1.UpdateSubscriptionSettingsRequest]) (*connect.Response[v1.UpdateSubscriptionSettingsResponse], error)
+	UpdateSubscriptionSettings(context.Context, *v1.UpdateSubscriptionSettingsRequest) (*v1.UpdateSubscriptionSettingsResponse, error)
 	// Update different states that the client can be in for room subscriptions awareness
-	Live(context.Context, *connect.Request[v1.LiveRequest]) (*connect.Response[v1.LiveResponse], error)
+	Live(context.Context, *v1.LiveRequest) (*v1.LiveResponse, error)
 	// List pending proposals for a room
-	ListProposals(context.Context, *connect.Request[v1.ListProposalsRequest]) (*connect.Response[v1.ListProposalsResponse], error)
+	ListProposals(context.Context, *v1.ListProposalsRequest) (*v1.ListProposalsResponse, error)
 	// Submit a decision on a pending proposal (approve or reject)
-	SubmitProposal(context.Context, *connect.Request[v1.SubmitProposalRequest]) (*connect.Response[v1.SubmitProposalResponse], error)
+	SubmitProposal(context.Context, *v1.SubmitProposalRequest) (*v1.SubmitProposalResponse, error)
 	// Resolve a resume token or event ID to a replay cursor for a device.
-	ResolveReplayCursor(context.Context, *connect.Request[v1.ResolveReplayCursorRequest]) (*connect.Response[v1.ResolveReplayCursorResponse], error)
+	ResolveReplayCursor(context.Context, *v1.ResolveReplayCursorRequest) (*v1.ResolveReplayCursorResponse, error)
 	// Get the latest replay cursor for a device (used as upper bound during replay).
-	GetLatestReplayCursor(context.Context, *connect.Request[v1.GetLatestReplayCursorRequest]) (*connect.Response[v1.GetLatestReplayCursorResponse], error)
+	GetLatestReplayCursor(context.Context, *v1.GetLatestReplayCursorRequest) (*v1.GetLatestReplayCursorResponse, error)
 	// List replay events after a cursor for a device (paginated catch-up).
-	ListReplayEvents(context.Context, *connect.Request[v1.ListReplayEventsRequest]) (*connect.Response[v1.ListReplayEventsResponse], error)
+	ListReplayEvents(context.Context, *v1.ListReplayEventsRequest) (*v1.ListReplayEventsResponse, error)
 }
 
-// NewChatServiceHandler builds an HTTP handler from the service implementation. It returns the path
-// on which to mount the handler and the handler itself.
-//
-// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
-// and JSON codecs. They also support gzip compression.
-func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	chatServiceMethods := v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods()
-	chatServiceSendEventHandler := connect.NewUnaryHandler(
-		ChatServiceSendEventProcedure,
-		svc.SendEvent,
-		connect.WithSchema(chatServiceMethods.ByName("SendEvent")),
-		connect.WithHandlerOptions(opts...),
+// RegisterChatServiceHandler registers svc as the chat.v1.ChatService implementation on server.
+func RegisterChatServiceHandler(server *connect.Server, svc ChatServiceHandler) {
+	adapter := chatServiceHandler{svc: svc}
+	server.Register(
+		connect.Method{Spec: chatServiceSendEventSpec(), Handler: adapter.sendEvent},
+		connect.Method{Spec: chatServiceGetEventSpec(), Handler: adapter.getEvent},
+		connect.Method{Spec: chatServiceGetHistorySpec(), Handler: adapter.getHistory},
+		connect.Method{Spec: chatServiceGetRoomSpec(), Handler: adapter.getRoom},
+		connect.Method{Spec: chatServiceCreateRoomSpec(), Handler: adapter.createRoom},
+		connect.Method{Spec: chatServiceSearchRoomsSpec(), Handler: adapter.searchRooms},
+		connect.Method{Spec: chatServiceUpdateRoomSpec(), Handler: adapter.updateRoom},
+		connect.Method{Spec: chatServiceDeleteRoomSpec(), Handler: adapter.deleteRoom},
+		connect.Method{Spec: chatServiceAddRoomSubscriptionsSpec(), Handler: adapter.addRoomSubscriptions},
+		connect.Method{Spec: chatServiceRemoveRoomSubscriptionsSpec(), Handler: adapter.removeRoomSubscriptions},
+		connect.Method{Spec: chatServiceUpdateSubscriptionRoleSpec(), Handler: adapter.updateSubscriptionRole},
+		connect.Method{Spec: chatServiceGetDirectPartnerAccountSpec(), Handler: adapter.getDirectPartnerAccount},
+		connect.Method{Spec: chatServiceSearchRoomSubscriptionsSpec(), Handler: adapter.searchRoomSubscriptions},
+		connect.Method{Spec: chatServiceGetSubscriptionSettingsSpec(), Handler: adapter.getSubscriptionSettings},
+		connect.Method{Spec: chatServiceUpdateSubscriptionSettingsSpec(), Handler: adapter.updateSubscriptionSettings},
+		connect.Method{Spec: chatServiceLiveSpec(), Handler: adapter.live},
+		connect.Method{Spec: chatServiceListProposalsSpec(), Handler: adapter.listProposals},
+		connect.Method{Spec: chatServiceSubmitProposalSpec(), Handler: adapter.submitProposal},
+		connect.Method{Spec: chatServiceResolveReplayCursorSpec(), Handler: adapter.resolveReplayCursor},
+		connect.Method{Spec: chatServiceGetLatestReplayCursorSpec(), Handler: adapter.getLatestReplayCursor},
+		connect.Method{Spec: chatServiceListReplayEventsSpec(), Handler: adapter.listReplayEvents},
 	)
-	chatServiceGetEventHandler := connect.NewUnaryHandler(
-		ChatServiceGetEventProcedure,
-		svc.GetEvent,
-		connect.WithSchema(chatServiceMethods.ByName("GetEvent")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceGetHistoryHandler := connect.NewUnaryHandler(
-		ChatServiceGetHistoryProcedure,
-		svc.GetHistory,
-		connect.WithSchema(chatServiceMethods.ByName("GetHistory")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceGetRoomHandler := connect.NewUnaryHandler(
-		ChatServiceGetRoomProcedure,
-		svc.GetRoom,
-		connect.WithSchema(chatServiceMethods.ByName("GetRoom")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceCreateRoomHandler := connect.NewUnaryHandler(
-		ChatServiceCreateRoomProcedure,
-		svc.CreateRoom,
-		connect.WithSchema(chatServiceMethods.ByName("CreateRoom")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceSearchRoomsHandler := connect.NewServerStreamHandler(
-		ChatServiceSearchRoomsProcedure,
-		svc.SearchRooms,
-		connect.WithSchema(chatServiceMethods.ByName("SearchRooms")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceUpdateRoomHandler := connect.NewUnaryHandler(
-		ChatServiceUpdateRoomProcedure,
-		svc.UpdateRoom,
-		connect.WithSchema(chatServiceMethods.ByName("UpdateRoom")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceDeleteRoomHandler := connect.NewUnaryHandler(
-		ChatServiceDeleteRoomProcedure,
-		svc.DeleteRoom,
-		connect.WithSchema(chatServiceMethods.ByName("DeleteRoom")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceAddRoomSubscriptionsHandler := connect.NewUnaryHandler(
-		ChatServiceAddRoomSubscriptionsProcedure,
-		svc.AddRoomSubscriptions,
-		connect.WithSchema(chatServiceMethods.ByName("AddRoomSubscriptions")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceRemoveRoomSubscriptionsHandler := connect.NewUnaryHandler(
-		ChatServiceRemoveRoomSubscriptionsProcedure,
-		svc.RemoveRoomSubscriptions,
-		connect.WithSchema(chatServiceMethods.ByName("RemoveRoomSubscriptions")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceUpdateSubscriptionRoleHandler := connect.NewUnaryHandler(
-		ChatServiceUpdateSubscriptionRoleProcedure,
-		svc.UpdateSubscriptionRole,
-		connect.WithSchema(chatServiceMethods.ByName("UpdateSubscriptionRole")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceGetDirectPartnerAccountHandler := connect.NewUnaryHandler(
-		ChatServiceGetDirectPartnerAccountProcedure,
-		svc.GetDirectPartnerAccount,
-		connect.WithSchema(chatServiceMethods.ByName("GetDirectPartnerAccount")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceSearchRoomSubscriptionsHandler := connect.NewUnaryHandler(
-		ChatServiceSearchRoomSubscriptionsProcedure,
-		svc.SearchRoomSubscriptions,
-		connect.WithSchema(chatServiceMethods.ByName("SearchRoomSubscriptions")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceGetSubscriptionSettingsHandler := connect.NewUnaryHandler(
-		ChatServiceGetSubscriptionSettingsProcedure,
-		svc.GetSubscriptionSettings,
-		connect.WithSchema(chatServiceMethods.ByName("GetSubscriptionSettings")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceUpdateSubscriptionSettingsHandler := connect.NewUnaryHandler(
-		ChatServiceUpdateSubscriptionSettingsProcedure,
-		svc.UpdateSubscriptionSettings,
-		connect.WithSchema(chatServiceMethods.ByName("UpdateSubscriptionSettings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceLiveHandler := connect.NewUnaryHandler(
-		ChatServiceLiveProcedure,
-		svc.Live,
-		connect.WithSchema(chatServiceMethods.ByName("Live")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceListProposalsHandler := connect.NewUnaryHandler(
-		ChatServiceListProposalsProcedure,
-		svc.ListProposals,
-		connect.WithSchema(chatServiceMethods.ByName("ListProposals")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceSubmitProposalHandler := connect.NewUnaryHandler(
-		ChatServiceSubmitProposalProcedure,
-		svc.SubmitProposal,
-		connect.WithSchema(chatServiceMethods.ByName("SubmitProposal")),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceResolveReplayCursorHandler := connect.NewUnaryHandler(
-		ChatServiceResolveReplayCursorProcedure,
-		svc.ResolveReplayCursor,
-		connect.WithSchema(chatServiceMethods.ByName("ResolveReplayCursor")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceGetLatestReplayCursorHandler := connect.NewUnaryHandler(
-		ChatServiceGetLatestReplayCursorProcedure,
-		svc.GetLatestReplayCursor,
-		connect.WithSchema(chatServiceMethods.ByName("GetLatestReplayCursor")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	chatServiceListReplayEventsHandler := connect.NewUnaryHandler(
-		ChatServiceListReplayEventsProcedure,
-		svc.ListReplayEvents,
-		connect.WithSchema(chatServiceMethods.ByName("ListReplayEvents")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/chat.v1.ChatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case ChatServiceSendEventProcedure:
-			chatServiceSendEventHandler.ServeHTTP(w, r)
-		case ChatServiceGetEventProcedure:
-			chatServiceGetEventHandler.ServeHTTP(w, r)
-		case ChatServiceGetHistoryProcedure:
-			chatServiceGetHistoryHandler.ServeHTTP(w, r)
-		case ChatServiceGetRoomProcedure:
-			chatServiceGetRoomHandler.ServeHTTP(w, r)
-		case ChatServiceCreateRoomProcedure:
-			chatServiceCreateRoomHandler.ServeHTTP(w, r)
-		case ChatServiceSearchRoomsProcedure:
-			chatServiceSearchRoomsHandler.ServeHTTP(w, r)
-		case ChatServiceUpdateRoomProcedure:
-			chatServiceUpdateRoomHandler.ServeHTTP(w, r)
-		case ChatServiceDeleteRoomProcedure:
-			chatServiceDeleteRoomHandler.ServeHTTP(w, r)
-		case ChatServiceAddRoomSubscriptionsProcedure:
-			chatServiceAddRoomSubscriptionsHandler.ServeHTTP(w, r)
-		case ChatServiceRemoveRoomSubscriptionsProcedure:
-			chatServiceRemoveRoomSubscriptionsHandler.ServeHTTP(w, r)
-		case ChatServiceUpdateSubscriptionRoleProcedure:
-			chatServiceUpdateSubscriptionRoleHandler.ServeHTTP(w, r)
-		case ChatServiceGetDirectPartnerAccountProcedure:
-			chatServiceGetDirectPartnerAccountHandler.ServeHTTP(w, r)
-		case ChatServiceSearchRoomSubscriptionsProcedure:
-			chatServiceSearchRoomSubscriptionsHandler.ServeHTTP(w, r)
-		case ChatServiceGetSubscriptionSettingsProcedure:
-			chatServiceGetSubscriptionSettingsHandler.ServeHTTP(w, r)
-		case ChatServiceUpdateSubscriptionSettingsProcedure:
-			chatServiceUpdateSubscriptionSettingsHandler.ServeHTTP(w, r)
-		case ChatServiceLiveProcedure:
-			chatServiceLiveHandler.ServeHTTP(w, r)
-		case ChatServiceListProposalsProcedure:
-			chatServiceListProposalsHandler.ServeHTTP(w, r)
-		case ChatServiceSubmitProposalProcedure:
-			chatServiceSubmitProposalHandler.ServeHTTP(w, r)
-		case ChatServiceResolveReplayCursorProcedure:
-			chatServiceResolveReplayCursorHandler.ServeHTTP(w, r)
-		case ChatServiceGetLatestReplayCursorProcedure:
-			chatServiceGetLatestReplayCursorHandler.ServeHTTP(w, r)
-		case ChatServiceListReplayEventsProcedure:
-			chatServiceListReplayEventsHandler.ServeHTTP(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	})
+}
+
+// ChatServiceSearchRoomsServerStream is the server stream for the ChatService's SearchRooms RPC.
+type ChatServiceSearchRoomsServerStream struct {
+	stream connect.ServerStream
+}
+
+// SendHeaders flushes the response headers without a message. The first Send does this implicitly.
+func (s ChatServiceSearchRoomsServerStream) SendHeaders() error {
+	return s.stream.SendHeaders()
+}
+
+// Send sends a response message to the client.
+func (s ChatServiceSearchRoomsServerStream) Send(res *v1.SearchRoomsResponse) error {
+	return s.stream.Send(res)
 }
 
 // UnimplementedChatServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedChatServiceHandler struct{}
 
-func (UnimplementedChatServiceHandler) SendEvent(context.Context, *connect.Request[v1.SendEventRequest]) (*connect.Response[v1.SendEventResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.SendEvent is not implemented"))
+func (UnimplementedChatServiceHandler) SendEvent(context.Context, *v1.SendEventRequest) (*v1.SendEventResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.SendEvent is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) GetEvent(context.Context, *connect.Request[v1.GetEventRequest]) (*connect.Response[v1.GetEventResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.GetEvent is not implemented"))
+func (UnimplementedChatServiceHandler) GetEvent(context.Context, *v1.GetEventRequest) (*v1.GetEventResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetEvent is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) GetHistory(context.Context, *connect.Request[v1.GetHistoryRequest]) (*connect.Response[v1.GetHistoryResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.GetHistory is not implemented"))
+func (UnimplementedChatServiceHandler) GetHistory(context.Context, *v1.GetHistoryRequest) (*v1.GetHistoryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetHistory is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) GetRoom(context.Context, *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.GetRoomResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.GetRoom is not implemented"))
+func (UnimplementedChatServiceHandler) GetRoom(context.Context, *v1.GetRoomRequest) (*v1.GetRoomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetRoom is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) CreateRoom(context.Context, *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.CreateRoomResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.CreateRoom is not implemented"))
+func (UnimplementedChatServiceHandler) CreateRoom(context.Context, *v1.CreateRoomRequest) (*v1.CreateRoomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.CreateRoom is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) SearchRooms(context.Context, *connect.Request[v1.SearchRoomsRequest], *connect.ServerStream[v1.SearchRoomsResponse]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.SearchRooms is not implemented"))
+func (UnimplementedChatServiceHandler) SearchRooms(context.Context, *v1.SearchRoomsRequest, ChatServiceSearchRoomsServerStream) error {
+	return connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.SearchRooms is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) UpdateRoom(context.Context, *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.UpdateRoomResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.UpdateRoom is not implemented"))
+func (UnimplementedChatServiceHandler) UpdateRoom(context.Context, *v1.UpdateRoomRequest) (*v1.UpdateRoomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.UpdateRoom is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) DeleteRoom(context.Context, *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.DeleteRoom is not implemented"))
+func (UnimplementedChatServiceHandler) DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.DeleteRoom is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) AddRoomSubscriptions(context.Context, *connect.Request[v1.AddRoomSubscriptionsRequest]) (*connect.Response[v1.AddRoomSubscriptionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.AddRoomSubscriptions is not implemented"))
+func (UnimplementedChatServiceHandler) AddRoomSubscriptions(context.Context, *v1.AddRoomSubscriptionsRequest) (*v1.AddRoomSubscriptionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.AddRoomSubscriptions is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) RemoveRoomSubscriptions(context.Context, *connect.Request[v1.RemoveRoomSubscriptionsRequest]) (*connect.Response[v1.RemoveRoomSubscriptionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.RemoveRoomSubscriptions is not implemented"))
+func (UnimplementedChatServiceHandler) RemoveRoomSubscriptions(context.Context, *v1.RemoveRoomSubscriptionsRequest) (*v1.RemoveRoomSubscriptionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.RemoveRoomSubscriptions is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) UpdateSubscriptionRole(context.Context, *connect.Request[v1.UpdateSubscriptionRoleRequest]) (*connect.Response[v1.UpdateSubscriptionRoleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.UpdateSubscriptionRole is not implemented"))
+func (UnimplementedChatServiceHandler) UpdateSubscriptionRole(context.Context, *v1.UpdateSubscriptionRoleRequest) (*v1.UpdateSubscriptionRoleResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.UpdateSubscriptionRole is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) GetDirectPartnerAccount(context.Context, *connect.Request[v1.GetDirectPartnerAccountRequest]) (*connect.Response[v1.GetDirectPartnerAccountResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.GetDirectPartnerAccount is not implemented"))
+func (UnimplementedChatServiceHandler) GetDirectPartnerAccount(context.Context, *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetDirectPartnerAccount is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) SearchRoomSubscriptions(context.Context, *connect.Request[v1.SearchRoomSubscriptionsRequest]) (*connect.Response[v1.SearchRoomSubscriptionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.SearchRoomSubscriptions is not implemented"))
+func (UnimplementedChatServiceHandler) SearchRoomSubscriptions(context.Context, *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.SearchRoomSubscriptions is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) GetSubscriptionSettings(context.Context, *connect.Request[v1.GetSubscriptionSettingsRequest]) (*connect.Response[v1.GetSubscriptionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.GetSubscriptionSettings is not implemented"))
+func (UnimplementedChatServiceHandler) GetSubscriptionSettings(context.Context, *v1.GetSubscriptionSettingsRequest) (*v1.GetSubscriptionSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetSubscriptionSettings is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) UpdateSubscriptionSettings(context.Context, *connect.Request[v1.UpdateSubscriptionSettingsRequest]) (*connect.Response[v1.UpdateSubscriptionSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.UpdateSubscriptionSettings is not implemented"))
+func (UnimplementedChatServiceHandler) UpdateSubscriptionSettings(context.Context, *v1.UpdateSubscriptionSettingsRequest) (*v1.UpdateSubscriptionSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.UpdateSubscriptionSettings is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) Live(context.Context, *connect.Request[v1.LiveRequest]) (*connect.Response[v1.LiveResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.Live is not implemented"))
+func (UnimplementedChatServiceHandler) Live(context.Context, *v1.LiveRequest) (*v1.LiveResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.Live is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) ListProposals(context.Context, *connect.Request[v1.ListProposalsRequest]) (*connect.Response[v1.ListProposalsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.ListProposals is not implemented"))
+func (UnimplementedChatServiceHandler) ListProposals(context.Context, *v1.ListProposalsRequest) (*v1.ListProposalsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.ListProposals is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) SubmitProposal(context.Context, *connect.Request[v1.SubmitProposalRequest]) (*connect.Response[v1.SubmitProposalResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.SubmitProposal is not implemented"))
+func (UnimplementedChatServiceHandler) SubmitProposal(context.Context, *v1.SubmitProposalRequest) (*v1.SubmitProposalResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.SubmitProposal is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) ResolveReplayCursor(context.Context, *connect.Request[v1.ResolveReplayCursorRequest]) (*connect.Response[v1.ResolveReplayCursorResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.ResolveReplayCursor is not implemented"))
+func (UnimplementedChatServiceHandler) ResolveReplayCursor(context.Context, *v1.ResolveReplayCursorRequest) (*v1.ResolveReplayCursorResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.ResolveReplayCursor is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) GetLatestReplayCursor(context.Context, *connect.Request[v1.GetLatestReplayCursorRequest]) (*connect.Response[v1.GetLatestReplayCursorResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.GetLatestReplayCursor is not implemented"))
+func (UnimplementedChatServiceHandler) GetLatestReplayCursor(context.Context, *v1.GetLatestReplayCursorRequest) (*v1.GetLatestReplayCursorResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetLatestReplayCursor is not implemented")
 }
 
-func (UnimplementedChatServiceHandler) ListReplayEvents(context.Context, *connect.Request[v1.ListReplayEventsRequest]) (*connect.Response[v1.ListReplayEventsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("chat.v1.ChatService.ListReplayEvents is not implemented"))
+func (UnimplementedChatServiceHandler) ListReplayEvents(context.Context, *v1.ListReplayEventsRequest) (*v1.ListReplayEventsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.ListReplayEvents is not implemented")
+}
+
+type chatServiceClient struct {
+	client *connect.Client
+}
+
+func (c *chatServiceClient) SendEvent(ctx context.Context, req *v1.SendEventRequest) (*v1.SendEventResponse, error) {
+	var res v1.SendEventResponse
+	if err := c.client.CallUnary(ctx, chatServiceSendEventSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) GetEvent(ctx context.Context, req *v1.GetEventRequest) (*v1.GetEventResponse, error) {
+	var res v1.GetEventResponse
+	if err := c.client.CallUnary(ctx, chatServiceGetEventSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) GetHistory(ctx context.Context, req *v1.GetHistoryRequest) (*v1.GetHistoryResponse, error) {
+	var res v1.GetHistoryResponse
+	if err := c.client.CallUnary(ctx, chatServiceGetHistorySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) GetRoom(ctx context.Context, req *v1.GetRoomRequest) (*v1.GetRoomResponse, error) {
+	var res v1.GetRoomResponse
+	if err := c.client.CallUnary(ctx, chatServiceGetRoomSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) CreateRoom(ctx context.Context, req *v1.CreateRoomRequest) (*v1.CreateRoomResponse, error) {
+	var res v1.CreateRoomResponse
+	if err := c.client.CallUnary(ctx, chatServiceCreateRoomSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) SearchRooms(ctx context.Context, req *v1.SearchRoomsRequest) (ChatServiceSearchRoomsClientStream, error) {
+	stream, err := c.client.CallServerStream(ctx, chatServiceSearchRoomsSpec(), req)
+	if err != nil {
+		return ChatServiceSearchRoomsClientStream{}, err
+	}
+	return ChatServiceSearchRoomsClientStream{stream: stream}, nil
+}
+
+func (c *chatServiceClient) UpdateRoom(ctx context.Context, req *v1.UpdateRoomRequest) (*v1.UpdateRoomResponse, error) {
+	var res v1.UpdateRoomResponse
+	if err := c.client.CallUnary(ctx, chatServiceUpdateRoomSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) DeleteRoom(ctx context.Context, req *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error) {
+	var res v1.DeleteRoomResponse
+	if err := c.client.CallUnary(ctx, chatServiceDeleteRoomSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) AddRoomSubscriptions(ctx context.Context, req *v1.AddRoomSubscriptionsRequest) (*v1.AddRoomSubscriptionsResponse, error) {
+	var res v1.AddRoomSubscriptionsResponse
+	if err := c.client.CallUnary(ctx, chatServiceAddRoomSubscriptionsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) RemoveRoomSubscriptions(ctx context.Context, req *v1.RemoveRoomSubscriptionsRequest) (*v1.RemoveRoomSubscriptionsResponse, error) {
+	var res v1.RemoveRoomSubscriptionsResponse
+	if err := c.client.CallUnary(ctx, chatServiceRemoveRoomSubscriptionsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) UpdateSubscriptionRole(ctx context.Context, req *v1.UpdateSubscriptionRoleRequest) (*v1.UpdateSubscriptionRoleResponse, error) {
+	var res v1.UpdateSubscriptionRoleResponse
+	if err := c.client.CallUnary(ctx, chatServiceUpdateSubscriptionRoleSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) GetDirectPartnerAccount(ctx context.Context, req *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error) {
+	var res v1.GetDirectPartnerAccountResponse
+	if err := c.client.CallUnary(ctx, chatServiceGetDirectPartnerAccountSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) SearchRoomSubscriptions(ctx context.Context, req *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error) {
+	var res v1.SearchRoomSubscriptionsResponse
+	if err := c.client.CallUnary(ctx, chatServiceSearchRoomSubscriptionsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) GetSubscriptionSettings(ctx context.Context, req *v1.GetSubscriptionSettingsRequest) (*v1.GetSubscriptionSettingsResponse, error) {
+	var res v1.GetSubscriptionSettingsResponse
+	if err := c.client.CallUnary(ctx, chatServiceGetSubscriptionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) UpdateSubscriptionSettings(ctx context.Context, req *v1.UpdateSubscriptionSettingsRequest) (*v1.UpdateSubscriptionSettingsResponse, error) {
+	var res v1.UpdateSubscriptionSettingsResponse
+	if err := c.client.CallUnary(ctx, chatServiceUpdateSubscriptionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) Live(ctx context.Context, req *v1.LiveRequest) (*v1.LiveResponse, error) {
+	var res v1.LiveResponse
+	if err := c.client.CallUnary(ctx, chatServiceLiveSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) ListProposals(ctx context.Context, req *v1.ListProposalsRequest) (*v1.ListProposalsResponse, error) {
+	var res v1.ListProposalsResponse
+	if err := c.client.CallUnary(ctx, chatServiceListProposalsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) SubmitProposal(ctx context.Context, req *v1.SubmitProposalRequest) (*v1.SubmitProposalResponse, error) {
+	var res v1.SubmitProposalResponse
+	if err := c.client.CallUnary(ctx, chatServiceSubmitProposalSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) ResolveReplayCursor(ctx context.Context, req *v1.ResolveReplayCursorRequest) (*v1.ResolveReplayCursorResponse, error) {
+	var res v1.ResolveReplayCursorResponse
+	if err := c.client.CallUnary(ctx, chatServiceResolveReplayCursorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) GetLatestReplayCursor(ctx context.Context, req *v1.GetLatestReplayCursorRequest) (*v1.GetLatestReplayCursorResponse, error) {
+	var res v1.GetLatestReplayCursorResponse
+	if err := c.client.CallUnary(ctx, chatServiceGetLatestReplayCursorSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) ListReplayEvents(ctx context.Context, req *v1.ListReplayEventsRequest) (*v1.ListReplayEventsResponse, error) {
+	var res v1.ListReplayEventsResponse
+	if err := c.client.CallUnary(ctx, chatServiceListReplayEventsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+type chatServiceHandler struct{ svc ChatServiceHandler }
+
+func (h chatServiceHandler) sendEvent(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SendEventRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SendEvent(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) getEvent(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetEventRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetEvent(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) getHistory(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetHistoryRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetHistory(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) getRoom(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetRoomRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetRoom(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) createRoom(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateRoomRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateRoom(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) searchRooms(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SearchRoomsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	return h.svc.SearchRooms(ctx, &req, ChatServiceSearchRoomsServerStream{stream: stream})
+}
+
+func (h chatServiceHandler) updateRoom(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateRoomRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateRoom(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) deleteRoom(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteRoomRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteRoom(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) addRoomSubscriptions(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AddRoomSubscriptionsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.AddRoomSubscriptions(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) removeRoomSubscriptions(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RemoveRoomSubscriptionsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RemoveRoomSubscriptions(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) updateSubscriptionRole(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateSubscriptionRoleRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateSubscriptionRole(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) getDirectPartnerAccount(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetDirectPartnerAccountRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetDirectPartnerAccount(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) searchRoomSubscriptions(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SearchRoomSubscriptionsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SearchRoomSubscriptions(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) getSubscriptionSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetSubscriptionSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetSubscriptionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) updateSubscriptionSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateSubscriptionSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateSubscriptionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) live(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LiveRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Live(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) listProposals(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListProposalsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListProposals(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) submitProposal(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SubmitProposalRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SubmitProposal(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) resolveReplayCursor(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ResolveReplayCursorRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ResolveReplayCursor(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) getLatestReplayCursor(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetLatestReplayCursorRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetLatestReplayCursor(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) listReplayEvents(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListReplayEventsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListReplayEvents(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
 }

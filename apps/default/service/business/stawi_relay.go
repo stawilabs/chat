@@ -11,8 +11,8 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/data"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -181,7 +181,7 @@ func proposedOf(subs []*models.RoomSubscription, profileID string) *models.RoomS
 
 // errStawiNotConfigured is the sender-facing refusal when settlement is absent.
 var errStawiNotConfigured = connect.NewError(connect.CodeUnavailable,
-	errors.New("stawi room acts are not available on this server"))
+	"stawi room acts are not available on this server")
 
 // relay hands one act to settlement. Refusals by settlement are stored and
 // reported to the room; problems with the act itself, or with reaching
@@ -195,7 +195,7 @@ func (sr *stawiRelay) relay(ctx context.Context, act *stawiAct) stawiRelayResult
 	if !senderMaySend || act.sender.ProfileID == "" ||
 		act.sender.RoomID != "" && act.sender.RoomID != act.event.RoomID {
 		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
-			errors.New("stawi room acts need an active member of the room"))}
+			"stawi room acts need an active member of the room")}
 	}
 	if sr == nil || sr.rooms == nil {
 		return stawiRelayResult{ack: errStawiNotConfigured}
@@ -227,7 +227,7 @@ func (sr *stawiRelay) relayConversion(
 ) stawiRelayResult {
 	if bound {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("the room is already a Stawi room"))}
+			"the room is already a Stawi room")}
 	}
 
 	// A DM or a bot room stays personal: person to person money is the
@@ -244,7 +244,7 @@ func (sr *stawiRelay) relayConversion(
 	// the genesis prepared here is what a later activation must match.
 	if !roleListContains(act.sender.Role, roleOwner) && !roleListContains(act.sender.Role, roleAdmin) {
 		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
-			errors.New("only the room's owner or an admin may convert it to a Stawi room"))}
+			"only the room's owner or an admin may convert it to a Stawi room")}
 	}
 
 	// Another member's pending genesis is theirs until it expires.
@@ -350,7 +350,7 @@ func (sr *stawiRelay) relayGenesisSignature(
 ) stawiRelayResult {
 	if bound {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("the room is already on chain"))}
+			"the room is already on chain")}
 	}
 
 	// The founders are the ones settlement returned for the genesis and chat
@@ -359,17 +359,17 @@ func (sr *stawiRelay) relayGenesisSignature(
 	if err != nil {
 		if data.ErrorIsNoRows(err) {
 			return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-				errors.New("the room has no genesis to sign"))}
+				"the room has no genesis to sign")}
 		}
 		return stawiRelayResult{ack: fmt.Errorf("failed to load the room genesis: %w", err)}
 	}
 	if binding.State != models.StawiRoomStatePending || binding.GenesisID != content.GetGenesisId() {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("the genesis is not the room's current genesis"))}
+			"the genesis is not the room's current genesis")}
 	}
 	if !binding.IsFounder(act.sender.ProfileID) {
 		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
-			errors.New("only a founder of the genesis may sign it"))}
+			"only a founder of the genesis may sign it")}
 	}
 
 	_, err = sr.rooms.SubmitRoomGenesisSignature(ctx, stawi.GenesisSignature{
@@ -396,7 +396,7 @@ func (sr *stawiRelay) relaySignedCall(
 ) stawiRelayResult {
 	if !bound {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("room calls need a Stawi room that is on chain"))}
+			"room calls need a Stawi room that is on chain")}
 	}
 
 	// Who must sign, for which room and what kind of call are settlement's
@@ -406,12 +406,12 @@ func (sr *stawiRelay) relaySignedCall(
 		if stawi.IsTransient(err) {
 			return stawiRelayResult{ack: err}
 		}
-		return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition,
-			fmt.Errorf("the call cannot be relayed: %s", stawi.RefusalReason(err)))}
+		return stawiRelayResult{ack: connect.Errorf(connect.CodeFailedPrecondition,
+			"the call cannot be relayed: %s", stawi.RefusalReason(err))}
 	}
 	if call.RoomID != act.event.RoomID {
 		return stawiRelayResult{ack: connect.NewError(connect.CodePermissionDenied,
-			errors.New("the call was prepared for another room"))}
+			"the call was prepared for another room")}
 	}
 	if !strings.EqualFold(call.Kind, content.GetKind()) {
 		return stawiRelayResult{ack: invalidStawiPayload(
@@ -427,7 +427,8 @@ func (sr *stawiRelay) relaySignedCall(
 		if prior.RoomID != act.event.RoomID || !strings.EqualFold(prior.SignerAddress, call.SignerAddress) ||
 			prior.Nonce != call.Nonce {
 			return stawiRelayResult{
-				ack: connect.NewError(connect.CodeFailedPrecondition, repository.ErrStawiCallConflict),
+				ack: connect.NewError(connect.CodeFailedPrecondition, repository.ErrStawiCallConflict.Error()).
+					WithCause(repository.ErrStawiCallConflict),
 			}
 		}
 		return sr.withOutcome(ctx, act, &chatv1.StawiCallOutcomeContent{CallId: call.CallID, Kind: call.Kind,
@@ -473,7 +474,7 @@ func (sr *stawiRelay) relaySignedCall(
 	tracked.GenID(ctx)
 	if err = sr.callRepo.Record(ctx, tracked); err != nil {
 		if errors.Is(err, repository.ErrStawiCallConflict) {
-			return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition, err)}
+			return stawiRelayResult{ack: connect.NewError(connect.CodeFailedPrecondition, err.Error()).WithCause(err)}
 		}
 		return stawiRelayResult{ack: fmt.Errorf("failed to record the relayed call: %w", err)}
 	}
@@ -488,7 +489,7 @@ func (sr *stawiRelay) relaySignedCall(
 func (sr *stawiRelay) checkSigner(ctx context.Context, act *stawiAct, call *stawi.RoomCall) error {
 	if call.ProfileID != "" && call.ProfileID != act.sender.ProfileID {
 		return connect.NewError(connect.CodePermissionDenied,
-			errors.New("the call was prepared for another member"))
+			"the call was prepared for another member")
 	}
 	if sr.accounts == nil {
 		return errStawiNotConfigured
@@ -496,11 +497,14 @@ func (sr *stawiRelay) checkSigner(ctx context.Context, act *stawiAct, call *staw
 	signer := strings.ToLower(call.SignerAddress)
 	owners, err := sr.accounts.Resolve(ctx, []string{signer})
 	if err != nil {
-		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("failed to resolve the call's signer: %w", err))
+		return connect.NewError(
+			connect.CodeUnavailable,
+			fmt.Errorf("failed to resolve the call's signer: %w", err).Error(),
+		)
 	}
 	if owner := owners[signer]; owner == "" || owner != act.sender.ProfileID {
 		return connect.NewError(connect.CodePermissionDenied,
-			errors.New("the call must be sent by the member who signs it"))
+			"the call must be sent by the member who signs it")
 	}
 	return nil
 }
@@ -510,7 +514,7 @@ func (sr *stawiRelay) refusedOrTransient(
 ) stawiRelayResult {
 	if stawi.IsTransient(err) {
 		return stawiRelayResult{ack: connect.NewError(connect.CodeUnavailable,
-			fmt.Errorf("settlement is unavailable, retry the same event: %w", err))}
+			fmt.Errorf("settlement is unavailable, retry the same event: %w", err).Error())}
 	}
 	return sr.refused(ctx, act, stawi.RefusalReason(err), outcome)
 }
@@ -538,8 +542,8 @@ func (sr *stawiRelay) withOutcome(
 // recorded for them.
 func genesisClaimRefusal(err error) error {
 	if errors.Is(err, repository.ErrStawiGenesisNotClaimable) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New(
-			"another member's conversion of this room is pending; it can be replaced once it expires"))
+		return connect.NewError(connect.CodeFailedPrecondition,
+			"another member's conversion of this room is pending; it can be replaced once it expires")
 	}
 	return fmt.Errorf("failed to record the genesis: %w", err)
 }

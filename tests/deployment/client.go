@@ -9,13 +9,17 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	profilev1connect "buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	profilev1connect "buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
-	chatv1connect "buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	chatv1connect "buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/pitabwire/util"
+
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/stawilabs/chat/pkg/connectserver"
 )
 
 // generateID generates a unique ID that matches the validation pattern [0-9a-z_-]{3,40}.
@@ -122,20 +126,22 @@ func NewClient(cfg *Config) (*Client, error) {
 		},
 	}
 
-	chatClient := chatv1connect.NewChatServiceClient(
+	chatClient := chatv1connect.NewChatServiceClient(connect.NewClient(connecthttp.NewTransport(
 		httpClient,
 		cfg.ServiceEndpoint,
-	)
+		connecthttp.WithReadMaxBytes(connectserver.ChatSendMaxBytes),
+	)))
 
-	gatewayClient := chatv1connect.NewGatewayServiceClient(
+	gatewayClient := chatv1connect.NewGatewayServiceClient(connect.NewClient(connecthttp.NewTransport(
 		httpClient,
 		cfg.GetGatewayEndpoint(),
-	)
+		connecthttp.WithReadMaxBytes(connectserver.GatewaySendMaxBytes),
+	)))
 
-	profileClient := profilev1connect.NewProfileServiceClient(
+	profileClient := profilev1connect.NewProfileServiceClient(connect.NewClient(connecthttp.NewTransport(
 		httpClient,
 		cfg.ProfileEndpoint,
-	)
+	)))
 
 	return &Client{
 		config:         cfg,
@@ -185,9 +191,9 @@ func (c *Client) Cleanup(ctx context.Context) []error {
 
 	// Delete rooms (which should cascade to subscriptions)
 	for _, roomID := range c.created.RoomIDs {
-		_, err := c.chat.DeleteRoom(ctx, connect.NewRequest(&chatv1.DeleteRoomRequest{
+		_, err := c.chat.DeleteRoom(ctx, &chatv1.DeleteRoomRequest{
 			RoomId: roomID,
-		}))
+		})
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -210,17 +216,17 @@ func (c *Client) CreateTestRoom(
 	fullName := c.config.TestDataPrefix + name
 	roomID := generateID()
 
-	resp, err := c.chat.CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	resp, err := c.chat.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Id:        roomID,
 		Name:      fullName,
 		IsPrivate: false,
 		Members:   members,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	room := resp.Msg.GetRoom()
+	room := resp.GetRoom()
 	if room != nil {
 		c.TrackRoom(room.GetId())
 	}
@@ -247,18 +253,18 @@ func (c *Client) CreateTestRoomWithMetadata(
 		}
 	}
 
-	resp, err := c.chat.CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	resp, err := c.chat.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Id:          roomID,
 		Name:        fullName,
 		Description: description,
 		IsPrivate:   isPrivate,
 		Metadata:    metaStruct,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	room := resp.Msg.GetRoom()
+	room := resp.GetRoom()
 	if room != nil {
 		c.TrackRoom(room.GetId())
 	}
@@ -268,7 +274,7 @@ func (c *Client) CreateTestRoomWithMetadata(
 
 // SendTextMessage sends a text message to a room.
 func (c *Client) SendTextMessage(ctx context.Context, roomID, text string) ([]*chatv1.AckEvent, error) {
-	resp, err := c.chat.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	resp, err := c.chat.SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     generateID(),
 			RoomId: roomID,
@@ -283,12 +289,12 @@ func (c *Client) SendTextMessage(ctx context.Context, roomID, text string) ([]*c
 				},
 			},
 		}},
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg.GetAck(), nil
+	return resp.GetAck(), nil
 }
 
 // SendBatchMessages sends multiple messages in a single request.
@@ -311,14 +317,14 @@ func (c *Client) SendBatchMessages(ctx context.Context, roomID string, messages 
 		})
 	}
 
-	resp, err := c.chat.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	resp, err := c.chat.SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: events,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg.GetAck(), nil
+	return resp.GetAck(), nil
 }
 
 // GetHistory retrieves message history from a room.
@@ -328,79 +334,79 @@ func (c *Client) GetHistory(
 	limit int32,
 	cursor string,
 ) (*chatv1.GetHistoryResponse, error) {
-	resp, err := c.chat.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	resp, err := c.chat.GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId: roomID,
 		Cursor: &commonv1.PageCursor{
 			Limit: limit,
 			Page:  cursor,
 		},
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg, nil
+	return resp, nil
 }
 
 // AddMembers adds members to a room.
 func (c *Client) AddMembers(ctx context.Context, roomID string, members []*chatv1.RoomSubscription) error {
-	_, err := c.chat.AddRoomSubscriptions(ctx, connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+	_, err := c.chat.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
 		RoomId:  roomID,
 		Members: members,
-	}))
+	})
 	return err
 }
 
 // RemoveMembers removes members from a room.
 func (c *Client) RemoveMembers(ctx context.Context, roomID string, subscriptionIDs []string) error {
-	_, err := c.chat.RemoveRoomSubscriptions(ctx, connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+	_, err := c.chat.RemoveRoomSubscriptions(ctx, &chatv1.RemoveRoomSubscriptionsRequest{
 		RoomId:         roomID,
 		SubscriptionId: subscriptionIDs,
-	}))
+	})
 	return err
 }
 
 // SearchSubscriptions retrieves room members.
 func (c *Client) SearchSubscriptions(ctx context.Context, roomID string) ([]*chatv1.RoomSubscription, error) {
-	resp, err := c.chat.SearchRoomSubscriptions(ctx, connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+	resp, err := c.chat.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
 		RoomId: roomID,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg.GetMembers(), nil
+	return resp.GetMembers(), nil
 }
 
 // UpdateRoom updates room properties.
 func (c *Client) UpdateRoom(ctx context.Context, roomID, name, topic string) (*chatv1.Room, error) {
-	resp, err := c.chat.UpdateRoom(ctx, connect.NewRequest(&chatv1.UpdateRoomRequest{
+	resp, err := c.chat.UpdateRoom(ctx, &chatv1.UpdateRoomRequest{
 		RoomId:      roomID,
 		Name:        name,
 		Description: topic,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Msg.GetRoom(), nil
+	return resp.GetRoom(), nil
 }
 
 // UpdateSubscriptionRole changes a member's role.
 func (c *Client) UpdateSubscriptionRole(ctx context.Context, roomID, subscriptionID string, roles []string) error {
-	_, err := c.chat.UpdateSubscriptionRole(ctx, connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+	_, err := c.chat.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{
 		RoomId:         roomID,
 		SubscriptionId: subscriptionID,
 		Roles:          roles,
-	}))
+	})
 	return err
 }
 
 // SendLiveUpdate sends real-time state updates (typing, read markers, etc.).
 func (c *Client) SendLiveUpdate(ctx context.Context, commands []*chatv1.ClientCommand) error {
-	_, err := c.chat.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := c.chat.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: commands,
-	}))
+	})
 	return err
 }
 
@@ -464,16 +470,16 @@ func (c *Client) GetOrCreateTestProfile(ctx context.Context, email, name string)
 		return nil, fmt.Errorf("failed to create properties struct: %w", err)
 	}
 
-	resp, err := c.profile.Create(ctx, connect.NewRequest(&profilev1.CreateRequest{
+	resp, err := c.profile.Create(ctx, &profilev1.CreateRequest{
 		Type:       profilev1.ProfileType_PERSON,
 		Contact:    email,
 		Properties: properties,
-	}))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
 
-	profileData := resp.Msg.GetData()
+	profileData := resp.GetData()
 	if profileData == nil {
 		return nil, errors.New("profile creation returned nil data")
 	}
@@ -562,7 +568,7 @@ func (c *Client) ToRoomSubscriptions(profiles []*TestProfile) []*chatv1.RoomSubs
 
 // GatewayStream represents an active gateway stream connection.
 type GatewayStream struct {
-	stream   *connect.BidiStreamForClient[chatv1.StreamRequest, chatv1.StreamResponse]
+	stream   chatv1connect.GatewayServiceStreamClientStream
 	messages chan *chatv1.StreamResponse
 	errors   chan error
 	done     chan struct{}
@@ -572,7 +578,10 @@ type GatewayStream struct {
 
 // ConnectToGateway establishes a bidirectional stream connection to the gateway.
 func (c *Client) ConnectToGateway(ctx context.Context) (*GatewayStream, error) {
-	stream := c.gateway.Stream(ctx)
+	stream, err := c.gateway.Stream(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	gs := &GatewayStream{
 		stream:   stream,
@@ -623,7 +632,8 @@ func (gs *GatewayStream) Close() error {
 	gs.mu.Unlock()
 
 	close(gs.done)
-	return gs.stream.CloseRequest()
+	sendErr := gs.stream.CloseSend()
+	return errors.Join(sendErr, gs.stream.Close())
 }
 
 // Messages returns the channel for receiving stream responses.

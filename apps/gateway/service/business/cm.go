@@ -100,13 +100,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
-	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/cache"
-	"github.com/pitabwire/frame/v2/telemetry"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/cache"
+	"github.com/pitabwire/frame/v3/telemetry"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/pkg/chatutil"
@@ -1235,11 +1235,11 @@ func (cm *connectionManager) presenceWorker() {
 			}
 
 			presenceCtx, cancel := context.WithTimeout(job.ctx, presenceUpdateTimeout)
-			_, err := cm.deviceCli.UpdatePresence(presenceCtx, connect.NewRequest(&devicev1.UpdatePresenceRequest{
+			_, err := cm.deviceCli.UpdatePresence(presenceCtx, &devicev1.UpdatePresenceRequest{
 				DeviceId:      job.deviceID,
 				Status:        job.status,
 				StatusMessage: job.statusMsg,
-			}))
+			})
 			cancel()
 
 			if err != nil {
@@ -1264,7 +1264,7 @@ func (cm *connectionManager) requireHello(
 		return nil, fmt.Errorf("%w: %w", ErrStreamReceiveFailed, err)
 	}
 	if req == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired)
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired.Error()).WithCause(ErrHelloRequired)
 	}
 
 	hello := req.GetHello()
@@ -1273,7 +1273,7 @@ func (cm *connectionManager) requireHello(
 			keyProfileID: profileID,
 			keyDeviceID:  deviceID,
 		}).Warn("stream opened without initial hello frame")
-		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired)
+		return nil, connect.NewError(connect.CodeInvalidArgument, ErrHelloRequired.Error()).WithCause(ErrHelloRequired)
 	}
 
 	return hello, nil

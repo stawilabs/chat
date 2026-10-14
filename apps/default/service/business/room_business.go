@@ -11,14 +11,14 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	"buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/data"
-	frevents "github.com/pitabwire/frame/v2/events"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/data"
+	frevents "github.com/pitabwire/frame/v3/events"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 
@@ -328,14 +328,14 @@ func (rb *roomBusiness) checkProfileExists(ctx context.Context, profileID string
 	if rb.profileCli == nil {
 		return nil
 	}
-	resp, err := rb.profileCli.GetById(ctx, connect.NewRequest(&profilev1.GetByIdRequest{Id: profileID}))
+	resp, err := rb.profileCli.GetById(ctx, &profilev1.GetByIdRequest{Id: profileID})
 	if err != nil {
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return fmt.Errorf("%w: no profile %s", service.ErrDirectRoomMembers, profileID)
 		}
 		return fmt.Errorf("failed to check profile %s: %w", profileID, err)
 	}
-	if resp.Msg.GetData().GetId() != profileID {
+	if resp.GetData().GetId() != profileID {
 		return fmt.Errorf("%w: no profile %s", service.ErrDirectRoomMembers, profileID)
 	}
 	return nil
@@ -407,7 +407,7 @@ func (rb *roomBusiness) roomTypeOf(ctx context.Context, req *chatv1.CreateRoomRe
 		return models.RoomTypeDirect, []*commonv1.ContactLink{other},
 			models.DirectKey(createdBy.GetProfileId(), other.GetProfileId()), nil
 	}
-	return "", nil, "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown room type %s", req.GetType()))
+	return "", nil, "", connect.Errorf(connect.CodeInvalidArgument, "unknown room type %s", req.GetType())
 }
 
 // refuseIfDirect refuses a membership or role change in a DM or a bot room:
@@ -1346,15 +1346,15 @@ func (rb *roomBusiness) validateContactProfile(ctx context.Context, link *common
 		return nil
 	}
 
-	resp, profileErr := rb.profileCli.GetByContact(ctx, connect.NewRequest(&profilev1.GetByContactRequest{
+	resp, profileErr := rb.profileCli.GetByContact(ctx, &profilev1.GetByContactRequest{
 		Contact: link.GetContactId(),
-	}))
+	})
 	if profileErr != nil {
 		return fmt.Errorf("contact validation failed for %s: %w", link.GetContactId(), profileErr)
 	}
 
 	// The profile as source of truth
-	foundProfileID := resp.Msg.GetData().GetId()
+	foundProfileID := resp.GetData().GetId()
 
 	if link.GetProfileId() != "" {
 		if link.GetProfileId() != foundProfileID {

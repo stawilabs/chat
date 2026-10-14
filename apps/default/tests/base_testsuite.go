@@ -11,22 +11,22 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
-	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
+	"buf.build/gen/go/antinvestor/notification/connectrpc/go/v2/notification/v1/notificationv1connect"
 	notificationv1 "buf.build/gen/go/antinvestor/notification/protocolbuffers/go/notification/v1"
-	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	"buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/config"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	"github.com/pitabwire/frame/v2/frametests"
-	"github.com/pitabwire/frame/v2/frametests/definition"
-	"github.com/pitabwire/frame/v2/frametests/deps/testpostgres"
-	"github.com/pitabwire/frame/v2/security"
-	"github.com/pitabwire/frame/v2/workerpool"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/config"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	"github.com/pitabwire/frame/v3/frametests"
+	"github.com/pitabwire/frame/v3/frametests/definition"
+	"github.com/pitabwire/frame/v3/frametests/deps/testpostgres"
+	"github.com/pitabwire/frame/v3/security"
+	"github.com/pitabwire/frame/v3/workerpool"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
@@ -344,59 +344,66 @@ func (bs *BaseTestSuite) TearDownSuite() {
 type stubNotificationClient struct{}
 
 func (*stubNotificationClient) Send(
-	context.Context,
-	*connect.Request[notificationv1.SendRequest],
-) (*connect.ServerStreamForClient[notificationv1.SendResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *notificationv1.SendRequest,
+) (notificationv1connect.NotificationServiceSendClientStream, error) {
+	return notificationv1connect.NotificationServiceSendClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubNotificationClient) Release(
-	context.Context,
-	*connect.Request[notificationv1.ReleaseRequest],
-) (*connect.ServerStreamForClient[notificationv1.ReleaseResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *notificationv1.ReleaseRequest,
+) (notificationv1connect.NotificationServiceReleaseClientStream, error) {
+	return notificationv1connect.NotificationServiceReleaseClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubNotificationClient) Receive(
-	context.Context,
-	*connect.Request[notificationv1.ReceiveRequest],
-) (*connect.ServerStreamForClient[notificationv1.ReceiveResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *notificationv1.ReceiveRequest,
+) (notificationv1connect.NotificationServiceReceiveClientStream, error) {
+	return notificationv1connect.NotificationServiceReceiveClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubNotificationClient) Search(
-	context.Context,
-	*connect.Request[commonv1.SearchRequest],
-) (*connect.ServerStreamForClient[notificationv1.SearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *commonv1.SearchRequest,
+) (notificationv1connect.NotificationServiceSearchClientStream, error) {
+	return notificationv1connect.NotificationServiceSearchClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubNotificationClient) Status(
-	context.Context,
-	*connect.Request[commonv1.StatusRequest],
-) (*connect.Response[commonv1.StatusResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *commonv1.StatusRequest,
+) (*commonv1.StatusResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubNotificationClient) StatusUpdate(
-	context.Context,
-	*connect.Request[commonv1.StatusUpdateRequest],
-) (*connect.Response[commonv1.StatusUpdateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *commonv1.StatusUpdateRequest,
+) (*commonv1.StatusUpdateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubNotificationClient) TemplateSearch(
-	context.Context,
-	*connect.Request[notificationv1.TemplateSearchRequest],
-) (*connect.ServerStreamForClient[notificationv1.TemplateSearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *notificationv1.TemplateSearchRequest,
+) (notificationv1connect.NotificationServiceTemplateSearchClientStream, error) {
+	return notificationv1connect.NotificationServiceTemplateSearchClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubNotificationClient) TemplateSave(
-	context.Context,
-	*connect.Request[notificationv1.TemplateSaveRequest],
-) (*connect.Response[notificationv1.TemplateSaveResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *notificationv1.TemplateSaveRequest,
+) (*notificationv1.TemplateSaveResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 // stubProfileClient implements profilev1connect.ProfileServiceClient; all methods return nil.
@@ -404,157 +411,144 @@ type stubProfileClient struct{}
 
 //nolint:revive,staticcheck // interface method name from proto
 func (*stubProfileClient) GetById(
-	context.Context,
-	*connect.Request[profilev1.GetByIdRequest],
-) (*connect.Response[profilev1.GetByIdResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.GetByIdRequest,
+) (*profilev1.GetByIdResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) GetByContact(
-	context.Context,
-	*connect.Request[profilev1.GetByContactRequest],
-) (*connect.Response[profilev1.GetByContactResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.GetByContactRequest,
+) (*profilev1.GetByContactResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) Search(
-	context.Context,
-	*connect.Request[profilev1.SearchRequest],
-) (*connect.ServerStreamForClient[profilev1.SearchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.SearchRequest,
+) (profilev1connect.ProfileServiceSearchClientStream, error) {
+	return profilev1connect.ProfileServiceSearchClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubProfileClient) Merge(
-	context.Context,
-	*connect.Request[profilev1.MergeRequest],
-) (*connect.Response[profilev1.MergeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.MergeRequest,
+) (*profilev1.MergeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) Create(
-	context.Context,
-	*connect.Request[profilev1.CreateRequest],
-) (*connect.Response[profilev1.CreateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.CreateRequest,
+) (*profilev1.CreateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) Update(
-	context.Context,
-	*connect.Request[profilev1.UpdateRequest],
-) (*connect.Response[profilev1.UpdateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.UpdateRequest,
+) (*profilev1.UpdateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) AddContact(
-	context.Context,
-	*connect.Request[profilev1.AddContactRequest],
-) (*connect.Response[profilev1.AddContactResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.AddContactRequest,
+) (*profilev1.AddContactResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) CreateContact(
-	context.Context,
-	*connect.Request[profilev1.CreateContactRequest],
-) (*connect.Response[profilev1.CreateContactResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.CreateContactRequest,
+) (*profilev1.CreateContactResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) CreateContactVerification(
-	context.Context,
-	*connect.Request[profilev1.CreateContactVerificationRequest],
-) (*connect.Response[profilev1.CreateContactVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.CreateContactVerificationRequest,
+) (*profilev1.CreateContactVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) CheckVerification(
-	context.Context,
-	*connect.Request[profilev1.CheckVerificationRequest],
-) (*connect.Response[profilev1.CheckVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.CheckVerificationRequest,
+) (*profilev1.CheckVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) RemoveContact(
-	context.Context,
-	*connect.Request[profilev1.RemoveContactRequest],
-) (*connect.Response[profilev1.RemoveContactResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.RemoveContactRequest,
+) (*profilev1.RemoveContactResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) SearchRoster(
-	context.Context,
-	*connect.Request[profilev1.SearchRosterRequest],
-) (*connect.ServerStreamForClient[profilev1.SearchRosterResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.SearchRosterRequest,
+) (profilev1connect.ProfileServiceSearchRosterClientStream, error) {
+	return profilev1connect.ProfileServiceSearchRosterClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubProfileClient) AddRoster(
-	context.Context,
-	*connect.Request[profilev1.AddRosterRequest],
-) (*connect.Response[profilev1.AddRosterResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.AddRosterRequest,
+) (*profilev1.AddRosterResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) RemoveRoster(
-	context.Context,
-	*connect.Request[profilev1.RemoveRosterRequest],
-) (*connect.Response[profilev1.RemoveRosterResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.RemoveRosterRequest,
+) (*profilev1.RemoveRosterResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) AddAddress(
-	context.Context,
-	*connect.Request[profilev1.AddAddressRequest],
-) (*connect.Response[profilev1.AddAddressResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.AddAddressRequest,
+) (*profilev1.AddAddressResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) AddRelationship(
-	context.Context,
-	*connect.Request[profilev1.AddRelationshipRequest],
-) (*connect.Response[profilev1.AddRelationshipResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.AddRelationshipRequest,
+) (*profilev1.AddRelationshipResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) DeleteRelationship(
-	context.Context,
-	*connect.Request[profilev1.DeleteRelationshipRequest],
-) (*connect.Response[profilev1.DeleteRelationshipResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.DeleteRelationshipRequest,
+) (*profilev1.DeleteRelationshipResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) ListRelationship(
-	context.Context,
-	*connect.Request[profilev1.ListRelationshipRequest],
-) (*connect.ServerStreamForClient[profilev1.ListRelationshipResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.ListRelationshipRequest,
+) (profilev1connect.ProfileServiceListRelationshipClientStream, error) {
+	return profilev1connect.ProfileServiceListRelationshipClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubProfileClient) GetByIDAndPartition(
-	context.Context,
-	*connect.Request[profilev1.GetByIDAndPartitionRequest],
-) (*connect.Response[profilev1.GetByIDAndPartitionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.GetByIDAndPartitionRequest,
+) (*profilev1.GetByIDAndPartitionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) PropertyHistory(
-	context.Context,
-	*connect.Request[profilev1.PropertyHistoryRequest],
-) (*connect.Response[profilev1.PropertyHistoryResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.PropertyHistoryRequest,
+) (*profilev1.PropertyHistoryResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) GetContacts(
-	context.Context,
-	*connect.Request[profilev1.GetContactsRequest],
-) (*connect.Response[profilev1.GetContactsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.GetContactsRequest,
+) (*profilev1.GetContactsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubProfileClient) ResolveAccounts(
-	context.Context,
-	*connect.Request[profilev1.ResolveAccountsRequest],
-) (*connect.Response[profilev1.ResolveAccountsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *profilev1.ResolveAccountsRequest,
+) (*profilev1.ResolveAccountsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 // stubDeviceClient implements devicev1connect.DeviceServiceClient.
@@ -563,123 +557,109 @@ type stubDeviceClient struct{}
 
 //nolint:revive,staticcheck // interface method name from proto
 func (*stubDeviceClient) GetById(
-	context.Context,
-	*connect.Request[devicev1.GetByIdRequest],
-) (*connect.Response[devicev1.GetByIdResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.GetByIdRequest,
+) (*devicev1.GetByIdResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 //nolint:revive,staticcheck // interface method name from proto
 func (*stubDeviceClient) GetBySessionId(
-	context.Context,
-	*connect.Request[devicev1.GetBySessionIdRequest],
-) (*connect.Response[devicev1.GetBySessionIdResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.GetBySessionIdRequest,
+) (*devicev1.GetBySessionIdResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) Search(
-	context.Context,
-	*connect.Request[devicev1.SearchRequest],
-) (*connect.ServerStreamForClient[devicev1.SearchResponse], error) {
-	return nil, errors.New("no devices found")
+	context.Context, *devicev1.SearchRequest,
+) (devicev1connect.DeviceServiceSearchClientStream, error) {
+	return devicev1connect.DeviceServiceSearchClientStream{}, errors.New("no devices found")
 }
 
 func (*stubDeviceClient) Create(
-	context.Context,
-	*connect.Request[devicev1.CreateRequest],
-) (*connect.Response[devicev1.CreateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.CreateRequest,
+) (*devicev1.CreateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) Update(
-	context.Context,
-	*connect.Request[devicev1.UpdateRequest],
-) (*connect.Response[devicev1.UpdateResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.UpdateRequest,
+) (*devicev1.UpdateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) Link(
-	context.Context,
-	*connect.Request[devicev1.LinkRequest],
-) (*connect.Response[devicev1.LinkResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.LinkRequest,
+) (*devicev1.LinkResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) Remove(
-	context.Context,
-	*connect.Request[devicev1.RemoveRequest],
-) (*connect.Response[devicev1.RemoveResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.RemoveRequest,
+) (*devicev1.RemoveResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) Log(
-	context.Context,
-	*connect.Request[devicev1.LogRequest],
-) (*connect.Response[devicev1.LogResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.LogRequest,
+) (*devicev1.LogResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) ListLogs(
-	context.Context,
-	*connect.Request[devicev1.ListLogsRequest],
-) (*connect.ServerStreamForClient[devicev1.ListLogsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.ListLogsRequest,
+) (devicev1connect.DeviceServiceListLogsClientStream, error) {
+	return devicev1connect.DeviceServiceListLogsClientStream{}, connect.NewError(
+		connect.CodeUnimplemented,
+		"not implemented",
+	)
 }
 
 func (*stubDeviceClient) AddKey(
-	context.Context,
-	*connect.Request[devicev1.AddKeyRequest],
-) (*connect.Response[devicev1.AddKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.AddKeyRequest,
+) (*devicev1.AddKeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) RemoveKey(
-	context.Context,
-	*connect.Request[devicev1.RemoveKeyRequest],
-) (*connect.Response[devicev1.RemoveKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.RemoveKeyRequest,
+) (*devicev1.RemoveKeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) SearchKey(
-	context.Context,
-	*connect.Request[devicev1.SearchKeyRequest],
-) (*connect.Response[devicev1.SearchKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.SearchKeyRequest,
+) (*devicev1.SearchKeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) RegisterKey(
-	context.Context,
-	*connect.Request[devicev1.RegisterKeyRequest],
-) (*connect.Response[devicev1.RegisterKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.RegisterKeyRequest,
+) (*devicev1.RegisterKeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) DeRegisterKey(
-	context.Context,
-	*connect.Request[devicev1.DeRegisterKeyRequest],
-) (*connect.Response[devicev1.DeRegisterKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.DeRegisterKeyRequest,
+) (*devicev1.DeRegisterKeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) GetTurnCredentials(
-	context.Context,
-	*connect.Request[devicev1.GetTurnCredentialsRequest],
-) (*connect.Response[devicev1.GetTurnCredentialsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.GetTurnCredentialsRequest,
+) (*devicev1.GetTurnCredentialsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) Notify(
-	context.Context,
-	*connect.Request[devicev1.NotifyRequest],
-) (*connect.Response[devicev1.NotifyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.NotifyRequest,
+) (*devicev1.NotifyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 func (*stubDeviceClient) UpdatePresence(
-	context.Context,
-	*connect.Request[devicev1.UpdatePresenceRequest],
-) (*connect.Response[devicev1.UpdatePresenceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	context.Context, *devicev1.UpdatePresenceRequest,
+) (*devicev1.UpdatePresenceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "not implemented")
 }
 
 // WithTestDependencies Creates subtests with each known DependencyOption.

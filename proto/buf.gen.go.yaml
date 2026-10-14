@@ -27,9 +27,11 @@ managed:
       module: buf.build/gnostic/gnostic
       value: buf.build/gen/go/gnostic/gnostic/protocolbuffers/go
 plugins:
-  - local: protoc-gen-go
+  - remote: buf.build/protocolbuffers/go:v1.36.12
     out: ../gen/go/protocolbuffers
     opt: paths=source_relative
-  - local: protoc-gen-connect-go
+  # connect-go v2: the BSR publishes this output as the separate
+  # buf.build/gen/go/stawi/chat/connectrpc/go/v2 module.
+  - remote: buf.build/connectrpc/go:v2.0.0
     out: ../gen/go/connectrpc
     opt: paths=source_relative

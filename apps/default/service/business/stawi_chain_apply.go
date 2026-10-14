@@ -9,7 +9,7 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	financev1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/finance/v1"
-	"github.com/pitabwire/frame/v2/data"
+	"github.com/pitabwire/frame/v3/data"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"

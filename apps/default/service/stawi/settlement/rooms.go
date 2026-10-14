@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/v2/settlement/v1/settlementv1connect"
 	financev1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/finance/v1"
 	settlementv1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/settlement/v1"
-	"connectrpc.com/connect"
 
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 )
@@ -33,7 +32,7 @@ func (r *rooms) PrepareRoomGenesis(ctx context.Context, req stawi.PrepareGenesis
 	// Settlement applies the rule values to the template before it compiles
 	// the constitution, so they are part of what the founders sign; a value it
 	// does not accept is refused there, naming the rule.
-	resp, err := r.client.PrepareRoomGenesis(ctx, connect.NewRequest(&settlementv1.PrepareRoomGenesisRequest{
+	resp, err := r.client.PrepareRoomGenesis(ctx, &settlementv1.PrepareRoomGenesisRequest{
 		ChatRoomId:         req.ChatRoomID,
 		ConstitutionSource: &settlementv1.PrepareRoomGenesisRequest_TemplateId{TemplateId: req.TemplateID},
 		FounderProfileIds:  req.FounderProfileIDs,
@@ -41,50 +40,49 @@ func (r *rooms) PrepareRoomGenesis(ctx context.Context, req stawi.PrepareGenesis
 		ProfileId:          req.RequestedBy,
 		RuleValues:         req.RuleValues,
 		AgentProfileId:     req.AgentProfileID,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return genesisOf(resp.Msg.GetGenesis()), nil
+	return genesisOf(resp.GetGenesis()), nil
 }
 
 func (r *rooms) SubmitRoomGenesisSignature(
 	ctx context.Context, sig stawi.GenesisSignature,
 ) (*stawi.GenesisSignatureResult, error) {
-	resp, err := r.client.SubmitRoomGenesisSignature(ctx, connect.NewRequest(
-		&settlementv1.SubmitRoomGenesisSignatureRequest{
-			GenesisId: sig.GenesisID,
-			Signature: deviceSignature(sig.Signature),
-			ProfileId: sig.SignerProfileID,
-		}))
+	resp, err := r.client.SubmitRoomGenesisSignature(ctx, &settlementv1.SubmitRoomGenesisSignatureRequest{
+		GenesisId: sig.GenesisID,
+		Signature: deviceSignature(sig.Signature),
+		ProfileId: sig.SignerProfileID,
+	})
 	if err != nil {
 		return nil, err
 	}
 	return &stawi.GenesisSignatureResult{
-		Signed:    int(resp.Msg.GetGenesis().GetSignaturesCollected()),
-		Required:  int(resp.Msg.GetGenesis().GetSignaturesRequired()),
-		Submitted: resp.Msg.GetSubmitted(),
+		Signed:    int(resp.GetGenesis().GetSignaturesCollected()),
+		Required:  int(resp.GetGenesis().GetSignaturesRequired()),
+		Submitted: resp.GetSubmitted(),
 	}, nil
 }
 
 func (r *rooms) SubmitRoomCall(ctx context.Context, sub stawi.CallSubmission) (*stawi.RoomCall, error) {
-	resp, err := r.client.SubmitRoomCall(ctx, connect.NewRequest(&settlementv1.SubmitRoomCallRequest{
+	resp, err := r.client.SubmitRoomCall(ctx, &settlementv1.SubmitRoomCallRequest{
 		CallId:    sub.CallID,
 		Signature: deviceSignature(sub.Signature),
 		ProfileId: sub.SignerProfileID,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return roomCallOf(resp.Msg.GetCall()), nil
+	return roomCallOf(resp.GetCall()), nil
 }
 
 func (r *rooms) GetRoomCall(ctx context.Context, callID string) (*stawi.RoomCall, error) {
-	resp, err := r.client.GetRoomCall(ctx, connect.NewRequest(&settlementv1.GetRoomCallRequest{CallId: callID}))
+	resp, err := r.client.GetRoomCall(ctx, &settlementv1.GetRoomCallRequest{CallId: callID})
 	if err != nil {
 		return nil, err
 	}
-	return roomCallOf(resp.Msg.GetCall()), nil
+	return roomCallOf(resp.GetCall()), nil
 }
 
 func joinPolicy(p stawi.JoinPolicy) financev1.RoomJoinPolicy {

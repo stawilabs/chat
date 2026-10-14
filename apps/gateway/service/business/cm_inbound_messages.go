@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/pkg/chatutil"
@@ -212,17 +211,17 @@ func (cm *connectionManager) processLiveRequest(
 	}
 
 	// Create and send the live request
-	resp, err := cm.chatClient.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := cm.chatClient.Live(ctx, &chatv1.LiveRequest{
 		Source:       source,
 		ClientStates: []*chatv1.ClientCommand{command},
-	}))
+	})
 
 	// Handle any errors from the live call
 	if err != nil {
 		return fmt.Errorf("failed to process live request: %w", err)
 	}
 
-	clErr := resp.Msg.GetError()
+	clErr := resp.GetError()
 	if clErr != nil {
 		util.Log(ctx).WithFields(map[string]any{
 			"code":         clErr.GetCode(),

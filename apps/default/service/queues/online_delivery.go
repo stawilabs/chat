@@ -10,14 +10,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	"github.com/pitabwire/frame/v2/queue"
-	"github.com/pitabwire/frame/v2/workerpool"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	"github.com/pitabwire/frame/v3/queue"
+	"github.com/pitabwire/frame/v3/workerpool"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 
@@ -461,34 +460,34 @@ func (dq *hotPathDeliveryQueueHandler) resolveDevicesForProfile(
 		return devices, nil
 	}
 
-	response, err := dq.deviceCli.Search(ctx, connect.NewRequest(&devicev1.SearchRequest{
+	response, err := dq.deviceCli.Search(ctx, &devicev1.SearchRequest{
 		Query: profileID,
 		Page:  0,
 		Count: safeSearchPageSize(dq.cfg.DeviceSearchPageSize),
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	devices := make([]deliveryDevice, 0, dq.cfg.DeviceSearchPageSize)
-	for response.Receive() {
-		deviceErr := response.Err()
-		if deviceErr != nil && !errors.Is(deviceErr, io.EOF) {
-			util.Log(ctx).WithError(deviceErr).WithField(chatutil.KeyProfileID, profileID).
-				Error("failed to receive device search stream")
-		}
+	defer func() { _ = response.Close() }()
 
-		resp := response.Msg()
+	devices := make([]deliveryDevice, 0, dq.cfg.DeviceSearchPageSize)
+	for {
+		resp, recvErr := response.Receive()
+		if errors.Is(recvErr, io.EOF) {
+			break
+		}
+		if recvErr != nil {
+			util.Log(ctx).WithError(recvErr).WithField(chatutil.KeyProfileID, profileID).
+				Error("failed to receive device search stream")
+			return nil, recvErr
+		}
 		for _, dev := range resp.GetData() {
 			devices = append(devices, deliveryDevice{
 				id:       dev.GetId(),
 				presence: dev.GetPresence(),
 			})
 		}
-	}
-
-	if responseErr := response.Err(); responseErr != nil && !errors.Is(responseErr, io.EOF) {
-		return nil, responseErr
 	}
 
 	dq.deviceCache.Set(profileID, devices)

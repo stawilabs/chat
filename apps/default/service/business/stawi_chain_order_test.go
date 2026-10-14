@@ -6,7 +6,7 @@ import (
 	"time"
 
 	financev1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/finance/v1"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 

@@ -8,8 +8,8 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	frevents "github.com/pitabwire/frame/v2/events"
-	"github.com/pitabwire/frame/v2/queue"
+	frevents "github.com/pitabwire/frame/v3/events"
+	"github.com/pitabwire/frame/v3/queue"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/stawilabs/chat/apps/default/service/models"

@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,28 +45,28 @@ func (rc *rpcReplayClient) ResolveCursor(
 		return "", false, nil
 	}
 
-	resp, err := rc.chatClient.ResolveReplayCursor(ctx, connect.NewRequest(&chatv1.ResolveReplayCursorRequest{
+	resp, err := rc.chatClient.ResolveReplayCursor(ctx, &chatv1.ResolveReplayCursorRequest{
 		ProfileId: profileID,
 		DeviceId:  deviceID,
 		Token:     token,
-	}))
+	})
 	if err != nil {
 		return "", false, fmt.Errorf("resolve replay cursor RPC failed: %w", err)
 	}
 
-	return resp.Msg.GetCursor(), resp.Msg.GetFound(), nil
+	return resp.GetCursor(), resp.GetFound(), nil
 }
 
 func (rc *rpcReplayClient) LatestCursor(ctx context.Context, profileID, deviceID string) (string, error) {
-	resp, err := rc.chatClient.GetLatestReplayCursor(ctx, connect.NewRequest(&chatv1.GetLatestReplayCursorRequest{
+	resp, err := rc.chatClient.GetLatestReplayCursor(ctx, &chatv1.GetLatestReplayCursorRequest{
 		ProfileId: profileID,
 		DeviceId:  deviceID,
-	}))
+	})
 	if err != nil {
 		return "", fmt.Errorf("get latest replay cursor RPC failed: %w", err)
 	}
 
-	return resp.Msg.GetCursor(), nil
+	return resp.GetCursor(), nil
 }
 
 func (rc *rpcReplayClient) ListAfterCursor(
@@ -78,18 +77,18 @@ func (rc *rpcReplayClient) ListAfterCursor(
 	upperBoundCursor string,
 	limit int,
 ) ([]*chatv1.StreamResponse, error) {
-	resp, err := rc.chatClient.ListReplayEvents(ctx, connect.NewRequest(&chatv1.ListReplayEventsRequest{
+	resp, err := rc.chatClient.ListReplayEvents(ctx, &chatv1.ListReplayEventsRequest{
 		ProfileId:        profileID,
 		DeviceId:         deviceID,
 		AfterCursor:      afterCursor,
 		UpperBoundCursor: upperBoundCursor,
 		Limit:            int32(min(limit, maxInt32)), //nolint:gosec // capped to int32 range
-	}))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list replay events RPC failed: %w", err)
 	}
 
-	entries := resp.Msg.GetEntries()
+	entries := resp.GetEntries()
 	responses := make([]*chatv1.StreamResponse, 0, len(entries))
 	for _, entry := range entries {
 		if entry == nil || len(entry.GetResponseData()) == 0 {

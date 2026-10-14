@@ -9,9 +9,9 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
-	frevents "github.com/pitabwire/frame/v2/events"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/data"
+	frevents "github.com/pitabwire/frame/v3/events"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -197,7 +197,7 @@ func (mb *messageBusiness) SendEvents(
 		} else if !chatutil.IsValidEventID(reqEvt.GetId()) {
 			responses[i] = ackEventError(reqEvt.GetId(), connect.NewError(
 				connect.CodeInvalidArgument,
-				errors.New("event id must be a valid xid"),
+				"event id must be a valid xid",
 			))
 			continue
 		}
@@ -408,7 +408,7 @@ func (mb *messageBusiness) prepareEventForInsert(
 	if convertErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), connect.NewError(
 			connect.CodeInternal,
-			fmt.Errorf("failed to convert event: %w", convertErr),
+			fmt.Errorf("failed to convert event: %w", convertErr).Error(),
 		))
 	}
 
@@ -531,7 +531,7 @@ func (mb *messageBusiness) finalizeEventAck(
 	if bulkCreateErr != nil {
 		return ackEventError(event.GetID(), connect.NewError(
 			connect.CodeInternal,
-			fmt.Errorf("failed to save event: %w", bulkCreateErr),
+			fmt.Errorf("failed to save event: %w", bulkCreateErr).Error(),
 		))
 	}
 
@@ -551,7 +551,7 @@ func (mb *messageBusiness) finalizeEventAck(
 			Error("very unlikely, no such subscription exists")
 		return ackEventError(event.GetID(), connect.NewError(
 			connect.CodeInternal,
-			errors.New("no subscription found for sender"),
+			"no subscription found for sender",
 		))
 	}
 

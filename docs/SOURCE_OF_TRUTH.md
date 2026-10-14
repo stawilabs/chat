@@ -24,7 +24,8 @@ Do **not** publish backend images from `antinvestor/service-chat`. That reposito
 | `buf.build/stawi/chat` | This repo (chat protos) |
 | `buf.build/antinvestor/common` | Platform shared protos (still under antinvestor BSR) |
 | `buf.build/antinvestor/{device,profile,notification}` | Platform service protos (still under antinvestor BSR) |
-| `github.com/antinvestor/common/v2` | Platform shared Go library |
-| `github.com/pitabwire/frame/v2` | Framework |
+| `github.com/antinvestor/common/v3` | Platform shared Go library |
+| `github.com/pitabwire/frame/v3` | Framework |
+| `connectrpc.com/connect/v2` | Connect RPC; generated clients and handlers come from the `…/connectrpc/go/v2` BSR modules |
 
 There is **no** `buf.build/stawi/{common,device,profile,notification}` yet. Client packages for those APIs stay on `buf.build/gen/go/antinvestor/...` until the owning services migrate their BSR modules.

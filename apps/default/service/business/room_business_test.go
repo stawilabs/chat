@@ -2,7 +2,6 @@ package business_test
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"sync"
 	"testing"
@@ -11,11 +10,11 @@ import (
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -205,25 +204,25 @@ func (s *RoomBusinessTestSuite) TestPersonalRoomsAreHardened() {
 		partnerContact := util.IDString()
 		partnerProfile := util.IDString()
 		profiles := &mockProfileClient{
-			getByContactFunc: func(_ context.Context, req *connect.Request[profilev1.GetByContactRequest],
-			) (*connect.Response[profilev1.GetByContactResponse], error) {
-				switch req.Msg.GetContact() {
+			getByContactFunc: func(_ context.Context, req *profilev1.GetByContactRequest,
+			) (*profilev1.GetByContactResponse, error) {
+				switch req.GetContact() {
 				case alice.GetContactId():
-					return connect.NewResponse(&profilev1.GetByContactResponse{
-						Data: &profilev1.ProfileObject{Id: alice.GetProfileId()}}), nil
+					return &profilev1.GetByContactResponse{
+						Data: &profilev1.ProfileObject{Id: alice.GetProfileId()}}, nil
 				case partnerContact:
 					// The partner cannot be checked: the profile service is down.
-					return nil, connect.NewError(connect.CodeUnavailable, errors.New("profile service down"))
+					return nil, connect.NewError(connect.CodeUnavailable, "profile service down")
 				}
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("no such contact"))
+				return nil, connect.NewError(connect.CodeNotFound, "no such contact")
 			},
-			getByIDFunc: func(_ context.Context, req *connect.Request[profilev1.GetByIdRequest],
-			) (*connect.Response[profilev1.GetByIdResponse], error) {
-				if req.Msg.GetId() == known {
-					return connect.NewResponse(&profilev1.GetByIdResponse{
-						Data: &profilev1.ProfileObject{Id: known}}), nil
+			getByIDFunc: func(_ context.Context, req *profilev1.GetByIdRequest,
+			) (*profilev1.GetByIdResponse, error) {
+				if req.GetId() == known {
+					return &profilev1.GetByIdResponse{
+						Data: &profilev1.ProfileObject{Id: known}}, nil
 				}
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("no such profile"))
+				return nil, connect.NewError(connect.CodeNotFound, "no such profile")
 			},
 		}
 		rb := s.setupBusinessLayerWithProfileClient(ctx, svc, profiles)

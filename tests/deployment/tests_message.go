@@ -7,7 +7,6 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 )
 
@@ -253,28 +252,28 @@ func (t *GetHistoryForwardBackwardTest) Run(ctx context.Context, client *Client)
 	}
 
 	// Get history in default order (backward/newest first)
-	history, err := client.Chat().GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	history, err := client.Chat().GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId:  room.GetId(),
 		Forward: false,
-	}))
+	})
 	if err := a.NoError(err, "GetHistory backward should succeed"); err != nil {
 		return err
 	}
 
-	if err := a.MinLen(len(history.Msg.GetEvents()), 10, "Should have at least 10 events"); err != nil {
+	if err := a.MinLen(len(history.GetEvents()), 10, "Should have at least 10 events"); err != nil {
 		return err
 	}
 
 	// Get history forward (oldest first)
-	historyFwd, err := client.Chat().GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	historyFwd, err := client.Chat().GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId:  room.GetId(),
 		Forward: true,
-	}))
+	})
 	if err := a.NoError(err, "GetHistory forward should succeed"); err != nil {
 		return err
 	}
 
-	if err := a.MinLen(len(historyFwd.Msg.GetEvents()), 10, "Should have at least 10 events"); err != nil {
+	if err := a.MinLen(len(historyFwd.GetEvents()), 10, "Should have at least 10 events"); err != nil {
 		return err
 	}
 
@@ -305,7 +304,7 @@ func (t *SendReactionTest) Run(ctx context.Context, client *Client) error {
 	targetEventID := acks[0].GetEventId()[0]
 
 	// Send a reaction
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -321,7 +320,7 @@ func (t *SendReactionTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent reaction should succeed"); err != nil {
 		return err
 	}
@@ -388,7 +387,7 @@ func (t *MessageValidationTest) Run(ctx context.Context, client *Client) error {
 	}
 
 	// Test empty message body - may or may not be allowed depending on implementation
-	_, _ = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, _ = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -400,7 +399,7 @@ func (t *MessageValidationTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 
 	// Empty body behavior depends on implementation - both success and failure are acceptable
 	// This test just ensures the service handles it gracefully

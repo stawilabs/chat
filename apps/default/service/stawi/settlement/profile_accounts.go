@@ -3,9 +3,8 @@ package settlement
 import (
 	"context"
 
-	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/v2/settlement/v1/settlementv1connect"
 	settlementv1 "buf.build/gen/go/stawi/finance/protocolbuffers/go/settlement/v1"
-	"connectrpc.com/connect"
 
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 )
@@ -23,11 +22,11 @@ func NewProfileAccounts(client settlementv1connect.AccountServiceClient) stawi.P
 }
 
 func (p *profileAccounts) GetProfileAccount(ctx context.Context, profileID string) (*stawi.ProfileAccount, error) {
-	resp, err := p.client.GetProfileAccount(ctx, connect.NewRequest(&settlementv1.GetProfileAccountRequest{
+	resp, err := p.client.GetProfileAccount(ctx, &settlementv1.GetProfileAccountRequest{
 		ProfileId: profileID,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &stawi.ProfileAccount{Account: resp.Msg.GetAccount(), Deployed: resp.Msg.GetDeployed()}, nil
+	return &stawi.ProfileAccount{Account: resp.GetAccount(), Deployed: resp.GetDeployed()}, nil
 }

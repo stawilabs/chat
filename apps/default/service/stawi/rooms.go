@@ -15,7 +15,7 @@ import (
 	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 // JoinPolicy is how someone may enter a Stawi room once it is on chain.
@@ -141,7 +141,7 @@ type AccountResolver interface {
 
 // ErrNotConfigured is returned when chat runs without a settlement client.
 var ErrNotConfigured = connect.NewError(connect.CodeUnavailable,
-	errors.New("stawi rooms are not available: settlement is not configured"))
+	"stawi rooms are not available: settlement is not configured")
 
 // IsTransient reports whether a settlement error is worth retrying as is:
 // settlement could not be reached or did not answer, as opposed to refusing

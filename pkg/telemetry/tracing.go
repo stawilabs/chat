@@ -1,7 +1,7 @@
 package telemetry
 
 import (
-	"github.com/pitabwire/frame/v2/telemetry"
+	"github.com/pitabwire/frame/v3/telemetry"
 )
 
 // Service tracers for different components.
