@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:antinvestor_api_files/antinvestor_api_files.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../logging/app_logger.dart';
@@ -17,8 +18,13 @@ const int _uploadChunkSize = 256 * 1024;
 /// Threshold for using multipart upload (100MB).
 const int _multipartThreshold = 100 * 1024 * 1024;
 
-/// Default part size for multipart uploads (5MB).
-const int _multipartPartSize = 5 * 1024 * 1024;
+/// Part size for multipart uploads (1 MiB).
+///
+/// The files service holds a part in memory and refuses one over 1.5 MiB
+/// (its read limit is 1.75 MiB per message), so a part must stay under
+/// that; 1 MiB leaves room for the request envelope.
+@visibleForTesting
+const int multipartPartSize = 1024 * 1024;
 
 /// Result of an upload operation using direct HTTP URLs.
 class FilesUploadResult {
@@ -222,7 +228,7 @@ class FilesUploadService {
     var partNumber = 1;
 
     while (bytesSent < bytes.length) {
-      final end = bytesSent + _multipartPartSize;
+      final end = bytesSent + multipartPartSize;
       final partEnd = end > bytes.length ? bytes.length : end;
       final partData = bytes.sublist(bytesSent, partEnd);
 
@@ -241,13 +247,13 @@ class FilesUploadService {
         ),
       );
 
-      bytesSent = partEnd;
-      partNumber++;
-      onProgress?.call(bytesSent / bytes.length);
-
       AppLogger.debug(
         'uploadBytes: uploaded part $partNumber, etag: ${partResponse.etag}',
       );
+
+      bytesSent = partEnd;
+      partNumber++;
+      onProgress?.call(bytesSent / bytes.length);
     }
 
     // Complete multipart upload
