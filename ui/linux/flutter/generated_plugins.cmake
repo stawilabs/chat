@@ -3,11 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  app_links_linux
   desktop_webview_window
   file_selector_linux
   flutter_secure_storage_linux
   flutter_webrtc
+  gtk
   record_linux
   sentry_flutter
   url_launcher_linux
