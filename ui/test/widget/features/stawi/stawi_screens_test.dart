@@ -66,6 +66,7 @@ void main() {
           ),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
+              roomAssets: testRoomAssets,
               accounts: settlement.AccountServiceClient(transport),
               keys: keys,
               proofs:
@@ -187,6 +188,7 @@ void main() {
         ),
         stawiAccountServiceProvider.overrideWithValue(
           StawiAccountService(
+            roomAssets: testRoomAssets,
             accounts: settlement.AccountServiceClient(transport),
             keys: DeviceKeyStore(
               MemoryDeviceKeyVault(),
@@ -309,6 +311,7 @@ void main() {
           stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
+              roomAssets: testRoomAssets,
               accounts: settlement.AccountServiceClient(transport),
               keys: keys,
               proofs: refusingSessionProofs,

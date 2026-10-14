@@ -314,7 +314,11 @@ class JourneyHarness {
         (req) => finance.GetRoomResponse(
           room:
               financeRooms[req.roomId] ??
-              finance.Room(roomId: req.roomId, assets: [usdcInfo]),
+              finance.Room(
+                roomId: req.roomId,
+                chainId: usdcInfo.chainId,
+                assets: [usdcInfo],
+              ),
         ),
       )
       ..on(

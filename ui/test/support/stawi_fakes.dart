@@ -817,6 +817,12 @@ class GoEngineCallVector {
   );
 }
 
+/// The token the Go vectors' money intents move (the deposit vector's
+/// asset): the deployment's and every room's asset in tests.
+final Uint8List testAssetToken = hexToBytes(
+  '0x707172737475767778797a7b7c7d7e7f80818283',
+);
+
 /// The rooms' savings asset in tests, as finance describes it: USDC with 6
 /// decimals.
 final finance.AssetInfo usdcInfo = finance.AssetInfo(
@@ -824,7 +830,11 @@ final finance.AssetInfo usdcInfo = finance.AssetInfo(
   symbol: 'USDC',
   decimals: 6,
   chainId: Int64(146),
+  tokenAddress: testAssetToken,
 );
+
+/// Finance's Room.assets token addresses for any room in tests.
+Future<List<Uint8List>> testRoomAssets(String roomId) async => [testAssetToken];
 
 final StawiAsset usdc = StawiAsset.fromInfo(usdcInfo);
 
@@ -884,5 +894,287 @@ finance.FinancialIntent financeIntentOf(Map<String, dynamic> i) {
     validUntil: n(i['valid_until']),
     countryPolicyVersion: hexToBytes(i['country_policy_version'] as String),
     complianceRequired: i['compliance_required'] as bool,
+  );
+}
+
+// ---- room calls ----------------------------------------------------------
+
+Uint8List _w(BigInt v) => bigIntToBytes(v, 32);
+Uint8List _wi(int v) => _w(BigInt.from(v));
+Uint8List _wa(List<int> a) => Uint8List(32)..setRange(12, 32, a);
+Uint8List _wb(bool b) => _wi(b ? 1 : 0);
+
+/// The room's contracts as finance names them, for tests.
+RoomContracts roomContractsOf({
+  required List<int> governance,
+  required List<int> custody,
+  required BigInt chainId,
+}) => RoomContracts(
+  governance: Uint8List.fromList(governance),
+  custody: Uint8List.fromList(custody),
+  chainId: chainId,
+);
+
+/// Settlement as it should behave (apps/settlement room_calls.go): the call
+/// for [req], signed by [signer] on [room], with its params encoded from the
+/// request, its SignedCalls typed hash and the account-wrapped digest.
+/// [exitIntent] is the exit a PROPOSE_PRINCIPAL_EXIT spend builds;
+/// [inviteHash] what an ACCEPT_INVITATION reads off the chain.
+settlement.PrepareRoomCallResponse honestRoomCall(
+  settlement.PrepareRoomCallRequest req, {
+  required RoomContracts room,
+  required Uint8List signer,
+  required String chatRoomId,
+  DateTime? now,
+  int nonce = 3,
+  int deadline = 4102444800, // 2100-01-01
+  finance.FinancialIntent? exitIntent,
+  List<int>? inviteHash,
+}) {
+  final p = req.params;
+  final at = BigInt.from(
+    (now ?? DateTime.now()).toUtc().millisecondsSinceEpoch ~/ 1000,
+  );
+  Uint8List acct(settlement.RoomMemberRef r) => Uint8List.fromList(r.account);
+  Uint8List propose(int kind, List<int> payload) =>
+      Uint8List.fromList([..._wi(kind), ...payload]);
+  final (SignedCallKind kind, Uint8List params) = switch (req.kind) {
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE => (
+      SignedCallKind.propose,
+      propose(
+        p.propose.memberAction.action ==
+                finance.RoomMemberAction.ROOM_MEMBER_ACTION_REMOVE
+            ? ProposalKinds.memberRemove
+            : ProposalKinds.memberAdd,
+        memberActionPayloadHash(
+          custody: room.custody!,
+          action: p.propose.memberAction.action.value,
+          subject: acct(p.propose.memberAction.subject),
+          arg: BigInt.parse(p.propose.memberAction.arg.toStringUnsigned()),
+        ),
+      ),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE ||
+    settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_ROLE => (
+      SignedCallKind.propose,
+      propose(
+        ProposalKinds.role,
+        rolePayloadHash(
+          custody: room.custody!,
+          assign:
+              req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE,
+          member: acct(p.role.member),
+          roleId: roomRoleId(p.role.roleId),
+          capabilities:
+              req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE
+              ? p.role.capabilities
+              : 0,
+          validUntil:
+              req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE
+              ? BigInt.parse(p.role.validUntil.toStringUnsigned())
+              : BigInt.zero,
+        ),
+      ),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_CAST_VOTE => (
+      SignedCallKind.castVote,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.vote.onchainProposalId.toStringUnsigned())),
+        ..._wi(p.vote.choice.value),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_COMMIT_VOTE => (
+      SignedCallKind.commitVote,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.vote.onchainProposalId.toStringUnsigned())),
+        ...p.vote.commitment,
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_REVEAL_VOTE => (
+      SignedCallKind.revealVote,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.vote.onchainProposalId.toStringUnsigned())),
+        ..._wi(p.vote.choice.value),
+        ...p.vote.salt,
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_DELEGATE => (
+      SignedCallKind.delegate,
+      Uint8List.fromList([
+        ..._wa(p.delegate.to.account),
+        ..._w(BigInt.parse(p.delegate.scope.toStringUnsigned())),
+        ..._w(BigInt.parse(p.delegate.until.toStringUnsigned())),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_DELEGATION => (
+      SignedCallKind.revokeDelegation,
+      Uint8List(0),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE_PRINCIPAL_EXIT => (
+      SignedCallKind.proposePrincipalExit,
+      p.principalExit.hasSpend()
+          ? Uint8List.fromList([
+              ...intentDigestOf(sdkIntentOf(exitIntent!)),
+              ...Uint8List(32),
+            ])
+          : Uint8List.fromList([
+              ...cancelPrincipalExitPayloadHash(
+                chainId: room.chainId,
+                custody: room.custody!,
+                target: BigInt.parse(
+                  p.principalExit.cancelTarget.toStringUnsigned(),
+                ),
+              ),
+              ..._w(
+                BigInt.parse(p.principalExit.cancelTarget.toStringUnsigned()),
+              ),
+            ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_VOTE_PRINCIPAL_EXIT => (
+      SignedCallKind.votePrincipalExit,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.principalExit.ballotId.toStringUnsigned())),
+        ..._wb(p.principalExit.approve),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_ACCEPT_INVITATION => (
+      SignedCallKind.acceptInvitation,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.inviteId.toStringUnsigned())),
+        ...(inviteHash ?? List<int>.filled(32, 0xc1)),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_LEAVE => (
+      SignedCallKind.leave,
+      Uint8List(0),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_JOIN => (
+      SignedCallKind.join,
+      Uint8List(0),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_FREEZE => (
+      SignedCallKind.freeze,
+      freezeReasonHash(p.freeze_7.reason),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_INVITE => (
+      SignedCallKind.officerAction,
+      Uint8List.fromList([
+        ..._wi(MemberActions.invite),
+        ..._wa(p.officer.subject.account),
+        ..._w(at + BigInt.from(p.officer.inviteValidSeconds)),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_ADMIT => (
+      SignedCallKind.officerAction,
+      Uint8List.fromList([
+        ..._wi(MemberActions.admit),
+        ..._wa(p.officer.subject.account),
+        ..._wi(0),
+      ]),
+    ),
+    final k => throw StateError('honestRoomCall: no $k'),
+  };
+  final verifier = room.of(kind.contract)!;
+  final typed = roomCallTypedHash(
+    kind,
+    verifier: verifier,
+    chainId: room.chainId,
+    member: signer,
+    nonce: BigInt.from(nonce),
+    deadline: BigInt.from(deadline),
+    params: params,
+  );
+  final digest = accountWrappedHash(signer, room.chainId, typed);
+  return settlement.PrepareRoomCallResponse(
+    callId: 'call0000000000000001',
+    digest: digest,
+    signer: signer,
+    call: settlement.RoomCall(
+      callId: 'call0000000000000001',
+      chainId: Int64.parseInt(room.chainId.toString()),
+      chatRoomId: chatRoomId,
+      kind: req.kind,
+      verifier: verifier,
+      signer: signer,
+      nonce: Int64(nonce),
+      deadline: Int64(deadline),
+      params: params,
+      typedHash: typed,
+      digest: digest,
+      requiresSignature: true,
+      exitIntent: exitIntent,
+      payloadHash: exitIntent == null
+          ? null
+          : intentDigestOf(sdkIntentOf(exitIntent)),
+    ),
+  );
+}
+
+/// One Go-produced room call (pkg/evm/stawi TestDartRoomCallVectors):
+/// test/fixtures/stawi/go_room_calls.json, a copy of the SDK's oracle.
+class GoRoomCallVector {
+  GoRoomCallVector(this.json);
+
+  static List<GoRoomCallVector> load() => [
+    for (final v
+        in (jsonDecode(
+              File('test/fixtures/stawi/go_room_calls.json').readAsStringSync(),
+            ) as Map<String, dynamic>)['room_calls']
+            as List)
+      GoRoomCallVector(v as Map<String, dynamic>),
+  ];
+
+  static GoRoomCallVector named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  String get builder => json['builder'] as String;
+  Map<String, dynamic> get inputs => json['inputs'] as Map<String, dynamic>;
+  String input(String k) => inputs[k] as String;
+  Uint8List inputBytes(String k) => hexToBytes(input(k));
+  BigInt get chainId => BigInt.parse(json['chain_id'] as String);
+  Uint8List get member => hexToBytes(json['member'] as String);
+  Uint8List get verifier => hexToBytes(json['verifier'] as String);
+  Uint8List get custody => hexToBytes(json['custody'] as String);
+  Uint8List get params => hexToBytes(json['params'] as String);
+  Uint8List get typedHash => hexToBytes(json['typed_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  BigInt get deadline => BigInt.parse(json['deadline'] as String);
+
+  /// The room as finance would name it: the vector's verifier for its own
+  /// contract, and the environment's other contract.
+  RoomContracts room(Uint8List governance) =>
+      RoomContracts(governance: governance, custody: custody, chainId: chainId);
+
+  /// Settlement's answer carrying this call; any field may be replaced.
+  settlement.PrepareRoomCallResponse prepared(
+    String chatRoomId, {
+    List<int>? params,
+    List<int>? typedHash,
+    List<int>? digest,
+    List<int>? verifier,
+    int? kind,
+  }) => settlement.PrepareRoomCallResponse(
+    callId: 'call0000000000000001',
+    digest: digest ?? this.digest,
+    signer: member,
+    call: settlement.RoomCall(
+      callId: 'call0000000000000001',
+      chainId: Int64.parseInt(chainId.toString()),
+      chatRoomId: chatRoomId,
+      kind: settlement.RoomCallKind.valueOf(
+        kind ?? json['room_call_kind'] as int,
+      ),
+      verifier: verifier ?? this.verifier,
+      signer: member,
+      nonce: Int64.parseInt(json['nonce'] as String),
+      deadline: Int64.parseInt(json['deadline'] as String),
+      params: params ?? this.params,
+      typedHash: typedHash ?? this.typedHash,
+      digest: digest ?? this.digest,
+      requiresSignature: true,
+    ),
   );
 }

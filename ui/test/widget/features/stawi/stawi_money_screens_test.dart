@@ -19,8 +19,8 @@ import 'package:stawi/features/stawi/data/stawi_loan_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/governance_requests.dart';
-import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
+import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/ui/governance_sheet.dart';
 import 'package:stawi/features/stawi/ui/room_money_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_room_screen.dart';
@@ -42,29 +42,35 @@ void main() {
   late FakeConnectTransport transport;
   late RecordingActSender sender;
   late MemoryDeviceKeyVault ballots;
+  // The room as finance indexes it, and Amina's account in it.
+  final room = RoomContracts(
+    governance: Uint8List(20)..[0] = 0x40,
+    custody: Uint8List(20)..[0] = 0x30,
+    chainId: BigInt.from(146),
+  );
+  final amina = Uint8List(20)..[19] = 0x22;
 
   setUp(() async {
     transport = FakeConnectTransport()
       ..on(
         settlement.RoomService.prepareRoomCall,
-        (req) => settlement.PrepareRoomCallResponse(
-          callId: 'call0000000000000001',
-          digest: hexToBytes(wrapped['wrapped'] as String),
-          signer: account,
-          call: settlement.RoomCall(
-            chainId: Int64(146),
-            chatRoomId: roomId,
-            kind: req.kind,
-            typedHash: hexToBytes(wrapped['hash'] as String),
-            inviteExpiry: req.params.propose.memberAction.arg,
-            requiresSignature: !{
+        (req) =>
+            {
               settlement.RoomCallKind.ROOM_CALL_KIND_COLLECT,
               settlement.RoomCallKind.ROOM_CALL_KIND_SETTLE,
               settlement.RoomCallKind.ROOM_CALL_KIND_QUEUE,
               settlement.RoomCallKind.ROOM_CALL_KIND_EXECUTE,
-            }.contains(req.kind),
-          ),
-        ),
+            }.contains(req.kind)
+            ? settlement.PrepareRoomCallResponse(
+                callId: 'call0000000000000001',
+                call: settlement.RoomCall(chatRoomId: roomId, kind: req.kind),
+              )
+            : honestRoomCall(
+                req,
+                room: room,
+                signer: account,
+                chatRoomId: roomId,
+              ),
       )
       ..on(
         settlement.RoomService.submitRoomCall,
@@ -122,6 +128,9 @@ void main() {
         identity: () async => identityWith('p1', account),
         send: sender.call,
         ballots: SecretBallotStore(ballots),
+        contracts: (id) async => id == roomId ? room : null,
+        memberAccounts: (id, profileId) async =>
+            id == roomId && profileId == 'p2' ? amina : null,
       ),
     ),
   ];
@@ -161,13 +170,24 @@ void main() {
   settlement.PrepareRoomCallRequest prepared() =>
       transport.requestsTo(settlement.RoomService.prepareRoomCall).single;
 
+  /// Signs from the dialog: what was checked is reviewed first, and only
+  /// confirming it reaches the device key.
+  Future<void> signAndConfirm(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('governance-sign')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('money-review')), findsOneWidget);
+    expect(find.text(checkedRoomActNote), findsOneWidget);
+    expect(sender.sent, isEmpty);
+    await tester.tap(find.byKey(const Key('money-review-sign')));
+    await tester.pumpAndSettle();
+  }
+
   group('GovernanceDialog', () {
     testWidgets('a secret vote sends only a commitment', (tester) async {
       await openDialog(tester, GovernanceAction.secretVote);
       await tester.enterText(find.byKey(const Key('governance-number')), '9');
       await tester.tap(find.text('Reject'));
-      await tester.tap(find.byKey(const Key('governance-sign')));
-      await tester.pumpAndSettle();
+      await signAndConfirm(tester);
 
       expect(
         prepared().kind,
@@ -191,8 +211,7 @@ void main() {
         find.byKey(const Key('governance-text')),
         'Treasurer device stolen',
       );
-      await tester.tap(find.byKey(const Key('governance-sign')));
-      await tester.pumpAndSettle();
+      await signAndConfirm(tester);
       expect(prepared().kind, settlement.RoomCallKind.ROOM_CALL_KIND_FREEZE);
       expect(prepared().params.freeze_7.reason, 'Treasurer device stolen');
     });
@@ -211,15 +230,14 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('capability-Lend')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('governance-sign')));
-      await tester.pumpAndSettle();
+      await signAndConfirm(tester);
 
       final role = prepared().params.role;
       expect(
         prepared().kind,
         settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE,
       );
-      expect(role.member.profileId, 'p2');
+      expect(role.member.account, amina);
       expect(role.roleId, 'treasurer');
       expect(role.capabilities, 32);
       expect(
@@ -235,8 +253,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('governance-number')), '4');
       await tester.tap(find.byKey(const Key('governance-approve')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('governance-sign')));
-      await tester.pumpAndSettle();
+      await signAndConfirm(tester);
       expect(
         prepared().kind,
         settlement.RoomCallKind.ROOM_CALL_KIND_VOTE_PRINCIPAL_EXIT,
@@ -250,20 +267,27 @@ void main() {
     ) async {
       final v = GoEngineCallVector.load().first;
       transport.on(settlement.RoomService.prepareRoomCall, (req) {
-        final intent = v.intent..amount = req.params.principalExit.spend.amount;
-        return settlement.PrepareRoomCallResponse(
-          callId: 'call0000000000000001',
-          digest: hexToBytes(wrapped['wrapped'] as String),
+        final custody = room.custody!;
+        final intent = v.intent
+          ..account = custody
+          ..domain.chainId = Int64(146)
+          ..source = finance.ValueLocation(
+            kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+            address: custody,
+            bucket: req.params.principalExit.spend.sourceBucket,
+          )
+          ..destination = finance.ValueLocation(
+            kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+            address: custody,
+            bucket: req.params.principalExit.spend.bucket,
+          )
+          ..amount = req.params.principalExit.spend.amount;
+        return honestRoomCall(
+          req,
+          room: room,
           signer: account,
-          call: settlement.RoomCall(
-            chainId: Int64(146),
-            chatRoomId: roomId,
-            kind: req.kind,
-            typedHash: hexToBytes(wrapped['hash'] as String),
-            requiresSignature: true,
-            exitIntent: intent,
-            payloadHash: intentDigestOf(sdkIntentOf(intent)),
-          ),
+          chatRoomId: roomId,
+          exitIntent: intent,
         );
       });
       await openDialog(tester, GovernanceAction.proposeExit);
@@ -278,8 +302,7 @@ void main() {
         find.byKey(const Key('governance-text')),
         'reserve',
       );
-      await tester.tap(find.byKey(const Key('governance-sign')));
-      await tester.pumpAndSettle();
+      await signAndConfirm(tester);
       final spend = prepared().params.principalExit.spend;
       expect(spend.sourceBucket, 'savings');
       expect(spend.amount, '5000000000');
@@ -295,8 +318,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Amina').last);
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('governance-sign')));
-        await tester.pumpAndSettle();
+        await signAndConfirm(tester);
 
         final proposed = prepared();
         expect(proposed.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
@@ -305,7 +327,7 @@ void main() {
           terms.action,
           finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE,
         );
-        expect(terms.subject.profileId, 'p2');
+        expect(terms.subject.account, amina);
         expect(terms.arg, isNot(Int64.ZERO), reason: 'never the default');
         final expiry = DateTime.fromMillisecondsSinceEpoch(
           terms.arg.toInt() * 1000,
@@ -550,6 +572,7 @@ void main() {
             ),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
+                roomAssets: testRoomAssets,
                 accounts: settlement.AccountServiceClient(transport),
                 keys: DeviceKeyStore(
                   vaultWith('p1', payoff.devicePrivateKey),

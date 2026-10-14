@@ -4,7 +4,6 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
-import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show RoomVote;
 
 import '../../messages/data/message_sending_service.dart';
 import '../../messages/domain/room_event.dart';
@@ -38,7 +37,8 @@ class StawiRoomService {
     required this._send,
     this._ballots,
     this._agentAccounts,
-    this._governance,
+    this._contracts,
+    this._memberAccounts,
     this._now = DateTime.now,
   });
 
@@ -52,11 +52,14 @@ class StawiRoomService {
   /// can confirm the genesis pays the person it names.
   final DmPartnerAccountOf? _agentAccounts;
 
-  /// The room's GovernanceModule as finance indexes it: a vote is checked
-  /// against it, never against the verifier settlement names.
-  final RoomGovernanceSource? _governance;
+  /// The room's contracts and chain as finance indexes them: every room call
+  /// is checked against them, never against the verifier settlement names.
+  final RoomContractsSource? _contracts;
 
-  /// The clock a vote's deadline is checked against.
+  /// Resolves a member the person chose to the account the act names.
+  final MemberAccountOf? _memberAccounts;
+
+  /// The clock a call's deadline is checked against.
   final DateTime Function() _now;
 
   /// Asks for [roomId] to become a Stawi room. Chat prepares the genesis
@@ -183,230 +186,71 @@ class StawiRoomService {
     );
   }
 
-  /// Prepares a governance call with settlement, checks and signs its digest,
-  /// and sends it into the room. The room shows it pending until chat posts
-  /// the outcome.
-  Future<RoomEvent> signedCall({
-    required String roomId,
-    required settlement.RoomCallKind kind,
-    required String summary,
-    settlement.RoomCallParams? params,
-    Uint8List? account,
-    void Function(settlement.PrepareRoomCallResponse prepared)? check,
-  }) async {
-    final me = await _identity();
-    if (me.accounts.isEmpty) {
-      throw const StawiUnavailable('Your profile has no Stawi account yet');
-    }
-    final prepared = await _rooms.prepareRoomCall(
-      settlement.PrepareRoomCallRequest(
-        chatRoomId: roomId,
-        kind: kind,
-        params: params,
-        account: account,
-      ),
-    );
-    final digest = checkedRoomCallDigest(
-      prepared: prepared,
-      kind: kind,
-      chatRoomId: roomId,
-      ownAccounts: account == null ? me.addresses : [account],
-    );
-    check?.call(prepared);
-    final key = await _keys.unlock(me.profileId, reason: summary);
-    return _send(
-      roomId: roomId,
-      type: RoomEventType.stawiSignedCall,
-      content: StawiSignedCallView.content(
-        callId: prepared.callId,
-        kind: roomCallKindName(kind),
-        signature: key.sign(digest),
-        signerKeyId: key.keyId,
-        summary: summary,
-      ),
-    );
-  }
-}
-
-/// How a vote is cast.
-enum RoomVoteMode {
-  /// An open vote (CAST_VOTE).
-  open,
-
-  /// A secret ballot's commitment (COMMIT_VOTE); revealed later.
-  secret,
-}
-
-extension StawiCheckedVotes on StawiRoomService {
-  Future<RoomGovernance?> _roomGovernance(String roomId) async {
+  /// The room's contracts as finance indexes them; null when they cannot be
+  /// read (every room call is then refused).
+  Future<RoomContracts?> _roomContracts(String roomId) async {
     try {
-      return await _governance?.call(roomId);
+      return await _contracts?.call(roomId);
     } on Object {
       return null;
     }
   }
 
-  /// Prepares the person's vote [choice] on the room's on-chain proposal
-  /// [onchainProposalId] and checks it on the device (stawi_finance_sdk
-  /// verifyRoomVoteCall against the room's GovernanceModule as finance knows
-  /// it). Nothing is signed or stored yet: [PreparedRoomVote.review], titled
-  /// [title], is shown first. A secret ballot seals the choice with a fresh
-  /// salt; the seal is kept only once the vote is sent.
-  Future<PreparedRoomVote> prepareVote({
-    required String roomId,
-    required int onchainProposalId,
-    required finance.VoteChoice choice,
-    required RoomVoteMode mode,
-    required String title,
-    List<(String, String)> lines = const [],
-    DateTime? revealClosesAt,
+  /// The account of the member [name] ([profileId]) an act names, as this
+  /// device can confirm it: their membership of [roomId] as finance indexes
+  /// it, or chat's answer for a DM with them. Refused when neither knows
+  /// it, so settlement never chooses who an act is about.
+  Future<Uint8List> memberAccount(
+    String roomId,
+    String profileId, {
+    required String name,
   }) async {
-    if (onchainProposalId <= 0) {
-      throw const StawiUnavailable('The vote has not opened yet');
+    Uint8List? account;
+    try {
+      account = await _memberAccounts?.call(roomId, profileId);
+    } on Object {
+      account = null;
     }
+    if (account == null ||
+        account.length != 20 ||
+        account.every((b) => b == 0)) {
+      throw SigningRefused(
+        '$name\'s Stawi account could not be confirmed on this device',
+      );
+    }
+    return account;
+  }
+
+  /// Prepares the signed room act [request] with settlement for the
+  /// person's primary account and checks it on the device: the call must be
+  /// the act [GovernanceRequest.expected] builds, on the room's contracts as
+  /// finance knows them (stawi_finance_sdk verifyRoomCall). Nothing is
+  /// signed yet: [PreparedRoomAct.review] is shown first.
+  Future<PreparedRoomAct> prepareAct({
+    required String roomId,
+    required GovernanceRequest request,
+  }) async {
     final me = await _identity();
     final account = me.primary;
     if (account == null) {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
-    }
-    final proposalId = BigInt.from(onchainProposalId);
-    final SealedVote? sealed;
-    final GovernanceRequest request;
-    final RoomVote expected;
-    switch (mode) {
-      case RoomVoteMode.open:
-        sealed = null;
-        request = voteRequest(
-          onchainProposalId: onchainProposalId,
-          choice: choice,
-        );
-        expected = RoomVote.cast(
-          proposalId: proposalId,
-          choice: chainChoiceOf(choice),
-        );
-      case RoomVoteMode.secret:
-        sealed = _store.fresh(
-          choice: choice,
-          member: account.address,
-          revealClosesAt: revealClosesAt,
-        );
-        final commitment = sealed.commitment(onchainProposalId);
-        request = commitVoteRequest(
-          onchainProposalId: onchainProposalId,
-          commitment: commitment,
-        );
-        expected = RoomVote.commit(
-          proposalId: proposalId,
-          commitment: commitment,
-        );
     }
     return _prepareChecked(
       roomId: roomId,
       profileId: me.profileId,
       account: account.address,
       request: request,
-      expected: expected,
-      onchainProposalId: onchainProposalId,
-      sealed: sealed,
-      title: title,
-      lines: [
-        ...lines,
-        ('Your vote', voteChoiceLabel(choice)),
-        if (mode == RoomVoteMode.secret)
-          ('Ballot', 'Secret: reveal it from this device when voting closes'),
-      ],
+      title: request.summary,
+      lines: request.lines,
+      done: 'Signed and sent: ${request.summary}',
     );
   }
 
-  /// Prepares revealing the vote this device sealed on [onchainProposalId],
-  /// checked like [prepareVote]. Nothing is signed yet.
-  Future<PreparedRoomVote> prepareReveal({
-    required String roomId,
-    required int onchainProposalId,
-    required String title,
-    List<(String, String)> lines = const [],
-  }) async {
-    final sealed = await _store.load(roomId, onchainProposalId);
-    if (sealed == null) {
-      throw const StawiUnavailable(revealElsewhereMessage);
-    }
-    final me = await _identity();
-    final request = revealVoteRequest(
-      onchainProposalId: onchainProposalId,
-      choice: sealed.choice,
-      salt: sealed.salt,
-    );
-    return _prepareChecked(
-      roomId: roomId,
-      profileId: me.profileId,
-      account: sealed.member,
-      request: request,
-      expected: RoomVote.reveal(
-        proposalId: BigInt.from(onchainProposalId),
-        choice: chainChoiceOf(sealed.choice),
-        salt: sealed.salt,
-      ),
-      onchainProposalId: onchainProposalId,
-      reveal: true,
-      title: title,
-      lines: [...lines, ('Your vote', voteChoiceLabel(sealed.choice))],
-    );
-  }
-
-  Future<PreparedRoomVote> _prepareChecked({
-    required String roomId,
-    required String profileId,
-    required Uint8List account,
-    required GovernanceRequest request,
-    required RoomVote expected,
-    required int onchainProposalId,
-    required String title,
-    required List<(String, String)> lines,
-    SealedVote? sealed,
-    bool reveal = false,
-  }) async {
-    final governance = await _roomGovernance(roomId);
-    if (governance == null) {
-      throw const SigningRefused(governanceUnknownReason);
-    }
-    final prepared = await _rooms.prepareRoomCall(
-      settlement.PrepareRoomCallRequest(
-        chatRoomId: roomId,
-        kind: request.kind,
-        params: request.params,
-        account: account,
-      ),
-    );
-    final digest = checkedRoomVote(
-      prepared: prepared,
-      expected: expected,
-      chatRoomId: roomId,
-      account: account,
-      governance: governance,
-      now: _now(),
-    );
-    return PreparedRoomVote._(
-      roomId: roomId,
-      callId: prepared.callId,
-      kind: request.kind,
-      digest: digest,
-      profileId: profileId,
-      onchainProposalId: onchainProposalId,
-      sealed: sealed,
-      reveal: reveal,
-      review: MoneyReview(
-        title: title,
-        lines: lines,
-        signLabel: 'Confirm and sign',
-        done: 'Vote sent',
-      ),
-    );
-  }
-
-  /// Signs a checked vote the person reviewed, behind the device lock (its
-  /// review title), and sends it into the room. A secret ballot's seal is
-  /// kept on this device first, so a sent commitment never loses its salt.
-  Future<RoomEvent> submitVote(PreparedRoomVote prepared) async {
+  /// Signs a checked room act the person reviewed, behind the device lock
+  /// (its review title), and sends it into the room. A secret ballot's seal
+  /// is kept on this device first, so a sent commitment never loses its
+  /// salt.
+  Future<RoomEvent> submitAct(PreparedRoomAct prepared) async {
     final sealed = prepared.sealed;
     final key = await _keys.unlock(
       prepared.profileId,
@@ -431,6 +275,178 @@ extension StawiCheckedVotes on StawiRoomService {
     }
     return event;
   }
+
+  Future<PreparedRoomAct> _prepareChecked({
+    required String roomId,
+    required String profileId,
+    required Uint8List account,
+    required GovernanceRequest request,
+    required String title,
+    required List<(String, String)> lines,
+    required String done,
+    int onchainProposalId = 0,
+    SealedVote? sealed,
+    bool reveal = false,
+  }) async {
+    final room = await _roomContracts(roomId);
+    if (room == null) {
+      throw const SigningRefused(roomContractsUnknownReason);
+    }
+    final prepared = await _rooms.prepareRoomCall(
+      settlement.PrepareRoomCallRequest(
+        chatRoomId: roomId,
+        kind: request.kind,
+        params: request.params,
+        account: account,
+      ),
+    );
+    if (prepared.call.kind != request.kind) {
+      throw SigningRefused(
+        'settlement prepared a ${roomCallKindName(prepared.call.kind)} call, '
+        'not the act you chose',
+      );
+    }
+    final digest = checkedRoomCall(
+      prepared: prepared,
+      expected: request.expected(room, prepared),
+      chatRoomId: roomId,
+      account: account,
+      room: room,
+      now: _now(),
+    );
+    return PreparedRoomAct._(
+      roomId: roomId,
+      callId: prepared.callId,
+      kind: request.kind,
+      digest: digest,
+      profileId: profileId,
+      onchainProposalId: onchainProposalId,
+      sealed: sealed,
+      reveal: reveal,
+      review: MoneyReview(
+        title: title,
+        lines: [...lines, ...?request.linesOf?.call(prepared)],
+        notes: const [checkedRoomActNote],
+        signLabel: 'Confirm and sign',
+        done: done,
+      ),
+    );
+  }
+}
+
+/// What every room act's review says was checked on the device.
+const String checkedRoomActNote =
+    'Checked on this device: this is the act you chose, on this room\'s '
+    'contracts, signed by your account.';
+
+/// How a vote is cast.
+enum RoomVoteMode {
+  /// An open vote (CAST_VOTE).
+  open,
+
+  /// A secret ballot's commitment (COMMIT_VOTE); revealed later.
+  secret,
+}
+
+extension StawiCheckedVotes on StawiRoomService {
+  /// Prepares the person's vote [choice] on the room's on-chain proposal
+  /// [onchainProposalId] and checks it on the device (stawi_finance_sdk
+  /// verifyRoomCall against the room's GovernanceModule as finance knows
+  /// it). Nothing is signed or stored yet: [PreparedRoomAct.review], titled
+  /// [title], is shown first. A secret ballot seals the choice with a fresh
+  /// salt; the seal is kept only once the vote is sent.
+  Future<PreparedRoomAct> prepareVote({
+    required String roomId,
+    required int onchainProposalId,
+    required finance.VoteChoice choice,
+    required RoomVoteMode mode,
+    String? title,
+    List<(String, String)> lines = const [],
+    DateTime? revealClosesAt,
+  }) async {
+    if (onchainProposalId <= 0) {
+      throw const StawiUnavailable('The vote has not opened yet');
+    }
+    final me = await _identity();
+    final account = me.primary;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    final SealedVote? sealed;
+    final GovernanceRequest request;
+    switch (mode) {
+      case RoomVoteMode.open:
+        sealed = null;
+        request = voteRequest(
+          onchainProposalId: onchainProposalId,
+          choice: choice,
+        );
+      case RoomVoteMode.secret:
+        sealed = _store.fresh(
+          choice: choice,
+          member: account.address,
+          revealClosesAt: revealClosesAt,
+        );
+        request = commitVoteRequest(
+          onchainProposalId: onchainProposalId,
+          commitment: sealed.commitment(onchainProposalId),
+        );
+    }
+    return _prepareChecked(
+      roomId: roomId,
+      profileId: me.profileId,
+      account: account.address,
+      request: request,
+      onchainProposalId: onchainProposalId,
+      sealed: sealed,
+      title: title ?? request.summary,
+      done: mode == RoomVoteMode.secret
+          ? 'Secret vote cast; reveal it from this device when voting closes'
+          : 'Vote sent',
+      lines: [
+        if (title == null) ('Proposal', '#$onchainProposalId'),
+        ...lines,
+        ('Your vote', voteChoiceLabel(choice)),
+        if (mode == RoomVoteMode.secret)
+          ('Ballot', 'Secret: reveal it from this device when voting closes'),
+      ],
+    );
+  }
+
+  /// Prepares revealing the vote this device sealed on [onchainProposalId],
+  /// checked like [prepareVote]. Nothing is signed yet.
+  Future<PreparedRoomAct> prepareReveal({
+    required String roomId,
+    required int onchainProposalId,
+    String? title,
+    List<(String, String)> lines = const [],
+  }) async {
+    final sealed = await _store.load(roomId, onchainProposalId);
+    if (sealed == null) {
+      throw const StawiUnavailable(revealElsewhereMessage);
+    }
+    final me = await _identity();
+    final request = revealVoteRequest(
+      onchainProposalId: onchainProposalId,
+      choice: sealed.choice,
+      salt: sealed.salt,
+    );
+    return _prepareChecked(
+      roomId: roomId,
+      profileId: me.profileId,
+      account: sealed.member,
+      request: request,
+      onchainProposalId: onchainProposalId,
+      reveal: true,
+      title: title ?? request.summary,
+      done: 'Vote revealed',
+      lines: [
+        if (title == null) ('Proposal', '#$onchainProposalId'),
+        ...lines,
+        ('Your vote', voteChoiceLabel(sealed.choice)),
+      ],
+    );
+  }
 }
 
 /// "Yes", "No" or "Abstain".
@@ -440,19 +456,19 @@ String voteChoiceLabel(finance.VoteChoice choice) => switch (choice) {
   _ => 'Abstain',
 };
 
-/// A vote settlement prepared and the device checked
-/// ([StawiCheckedVotes.prepareVote]), awaiting the person's review. Only the
-/// room service builds one, so an unchecked vote digest never reaches the
-/// device key.
-final class PreparedRoomVote {
-  const PreparedRoomVote._({
+/// A room act settlement prepared and the device checked
+/// ([StawiRoomService.prepareAct], [StawiCheckedVotes.prepareVote]),
+/// awaiting the person's review. Only the room service builds one, so an
+/// unchecked room call digest never reaches the device key.
+final class PreparedRoomAct {
+  const PreparedRoomAct._({
     required this.roomId,
     required this.callId,
     required this.kind,
     required this.digest,
     required this.profileId,
-    required this.onchainProposalId,
     required this.review,
+    this.onchainProposalId = 0,
     this.sealed,
     this.reveal = false,
   });
@@ -462,6 +478,8 @@ final class PreparedRoomVote {
   final settlement.RoomCallKind kind;
   final Uint8List digest;
   final String profileId;
+
+  /// The proposal a vote is on (0 for any other act).
   final int onchainProposalId;
 
   /// What the person is shown before signing; its title is the lock prompt.
@@ -474,88 +492,62 @@ final class PreparedRoomVote {
   final bool reveal;
 }
 
-/// Reads a room's GovernanceModule and chain.
-typedef RoomGovernanceSource = Future<RoomGovernance?> Function(String roomId);
+/// Reads a room's contracts and chain.
+typedef RoomContractsSource = Future<RoomContracts?> Function(String roomId);
 
-/// The GovernanceModule and chain finance indexes for a room; null when it
-/// names none (the room is not bound yet).
-RoomGovernanceSource financeGovernanceSource(finance.RoomServiceClient rooms) =>
+/// The contracts and chain finance indexes for a room; null when it names
+/// neither contract or no chain (the room is not bound yet).
+RoomContractsSource financeContractsSource(finance.RoomServiceClient rooms) =>
     (roomId) async {
       final room = (await rooms.getRoom(finance.GetRoomRequest(roomId: roomId)))
           .room;
-      final address = room.governanceAddress;
-      if (address.length != 20 ||
-          address.every((b) => b == 0) ||
+      Uint8List? address(List<int> a) =>
+          a.length == 20 && a.any((b) => b != 0) ? Uint8List.fromList(a) : null;
+      final governance = address(room.governanceAddress);
+      final custody = address(room.custodyAddress);
+      if ((governance == null && custody == null) ||
           room.chainId == Int64.ZERO) {
         return null;
       }
-      return RoomGovernance(
-        address: Uint8List.fromList(address),
+      return RoomContracts(
+        governance: governance,
+        custody: custody,
         chainId: BigInt.parse(room.chainId.toStringUnsigned()),
       );
     };
 
+/// Resolves a member of a room, named by profile, to their account.
+typedef MemberAccountOf = Future<Uint8List?> Function(
+  String roomId,
+  String profileId,
+);
+
+/// The member's account as finance indexes their membership of the room,
+/// else chat's answer for a DM with them ([dmPartner]); null when neither
+/// knows it.
+MemberAccountOf financeMemberAccounts(
+  finance.RoomServiceClient rooms, {
+  DmPartnerAccountOf? dmPartner,
+}) => (roomId, profileId) async {
+  try {
+    final members = (await rooms.listMembers(
+      finance.ListMembersRequest(roomId: roomId),
+    )).members;
+    final account = members
+        .where((m) => m.profileId == profileId)
+        .map((m) => m.accountAddress)
+        .where((a) => a.length == 20 && a.any((b) => b != 0))
+        .firstOrNull;
+    if (account != null) return Uint8List.fromList(account);
+  } on Object {
+    // Fall through to the DM partner.
+  }
+  return dmPartner?.call(profileId);
+};
+
 extension StawiSecretBallot on StawiRoomService {
   SecretBallotStore get _store =>
       _ballots ?? (throw const StawiUnavailable('Secret ballots are off'));
-
-  /// Casts a secret-ballot vote: the choice is sealed with a fresh salt on
-  /// this device, and only its commitment, made for the member's primary
-  /// account (which is pinned as the signer), is sent.
-  Future<RoomEvent> commitSecretVote({
-    required String roomId,
-    required int onchainProposalId,
-    required finance.VoteChoice choice,
-    DateTime? revealClosesAt,
-  }) async {
-    final account = (await _identity()).primary;
-    if (account == null) {
-      throw const StawiUnavailable('Your profile has no Stawi account yet');
-    }
-    final sealed = await _store.seal(
-      roomId: roomId,
-      proposalId: onchainProposalId,
-      choice: choice,
-      member: account.address,
-      revealClosesAt: revealClosesAt,
-    );
-    final request = commitVoteRequest(
-      onchainProposalId: onchainProposalId,
-      commitment: sealed.commitment(onchainProposalId),
-    );
-    return signedCall(
-      roomId: roomId,
-      kind: request.kind,
-      params: request.params,
-      summary: request.summary,
-      account: account.address,
-    );
-  }
-
-  /// Reveals the vote this device sealed for the proposal.
-  Future<RoomEvent> revealSecretVote({
-    required String roomId,
-    required int onchainProposalId,
-  }) async {
-    final sealed = await _store.load(roomId, onchainProposalId);
-    if (sealed == null) {
-      throw const StawiUnavailable(revealElsewhereMessage);
-    }
-    final request = revealVoteRequest(
-      onchainProposalId: onchainProposalId,
-      choice: sealed.choice,
-      salt: sealed.salt,
-    );
-    final event = await signedCall(
-      roomId: roomId,
-      kind: request.kind,
-      params: request.params,
-      summary: request.summary,
-      account: sealed.member,
-    );
-    await _store.markRevealed(roomId, onchainProposalId);
-    return event;
-  }
 
   /// This device's sealed votes in [roomId] still to reveal.
   Future<List<PendingReveal>> pendingReveals(String roomId) =>
@@ -638,7 +630,11 @@ final stawiRoomServiceProvider = Provider<StawiRoomService>((ref) {
     send: sending.sendStawiAct,
     ballots: SecretBallotStore(const SecureStorageDeviceKeyVault()),
     agentAccounts: ref.watch(dmPartnerAccountOfProvider),
-    governance: financeGovernanceSource(ref.watch(financeRoomsProvider)),
+    contracts: financeContractsSource(ref.watch(financeRoomsProvider)),
+    memberAccounts: financeMemberAccounts(
+      ref.watch(financeRoomsProvider),
+      dmPartner: ref.watch(dmPartnerAccountOfProvider),
+    ),
   );
 });
 

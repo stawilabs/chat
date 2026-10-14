@@ -60,6 +60,7 @@ Future<settlement.AccountCall?> showPayInstalment(
       context,
       ref,
       () async => service.prepareContribution(
+        roomId: view.loan.roomId,
         custody: Uint8List.fromList(view.loan.pool),
         amount: owed.toString(),
         // The button said "Pay an instalment": the review says so too.

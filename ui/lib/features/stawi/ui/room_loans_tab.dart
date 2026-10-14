@@ -659,6 +659,7 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
       context,
       ref,
       () => service.prepareContribution(
+        roomId: widget.roomId,
         custody: custody,
         amount: owed.toString(),
         roomName: widget.roomName,

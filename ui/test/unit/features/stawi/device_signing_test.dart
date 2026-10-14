@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
@@ -113,101 +112,8 @@ void main() {
     });
   });
 
-  group('checkedRoomCallDigest', () {
-    settlement.PrepareRoomCallResponse prepared(
-      Map<String, dynamic> v, {
-      settlement.RoomCallKind kind =
-          settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-      String room = 'room00000000000000aa',
-    }) {
-      final signer = hexToBytes(v['account'] as String);
-      final digest = hexToBytes(v['wrapped'] as String);
-      return settlement.PrepareRoomCallResponse(
-        callId: 'call0000000000000001',
-        digest: digest,
-        signer: signer,
-        call: settlement.RoomCall(
-          callId: 'call0000000000000001',
-          chainId: Int64.parseInt(v['chain_id'] as String),
-          chatRoomId: room,
-          kind: kind,
-          signer: signer,
-          typedHash: hexToBytes(v['hash'] as String),
-          digest: digest,
-          requiresSignature: true,
-        ),
-      );
-    }
-
-    final wrapped = vectors.accountWrappedHashes
-        .where((v) => v['chain_id'] != '18446744073709551615')
-        .toList();
-
-    test('accepts settlement digests matching Go AccountWrappedHash', () {
-      for (final v in wrapped) {
-        final digest = checkedRoomCallDigest(
-          prepared: prepared(v),
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          chatRoomId: 'room00000000000000aa',
-          ownAccounts: [hexToBytes(v['account'] as String)],
-        );
-        expect(bytesToHex0x(digest), v['wrapped'], reason: v['name'] as String);
-      }
-    });
-
-    test('refuses a digest that is not the account wrapping', () {
-      final v = wrapped.firstWhere((v) => v['name'] == 'seq/seq');
-      final tampered = prepared(v);
-      final bad = Uint8List.fromList(tampered.digest)..[0] ^= 1;
-      tampered
-        ..digest = bad
-        ..call.digest = bad;
-      expect(
-        () => checkedRoomCallDigest(
-          prepared: tampered,
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          chatRoomId: 'room00000000000000aa',
-          ownAccounts: [hexToBytes(v['account'] as String)],
-        ),
-        throwsA(isA<SigningRefused>()),
-      );
-    });
-
-    test('refuses another kind, room or signer', () {
-      final v = wrapped.firstWhere((v) => v['name'] == 'seq/seq');
-      final account = hexToBytes(v['account'] as String);
-      expect(
-        () => checkedRoomCallDigest(
-          prepared: prepared(
-            v,
-            kind: settlement.RoomCallKind.ROOM_CALL_KIND_LEAVE,
-          ),
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          chatRoomId: 'room00000000000000aa',
-          ownAccounts: [account],
-        ),
-        throwsA(isA<SigningRefused>()),
-      );
-      expect(
-        () => checkedRoomCallDigest(
-          prepared: prepared(v, room: 'room00000000000000bb'),
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          chatRoomId: 'room00000000000000aa',
-          ownAccounts: [account],
-        ),
-        throwsA(isA<SigningRefused>()),
-      );
-      expect(
-        () => checkedRoomCallDigest(
-          prepared: prepared(v),
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          chatRoomId: 'room00000000000000aa',
-          ownAccounts: [Uint8List(20)],
-        ),
-        throwsA(isA<SigningRefused>()),
-      );
-    });
-
+  // Room calls are checked by checkedRoomCall: room_call_checks_test.dart.
+  group('room call kinds', () {
     test('kind names match what chat compares', () {
       expect(
         roomCallKindName(settlement.RoomCallKind.ROOM_CALL_KIND_CAST_VOTE),

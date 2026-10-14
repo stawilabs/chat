@@ -16,7 +16,7 @@ import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart'
-    show RoomGovernance;
+    show RoomContracts;
 import 'package:stawi/features/stawi/ui/group_loan_request_screen.dart';
 import 'package:stawi/features/stawi/ui/room_loans_tab.dart';
 import 'package:stawi/features/stawi/ui/room_money_screen.dart';
@@ -364,8 +364,8 @@ void main() {
               identity: identity,
               send: votesSent.call,
               ballots: SecretBallotStore(MemoryDeviceKeyVault()),
-              governance: (id) async => RoomGovernance(
-                address: governance,
+              contracts: (id) async => RoomContracts(
+                governance: governance,
                 chainId: BigInt.from(146),
               ),
             ),
@@ -381,6 +381,7 @@ void main() {
           ),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
+              roomAssets: testRoomAssets,
               accounts: settlement.AccountServiceClient(transport),
               keys: DeviceKeyStore(
                 vaultWith('p1', request.devicePrivateKey),

@@ -698,6 +698,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
       // The button that asked for the top-up names its amount; the review
       // and the device lock show the same amount before signing.
       () => service.prepareContribution(
+        roomId: widget.roomId,
         custody: request.custody,
         amount: topUp.toString(),
         roomName: 'the room',

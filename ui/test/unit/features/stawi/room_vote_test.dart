@@ -92,7 +92,7 @@ void main() {
   late RecordingActSender sender;
   late MemoryDeviceKeyVault ballots;
   late DateTime now;
-  RoomGovernance? governance;
+  RoomContracts? governance;
 
   setUp(() {
     transport = FakeConnectTransport();
@@ -102,7 +102,7 @@ void main() {
     // Before every vector's deadline.
     now = DateTime.fromMillisecondsSinceEpoch(1760000000 * 1000, isUtc: true);
     final v = vote(2, 1);
-    governance = RoomGovernance(address: v.verifier, chainId: v.chainId);
+    governance = RoomContracts(governance: v.verifier, chainId: v.chainId);
   });
 
   StawiRoomService service(Uint8List member) => StawiRoomService(
@@ -111,14 +111,14 @@ void main() {
     identity: () async => identityWith('p1', member),
     send: sender.call,
     ballots: SecretBallotStore(ballots),
-    governance: (id) async => id == roomId ? governance : null,
+    contracts: (id) async => id == roomId ? governance : null,
     now: () => now,
   );
 
   List<settlement.PrepareRoomCallRequest> prepares() =>
       transport.requestsTo(settlement.RoomService.prepareRoomCall);
 
-  Future<PreparedRoomVote> castYes(_Vote v) => service(v.member).prepareVote(
+  Future<PreparedRoomAct> castYes(_Vote v) => service(v.member).prepareVote(
     roomId: roomId,
     onchainProposalId: v.proposalId,
     choice: v.voteChoice,
@@ -149,7 +149,7 @@ void main() {
       expect(req.account, v.member);
       expect(gate.reasons, isEmpty, reason: 'nothing signed before review');
 
-      await service(v.member).submitVote(prepared);
+      await service(v.member).submitAct(prepared);
       expect(gate.reasons, ['Vote Yes on loan request #3 in Chama']);
       final act = sender.sent.single;
       expect(act.content['kind'], 'CAST_VOTE');
@@ -218,7 +218,7 @@ void main() {
           isA<SigningRefused>().having(
             (e) => e.reason,
             'reason',
-            governanceUnknownReason,
+            roomContractsUnknownReason,
           ),
         ),
       );
@@ -264,7 +264,7 @@ void main() {
         isNull,
         reason: 'not kept before the person confirms',
       );
-      await s.submitVote(prepared);
+      await s.submitAct(prepared);
       final kept = await SecretBallotStore(ballots).load(roomId, v.proposalId);
       expect(kept!.choice, finance.VoteChoice.VOTE_CHOICE_REJECT);
       expect(
@@ -318,7 +318,7 @@ void main() {
       );
       expect(prepared.digest, v.digest);
       expect(prepared.review.lines.last, ('Your vote', 'Yes'));
-      await s.submitVote(prepared);
+      await s.submitAct(prepared);
       expect(sender.sent.single.content['kind'], 'REVEAL_VOTE');
       expect(await SecretBallotStore(ballots).pending(roomId), isEmpty);
     });

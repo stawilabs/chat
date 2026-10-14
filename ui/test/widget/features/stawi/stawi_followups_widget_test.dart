@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +14,7 @@ import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
+import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/ui/governance_sheet.dart';
 import 'package:stawi/features/stawi/ui/pending_reveals_card.dart';
 import 'package:stawi/features/stawi/ui/room_money_screen.dart';
@@ -95,20 +95,18 @@ void main() {
         choice: finance.VoteChoice.VOTE_CHOICE_REJECT,
         member: account,
       );
+      final room = RoomContracts(
+        governance: Uint8List(20)..[0] = 0x40,
+        chainId: BigInt.from(146),
+      );
       final transport = FakeConnectTransport()
         ..on(
           settlement.RoomService.prepareRoomCall,
-          (req) => settlement.PrepareRoomCallResponse(
-            callId: 'call0000000000000001',
-            digest: hexToBytes(wrapped['wrapped'] as String),
+          (req) => honestRoomCall(
+            req,
+            room: room,
             signer: account,
-            call: settlement.RoomCall(
-              chainId: Int64(146),
-              chatRoomId: roomId,
-              kind: req.kind,
-              typedHash: hexToBytes(wrapped['hash'] as String),
-              requiresSignature: true,
-            ),
+            chatRoomId: roomId,
           ),
         );
       final sender = RecordingActSender();
@@ -124,10 +122,18 @@ void main() {
           identity: () async => identityWith('p1', account),
           send: sender.call,
           ballots: SecretBallotStore(ballots),
+          contracts: (id) async => room,
         ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('reveal-3')));
+      await tester.pumpAndSettle();
+      // What was checked is reviewed before the device lock.
+      expect(find.byKey(const Key('money-review')), findsOneWidget);
+      expect(find.text('Reveal my vote on proposal #3'), findsOneWidget);
+      expect(find.text(checkedRoomActNote), findsOneWidget);
+      expect(sender.sent, isEmpty);
+      await tester.tap(find.byKey(const Key('money-review-sign')));
       await tester.pumpAndSettle();
       expect(sender.sent.single.content['kind'], 'REVEAL_VOTE');
       expect(
@@ -196,6 +202,7 @@ void main() {
             stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
+                roomAssets: testRoomAssets,
                 accounts: settlement.AccountServiceClient(transport),
                 keys: DeviceKeyStore(
                   vaultWith('p1', request.devicePrivateKey),

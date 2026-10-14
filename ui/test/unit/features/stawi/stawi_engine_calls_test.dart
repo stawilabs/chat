@@ -62,6 +62,7 @@ void main() {
 
   group('engine calls', () {
     StawiAccountService service(GoEngineCallVector v) => StawiAccountService(
+      roomAssets: testRoomAssets,
       accounts: settlement.AccountServiceClient(transport),
       keys: DeviceKeyStore(
         vaultWith('p1', v.devicePrivateKey),
@@ -128,6 +129,7 @@ void main() {
         );
       final gate = RecordingSigningGate(refuse: true);
       final s = StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(transport),
         keys: DeviceKeyStore(vaultWith('p1', v.devicePrivateKey), gate: gate),
         proofs: refusingSessionProofs,
@@ -300,30 +302,55 @@ void main() {
 
   group('principal exit check', () {
     final v = vectors.first;
+    final custody = Uint8List(20)..[0] = 0x30;
+    final to = Uint8List(20)..[19] = 0x44;
+    final room = RoomContracts(custody: custody, chainId: BigInt.from(146));
 
-    settlement.PrepareRoomCallResponse prepared({List<int>? payloadHash}) =>
-        settlement.PrepareRoomCallResponse(
-          call: settlement.RoomCall(
-            exitIntent: v.intent..amount = '5000',
-            payloadHash:
-                payloadHash ??
-                intentDigestOf(sdkIntentOf(v.intent..amount = '5000')),
-          ),
-        );
+    finance.FinancialIntent exit() => v.intent
+      ..account = custody
+      ..domain.chainId = Int64(146)
+      ..source = finance.ValueLocation(
+        kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+        address: custody,
+      )
+      ..destination = finance.ValueLocation(
+        kind: finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
+        address: to,
+      )
+      ..amount = '5000';
 
-    test('accepts the exit the ballot carries', () {
-      checkPrincipalExit(prepared(), amount: '5000');
+    settlement.PrepareRoomCallResponse prepared({
+      List<int>? payloadHash,
+      finance.FinancialIntent? intent,
+    }) {
+      final i = intent ?? exit();
+      return settlement.PrepareRoomCallResponse(
+        call: settlement.RoomCall(
+          exitIntent: i,
+          payloadHash: payloadHash ?? intentDigestOf(sdkIntentOf(i)),
+        ),
+      );
+    }
+
+    test('accepts the exit the ballot carries and returns its digest', () {
+      expect(
+        checkPrincipalExit(prepared(), amount: '5000', room: room, to: to),
+        intentDigestOf(sdkIntentOf(exit())),
+      );
     });
 
     test('refuses another amount, a foreign payload hash or no intent', () {
       expect(
-        () => checkPrincipalExit(prepared(), amount: '4999'),
+        () =>
+            checkPrincipalExit(prepared(), amount: '4999', room: room, to: to),
         throwsA(isA<SigningRefused>()),
       );
       expect(
         () => checkPrincipalExit(
           prepared(payloadHash: Uint8List(32)),
           amount: '5000',
+          room: room,
+          to: to,
         ),
         throwsA(isA<SigningRefused>()),
       );
@@ -331,7 +358,32 @@ void main() {
         () => checkPrincipalExit(
           settlement.PrepareRoomCallResponse(call: settlement.RoomCall()),
           amount: '5000',
+          room: room,
+          to: to,
         ),
+        throwsA(isA<SigningRefused>()),
+      );
+    });
+
+    test('refuses another room, chain or destination', () {
+      for (final intent in [
+        exit()..account = (Uint8List(20)..[0] = 0x31),
+        exit()..domain.chainId = Int64(147),
+        exit()..destination.address = (Uint8List(20)..[19] = 0x45),
+      ]) {
+        expect(
+          () => checkPrincipalExit(
+            prepared(intent: intent),
+            amount: '5000',
+            room: room,
+            to: to,
+          ),
+          throwsA(isA<SigningRefused>()),
+        );
+      }
+      // A bucket move stays in the room's custody.
+      expect(
+        () => checkPrincipalExit(prepared(), amount: '5000', room: room),
         throwsA(isA<SigningRefused>()),
       );
     });

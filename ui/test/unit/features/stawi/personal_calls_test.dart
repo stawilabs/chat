@@ -1188,6 +1188,8 @@ void main() {
   group('sending out of the wallet', () {
     final d = GoVaultVectors.load().deposits.first;
     final to = Uint8List(20)..[19] = 0x77;
+    // The deployment's asset, read on its own.
+    final asset = Uint8List.fromList(d.intent.asset);
     settlement.PrepareAccountCallResponse transfer({
       List<int>? dest,
       finance.LocationKind kind =
@@ -1215,8 +1217,33 @@ void main() {
           account: d.account,
           to: to,
           amount: d.amount,
+          asset: asset,
         ),
         p.intentDigest,
+      );
+    });
+
+    test('another asset, or none known, is refused', () {
+      final other = Uint8List(20)..[0] = 0xee;
+      expect(
+        () => checkedTransferOut(
+          prepared: transfer(),
+          account: d.account,
+          to: to,
+          amount: d.amount,
+          asset: other,
+        ),
+        refusedWith('the call sends another asset than your wallet holds'),
+      );
+      expect(
+        () => checkedTransferOut(
+          prepared: transfer(),
+          account: d.account,
+          to: to,
+          amount: d.amount,
+          asset: null,
+        ),
+        refusedWith(assetUnknownReason),
       );
     });
 
@@ -1236,6 +1263,7 @@ void main() {
             account: d.account,
             to: to,
             amount: amount,
+            asset: asset,
           ),
           throwsA(isA<SigningRefused>()),
         );
@@ -1246,6 +1274,8 @@ void main() {
   group('contributions', () {
     final d = GoVaultVectors.load().deposits.first;
     final custody = Uint8List(20)..[0] = 0x50;
+    // The room's asset as finance describes it.
+    final asset = Uint8List.fromList(d.intent.asset);
     settlement.PrepareAccountCallResponse contribution() {
       final intent = d.intent
         ..type = finance.IntentType.INTENT_TYPE_CONTRIBUTION
@@ -1271,9 +1301,39 @@ void main() {
         account: d.account,
         custody: custody,
         amount: d.amount.toString(),
+        roomAssets: [asset],
       );
       expect(checked.amount, d.amount);
       expect(checked.digest, contribution().intentDigest);
+    });
+
+    test('an asset the room does not hold, or none known, is refused', () {
+      expect(
+        () => checkedContribution(
+          prepared: contribution(),
+          account: d.account,
+          custody: custody,
+          amount: d.amount.toString(),
+          roomAssets: [Uint8List(20)..[0] = 0xee],
+        ),
+        refusedWith('the call pays in an asset this room does not hold'),
+      );
+      for (final assets in [
+        null,
+        <Uint8List>[],
+        [Uint8List(20)],
+      ]) {
+        expect(
+          () => checkedContribution(
+            prepared: contribution(),
+            account: d.account,
+            custody: custody,
+            amount: d.amount.toString(),
+            roomAssets: assets,
+          ),
+          refusedWith(assetUnknownReason),
+        );
+      }
     });
 
     test('an empty or zero amount is refused', () {
@@ -1284,6 +1344,7 @@ void main() {
             account: d.account,
             custody: custody,
             amount: amount,
+            roomAssets: [asset],
           ),
           refusedWith('no amount was asked for'),
         );
@@ -1310,6 +1371,7 @@ void main() {
           account: d.account,
           custody: custody,
           amount: d.amount.toString(),
+          roomAssets: [asset],
         ),
         refusedWith('the digest is not the prepared intent\'s'),
       );
@@ -1328,6 +1390,7 @@ void main() {
               account: account,
               custody: custody,
               amount: d.amount.toString(),
+              roomAssets: [asset],
             ),
             refusedWith(noAccountReason),
           );
@@ -1359,6 +1422,7 @@ void main() {
             account: d.account,
             custody: custody,
             amount: d.amount.toString(),
+            roomAssets: [asset],
           ),
           throwsA(isA<SigningRefused>()),
         );

@@ -27,14 +27,11 @@ const roomId = 'room00000000000000aa';
 
 void main() {
   final vectors = GoSignedCallVectors.load();
-  // A StawiAccount (anvil_0 here) on chain 146 and a typed hash; the
-  // digest the device signs is Go's AccountWrappedHash of the two.
+  // A StawiAccount (anvil_0 here) on chain 146.
   final wrapped = vectors.accountWrappedHashes.firstWhere(
     (v) => v['name'] == 'anvil_0/seq' && v['chain_id'] == '146',
   );
   final account = hexToBytes(wrapped['account'] as String);
-  final typedHash = hexToBytes(wrapped['hash'] as String);
-  final digest = hexToBytes(wrapped['wrapped'] as String);
 
   late FakeConnectTransport transport;
   late RecordingActSender sender;
@@ -61,6 +58,15 @@ void main() {
     GoRoomGenesisVectors.named('agent').json['agent'] as String,
   );
 
+  // The room as finance indexes it, and a member's account it knows.
+  final room = RoomContracts(
+    governance: Uint8List(20)..[0] = 0x40,
+    custody: Uint8List(20)..[0] = 0x30,
+    chainId: BigInt.from(146),
+  );
+  final amina = Uint8List(20)..[19] = 0x22;
+  final now = DateTime.utc(2026, 10, 14, 9);
+
   StawiRoomService roomService({DmPartnerAccountOf? agentAccounts}) =>
       StawiRoomService(
         rooms: settlement.RoomServiceClient(transport),
@@ -70,122 +76,207 @@ void main() {
         agentAccounts:
             agentAccounts ??
             (profileId) async => profileId == 'p-agent' ? vectorAgent : null,
+        contracts: (id) async => id == roomId ? room : null,
+        memberAccounts: (id, profileId) async =>
+            id == roomId && profileId == 'p2' ? amina : null,
+        now: () => now,
       );
 
   group('signed room calls', () {
-    void preparesInvite({List<int>? digestOverride}) {
+    void prepares({List<int>? digestOverride}) {
       transport.on(settlement.RoomService.prepareRoomCall, (req) {
         expect(req.chatRoomId, roomId);
-        return settlement.PrepareRoomCallResponse(
-          callId: 'call0000000000000001',
-          digest: digestOverride ?? digest,
+        final p = honestRoomCall(
+          req,
+          room: room,
           signer: account,
-          call: settlement.RoomCall(
-            callId: 'call0000000000000001',
-            chainId: Int64(146),
-            chatRoomId: roomId,
-            kind: req.kind,
-            signer: account,
-            typedHash: typedHash,
-            requiresSignature: true,
-          ),
+          chatRoomId: roomId,
+          now: now,
         );
+        if (digestOverride != null) {
+          p
+            ..digest = digestOverride
+            ..call.digest = digestOverride;
+        }
+        return p;
       });
     }
 
-    test(
-      'prepares, signs the checked digest and sends STAWI_SIGNED_CALL',
-      () async {
-        preparesInvite();
-        final request = inviteRequest(profileId: 'p2', name: 'Amina');
-
-        await roomService().signedCall(
-          roomId: roomId,
-          kind: request.kind,
-          params: request.params,
-          summary: request.summary,
-        );
-
-        final prepared = transport
-            .requestsTo(settlement.RoomService.prepareRoomCall)
-            .single;
-        expect(prepared.kind, settlement.RoomCallKind.ROOM_CALL_KIND_INVITE);
-        expect(prepared.params.officer.subject.profileId, 'p2');
-
-        final act = sender.sent.single;
-        expect(act.roomId, roomId);
-        expect(act.type, RoomEventType.stawiSignedCall);
-        expect(act.content['callId'], 'call0000000000000001');
-        expect(act.content['kind'], 'INVITE');
-        expect(act.content['algorithm'], 'secp256k1');
-        expect(act.content['signerKeyId'], key.keyId);
-        expect(act.content['summary'], 'Invite Amina');
-        final signature = base64Decode(act.content['signature'] as String);
-        expect(signature, hasLength(65));
-        expect(recoverDeviceAddress(digest, signature), key.address);
-      },
+    Future<GovernanceRequest> invite() async => inviteRequest(
+      account: await roomService().memberAccount(roomId, 'p2', name: 'Amina'),
+      name: 'Amina',
+      now: now,
     );
 
+    test('prepares and checks, reviews, then signs and sends '
+        'STAWI_SIGNED_CALL', () async {
+      prepares();
+      final s = roomService();
+      final prepared = await s.prepareAct(
+        roomId: roomId,
+        request: await invite(),
+      );
+      // Nothing is signed while the person reviews what was checked.
+      expect(gate.reasons, isEmpty);
+      expect(sender.sent, isEmpty);
+      expect(prepared.review.title, 'Invite Amina');
+      expect(prepared.review.lines, [
+        ('Member', 'Amina'),
+        ('Account', shortAccount(amina)),
+        ('Invitation expires', '2026-10-21 09:00 UTC'),
+      ]);
+      expect(prepared.review.notes, [checkedRoomActNote]);
+
+      final request = transport
+          .requestsTo(settlement.RoomService.prepareRoomCall)
+          .single;
+      expect(request.kind, settlement.RoomCallKind.ROOM_CALL_KIND_INVITE);
+      expect(request.account, account);
+      expect(request.params.officer.subject.account, amina);
+      expect(
+        request.params.officer.inviteValidSeconds,
+        officerInviteValidity.inSeconds,
+      );
+
+      await s.submitAct(prepared);
+      expect(gate.reasons, ['Invite Amina']);
+      final act = sender.sent.single;
+      expect(act.roomId, roomId);
+      expect(act.type, RoomEventType.stawiSignedCall);
+      expect(act.content['callId'], 'call0000000000000001');
+      expect(act.content['kind'], 'INVITE');
+      expect(act.content['algorithm'], 'secp256k1');
+      expect(act.content['signerKeyId'], key.keyId);
+      expect(act.content['summary'], 'Invite Amina');
+      final signature = base64Decode(act.content['signature'] as String);
+      expect(signature, hasLength(65));
+      expect(recoverDeviceAddress(prepared.digest, signature), key.address);
+    });
+
     test('never signs or sends a substituted digest', () async {
-      preparesInvite(digestOverride: Uint8List(32));
+      prepares(digestOverride: Uint8List(32));
       await expectLater(
-        roomService().signedCall(
-          roomId: roomId,
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          summary: 'Invite',
-        ),
+        roomService().prepareAct(roomId: roomId, request: await invite()),
         throwsA(isA<SigningRefused>()),
       );
+      expect(gate.reasons, isEmpty);
       expect(sender.sent, isEmpty);
     });
 
+    test('a member this device cannot confirm is refused before '
+        'settlement is asked', () async {
+      await expectLater(
+        roomService().memberAccount(roomId, 'p9', name: 'Baraka'),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            contains('Baraka'),
+          ),
+        ),
+      );
+      expect(transport.calls, isEmpty);
+    });
+
+    test('the room\'s contracts unread refuse the act', () async {
+      prepares();
+      await expectLater(
+        roomService().prepareAct(
+          roomId: 'room00000000000000bb',
+          request: leaveRequest,
+        ),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            roomContractsUnknownReason,
+          ),
+        ),
+      );
+      expect(transport.calls, isEmpty);
+    });
+
     test('a vote carries the proposal and choice', () async {
-      preparesInvite();
-      final request = voteRequest(
+      prepares();
+      final s = roomService();
+      final prepared = await s.prepareVote(
+        roomId: roomId,
         onchainProposalId: 7,
         choice: finance.VoteChoice.VOTE_CHOICE_REJECT,
+        mode: RoomVoteMode.open,
       );
-      await roomService().signedCall(
-        roomId: roomId,
-        kind: request.kind,
-        params: request.params,
-        summary: request.summary,
-      );
-      final prepared = transport
+      final request = transport
           .requestsTo(settlement.RoomService.prepareRoomCall)
           .single;
-      expect(prepared.params.vote.onchainProposalId, Int64(7));
-      expect(
-        prepared.params.vote.choice,
-        finance.VoteChoice.VOTE_CHOICE_REJECT,
-      );
+      expect(request.params.vote.onchainProposalId, Int64(7));
+      expect(request.params.vote.choice, finance.VoteChoice.VOTE_CHOICE_REJECT);
+      expect(prepared.review.title, 'Vote reject on proposal #7');
+      expect(prepared.review.lines, [('Proposal', '#7'), ('Your vote', 'No')]);
+      await s.submitAct(prepared);
       expect(sender.sent.single.content['kind'], 'CAST_VOTE');
-      expect(gate.reasons, [request.summary]);
+      expect(gate.reasons, ['Vote reject on proposal #7']);
     });
 
-    test('the device lock is asked with the call summary first', () async {
-      preparesInvite();
-      final request = inviteRequest(profileId: 'p2', name: 'Amina');
-      await roomService().signedCall(
-        roomId: roomId,
-        kind: request.kind,
-        params: request.params,
-        summary: request.summary,
-      );
-      expect(gate.reasons, ['Invite Amina']);
-    });
+    test(
+      'every act the governance sheet offers is checked and signed',
+      () async {
+        prepares();
+        final s = roomService();
+        for (final request in [
+          await invite(),
+          proposeInviteRequest(
+            account: amina,
+            name: 'Amina',
+            expiresAt: inviteExpiryAfter(14, now: now),
+          ),
+          acceptInvitationRequest(5),
+          joinRequest,
+          admitRequest(account: amina, name: 'Amina'),
+          leaveRequest,
+          proposeRemovalRequest(account: amina, name: 'Amina'),
+          delegateRequest(
+            account: amina,
+            name: 'Amina',
+            until: now.add(const Duration(days: 30)),
+          ),
+          revokeDelegationRequest,
+          proposeExitCancelRequest(6),
+          votePrincipalExitRequest(ballotId: 4, approve: false),
+          freezeRequest('treasurer lost phone'),
+          assignRoleRequest(
+            account: amina,
+            name: 'Amina',
+            roleId: 'treasurer',
+            roleName: 'Treasurer',
+            capabilities: RoomCapability.invite | RoomCapability.lend,
+          ),
+          revokeRoleRequest(
+            account: amina,
+            name: 'Amina',
+            roleId: 'treasurer',
+            roleName: 'Treasurer',
+          ),
+        ]) {
+          final prepared = await s.prepareAct(roomId: roomId, request: request);
+          await s.submitAct(prepared);
+          expect(
+            sender.sent.last.content['kind'],
+            roomCallKindName(request.kind),
+          );
+        }
+        expect(sender.sent, hasLength(14));
+      },
+    );
 
     test('a refused device lock signs and sends nothing', () async {
-      preparesInvite();
-      gate.refuse = true;
-      await expectLater(
-        roomService().signedCall(
-          roomId: roomId,
-          kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-          summary: 'Invite Amina',
-        ),
-        throwsA(isA<SigningRefused>()),
+      prepares();
+      final s = roomService();
+      final prepared = await s.prepareAct(
+        roomId: roomId,
+        request: leaveRequest,
       );
+      gate.refuse = true;
+      await expectLater(s.submitAct(prepared), throwsA(isA<SigningRefused>()));
       expect(sender.sent, isEmpty);
     });
   });
@@ -448,6 +539,7 @@ void main() {
       GenesisSessionProofs? proofs,
       StawiIdentity? identity,
     }) => StawiAccountService(
+      roomAssets: testRoomAssets,
       accounts: settlement.AccountServiceClient(transport),
       keys: keys,
       proofs:
@@ -486,12 +578,17 @@ void main() {
 
     group('adding a device key', () {
       final v = GoVaultVectors.load().addKeys.firstWhere((k) => !k.p256);
-      StawiAccountService service() => StawiAccountService(
-        accounts: settlement.AccountServiceClient(transport),
-        keys: keys,
-        proofs: ({required Uint8List deviceAddress}) async => Uint8List(0),
-        identity: () async => identityWith('p1', v.account),
-      );
+      // The deployment's chain, from the app's configuration.
+      final chain = BigInt.parse(v.intent.domain.chainId.toStringUnsigned());
+      StawiAccountService service({BigInt? deploymentChainId}) =>
+          StawiAccountService(
+            roomAssets: testRoomAssets,
+            accounts: settlement.AccountServiceClient(transport),
+            keys: keys,
+            proofs: ({required Uint8List deviceAddress}) async => Uint8List(0),
+            identity: () async => identityWith('p1', v.account),
+            deploymentChainId: deploymentChainId ?? chain,
+          );
       void prepares(settlement.PrepareAccountCallResponse prepared) {
         transport
           ..on(settlement.AccountService.prepareAccountCall, (req) => prepared)
@@ -570,6 +667,24 @@ void main() {
         });
       }
 
+      test('refused when the intent is for another chain than the '
+          'deployment\'s; nothing is signed', () async {
+        // Settlement's intent names its own chain consistently (the digest
+        // is the intent's own); the device holds it to the configured one.
+        prepares(v.prepared());
+        await expectLater(
+          service(deploymentChainId: chain + BigInt.one).prepareAddKey(v.key),
+          throwsA(isA<SigningRefused>()),
+        );
+        final other = v.intent..domain.chainId += 1;
+        prepares(v.prepared(intent: other));
+        await expectLater(
+          service().prepareAddKey(v.key),
+          throwsA(isA<SigningRefused>()),
+        );
+        expect(gate.reasons, isEmpty);
+      });
+
       test('a refused device lock adds no key', () async {
         prepares(v.prepared());
         final prepared = await service().prepareAddKey(v.key);
@@ -636,6 +751,7 @@ void main() {
 
     StawiAccountService service({Future<PersonalTargets> Function()? read}) =>
         StawiAccountService(
+          roomAssets: testRoomAssets,
           accounts: settlement.AccountServiceClient(t),
           keys: DeviceKeyStore(
             vaultWith('p1', pay.devicePrivateKey),
@@ -840,6 +956,7 @@ void main() {
       final d = GoVaultVectors.load().deposits.first;
       t.on(settlement.AccountService.prepareAccountCall, (req) => d.prepared);
       final s = StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(t),
         keys: DeviceKeyStore(
           vaultWith('p1', pay.devicePrivateKey),
@@ -868,6 +985,7 @@ void main() {
       t.on(settlement.AccountService.prepareAccountCall, (req) => g.prepared);
       await serveDeployedAccount(t, pay.devicePrivateKey, policyAsset: g.asset);
       final s = StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(t),
         keys: DeviceKeyStore(
           vaultWith('p1', pay.devicePrivateKey),
@@ -902,6 +1020,7 @@ void main() {
       t.on(settlement.AccountService.prepareAccountCall, (req) => r.prepared());
       await serveDeployedAccount(t, pay.devicePrivateKey, policyAsset: r.asset);
       final s = StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(t),
         keys: DeviceKeyStore(
           vaultWith('p1', pay.devicePrivateKey),
@@ -1007,6 +1126,7 @@ void main() {
       }
 
       StawiAccountService withdrawer() => StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(t),
         keys: DeviceKeyStore(
           vaultWith('p1', pay.devicePrivateKey),

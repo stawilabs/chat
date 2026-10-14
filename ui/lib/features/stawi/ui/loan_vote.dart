@@ -9,7 +9,7 @@ import 'stawi_feedback.dart';
 /// A loan's vote moves the room's money, so it is signed like a money call:
 /// the person taps Yes or No, the device prepares the vote with settlement
 /// and checks it against the room's GovernanceModule as finance knows it
-/// (stawi_finance_sdk verifyRoomVoteCall), shows what it will sign ("Vote Yes
+/// (stawi_finance_sdk verifyRoomCall), shows what it will sign ("Vote Yes
 /// on loan request #3 in Chama"), and only then asks the device lock. A
 /// secret ballot is committed the same way and revealed from this device.
 Future<bool> voteOnLoan(
@@ -43,7 +43,7 @@ Future<bool> voteOnLoan(
   }
   final sent = await runStawiAction(
     context,
-    () => service.submitVote(prepared),
+    () => service.submitAct(prepared),
     success: secret
         ? 'Secret vote cast; reveal it from this device when voting closes'
         : 'Vote sent',
@@ -76,7 +76,7 @@ Future<bool> revealLoanVote(
   }
   final sent = await runStawiAction(
     context,
-    () => service.submitVote(prepared),
+    () => service.submitAct(prepared),
     success: 'Vote revealed',
   );
   if (sent != null) ref.invalidate(stawiPendingRevealsProvider(roomId));

@@ -25,87 +25,55 @@ final class SigningRefused implements Exception {
   String toString() => 'SigningRefused: $reason';
 }
 
-/// The digest to sign for a prepared room call.
-Uint8List checkedRoomCallDigest({
-  required settlement.PrepareRoomCallResponse prepared,
-  required settlement.RoomCallKind kind,
-  required String chatRoomId,
-  required List<Uint8List> ownAccounts,
-}) {
-  final call = prepared.call;
-  if (call.kind != kind) {
-    throw SigningRefused(
-      'settlement prepared a ${roomCallKindName(call.kind)} call, '
-      'not ${roomCallKindName(kind)}',
-    );
-  }
-  if (call.chatRoomId.isNotEmpty && call.chatRoomId != chatRoomId) {
-    throw const SigningRefused('the call was prepared for another room');
-  }
-  if (!call.requiresSignature) {
-    throw const SigningRefused('the call takes no signature');
-  }
-  final signer = Uint8List.fromList(prepared.signer);
-  if (!ownAccounts.any((a) => bytesEqual(a, signer)) ||
-      (call.signer.isNotEmpty && !bytesEqual(call.signer, signer))) {
-    throw const SigningRefused('the call is not signed by your account');
-  }
-  final digest = Uint8List.fromList(prepared.digest);
-  if (digest.length != 32 || call.typedHash.length != 32) {
-    throw const SigningRefused('the prepared digest is malformed');
-  }
-  final expected = accountWrappedHash(
-    signer,
-    _chainId(call.chainId),
-    call.typedHash,
-  );
-  if (!bytesEqual(expected, digest) ||
-      (call.digest.isNotEmpty && !bytesEqual(call.digest, digest))) {
-    throw const SigningRefused(
-      'the digest is not your account wrapping of the call',
-    );
-  }
-  return digest;
-}
+/// The room's contracts and chain as finance indexes the room
+/// (Room.governance_address, Room.custody_address, Room.chain_id): what every
+/// room call is checked against, never settlement's own word for them.
+final class RoomContracts {
+  const RoomContracts({required this.chainId, this.governance, this.custody});
 
-/// The room's GovernanceModule and chain, as finance indexes the room
-/// (Room.governance_address, Room.chain_id): what a vote is checked against,
-/// never settlement's own word for it.
-final class RoomGovernance {
-  const RoomGovernance({required this.address, required this.chainId});
+  /// The GovernanceModule; null when finance names none yet.
+  final Uint8List? governance;
 
-  final Uint8List address;
+  /// RoomCustody; null when finance names none yet.
+  final Uint8List? custody;
   final BigInt chainId;
+
+  /// The contract that verifies a call to [contract], or null when unknown.
+  Uint8List? of(RoomContract contract) => switch (contract) {
+    RoomContract.governance => governance,
+    RoomContract.custody => custody,
+  };
 }
 
-/// Why a vote is refused when the room's governance is unknown.
-const String governanceUnknownReason =
-    'the room\'s governance could not be read just now, so the vote cannot '
-    'be checked against it; try again shortly';
+/// Why a room call is refused when the room's contracts are unknown.
+const String roomContractsUnknownReason =
+    'the room\'s contracts could not be read just now, so the call cannot '
+    'be checked against them; try again shortly';
 
-/// The digest to sign for a prepared vote (CAST_VOTE, COMMIT_VOTE or
-/// REVEAL_VOTE): stawi_finance_sdk verifyRoomVoteCall recomputes the typed
-/// hash from [expected] (the proposal and the choice, commitment or reveal
-/// the person chose), the room's GovernanceModule as finance knows it
-/// ([governance]), the voting [account] and the call's nonce and deadline,
-/// and returns its account wrapping only when settlement's call is exactly
-/// that. A deadline at or before [now] is refused.
-Uint8List checkedRoomVote({
+/// The digest to sign for a prepared room call: stawi_finance_sdk
+/// verifyRoomCall rebuilds the call's typed hash from [expected] (the act
+/// the person chose), the room's contract for it as finance knows it
+/// ([room]), its chain and the signing [account], with the call's nonce and
+/// deadline, and returns its account wrapping only when settlement's call is
+/// exactly that. Settlement's typed hash is never signed on its word, so a
+/// Leave can never carry a vote. A deadline at or before [now] is refused.
+Uint8List checkedRoomCall({
   required settlement.PrepareRoomCallResponse prepared,
-  required RoomVote expected,
+  required RoomCallExpected expected,
   required String chatRoomId,
   required Uint8List account,
-  required RoomGovernance? governance,
+  required RoomContracts? room,
   required DateTime now,
 }) {
-  if (governance == null) {
-    throw const SigningRefused(governanceUnknownReason);
+  if (room == null) throw const SigningRefused(roomContractsUnknownReason);
+  if (account.length != 20 || account.every((b) => b == 0)) {
+    throw const SigningRefused(noAccountReason);
   }
   final call = prepared.call;
-  if (call.kind.value != expected.kind.code) {
+  if (call.kind.value != expected.roomCallKind) {
     throw SigningRefused(
       'settlement prepared a ${roomCallKindName(call.kind)} call, not the '
-      'vote you chose',
+      'act you chose',
     );
   }
   if (call.chatRoomId.isNotEmpty && call.chatRoomId != chatRoomId) {
@@ -114,14 +82,17 @@ Uint8List checkedRoomVote({
   if (!call.requiresSignature) {
     throw const SigningRefused('the call takes no signature');
   }
-  if (call.signer.isNotEmpty && !bytesEqual(call.signer, prepared.signer)) {
+  if (!bytesEqual(prepared.signer, account) ||
+      (call.signer.isNotEmpty && !bytesEqual(call.signer, account))) {
     throw const SigningRefused('the call is not signed by your account');
   }
   if (call.digest.isNotEmpty && !bytesEqual(call.digest, prepared.digest)) {
     throw const SigningRefused('the prepared digest is malformed');
   }
+  final verifier = room.of(expected.contract);
+  if (verifier == null) throw const SigningRefused(roomContractsUnknownReason);
   try {
-    return verifyRoomVoteCall(
+    return verifyRoomCall(
       PreparedRoomCall(
         kind: call.kind.value,
         verifier: call.verifier,
@@ -134,29 +105,39 @@ Uint8List checkedRoomVote({
         digest: prepared.digest,
       ),
       expected: expected,
-      governance: governance.address,
+      verifier: verifier,
       account: account,
-      chainId: governance.chainId,
+      chainId: room.chainId,
       now: BigInt.from(now.toUtc().millisecondsSinceEpoch ~/ 1000),
     );
-  } on RoomVoteException catch (e) {
+  } on RoomCallException catch (e) {
     throw SigningRefused(switch (e.error) {
-      RoomVoteError.notTheVote || RoomVoteError.paramsMismatch =>
-        'settlement prepared another vote: not the proposal or choice you '
-            'chose',
-      RoomVoteError.notTheRoomsGovernance =>
-        'the vote goes to a contract that is not this room\'s governance',
-      RoomVoteError.wrongChain => 'the vote is for another chain',
-      RoomVoteError.notYourAccount => 'the call is not signed by your account',
-      RoomVoteError.typedHashMismatch || RoomVoteError.digestMismatch =>
-        'the digest is not your account\'s signature of this vote',
-      RoomVoteError.expired => 'the vote\'s deadline has passed; try again',
+      RoomCallError.notTheCall || RoomCallError.paramsMismatch =>
+        'settlement prepared something else: not the act you chose',
+      RoomCallError.notTheRoomsContract =>
+        'the call goes to a contract that is not this room\'s',
+      RoomCallError.wrongChain => 'the call is for another chain',
+      RoomCallError.notYourAccount => 'the call is not signed by your account',
+      RoomCallError.typedHashMismatch =>
+        'settlement\'s call does not say what you chose: it would sign '
+            'another act',
+      RoomCallError.digestMismatch =>
+        'the digest is not your account\'s signature of this call',
+      RoomCallError.expired => 'the call\'s deadline has passed; try again',
     });
-    // verifyRoomVoteCall reports malformed inputs as an ArgumentError.
+    // verifyRoomCall reports malformed inputs as an ArgumentError.
     // ignore: avoid_catching_errors
   } on ArgumentError {
-    throw const SigningRefused(governanceUnknownReason);
+    throw const SigningRefused(roomContractsUnknownReason);
   }
+}
+
+/// The parameter word [index] of a checked room call (an officer's
+/// invitation expiry is word 2).
+BigInt roomCallWord(settlement.PrepareRoomCallResponse prepared, int index) {
+  final p = prepared.call.params;
+  if (p.length < 32 * (index + 1)) return BigInt.zero;
+  return bytesToBigInt(p.sublist(32 * index, 32 * (index + 1)));
 }
 
 /// The digest a founder signs for a genesis, and the genesis it was checked
@@ -304,11 +285,13 @@ const String notTheTypedKey =
 /// The digest to sign for adding the device key [key] (a secp256k1 key's
 /// 20-byte address) to [account]: an ADD_KEY whose op adds exactly [key] and
 /// whose KEY_CHANGE intent binds that op (stawi_finance_sdk verifyAddKey),
-/// with the digest the intent's own.
+/// with the digest the intent's own, on [chainId] (the app's deployment
+/// configuration).
 Uint8List checkedAddKey({
   required settlement.PrepareAccountCallResponse prepared,
   required Uint8List account,
   required Uint8List key,
+  required BigInt chainId,
 }) {
   if (key.length != 20 || key.every((b) => b == 0)) {
     throw const SigningRefused('that is not a device key id');
@@ -333,9 +316,9 @@ Uint8List checkedAddKey({
       opKey: op.key,
       expectedKey: key,
       account: account,
-      // The app holds no chain id of its own: the account (the intent's
-      // verifying contract) and the intent's digest bind the one it names.
-      chainId: intent.domain.chainId,
+      // The deployment's chain from the app's own configuration, never the
+      // one the prepared intent names.
+      chainId: chainId,
       preparedDigest: digest,
     );
   } on KeyChangeException catch (e) {
@@ -423,16 +406,30 @@ AccountPolicy accountPolicyFrom(finance.AccountPolicyParams p) {
   );
 }
 
+/// Why a money call is refused when the asset it must move is unknown.
+const String assetUnknownReason =
+    'the asset could not be read just now, so the call cannot be checked '
+    'against it; try again shortly';
+
 /// The digest to sign for a prepared contribution, and the amount it pays
 /// (to review): the call must be a CONTRIBUTE from [account] of exactly
-/// [amount] (integer minor units, greater than zero) into [custody].
+/// [amount] (integer minor units, greater than zero) into [custody], in one
+/// of the room's assets as finance describes them ([roomAssets]: the token
+/// addresses of Room.assets on the room's chain).
 ({Uint8List digest, BigInt amount}) checkedContribution({
   required settlement.PrepareAccountCallResponse prepared,
   required Uint8List account,
   required Uint8List custody,
   required String amount,
+  required List<Uint8List>? roomAssets,
 }) {
   final asked = _positiveAmount(amount);
+  final assets = roomAssets
+      ?.where((a) => a.length == 20 && a.any((b) => b != 0))
+      .toList();
+  if (assets == null || assets.isEmpty) {
+    throw const SigningRefused(assetUnknownReason);
+  }
   final digest = checkedAccountCallDigest(
     prepared: prepared,
     kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
@@ -446,6 +443,11 @@ AccountPolicy accountPolicyFrom(finance.AccountPolicyParams p) {
       intent.destination.kind != LocationKind.roomCustody ||
       !bytesEqual(intent.destination.address, custody)) {
     throw const SigningRefused('the call does not pay this room');
+  }
+  if (!assets.any((a) => bytesEqual(a, intent.asset))) {
+    throw const SigningRefused(
+      'the call pays in an asset this room does not hold',
+    );
   }
   if (intent.amount != asked) {
     throw SigningRefused(
@@ -793,13 +795,19 @@ Uint8List checkedStandingRevoke({
 }
 
 /// The digest to sign for sending [amount] of the wallet's asset to another
-/// address [to] the person gave: a TRANSFER to exactly that user account.
+/// address [to] the person gave: a TRANSFER to exactly that user account, of
+/// the deployment's asset ([asset], its token address, read on its own and
+/// never from the prepared intent).
 Uint8List checkedTransferOut({
   required settlement.PrepareAccountCallResponse prepared,
   required Uint8List account,
   required Uint8List to,
   required BigInt amount,
+  required List<int>? asset,
 }) {
+  if (asset == null || asset.length != 20 || asset.every((b) => b == 0)) {
+    throw const SigningRefused(assetUnknownReason);
+  }
   if (to.length != 20 || to.every((b) => b == 0)) {
     throw const SigningRefused('that is not an address to send to');
   }
@@ -819,6 +827,11 @@ Uint8List checkedTransferOut({
       d.kind != LocationKind.userAccount ||
       !bytesEqual(d.address, to)) {
     throw const SigningRefused('the money goes somewhere other than you said');
+  }
+  if (!bytesEqual(intent.asset, asset)) {
+    throw const SigningRefused(
+      'the call sends another asset than your wallet holds',
+    );
   }
   if (intent.amount != amount) {
     throw SigningRefused(
@@ -851,40 +864,48 @@ const String enginesUnknownReason =
     'unreachable), so the call cannot be checked against them; try again '
     'shortly';
 
-/// The exit settlement built for a PROPOSE_PRINCIPAL_EXIT with a spend: the
-/// ballot's payload hash must be the exit intent's digest, and the intent must
-/// move [amount] out of the room.
-void checkPrincipalExit(
+/// The exit settlement built for a PROPOSE_PRINCIPAL_EXIT with a spend, and
+/// the payload hash the ballot must carry (the exit intent's digest): the
+/// intent must spend [amount] out of this room's custody ([room], as finance
+/// knows it) on its chain, to the account [to] the person chose (a member's
+/// or an external one), or between the room's own buckets when [to] is
+/// null.
+Uint8List checkPrincipalExit(
   settlement.PrepareRoomCallResponse prepared, {
   required String amount,
+  required RoomContracts room,
+  Uint8List? to,
 }) {
   final call = prepared.call;
   if (!call.hasExitIntent()) {
     throw const SigningRefused('settlement returned no exit intent');
   }
+  final custody = room.custody;
+  if (custody == null) throw const SigningRefused(roomContractsUnknownReason);
   final intent = sdkIntentOf(call.exitIntent);
-  if (!bytesEqual(intentDigestOf(intent), call.payloadHash)) {
+  final digest = intentDigestOf(intent);
+  if (!bytesEqual(digest, call.payloadHash)) {
     throw const SigningRefused('the ballot does not carry this exit');
+  }
+  if (!bytesEqual(intent.account, custody) ||
+      !bytesEqual(intent.source.address, custody) ||
+      intent.source.kind != LocationKind.roomCustody ||
+      intent.domain.chainId != room.chainId) {
+    throw const SigningRefused('the exit spends from another room');
+  }
+  final d = intent.destination;
+  final toOk = to == null
+      ? d.kind == LocationKind.roomCustody && bytesEqual(d.address, custody)
+      : d.kind == LocationKind.userAccount && bytesEqual(d.address, to);
+  if (!toOk) {
+    throw const SigningRefused('the exit pays someone other than you chose');
   }
   if (intent.amount != BigInt.parse(amount)) {
     throw SigningRefused(
       'the exit moves ${intent.amount}, not the $amount proposed (minor units)',
     );
   }
-}
-
-/// A proposed invitation commits to the expiry the member chose
-/// ([expiresAt]); settlement reports the one the call carries.
-void checkProposedInviteExpiry(
-  settlement.PrepareRoomCallResponse prepared, {
-  required DateTime expiresAt,
-}) {
-  final want = Int64(expiresAt.toUtc().millisecondsSinceEpoch ~/ 1000);
-  if (prepared.call.inviteExpiry != want) {
-    throw const SigningRefused(
-      'the proposal carries another invitation expiry',
-    );
-  }
+  return digest;
 }
 
 /// Settlement's name for a room call kind, as STAWI_SIGNED_CALL carries it.

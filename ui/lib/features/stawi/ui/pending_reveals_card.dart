@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../data/stawi_room_service.dart';
 import '../domain/secret_ballot.dart';
-import 'stawi_feedback.dart';
+import 'governance_sheet.dart';
 
 /// Reminds the voter of the secret votes this device cast in the room and
 /// has not revealed, with each reveal deadline. Only this device holds their
@@ -60,18 +60,22 @@ class PendingRevealsCard extends ConsumerWidget {
                   ? null
                   : TextButton(
                       key: Key('reveal-${p.proposalId}'),
+                      // Checked against the room's governance and reviewed
+                      // before the device lock, like every room call.
                       onPressed: () async {
-                        await runStawiAction(
+                        final ok = await signRoomAct(
                           context,
+                          ref,
                           () => ref
                               .read(stawiRoomServiceProvider)
-                              .revealSecretVote(
+                              .prepareReveal(
                                 roomId: roomId,
                                 onchainProposalId: p.proposalId,
                               ),
-                          success: 'Vote revealed',
                         );
-                        ref.invalidate(stawiPendingRevealsProvider(roomId));
+                        if (ok) {
+                          ref.invalidate(stawiPendingRevealsProvider(roomId));
+                        }
                       },
                       child: const Text('Reveal'),
                     ),

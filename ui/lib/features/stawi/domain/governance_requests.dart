@@ -3,35 +3,108 @@ import 'dart:typed_data';
 import 'package:fixnum/fixnum.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
-/// One signed governance call a member asks for: what settlement prepares and
-/// the line the room shows for it.
+import 'secret_ballot.dart';
+import 'signing_checks.dart';
+
+/// Builds the act the person chose as the SDK checks it: from the room's
+/// contracts as finance knows them and, for the parts only the chain fixes
+/// (an exit intent, an invitation's hash), settlement's prepared call.
+typedef ExpectedRoomCall = RoomCallExpected Function(
+  RoomContracts room,
+  settlement.PrepareRoomCallResponse prepared,
+);
+
+/// One signed governance call a member asks for: what settlement prepares,
+/// the act the device checks it against before signing, and what the person
+/// is shown first.
 class GovernanceRequest {
   const GovernanceRequest({
     required this.kind,
     required this.summary,
+    required this.expected,
     this.params,
+    this.lines = const [],
+    this.linesOf,
   });
 
   final settlement.RoomCallKind kind;
   final settlement.RoomCallParams? params;
+
+  /// The line the room shows and the review's title.
   final String summary;
+
+  /// The act as the person chose it (stawi_finance_sdk RoomCallExpected).
+  final ExpectedRoomCall expected;
+
+  /// What the review lists.
+  final List<(String, String)> lines;
+
+  /// Review lines read off the checked call (an invitation's expiry).
+  final List<(String, String)> Function(
+    settlement.PrepareRoomCallResponse prepared,
+  )?
+  linesOf;
 }
 
-settlement.RoomMemberRef _member(String profileId) =>
-    settlement.RoomMemberRef(profileId: profileId);
+settlement.RoomMemberRef _member(Uint8List account) =>
+    settlement.RoomMemberRef(account: account);
 
-/// An officer invites a member of the chat room onto the Stawi room.
+/// A 20-byte account shown short: 0x1234…abcd.
+String shortAccount(List<int> account) {
+  final hex = bytesToHex0x(account);
+  return hex.length <= 12
+      ? hex
+      : '${hex.substring(0, 6)}…${hex.substring(hex.length - 4)}';
+}
+
+Uint8List _custody(RoomContracts room) =>
+    room.custody ?? (throw const SigningRefused(roomContractsUnknownReason));
+
+/// How long an officer's invitation stands.
+const Duration officerInviteValidity = Duration(days: 7);
+
+/// How far the expiry settlement fixes from its own clock may drift from
+/// the device's.
+const Duration inviteClockSlack = Duration(minutes: 10);
+
+BigInt _seconds(DateTime t) =>
+    BigInt.from(t.toUtc().millisecondsSinceEpoch ~/ 1000);
+
+/// An officer invites [name] (their account [account]) onto the Stawi room.
+/// The invitation stands [officerInviteValidity] from settlement's clock;
+/// the device takes an expiry within [inviteClockSlack] of its own.
 GovernanceRequest inviteRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
-}) => GovernanceRequest(
-  kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
-  params: settlement.RoomCallParams(
-    officer: settlement.RoomOfficerParams(subject: _member(profileId)),
-  ),
-  summary: 'Invite $name',
-);
+  DateTime? now,
+}) {
+  final at = (now ?? DateTime.now()).add(officerInviteValidity);
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_INVITE,
+    params: settlement.RoomCallParams(
+      officer: settlement.RoomOfficerParams(
+        subject: _member(account),
+        inviteValidSeconds: officerInviteValidity.inSeconds,
+      ),
+    ),
+    summary: 'Invite $name',
+    expected: (room, prepared) => RoomCallExpected.invite(
+      subject: account,
+      expiresNotBefore: _seconds(at.subtract(inviteClockSlack)),
+      expiresNotAfter: _seconds(at.add(inviteClockSlack)),
+    ),
+    lines: [('Member', name), ('Account', shortAccount(account))],
+    linesOf: (prepared) {
+      final expiry = DateTime.fromMillisecondsSinceEpoch(
+        roomCallWord(prepared, 2).toInt() * 1000,
+        isUtc: true,
+      );
+      return [('Invitation expires', '${inviteExpiryLabel(expiry)} UTC')];
+    },
+  );
+}
 
 /// The longest an invitation may stand, in days (settlement's MaxInviteTTL).
 const int maxInviteDays = 30;
@@ -72,31 +145,43 @@ Int64 _inviteExpirySeconds(DateTime expiresAt) {
 }
 
 settlement.RoomMemberActionTerms _inviteTerms(
-  String profileId,
+  Uint8List account,
   DateTime expiresAt,
 ) => settlement.RoomMemberActionTerms(
   action: finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE,
-  subject: _member(profileId),
+  subject: _member(account),
   arg: _inviteExpirySeconds(expiresAt),
 );
 
-/// Proposes inviting a member of the chat room; the members vote on it. The
-/// proposal commits to the invitation's expiry named here.
+/// Proposes inviting [name] (their account [account]); the members vote on
+/// it. The proposal commits to the invitation's expiry named here.
 GovernanceRequest proposeInviteRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
   required DateTime expiresAt,
-}) => GovernanceRequest(
-  kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE,
-  params: settlement.RoomCallParams(
-    propose: settlement.RoomProposeParams(
-      memberAction: _inviteTerms(profileId, expiresAt),
+}) {
+  final terms = _inviteTerms(account, expiresAt);
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE,
+    params: settlement.RoomCallParams(
+      propose: settlement.RoomProposeParams(memberAction: terms),
     ),
-  ),
-  summary:
-      'Propose inviting $name (invitation expires '
-      '${inviteExpiryLabel(expiresAt)} UTC)',
-);
+    summary:
+        'Propose inviting $name (invitation expires '
+        '${inviteExpiryLabel(expiresAt)} UTC)',
+    expected: (room, prepared) => RoomCallExpected.proposeMemberAction(
+      custody: _custody(room),
+      action: MemberActions.invite,
+      subject: account,
+      arg: BigInt.from(terms.arg.toInt()),
+    ),
+    lines: [
+      ('Member', name),
+      ('Account', shortAccount(account)),
+      ('Invitation expires', '${inviteExpiryLabel(expiresAt)} UTC'),
+    ],
+  );
+}
 
 /// Queues the passed proposal [onchainProposalId] for execution once its
 /// timelock runs: permissionless, unsigned, straight to settlement.
@@ -125,13 +210,16 @@ settlement.RoomCallParams executeInviteParams({
       onchainProposalId: Int64(onchainProposalId),
       memberAction: settlement.RoomMemberActionTerms(
         action: finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE,
-        subject: _member(profileId),
+        subject: settlement.RoomMemberRef(profileId: profileId),
       ),
     ),
   );
 }
 
-/// The invitee accepts the on-chain invitation [inviteId].
+/// The invitee accepts the on-chain invitation [inviteId]. Its hash is
+/// RoomCustody.inviteHash(inviteId): settlement reads it off the chain and
+/// the contract recomputes it from its own storage, so it is taken from the
+/// call; the act, the invitation and the room are the person's.
 GovernanceRequest acceptInvitationRequest(int inviteId) {
   if (inviteId <= 0) {
     throw ArgumentError.value(inviteId, 'inviteId', 'must be positive');
@@ -140,36 +228,54 @@ GovernanceRequest acceptInvitationRequest(int inviteId) {
     kind: settlement.RoomCallKind.ROOM_CALL_KIND_ACCEPT_INVITATION,
     params: settlement.RoomCallParams(inviteId: Int64(inviteId)),
     summary: 'Accept invitation #$inviteId',
+    expected: (room, prepared) {
+      final p = prepared.call.params;
+      if (p.length != 64) {
+        throw const SigningRefused(
+          'settlement prepared something else: not the act you chose',
+        );
+      }
+      return RoomCallExpected.acceptInvitation(
+        inviteId: BigInt.from(inviteId),
+        inviteHash: p.sublist(32),
+      );
+    },
+    lines: [('Invitation', '#$inviteId')],
   );
 }
 
 /// A person's own entry into a public room; a member admits them later.
-const GovernanceRequest joinRequest = GovernanceRequest(
+final GovernanceRequest joinRequest = GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_JOIN,
   summary: 'Ask to join the room',
+  expected: (room, prepared) => RoomCallExpected.join(),
 );
 
-/// Admits a self-joined member.
+/// Admits the self-joined [name] (their account [account]).
 GovernanceRequest admitRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
 }) => GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_ADMIT,
   params: settlement.RoomCallParams(
-    officer: settlement.RoomOfficerParams(subject: _member(profileId)),
+    officer: settlement.RoomOfficerParams(subject: _member(account)),
   ),
   summary: 'Admit $name',
+  expected: (room, prepared) => RoomCallExpected.admit(subject: account),
+  lines: [('Member', name), ('Account', shortAccount(account))],
 );
 
 /// The member's own departure.
-const GovernanceRequest leaveRequest = GovernanceRequest(
+final GovernanceRequest leaveRequest = GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_LEAVE,
   summary: 'Leave the room',
+  expected: (room, prepared) => RoomCallExpected.leave(),
 );
 
-/// Proposes removing a member; the members vote on it.
+/// Proposes removing [name] (their account [account]); the members vote on
+/// it.
 GovernanceRequest proposeRemovalRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
 }) => GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE,
@@ -177,11 +283,17 @@ GovernanceRequest proposeRemovalRequest({
     propose: settlement.RoomProposeParams(
       memberAction: settlement.RoomMemberActionTerms(
         action: finance.RoomMemberAction.ROOM_MEMBER_ACTION_REMOVE,
-        subject: _member(profileId),
+        subject: _member(account),
       ),
     ),
   ),
   summary: 'Propose removing $name',
+  expected: (room, prepared) => RoomCallExpected.proposeMemberAction(
+    custody: _custody(room),
+    action: MemberActions.remove,
+    subject: account,
+  ),
+  lines: [('Member', name), ('Account', shortAccount(account))],
 );
 
 /// An open-ballot vote on the on-chain proposal [onchainProposalId].
@@ -204,6 +316,10 @@ GovernanceRequest voteRequest({
     finance.VoteChoice.VOTE_CHOICE_REJECT => 'reject',
     _ => 'abstain',
   };
+  final vote = RoomVote.cast(
+    proposalId: BigInt.from(onchainProposalId),
+    choice: chainChoiceOf(choice),
+  );
   return GovernanceRequest(
     kind: settlement.RoomCallKind.ROOM_CALL_KIND_CAST_VOTE,
     params: settlement.RoomCallParams(
@@ -213,12 +329,14 @@ GovernanceRequest voteRequest({
       ),
     ),
     summary: 'Vote $label on proposal #$onchainProposalId',
+    expected: (room, prepared) => RoomCallExpected.vote(vote),
   );
 }
 
-/// Delegates the member's votes (every proposal kind) until [until].
+/// Delegates the member's votes (every proposal kind) to [name] (their
+/// account [account]) until [until].
 GovernanceRequest delegateRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
   required DateTime until,
 }) {
@@ -230,17 +348,28 @@ GovernanceRequest delegateRequest({
     kind: settlement.RoomCallKind.ROOM_CALL_KIND_DELEGATE,
     params: settlement.RoomCallParams(
       delegate: settlement.RoomDelegateParams(
-        to: _member(profileId),
+        to: _member(account),
         until: Int64(seconds),
       ),
     ),
     summary: 'Delegate votes to $name',
+    expected: (room, prepared) =>
+        RoomCallExpected.delegate(to: account, until: BigInt.from(seconds)),
+    lines: [
+      ('To', name),
+      ('Account', shortAccount(account)),
+      (
+        'Until',
+        '${inviteExpiryLabel(DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true))} UTC',
+      ),
+    ],
   );
 }
 
-const GovernanceRequest revokeDelegationRequest = GovernanceRequest(
+final GovernanceRequest revokeDelegationRequest = GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_DELEGATION,
   summary: 'Revoke vote delegation',
+  expected: (room, prepared) => RoomCallExpected.revokeDelegation(),
 );
 
 /// Commits a secret-ballot vote: only the commitment goes on chain; the
@@ -252,6 +381,10 @@ GovernanceRequest commitVoteRequest({
   if (commitment.length != 32) {
     throw ArgumentError.value(commitment.length, 'commitment', 'must be 32');
   }
+  final vote = RoomVote.commit(
+    proposalId: BigInt.from(onchainProposalId),
+    commitment: commitment,
+  );
   return GovernanceRequest(
     kind: settlement.RoomCallKind.ROOM_CALL_KIND_COMMIT_VOTE,
     params: settlement.RoomCallParams(
@@ -261,6 +394,7 @@ GovernanceRequest commitVoteRequest({
       ),
     ),
     summary: 'Cast a secret vote on proposal #$onchainProposalId',
+    expected: (room, prepared) => RoomCallExpected.vote(vote),
   );
 }
 
@@ -273,6 +407,11 @@ GovernanceRequest revealVoteRequest({
   if (salt.length != 32) {
     throw ArgumentError.value(salt.length, 'salt', 'must be 32 bytes');
   }
+  final vote = RoomVote.reveal(
+    proposalId: BigInt.from(onchainProposalId),
+    choice: chainChoiceOf(choice),
+    salt: salt,
+  );
   return GovernanceRequest(
     kind: settlement.RoomCallKind.ROOM_CALL_KIND_REVEAL_VOTE,
     params: settlement.RoomCallParams(
@@ -283,24 +422,27 @@ GovernanceRequest revealVoteRequest({
       ),
     ),
     summary: 'Reveal my vote on proposal #$onchainProposalId',
+    expected: (room, prepared) => RoomCallExpected.vote(vote),
   );
 }
 
 /// Proposes a principal exit: the custody's fallback spend of [amount] from
-/// [sourceBucket] to a member, an approved external account or another
-/// bucket (exactly one). Settlement builds the exit intent; the ballot's
-/// payload hash is its digest, which the device checks before signing.
+/// [sourceBucket] to a member (their account [memberAccount]), an approved
+/// external account or another bucket (exactly one). Settlement builds the
+/// exit intent; the device checks it is this room's spend of [amount] to
+/// that destination (checkPrincipalExit), and the ballot it signs carries
+/// exactly that intent's digest.
 GovernanceRequest proposePrincipalExitRequest({
   required String sourceBucket,
   required String amount,
-  String? memberProfileId,
+  Uint8List? memberAccount,
   String memberName = '',
   Uint8List? externalAccount,
   String? bucket,
   String? amountLabel,
 }) {
   final destinations = [
-    memberProfileId,
+    memberAccount,
     externalAccount,
     bucket,
   ].where((d) => d != null).length;
@@ -313,7 +455,10 @@ GovernanceRequest proposePrincipalExitRequest({
   if (externalAccount != null && externalAccount.length != 20) {
     throw ArgumentError.value(externalAccount, 'externalAccount', '20 bytes');
   }
-  final to = memberProfileId != null
+  if (memberAccount != null && memberAccount.length != 20) {
+    throw ArgumentError.value(memberAccount, 'memberAccount', '20 bytes');
+  }
+  final to = memberAccount != null
       ? memberName
       : externalAccount != null
       ? 'an external account'
@@ -325,7 +470,7 @@ GovernanceRequest proposePrincipalExitRequest({
         spend: settlement.RoomExitSpend(
           sourceBucket: sourceBucket,
           amount: amount,
-          member: memberProfileId == null ? null : _member(memberProfileId),
+          member: memberAccount == null ? null : _member(memberAccount),
           externalAccount: externalAccount,
           bucket: bucket,
         ),
@@ -334,6 +479,21 @@ GovernanceRequest proposePrincipalExitRequest({
     summary:
         'Propose a principal exit of ${amountLabel ?? amount} from '
         '$sourceBucket to $to',
+    expected: (room, prepared) => RoomCallExpected.proposePrincipalExit(
+      payloadHash: checkPrincipalExit(
+        prepared,
+        amount: amount,
+        room: room,
+        to: memberAccount ?? externalAccount,
+      ),
+    ),
+    lines: [
+      ('Amount', amountLabel ?? amount),
+      ('From', sourceBucket),
+      ('To', to),
+      if (memberAccount ?? externalAccount case final a?)
+        ('Account', shortAccount(a)),
+    ],
   );
 }
 
@@ -350,6 +510,12 @@ GovernanceRequest proposeExitCancelRequest(int cancelTarget) {
       ),
     ),
     summary: 'Propose cancelling principal exit #$cancelTarget',
+    expected: (room, prepared) => RoomCallExpected.cancelPrincipalExit(
+      chainId: room.chainId,
+      custody: _custody(room),
+      cancelTarget: BigInt.from(cancelTarget),
+    ),
+    lines: [('Exit ballot', '#$cancelTarget')],
   );
 }
 
@@ -380,6 +546,14 @@ GovernanceRequest votePrincipalExitRequest({
     ),
     summary:
         '${approve ? 'Approve' : 'Reject'} principal exit ballot #$ballotId',
+    expected: (room, prepared) => RoomCallExpected.votePrincipalExit(
+      ballotId: BigInt.from(ballotId),
+      approve: approve,
+    ),
+    lines: [
+      ('Exit ballot', '#$ballotId'),
+      ('Your vote', approve ? 'Approve' : 'Reject'),
+    ],
   );
 }
 
@@ -395,6 +569,8 @@ GovernanceRequest freezeRequest(String reason) {
       freeze_7: settlement.RoomFreezeParams(reason: trimmed),
     ),
     summary: 'Approve freezing the room: $trimmed',
+    expected: (room, prepared) => RoomCallExpected.freeze(reason: trimmed),
+    lines: [('Reason', trimmed)],
   );
 }
 
@@ -417,43 +593,78 @@ abstract final class RoomCapability {
   };
 }
 
-/// Proposes electing [name] to the constitution's role [roleId]; the members
-/// vote on it.
+/// Proposes electing [name] (their account [account]) to the constitution's
+/// role [roleId]; the members vote on it.
 GovernanceRequest assignRoleRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
   required String roleId,
   required String roleName,
   required int capabilities,
   DateTime? validUntil,
-}) => GovernanceRequest(
-  kind: settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE,
-  params: settlement.RoomCallParams(
-    role: settlement.RoomRoleTerms(
-      member: _member(profileId),
-      roleId: roleId,
-      capabilities: capabilities,
-      validUntil: Int64(
-        validUntil == null
-            ? 0
-            : validUntil.toUtc().millisecondsSinceEpoch ~/ 1000,
+}) {
+  final until = validUntil == null
+      ? 0
+      : validUntil.toUtc().millisecondsSinceEpoch ~/ 1000;
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE,
+    params: settlement.RoomCallParams(
+      role: settlement.RoomRoleTerms(
+        member: _member(account),
+        roleId: roleId,
+        capabilities: capabilities,
+        validUntil: Int64(until),
+        assign: true,
       ),
-      assign: true,
     ),
-  ),
-  summary: 'Propose $name as $roleName',
-);
+    summary: 'Propose $name as $roleName',
+    expected: (room, prepared) => RoomCallExpected.assignRole(
+      custody: _custody(room),
+      member: account,
+      roleName: roleId,
+      capabilities: capabilities,
+      validUntil: BigInt.from(until),
+    ),
+    lines: [
+      ('Member', name),
+      ('Account', shortAccount(account)),
+      ('Role', roleName),
+      (
+        'May',
+        [
+          for (final e in RoomCapability.labels.entries)
+            if (capabilities & e.key != 0) e.value,
+        ].join(', ').ifEmpty('nothing on chain'),
+      ),
+    ],
+  );
+}
 
-/// Proposes removing [name] from the role [roleId].
+/// Proposes removing [name] (their account [account]) from the role
+/// [roleId].
 GovernanceRequest revokeRoleRequest({
-  required String profileId,
+  required Uint8List account,
   required String name,
   required String roleId,
   required String roleName,
 }) => GovernanceRequest(
   kind: settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_ROLE,
   params: settlement.RoomCallParams(
-    role: settlement.RoomRoleTerms(member: _member(profileId), roleId: roleId),
+    role: settlement.RoomRoleTerms(member: _member(account), roleId: roleId),
   ),
   summary: 'Propose removing $name as $roleName',
+  expected: (room, prepared) => RoomCallExpected.revokeRole(
+    custody: _custody(room),
+    member: account,
+    roleName: roleId,
+  ),
+  lines: [
+    ('Member', name),
+    ('Account', shortAccount(account)),
+    ('Role', roleName),
+  ],
 );
+
+extension on String {
+  String ifEmpty(String other) => isEmpty ? other : this;
+}

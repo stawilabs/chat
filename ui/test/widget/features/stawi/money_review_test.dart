@@ -104,6 +104,7 @@ void main() {
         );
       await serveDeployedAccount(transport, anvilKey);
       return StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(transport),
         keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate),
         proofs: refusingSessionProofs,

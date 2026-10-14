@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
@@ -80,20 +79,18 @@ void main() {
             (v) => v['name'] == 'anvil_0/seq' && v['chain_id'] == '146',
           );
       final account = hexToBytes(wrapped['account'] as String);
+      final room = RoomContracts(
+        governance: Uint8List(20)..[0] = 0x40,
+        chainId: BigInt.from(146),
+      );
       final transport = FakeConnectTransport()
         ..on(
           settlement.RoomService.prepareRoomCall,
-          (req) => settlement.PrepareRoomCallResponse(
-            callId: 'call0000000000000001',
-            digest: hexToBytes(wrapped['wrapped'] as String),
+          (req) => honestRoomCall(
+            req,
+            room: room,
             signer: account,
-            call: settlement.RoomCall(
-              chainId: Int64(146),
-              chatRoomId: roomId,
-              kind: req.kind,
-              typedHash: hexToBytes(wrapped['hash'] as String),
-              requiresSignature: true,
-            ),
+            chatRoomId: roomId,
           ),
         );
       StawiRoomService device(MemoryDeviceKeyVault ballots) => StawiRoomService(
@@ -102,13 +99,17 @@ void main() {
         identity: () async => identityWith('p1', account),
         send: RecordingActSender().call,
         ballots: SecretBallotStore(ballots),
+        contracts: (id) async => room,
       );
       final voting = MemoryDeviceKeyVault();
-      await device(voting).commitSecretVote(
-        roomId: roomId,
-        onchainProposalId: 5,
-        choice: finance.VoteChoice.VOTE_CHOICE_APPROVE,
-        revealClosesAt: DateTime.utc(2026, 10, 20),
+      await device(voting).submitAct(
+        await device(voting).prepareVote(
+          roomId: roomId,
+          onchainProposalId: 5,
+          choice: finance.VoteChoice.VOTE_CHOICE_APPROVE,
+          mode: RoomVoteMode.secret,
+          revealClosesAt: DateTime.utc(2026, 10, 20),
+        ),
       );
       expect(await device(voting).pendingReveals(roomId), hasLength(1));
       expect(
@@ -121,7 +122,7 @@ void main() {
 
       await expectLater(
         device(MemoryDeviceKeyVault())
-            .revealSecretVote(roomId: roomId, onchainProposalId: 5),
+            .prepareReveal(roomId: roomId, onchainProposalId: 5),
         throwsA(
           isA<StawiUnavailable>().having(
             (e) => e.message,
@@ -131,8 +132,10 @@ void main() {
         ),
       );
 
-      await device(voting)
-          .revealSecretVote(roomId: roomId, onchainProposalId: 5);
+      await device(voting).submitAct(
+        await device(voting)
+            .prepareReveal(roomId: roomId, onchainProposalId: 5),
+      );
       expect(await device(voting).pendingReveals(roomId), isEmpty);
     });
   });
@@ -154,6 +157,7 @@ void main() {
         );
       await serveDeployedAccount(transport, v.devicePrivateKey);
       return StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(transport),
         keys: DeviceKeyStore(
           vaultWith('p1', v.devicePrivateKey),

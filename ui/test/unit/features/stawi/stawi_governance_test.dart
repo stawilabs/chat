@@ -62,6 +62,11 @@ void main() {
       (v) => v['name'] == 'anvil_0/seq' && v['chain_id'] == '146',
     );
     final account = hexToBytes(wrapped['account'] as String);
+    final room = RoomContracts(
+      governance: Uint8List(20)..[0] = 0x40,
+      custody: Uint8List(20)..[0] = 0x30,
+      chainId: BigInt.from(146),
+    );
     late MemoryDeviceKeyVault ballotVault;
     late RecordingActSender sender;
 
@@ -71,6 +76,7 @@ void main() {
       identity: () async => identityWith('p1', account),
       send: sender.call,
       ballots: SecretBallotStore(ballotVault),
+      contracts: (id) async => room,
     );
 
     setUp(() {
@@ -78,27 +84,29 @@ void main() {
       sender = RecordingActSender();
       transport.on(
         settlement.RoomService.prepareRoomCall,
-        (req) => settlement.PrepareRoomCallResponse(
-          callId: 'call0000000000000001',
-          digest: hexToBytes(wrapped['wrapped'] as String),
+        (req) => honestRoomCall(
+          req,
+          room: room,
           signer: account,
-          call: settlement.RoomCall(
-            chainId: Int64(146),
-            chatRoomId: roomId,
-            kind: req.kind,
-            typedHash: hexToBytes(wrapped['hash'] as String),
-            requiresSignature: true,
-          ),
+          chatRoomId: roomId,
         ),
       );
     });
 
     test('commits only the commitment, sealed on the device', () async {
-      await service().commitSecretVote(
+      final s = service();
+      final prepared = await s.prepareVote(
         roomId: roomId,
         onchainProposalId: 9,
         choice: finance.VoteChoice.VOTE_CHOICE_REJECT,
+        mode: RoomVoteMode.secret,
       );
+      expect(
+        await SecretBallotStore(ballotVault).load(roomId, 9),
+        isNull,
+        reason: 'kept only once sent',
+      );
+      await s.submitAct(prepared);
       final sealed = (await SecretBallotStore(ballotVault).load(roomId, 9))!;
       expect(sealed.choice, finance.VoteChoice.VOTE_CHOICE_REJECT);
       expect(sealed.member, account);
@@ -130,7 +138,10 @@ void main() {
         choice: finance.VoteChoice.VOTE_CHOICE_APPROVE,
         member: account,
       );
-      await service().revealSecretVote(roomId: roomId, onchainProposalId: 9);
+      final s = service();
+      await s.submitAct(
+        await s.prepareReveal(roomId: roomId, onchainProposalId: 9),
+      );
       final prepare = transport
           .requestsTo(settlement.RoomService.prepareRoomCall)
           .single;
@@ -141,11 +152,12 @@ void main() {
         finance.VoteChoice.VOTE_CHOICE_APPROVE,
       );
       expect(sender.sent.single.content['kind'], 'REVEAL_VOTE');
+      expect(await s.pendingReveals(roomId), isEmpty);
     });
 
     test('cannot reveal a vote this device never sealed', () async {
       await expectLater(
-        service().revealSecretVote(roomId: roomId, onchainProposalId: 9),
+        service().prepareReveal(roomId: roomId, onchainProposalId: 9),
         throwsA(isA<StawiUnavailable>()),
       );
       expect(transport.calls, isEmpty);
@@ -154,10 +166,11 @@ void main() {
 
   group('governance requests', () {
     test('principal exit, freeze and roles carry their terms', () {
+      final amina = Uint8List(20)..[19] = 0x22;
       final exit = proposePrincipalExitRequest(
         sourceBucket: 'savings',
         amount: '5000',
-        memberProfileId: 'p2',
+        memberAccount: amina,
         memberName: 'Amina',
       );
       expect(
@@ -166,12 +179,12 @@ void main() {
       );
       expect(exit.params!.principalExit.spend.sourceBucket, 'savings');
       expect(exit.params!.principalExit.spend.amount, '5000');
-      expect(exit.params!.principalExit.spend.member.profileId, 'p2');
+      expect(exit.params!.principalExit.spend.member.account, amina);
       expect(
         () => proposePrincipalExitRequest(
           sourceBucket: 'savings',
           amount: '5000',
-          memberProfileId: 'p2',
+          memberAccount: amina,
           bucket: 'reserve',
         ),
         throwsArgumentError,
@@ -191,35 +204,23 @@ void main() {
       expect(() => inviteExpiryAfter(maxInviteDays), throwsArgumentError);
 
       final invite = proposeInviteRequest(
-        profileId: 'p2',
+        account: amina,
         name: 'Amina',
         expiresAt: expiry,
       );
       expect(invite.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
       final terms = invite.params!.propose.memberAction;
       expect(terms.action, finance.RoomMemberAction.ROOM_MEMBER_ACTION_INVITE);
-      expect(terms.subject.profileId, 'p2');
+      expect(terms.subject.account, amina);
       expect(terms.arg, Int64(expiry.millisecondsSinceEpoch ~/ 1000));
       expect(invite.summary, contains('2026-10-25 18:30 UTC'));
-      settlement.PrepareRoomCallResponse preparedWith(Int64 seconds) =>
-          settlement.PrepareRoomCallResponse(
-            call: settlement.RoomCall(inviteExpiry: seconds),
-          );
-      checkProposedInviteExpiry(preparedWith(terms.arg), expiresAt: expiry);
-      expect(
-        () => checkProposedInviteExpiry(
-          preparedWith(terms.arg + 1),
-          expiresAt: expiry,
-        ),
-        throwsA(isA<SigningRefused>()),
-      );
       final execute = executeInviteParams(
         onchainProposalId: 3,
         profileId: 'p2',
       ).execute;
       expect(execute.onchainProposalId, Int64(3));
       expect(execute.memberAction.action, terms.action);
-      expect(execute.memberAction.subject, terms.subject);
+      expect(execute.memberAction.subject.profileId, 'p2');
       expect(execute.memberAction.arg, Int64.ZERO, reason: 'the voted expiry');
       expect(
         () => executeInviteParams(onchainProposalId: 0, profileId: 'p2'),
@@ -243,20 +244,20 @@ void main() {
       expect(() => freezeRequest(' '), throwsArgumentError);
 
       final assign = assignRoleRequest(
-        profileId: 'p2',
+        account: amina,
         name: 'Amina',
         roleId: 'treasurer',
         roleName: 'Treasurer',
         capabilities: RoomCapability.invite | RoomCapability.lend,
       );
       expect(assign.kind, settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE);
-      expect(assign.params!.role.member.profileId, 'p2');
+      expect(assign.params!.role.member.account, amina);
       expect(assign.params!.role.capabilities, 1 | 32);
       expect(assign.params!.role.assign, isTrue);
       expect(assign.summary, 'Propose Amina as Treasurer');
 
       final revoke = revokeRoleRequest(
-        profileId: 'p2',
+        account: amina,
         name: 'Amina',
         roleId: 'treasurer',
         roleName: 'Treasurer',
@@ -360,6 +361,7 @@ void main() {
           (req) => settlement.DeployAccountResponse(genesisState: 'PENDING'),
         );
       final service = StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(transport),
         keys: DeviceKeyStore(
           vaultWith('p1', genesis.devicePrivateKey),

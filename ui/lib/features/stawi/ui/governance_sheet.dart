@@ -11,31 +11,32 @@ import '../../rooms/data/detail_panel_providers.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/governance_requests.dart';
-import '../domain/signing_checks.dart';
 import '../domain/stawi_money.dart';
+import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
 
-/// Signs [request] on this device and sends it into [roomId]. The act shows in
-/// the room as pending until chat posts its outcome.
-Future<bool> sendGovernanceRequest(
+/// Prepares a room act with [prepare] (checked on the device against the act
+/// the person chose), shows its review, and only then signs it behind the
+/// device lock and sends it into the room. False when anything was refused
+/// or the person backed out.
+Future<bool> signRoomAct(
   BuildContext context,
-  WidgetRef ref, {
-  required String roomId,
-  required GovernanceRequest request,
-  void Function(settlement.PrepareRoomCallResponse prepared)? check,
-}) => _send(
-  context,
-  () => ref
-      .read(stawiRoomServiceProvider)
-      .signedCall(
-        roomId: roomId,
-        kind: request.kind,
-        params: request.params,
-        summary: request.summary,
-        check: check,
-      ),
-  'Signed and sent: ${request.summary}',
-);
+  WidgetRef ref,
+  Future<PreparedRoomAct> Function() prepare,
+) async {
+  final service = ref.read(stawiRoomServiceProvider);
+  final prepared = await runStawiAction(context, prepare);
+  if (prepared == null || !context.mounted) return false;
+  if (!await showMoneyReview(context, prepared.review) || !context.mounted) {
+    return false;
+  }
+  final sent = await runStawiAction(
+    context,
+    () => service.submitAct(prepared),
+    success: prepared.review.done,
+  );
+  return sent != null;
+}
 
 Future<bool> _send<T>(
   BuildContext context,
@@ -179,15 +180,11 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
   final _sourceBucket = TextEditingController(text: 'savings');
   _ExitTo _exitTo = _ExitTo.member;
 
-  /// The proposed exit amount in minor units, checked against the exit intent.
-  String _exitUnits = '';
   finance.VoteChoice _choice = finance.VoteChoice.VOTE_CHOICE_APPROVE;
   bool _approve = true;
   int _days = 30;
   int _inviteDays = 14;
 
-  /// The expiry a proposed invitation commits to, as sent.
-  DateTime? _proposedExpiry;
   bool _sending = false;
   String? _error;
 
@@ -212,9 +209,10 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     return n;
   }
 
-  /// The act as a signed call, or null for the secret-ballot acts, which the
-  /// room service seals and reveals itself.
-  GovernanceRequest? _request() {
+  /// Checks the form and returns how to build the signed act (the member's
+  /// account is resolved on this device first), or null for the acts that
+  /// are votes or unsigned. Throws [FormatException] for what is missing.
+  Future<GovernanceRequest> Function()? _plan() {
     final member = _memberProfileId;
     if (_action.needsMember && member == null) {
       throw const FormatException('Choose a member');
@@ -225,63 +223,75 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     final number = _action.numberLabel == null
         ? null
         : _parsedNumber(required: true);
-    return switch (_action) {
-      GovernanceAction.invite => inviteRequest(
-        profileId: member!,
-        name: _memberName,
-      ),
-      GovernanceAction.proposeInvite => proposeInviteRequest(
-        profileId: member!,
-        name: _memberName,
-        expiresAt: _proposedExpiry = inviteExpiryAfter(_inviteDays),
-      ),
-      GovernanceAction.queueProposal => null,
-      GovernanceAction.executeInvite => null,
-      GovernanceAction.acceptInvitation => acceptInvitationRequest(number!),
-      GovernanceAction.join => joinRequest,
-      GovernanceAction.admit => admitRequest(
-        profileId: member!,
-        name: _memberName,
-      ),
-      GovernanceAction.proposeRemoval => proposeRemovalRequest(
-        profileId: member!,
-        name: _memberName,
-      ),
-      GovernanceAction.vote => voteRequest(
-        onchainProposalId: number!,
-        choice: _choice,
-      ),
-      GovernanceAction.secretVote || GovernanceAction.revealVote => null,
-      GovernanceAction.assignRole => assignRoleRequest(
-        profileId: member!,
-        name: _memberName,
-        roleId: _roleId!,
-        roleName: _roleName,
-        capabilities: _capabilities,
-      ),
-      GovernanceAction.revokeRole => revokeRoleRequest(
-        profileId: member!,
-        name: _memberName,
-        roleId: _roleId!,
-        roleName: _roleName,
-      ),
-      GovernanceAction.delegate => delegateRequest(
-        profileId: member!,
-        name: _memberName,
-        until: DateTime.now().add(Duration(days: _days)),
-      ),
-      GovernanceAction.revokeDelegation => revokeDelegationRequest,
-      GovernanceAction.freeze => freezeRequest(_reason()),
-      GovernanceAction.proposeExit => _exitRequest(),
-      GovernanceAction.proposeExitCancel => proposeExitCancelRequest(number!),
-      GovernanceAction.executeExit ||
-      GovernanceAction.executeExitCancel => null,
-      GovernanceAction.voteExit => votePrincipalExitRequest(
-        ballotId: number!,
-        approve: _approve,
-      ),
-      GovernanceAction.leave => leaveRequest,
-    };
+    final service = ref.read(stawiRoomServiceProvider);
+    final name = _memberName;
+    Future<Uint8List> account() =>
+        service.memberAccount(widget.roomId, member!, name: name);
+    Future<GovernanceRequest> Function() now(GovernanceRequest r) =>
+        () async => r;
+    switch (_action) {
+      case GovernanceAction.invite:
+        return () async => inviteRequest(account: await account(), name: name);
+      case GovernanceAction.proposeInvite:
+        final expiresAt = inviteExpiryAfter(_inviteDays);
+        return () async => proposeInviteRequest(
+          account: await account(),
+          name: name,
+          expiresAt: expiresAt,
+        );
+      case GovernanceAction.acceptInvitation:
+        return now(acceptInvitationRequest(number!));
+      case GovernanceAction.join:
+        return now(joinRequest);
+      case GovernanceAction.admit:
+        return () async => admitRequest(account: await account(), name: name);
+      case GovernanceAction.proposeRemoval:
+        return () async =>
+            proposeRemovalRequest(account: await account(), name: name);
+      case GovernanceAction.assignRole:
+        final (roleId, roleName, caps) = (_roleId!, _roleName, _capabilities);
+        return () async => assignRoleRequest(
+          account: await account(),
+          name: name,
+          roleId: roleId,
+          roleName: roleName,
+          capabilities: caps,
+        );
+      case GovernanceAction.revokeRole:
+        final (roleId, roleName) = (_roleId!, _roleName);
+        return () async => revokeRoleRequest(
+          account: await account(),
+          name: name,
+          roleId: roleId,
+          roleName: roleName,
+        );
+      case GovernanceAction.delegate:
+        final until = DateTime.now().add(Duration(days: _days));
+        return () async =>
+            delegateRequest(account: await account(), name: name, until: until);
+      case GovernanceAction.revokeDelegation:
+        return now(revokeDelegationRequest);
+      case GovernanceAction.freeze:
+        return now(freezeRequest(_reason()));
+      case GovernanceAction.proposeExit:
+        return _exitPlan(service);
+      case GovernanceAction.proposeExitCancel:
+        return now(proposeExitCancelRequest(number!));
+      case GovernanceAction.voteExit:
+        return now(
+          votePrincipalExitRequest(ballotId: number!, approve: _approve),
+        );
+      case GovernanceAction.leave:
+        return now(leaveRequest);
+      case GovernanceAction.queueProposal ||
+          GovernanceAction.executeInvite ||
+          GovernanceAction.vote ||
+          GovernanceAction.secretVote ||
+          GovernanceAction.revealVote ||
+          GovernanceAction.executeExit ||
+          GovernanceAction.executeExitCancel:
+        return null;
+    }
   }
 
   String _reason() {
@@ -307,7 +317,7 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
     }
   }
 
-  GovernanceRequest _exitRequest() {
+  Future<GovernanceRequest> Function() _exitPlan(StawiRoomService service) {
     final source = _sourceBucket.text.trim();
     if (source.isEmpty) throw const FormatException('Name the source bucket');
     final asset = ref.read(stawiRoomAssetProvider(widget.roomId)).asData?.value;
@@ -315,29 +325,33 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       throw const FormatException('The room’s asset could not be read');
     }
     final amount = parseAmountInput(_amount.text, asset);
-    _exitUnits = amount;
     final amountLabel = formatUnits(BigInt.parse(amount), asset);
     switch (_exitTo) {
       case _ExitTo.member:
-        if (_memberProfileId == null) {
-          throw const FormatException('Choose a member');
-        }
-        return proposePrincipalExitRequest(
+        final member = _memberProfileId;
+        if (member == null) throw const FormatException('Choose a member');
+        final name = _memberName;
+        return () async => proposePrincipalExitRequest(
           sourceBucket: source,
           amount: amount,
           amountLabel: amountLabel,
-          memberProfileId: _memberProfileId,
-          memberName: _memberName,
+          memberAccount: await service.memberAccount(
+            widget.roomId,
+            member,
+            name: name,
+          ),
+          memberName: name,
         );
       case _ExitTo.bucket:
         final bucket = _text.text.trim();
         if (bucket.isEmpty) throw const FormatException('Name the bucket');
-        return proposePrincipalExitRequest(
+        final request = proposePrincipalExitRequest(
           sourceBucket: source,
           amount: amount,
           amountLabel: amountLabel,
           bucket: bucket,
         );
+        return () async => request;
       case _ExitTo.external:
         Uint8List? to;
         try {
@@ -348,21 +362,22 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
         if (to == null || to.length != 20) {
           throw const FormatException('The account is a 20-byte address');
         }
-        return proposePrincipalExitRequest(
+        final request = proposePrincipalExitRequest(
           sourceBucket: source,
           amount: amount,
           amountLabel: amountLabel,
           externalAccount: to,
         );
+        return () async => request;
     }
   }
 
   Future<void> _submit() async {
-    final GovernanceRequest? request;
-    final int? proposal;
+    final Future<GovernanceRequest> Function()? plan;
+    final int? number;
     try {
-      request = _request();
-      proposal = request == null ? _parsedNumber(required: true) : null;
+      plan = _plan();
+      number = plan == null ? _parsedNumber(required: true) : null;
     } on FormatException catch (e) {
       setState(() => _error = e.message);
       return;
@@ -372,36 +387,33 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
       _error = null;
     });
     final service = ref.read(stawiRoomServiceProvider);
-    final send = switch (_action) {
-      GovernanceAction.secretVote => () => _send(
+    final run = switch (_action) {
+      GovernanceAction.vote || GovernanceAction.secretVote => () => signRoomAct(
         context,
-        () async => service.commitSecretVote(
+        ref,
+        () async => service.prepareVote(
           roomId: widget.roomId,
-          onchainProposalId: proposal!,
+          onchainProposalId: number!,
           choice: _choice,
-          revealClosesAt:
-              widget.revealClosesAt ?? await _revealDeadline(proposal),
+          mode: _action == GovernanceAction.secretVote
+              ? RoomVoteMode.secret
+              : RoomVoteMode.open,
+          revealClosesAt: _action == GovernanceAction.secretVote
+              ? widget.revealClosesAt ?? await _revealDeadline(number)
+              : null,
         ),
-        'Secret vote cast; reveal it when voting closes',
       ),
-      GovernanceAction.revealVote => () => _send(context, () async {
-        final event = await service.revealSecretVote(
-          roomId: widget.roomId,
-          onchainProposalId: proposal!,
-        );
-        ref.invalidate(stawiPendingRevealsProvider(widget.roomId));
-        return event;
-      }, 'Vote revealed'),
+      GovernanceAction.revealVote => () => _reveal(service, number!),
       GovernanceAction.queueProposal => () => _send(
         context,
         () => service.pushEngineCall(
           roomId: widget.roomId,
           kind: settlement.RoomCallKind.ROOM_CALL_KIND_QUEUE,
-          params: queueProposalParams(proposal!),
+          params: queueProposalParams(number!),
         ),
         'Queued; it can run once its timelock passes',
       ),
-      GovernanceAction.executeInvite => () => _executeInvite(proposal!),
+      GovernanceAction.executeInvite => () => _executeInvite(number!),
       GovernanceAction.executeExit ||
       GovernanceAction.executeExitCancel => () => _send(
         context,
@@ -412,34 +424,37 @@ class _GovernanceDialogState extends ConsumerState<GovernanceDialog> {
               : settlement
                     .RoomCallKind
                     .ROOM_CALL_KIND_EXECUTE_PRINCIPAL_EXIT_CANCEL,
-          params: executeExitParams(proposal!),
+          params: executeExitParams(number!),
         ),
         'Submitted to the chain',
       ),
-      _ => () => sendGovernanceRequest(
+      _ => () => signRoomAct(
         context,
         ref,
-        roomId: widget.roomId,
-        request: request!,
-        check: switch (_action) {
-          GovernanceAction.proposeExit => (prepared) => checkPrincipalExit(
-            prepared,
-            amount: _exitUnits,
-          ),
-          GovernanceAction.proposeInvite => (
-            prepared,
-          ) => checkProposedInviteExpiry(prepared, expiresAt: _proposedExpiry!),
-          _ => null,
-        },
+        () async =>
+            service.prepareAct(roomId: widget.roomId, request: await plan!()),
       ),
     };
-    final ok = await send();
+    final ok = await run();
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pop();
     } else {
       setState(() => _sending = false);
     }
+  }
+
+  Future<bool> _reveal(StawiRoomService service, int proposal) async {
+    final ok = await signRoomAct(
+      context,
+      ref,
+      () => service.prepareReveal(
+        roomId: widget.roomId,
+        onchainProposalId: proposal,
+      ),
+    );
+    if (ok) ref.invalidate(stawiPendingRevealsProvider(widget.roomId));
+    return ok;
   }
 
   /// Runs the passed invitation; settlement applies the expiry the proposal

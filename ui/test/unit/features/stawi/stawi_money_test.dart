@@ -28,6 +28,7 @@ void main() {
     StawiIdentity identity, {
     GenesisSessionProofs? proofs,
   }) => StawiAccountService(
+    roomAssets: testRoomAssets,
     accounts: settlement.AccountServiceClient(transport),
     keys: keys,
     proofs:
@@ -570,7 +571,11 @@ void main() {
     Future<settlement.AccountCall> contribute(String amount) async {
       final s = service(keys, identityWith('p1', account));
       return s.submit(
-        await s.prepareContribution(custody: custody, amount: amount),
+        await s.prepareContribution(
+          roomId: 'room00000000000000aa',
+          custody: custody,
+          amount: amount,
+        ),
       );
     }
 

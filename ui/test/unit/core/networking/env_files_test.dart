@@ -18,6 +18,7 @@ const _knownKeys = {
   'FINANCE_URL',
   'AUTHENTICATION_URL',
   'OAUTH2_ISSUER_URL',
+  'STAWI_CHAIN_ID',
 };
 
 /// Secrets CI passes with `--dart-define`; they must never be committed.
@@ -47,13 +48,19 @@ void main() {
         expect(values.keys.toSet().intersection(_secretKeys), isEmpty);
       });
 
+      test('names the deployment chain', () {
+        expect(int.parse(values['STAWI_CHAIN_ID']! as String), 14601);
+      });
+
       test('names its own environment', () {
         expect(values['APP_ENVIRONMENT'], environment);
       });
 
       test('uses https URLs on live stawi.org hosts', () {
         for (final entry in values.entries) {
-          if (entry.key == 'APP_ENVIRONMENT') continue;
+          if (entry.key == 'APP_ENVIRONMENT' || entry.key == 'STAWI_CHAIN_ID') {
+            continue;
+          }
           final uri = Uri.parse(entry.value! as String);
           expect(uri.scheme, 'https', reason: entry.key);
           expect(uri.host, endsWith('.stawi.org'), reason: entry.key);

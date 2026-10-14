@@ -487,6 +487,7 @@ void main() {
     h.financeRooms['r-chama'] = finance.Room(
       roomId: 'r-chama',
       custodyAddress: custody,
+      chainId: Int64(146),
       assets: [usdcInfo],
       engines: finance.RoomEngines(
         rulesEngine: finance.RoomEngineBinding(

@@ -56,6 +56,7 @@ class _ContributeScreenState extends ConsumerState<ContributeScreen> {
         throw const FormatException('The room’s asset could not be read');
       }
       return service.prepareContribution(
+        roomId: widget.roomId,
         custody: custody,
         amount: parseAmountInput(_amount.text, asset),
         roomName: widget.roomName,

@@ -9,6 +9,7 @@ import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import '../../../core/networking/api_config.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/money_review.dart';
 import '../domain/personal_calls.dart';
@@ -93,10 +94,13 @@ class StawiAccountService {
     required this._identity,
     this._targets,
     this._loan,
+    this._roomAssets,
+    BigInt? deploymentChainId,
     this._readyEvery = const Duration(seconds: 3),
     this._readyAttempts = 60,
     this._followEvery = const Duration(seconds: 3),
-  });
+  }) : _deploymentChainId =
+           deploymentChainId ?? BigInt.from(ApiConfig.stawiChainId);
 
   final settlement.AccountServiceClient _accounts;
   final DeviceKeyStore _keys;
@@ -107,6 +111,14 @@ class StawiAccountService {
   /// books), read for every personal call; null reads as unknown, which
   /// refuses the call.
   final Future<PersonalTargets> Function()? _targets;
+
+  /// The token addresses of a room's assets on its chain, as finance
+  /// describes them (Room.assets); a contribution must pay in one.
+  final Future<List<Uint8List>> Function(String roomId)? _roomAssets;
+
+  /// The chain the deployment is on (the app's configuration): a key change
+  /// is checked against it.
+  final BigInt _deploymentChainId;
 
   /// How [ensureReady] polls when a money call finds the account not ready.
   final Duration _readyEvery;
@@ -266,6 +278,7 @@ class StawiAccountService {
       prepared: prepared,
       account: account.address,
       key: keyAddress,
+      chainId: _deploymentChainId,
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
@@ -287,6 +300,28 @@ class StawiAccountService {
     if (read == null) return null;
     try {
       return await read();
+    } on Object {
+      return null;
+    }
+  }
+
+  /// The token addresses of [roomId]'s assets; null when unknown (which
+  /// refuses the contribution).
+  Future<List<Uint8List>?> _roomAssetsOf(String roomId) async {
+    final read = _roomAssets;
+    if (read == null) return null;
+    try {
+      return await read(roomId);
+    } on Object {
+      return null;
+    }
+  }
+
+  /// The deployment's asset token, read on its own; null when unknown.
+  Future<Uint8List?> _deploymentAsset() async {
+    try {
+      final token = (await testAsset()).asset.tokenAddress;
+      return token.length == 20 ? Uint8List.fromList(token) : null;
     } on Object {
       return null;
     }
@@ -468,6 +503,7 @@ class StawiAccountService {
       account: account.address,
       to: to.address,
       amount: amount,
+      asset: await _deploymentAsset(),
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
@@ -486,6 +522,7 @@ class StawiAccountService {
   /// room whose custody is [custody]; the room's rules apply it. [title]
   /// words the review around the checked amount, formatted.
   Future<PreparedMoneyCall> prepareContribution({
+    required String roomId,
     required Uint8List custody,
     required String amount,
     String roomName = 'this room',
@@ -511,6 +548,7 @@ class StawiAccountService {
       account: account.address,
       custody: custody,
       amount: amount,
+      roomAssets: await _roomAssetsOf(roomId),
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
@@ -779,8 +817,23 @@ final stawiAccountServiceProvider = Provider<StawiAccountService>((ref) {
     identity: () => ref.read(stawiIdentityProvider.future),
     targets: () => ref.read(stawiVaultServiceProvider).targets(),
     loan: (loanRef) => ref.read(stawiLoanServiceProvider).loan(loanRef),
+    roomAssets: financeRoomAssets(ref.watch(financeRoomsProvider)),
   );
 });
+
+/// The token addresses of a room's assets on its chain, from finance GetRoom
+/// (Room.assets).
+Future<List<Uint8List>> Function(String roomId) financeRoomAssets(
+  finance.RoomServiceClient rooms,
+) => (roomId) async {
+  final room = (await rooms.getRoom(finance.GetRoomRequest(roomId: roomId)))
+      .room;
+  return [
+    for (final a in room.assets)
+      if (a.chainId == room.chainId && a.tokenAddress.length == 20)
+        Uint8List.fromList(a.tokenAddress),
+  ];
+};
 
 /// The deployment's asset and whether the testnet faucet mints it.
 final stawiTestAssetProvider =

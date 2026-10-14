@@ -301,6 +301,7 @@ void main() {
         policyAsset: selfGrant.asset,
       );
       return StawiAccountService(
+        roomAssets: testRoomAssets,
         accounts: settlement.AccountServiceClient(transport),
         keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate),
         proofs: refusingSessionProofs,
@@ -344,6 +345,7 @@ void main() {
         (req) => settlement.DeployAccountResponse(genesisState: 'PENDING'),
       );
     return StawiAccountService(
+      roomAssets: testRoomAssets,
       accounts: settlement.AccountServiceClient(transport),
       keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate),
       proofs: ({required Uint8List deviceAddress}) async =>
