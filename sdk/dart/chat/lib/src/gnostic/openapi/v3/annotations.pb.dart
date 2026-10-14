@@ -8,7 +8,7 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
@@ -25,28 +25,28 @@ class Annotations {
       1143,
       $pb.PbFieldType.OM,
       defaultOrMaker: $0.Document.getDefault,
-      subBuilder: $0.Document.create);
+      subBuilder: $0.Document.$_createMessage);
   static final operation = $pb.Extension<$0.Operation>(
       _omitMessageNames ? '' : 'google.protobuf.MethodOptions',
       _omitFieldNames ? '' : 'operation',
       1143,
       $pb.PbFieldType.OM,
       defaultOrMaker: $0.Operation.getDefault,
-      subBuilder: $0.Operation.create);
+      subBuilder: $0.Operation.$_createMessage);
   static final schema = $pb.Extension<$0.Schema>(
       _omitMessageNames ? '' : 'google.protobuf.MessageOptions',
       _omitFieldNames ? '' : 'schema',
       1143,
       $pb.PbFieldType.OM,
       defaultOrMaker: $0.Schema.getDefault,
-      subBuilder: $0.Schema.create);
+      subBuilder: $0.Schema.$_createMessage);
   static final property = $pb.Extension<$0.Schema>(
       _omitMessageNames ? '' : 'google.protobuf.FieldOptions',
       _omitFieldNames ? '' : 'property',
       1143,
       $pb.PbFieldType.OM,
       defaultOrMaker: $0.Schema.getDefault,
-      subBuilder: $0.Schema.create);
+      subBuilder: $0.Schema.$_createMessage);
   static void registerAllExtensions($pb.ExtensionRegistry registry) {
     registry.add(document);
     registry.add(operation);

@@ -11,17 +11,20 @@ plugins:
       - content-types=json
       - allow-get
 
-  # Dart protobuf generation. v22.x is the newest line whose output runs on
-  # protobuf 4.x; v23+ needs protobuf 5/6, and the antinvestor_api_* SDKs the
-  # app also depends on still pin protobuf ^4.2.0 and connectrpc ^1.0.0.
-  - remote: buf.build/protocolbuffers/dart:v22.5.0
+  # Dart protobuf generation for protobuf ^6.1.0. The generated code takes
+  # the well-known types (Any, Duration, FieldMask, Struct, Timestamp) from
+  # package:protobuf/well_known_types; the copies include_wkt still writes
+  # under lib/src/google/protobuf are deleted after generating, except
+  # descriptor, which buf.validate and gnostic import relatively. The
+  # .pbserver.dart files are deleted too (the SDK is client-only).
+  - remote: buf.build/protocolbuffers/dart:v25.1.0
     out: ../sdk/dart/chat/lib/src
     include_imports: true
     include_wkt: true
 
-  # Dart ConnectRPC generation. v1.0.0 targets connectrpc 1.x (v2 needs
-  # protobuf 6); pinned so an unversioned remote does not jump majors.
-  - remote: buf.build/connectrpc/dart:v1.0.0
+  # Dart ConnectRPC generation for connectrpc ^2.0.0; pinned so an
+  # unversioned remote does not jump majors.
+  - remote: buf.build/connectrpc/dart:v2.0.0
     out: ../sdk/dart/chat/lib/src
     include_imports: true
     include_wkt: true

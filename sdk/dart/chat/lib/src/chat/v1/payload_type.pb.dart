@@ -8,15 +8,16 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
 import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
+import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart' as $0;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as $1;
 
-import '../../google/protobuf/struct.pb.dart' as $0;
-import '../../google/protobuf/timestamp.pb.dart' as $1;
 import 'payload_type.pbenum.dart';
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
@@ -31,7 +32,7 @@ class RoomChangeContent extends $pb.GeneratedMessage {
     $core.String? body,
     $0.Struct? details,
   }) {
-    final result = create();
+    final result = RoomChangeContent._();
     if (action != null) result.action = action;
     if (actorSubscriptionId != null)
       result.actorSubscriptionId = actorSubscriptionId;
@@ -46,29 +47,26 @@ class RoomChangeContent extends $pb.GeneratedMessage {
 
   factory RoomChangeContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RoomChangeContent()..mergeFromBuffer(data, registry);
   factory RoomChangeContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RoomChangeContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'RoomChangeContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
-    ..e<RoomChangeAction>(
-        1, _omitFieldNames ? '' : 'action', $pb.PbFieldType.OE,
-        defaultOrMaker: RoomChangeAction.ROOM_CHANGE_ACTION_UNSPECIFIED,
-        valueOf: RoomChangeAction.valueOf,
+      createEmptyInstance: RoomChangeContent.$_createMessage)
+    ..aE<RoomChangeAction>(1, _omitFieldNames ? '' : 'action',
         enumValues: RoomChangeAction.values)
     ..aOS(2, _omitFieldNames ? '' : 'actorSubscriptionId')
     ..pPS(3, _omitFieldNames ? '' : 'targetSubscriptionIds')
     ..aOS(4, _omitFieldNames ? '' : 'body')
     ..aOM<$0.Struct>(5, _omitFieldNames ? '' : 'details',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RoomChangeContent clone() => RoomChangeContent()..mergeFromMessage(this);
+  RoomChangeContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RoomChangeContent copyWith(void Function(RoomChangeContent) updates) =>
       super.copyWith((message) => updates(message as RoomChangeContent))
@@ -78,14 +76,15 @@ class RoomChangeContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RoomChangeContent() / RoomChangeContent.new instead')
   static RoomChangeContent create() => RoomChangeContent._();
+  static $pb.GeneratedMessage $_createMessage() => RoomChangeContent._();
   @$core.override
-  RoomChangeContent createEmptyInstance() => create();
-  static $pb.PbList<RoomChangeContent> createRepeated() =>
-      $pb.PbList<RoomChangeContent>();
+  RoomChangeContent createEmptyInstance() => RoomChangeContent._();
   @$core.pragma('dart2js:noInline')
-  static RoomChangeContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RoomChangeContent>(create);
+  static RoomChangeContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RoomChangeContent>(
+          RoomChangeContent.$_createMessage);
   static RoomChangeContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -140,7 +139,7 @@ class ModerationContent extends $pb.GeneratedMessage {
     $core.String? language,
     $0.Struct? metadata,
   }) {
-    final result = create();
+    final result = ModerationContent._();
     if (body != null) result.body = body;
     if (actorSubscriptionId != null)
       result.actorSubscriptionId = actorSubscriptionId;
@@ -155,25 +154,25 @@ class ModerationContent extends $pb.GeneratedMessage {
 
   factory ModerationContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ModerationContent()..mergeFromBuffer(data, registry);
   factory ModerationContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ModerationContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ModerationContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: ModerationContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'body')
     ..aOS(2, _omitFieldNames ? '' : 'actorSubscriptionId')
     ..pPS(3, _omitFieldNames ? '' : 'targetSubscriptionIds')
     ..aOS(4, _omitFieldNames ? '' : 'language')
     ..aOM<$0.Struct>(8, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ModerationContent clone() => ModerationContent()..mergeFromMessage(this);
+  ModerationContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ModerationContent copyWith(void Function(ModerationContent) updates) =>
       super.copyWith((message) => updates(message as ModerationContent))
@@ -183,14 +182,15 @@ class ModerationContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ModerationContent() / ModerationContent.new instead')
   static ModerationContent create() => ModerationContent._();
+  static $pb.GeneratedMessage $_createMessage() => ModerationContent._();
   @$core.override
-  ModerationContent createEmptyInstance() => create();
-  static $pb.PbList<ModerationContent> createRepeated() =>
-      $pb.PbList<ModerationContent>();
+  ModerationContent createEmptyInstance() => ModerationContent._();
   @$core.pragma('dart2js:noInline')
-  static ModerationContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ModerationContent>(create);
+  static ModerationContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ModerationContent>(
+          ModerationContent.$_createMessage);
   static ModerationContent? _defaultInstance;
 
   /// Human-readable message body describing the action.
@@ -250,7 +250,7 @@ class TextContent extends $pb.GeneratedMessage {
     $core.Iterable<TextAnnotation>? annotations,
     $core.String? lang,
   }) {
-    final result = create();
+    final result = TextContent._();
     if (body != null) result.body = body;
     if (format != null) result.format = format;
     if (annotations != null) result.annotations.addAll(annotations);
@@ -262,25 +262,24 @@ class TextContent extends $pb.GeneratedMessage {
 
   factory TextContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      TextContent()..mergeFromBuffer(data, registry);
   factory TextContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      TextContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'TextContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: TextContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'body')
     ..aOS(2, _omitFieldNames ? '' : 'format')
-    ..pc<TextAnnotation>(
-        3, _omitFieldNames ? '' : 'annotations', $pb.PbFieldType.PM,
-        subBuilder: TextAnnotation.create)
+    ..pPM<TextAnnotation>(3, _omitFieldNames ? '' : 'annotations',
+        subBuilder: TextAnnotation.$_createMessage)
     ..aOS(4, _omitFieldNames ? '' : 'lang')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  TextContent clone() => TextContent()..mergeFromMessage(this);
+  TextContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   TextContent copyWith(void Function(TextContent) updates) =>
       super.copyWith((message) => updates(message as TextContent))
@@ -290,13 +289,15 @@ class TextContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TextContent() / TextContent.new instead')
   static TextContent create() => TextContent._();
+  static $pb.GeneratedMessage $_createMessage() => TextContent._();
   @$core.override
-  TextContent createEmptyInstance() => create();
-  static $pb.PbList<TextContent> createRepeated() => $pb.PbList<TextContent>();
+  TextContent createEmptyInstance() => TextContent._();
   @$core.pragma('dart2js:noInline')
-  static TextContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<TextContent>(create);
+  static TextContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TextContent>(
+          TextContent.$_createMessage);
   static TextContent? _defaultInstance;
 
   /// Required human-readable message body
@@ -342,7 +343,7 @@ class TextAnnotation extends $pb.GeneratedMessage {
     $core.int? length,
     $core.String? value,
   }) {
-    final result = create();
+    final result = TextAnnotation._();
     if (type != null) result.type = type;
     if (offset != null) result.offset = offset;
     if (length != null) result.length = length;
@@ -354,27 +355,24 @@ class TextAnnotation extends $pb.GeneratedMessage {
 
   factory TextAnnotation.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      TextAnnotation()..mergeFromBuffer(data, registry);
   factory TextAnnotation.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      TextAnnotation()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'TextAnnotation',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
-    ..e<TextAnnotation_Type>(
-        1, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE,
-        defaultOrMaker: TextAnnotation_Type.TYPE_UNSPECIFIED,
-        valueOf: TextAnnotation_Type.valueOf,
+      createEmptyInstance: TextAnnotation.$_createMessage)
+    ..aE<TextAnnotation_Type>(1, _omitFieldNames ? '' : 'type',
         enumValues: TextAnnotation_Type.values)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'offset', $pb.PbFieldType.O3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'length', $pb.PbFieldType.O3)
+    ..aI(2, _omitFieldNames ? '' : 'offset')
+    ..aI(3, _omitFieldNames ? '' : 'length')
     ..aOS(4, _omitFieldNames ? '' : 'value')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  TextAnnotation clone() => TextAnnotation()..mergeFromMessage(this);
+  TextAnnotation clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   TextAnnotation copyWith(void Function(TextAnnotation) updates) =>
       super.copyWith((message) => updates(message as TextAnnotation))
@@ -384,14 +382,15 @@ class TextAnnotation extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TextAnnotation() / TextAnnotation.new instead')
   static TextAnnotation create() => TextAnnotation._();
+  static $pb.GeneratedMessage $_createMessage() => TextAnnotation._();
   @$core.override
-  TextAnnotation createEmptyInstance() => create();
-  static $pb.PbList<TextAnnotation> createRepeated() =>
-      $pb.PbList<TextAnnotation>();
+  TextAnnotation createEmptyInstance() => TextAnnotation._();
   @$core.pragma('dart2js:noInline')
-  static TextAnnotation getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<TextAnnotation>(create);
+  static TextAnnotation getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TextAnnotation>(
+          TextAnnotation.$_createMessage);
   static TextAnnotation? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -445,7 +444,7 @@ class AttachmentContent extends $pb.GeneratedMessage {
     $core.bool? encrypted,
     $core.String? checksum,
   }) {
-    final result = create();
+    final result = AttachmentContent._();
     if (attachmentId != null) result.attachmentId = attachmentId;
     if (filename != null) result.filename = filename;
     if (mimeType != null) result.mimeType = mimeType;
@@ -462,31 +461,30 @@ class AttachmentContent extends $pb.GeneratedMessage {
 
   factory AttachmentContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      AttachmentContent()..mergeFromBuffer(data, registry);
   factory AttachmentContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      AttachmentContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AttachmentContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: AttachmentContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'attachmentId')
     ..aOS(2, _omitFieldNames ? '' : 'filename')
     ..aOS(3, _omitFieldNames ? '' : 'mimeType')
     ..aInt64(4, _omitFieldNames ? '' : 'sizeBytes')
     ..aOS(5, _omitFieldNames ? '' : 'uri')
-    ..pc<AttachmentPreview>(
-        6, _omitFieldNames ? '' : 'previews', $pb.PbFieldType.PM,
-        subBuilder: AttachmentPreview.create)
+    ..pPM<AttachmentPreview>(6, _omitFieldNames ? '' : 'previews',
+        subBuilder: AttachmentPreview.$_createMessage)
     ..aOM<TextContent>(7, _omitFieldNames ? '' : 'caption',
-        subBuilder: TextContent.create)
+        subBuilder: TextContent.$_createMessage)
     ..aOB(8, _omitFieldNames ? '' : 'encrypted')
     ..aOS(9, _omitFieldNames ? '' : 'checksum')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  AttachmentContent clone() => AttachmentContent()..mergeFromMessage(this);
+  AttachmentContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   AttachmentContent copyWith(void Function(AttachmentContent) updates) =>
       super.copyWith((message) => updates(message as AttachmentContent))
@@ -496,14 +494,15 @@ class AttachmentContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AttachmentContent() / AttachmentContent.new instead')
   static AttachmentContent create() => AttachmentContent._();
+  static $pb.GeneratedMessage $_createMessage() => AttachmentContent._();
   @$core.override
-  AttachmentContent createEmptyInstance() => create();
-  static $pb.PbList<AttachmentContent> createRepeated() =>
-      $pb.PbList<AttachmentContent>();
+  AttachmentContent createEmptyInstance() => AttachmentContent._();
   @$core.pragma('dart2js:noInline')
-  static AttachmentContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<AttachmentContent>(create);
+  static AttachmentContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AttachmentContent>(
+          AttachmentContent.$_createMessage);
   static AttachmentContent? _defaultInstance;
 
   /// Logical identifier of the attachment
@@ -601,7 +600,7 @@ class AttachmentPreview extends $pb.GeneratedMessage {
     $core.String? uri,
     $fixnum.Int64? sizeBytes,
   }) {
-    final result = create();
+    final result = AttachmentPreview._();
     if (mimeType != null) result.mimeType = mimeType;
     if (width != null) result.width = width;
     if (height != null) result.height = height;
@@ -614,24 +613,24 @@ class AttachmentPreview extends $pb.GeneratedMessage {
 
   factory AttachmentPreview.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      AttachmentPreview()..mergeFromBuffer(data, registry);
   factory AttachmentPreview.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      AttachmentPreview()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AttachmentPreview',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: AttachmentPreview.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'mimeType')
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'width', $pb.PbFieldType.O3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'height', $pb.PbFieldType.O3)
+    ..aI(2, _omitFieldNames ? '' : 'width')
+    ..aI(3, _omitFieldNames ? '' : 'height')
     ..aOS(4, _omitFieldNames ? '' : 'uri')
     ..aInt64(5, _omitFieldNames ? '' : 'sizeBytes')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  AttachmentPreview clone() => AttachmentPreview()..mergeFromMessage(this);
+  AttachmentPreview clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   AttachmentPreview copyWith(void Function(AttachmentPreview) updates) =>
       super.copyWith((message) => updates(message as AttachmentPreview))
@@ -641,14 +640,15 @@ class AttachmentPreview extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AttachmentPreview() / AttachmentPreview.new instead')
   static AttachmentPreview create() => AttachmentPreview._();
+  static $pb.GeneratedMessage $_createMessage() => AttachmentPreview._();
   @$core.override
-  AttachmentPreview createEmptyInstance() => create();
-  static $pb.PbList<AttachmentPreview> createRepeated() =>
-      $pb.PbList<AttachmentPreview>();
+  AttachmentPreview createEmptyInstance() => AttachmentPreview._();
   @$core.pragma('dart2js:noInline')
-  static AttachmentPreview getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<AttachmentPreview>(create);
+  static AttachmentPreview getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AttachmentPreview>(
+          AttachmentPreview.$_createMessage);
   static AttachmentPreview? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -703,7 +703,7 @@ class ReactionContent extends $pb.GeneratedMessage {
     $core.String? reaction,
     $core.bool? add,
   }) {
-    final result = create();
+    final result = ReactionContent._();
     if (targetEventId != null) result.targetEventId = targetEventId;
     if (reaction != null) result.reaction = reaction;
     if (add != null) result.add = add;
@@ -714,22 +714,22 @@ class ReactionContent extends $pb.GeneratedMessage {
 
   factory ReactionContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ReactionContent()..mergeFromBuffer(data, registry);
   factory ReactionContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ReactionContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ReactionContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: ReactionContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'targetEventId')
     ..aOS(2, _omitFieldNames ? '' : 'reaction')
     ..aOB(3, _omitFieldNames ? '' : 'add')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ReactionContent clone() => ReactionContent()..mergeFromMessage(this);
+  ReactionContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ReactionContent copyWith(void Function(ReactionContent) updates) =>
       super.copyWith((message) => updates(message as ReactionContent))
@@ -739,14 +739,15 @@ class ReactionContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ReactionContent() / ReactionContent.new instead')
   static ReactionContent create() => ReactionContent._();
+  static $pb.GeneratedMessage $_createMessage() => ReactionContent._();
   @$core.override
-  ReactionContent createEmptyInstance() => create();
-  static $pb.PbList<ReactionContent> createRepeated() =>
-      $pb.PbList<ReactionContent>();
+  ReactionContent createEmptyInstance() => ReactionContent._();
   @$core.pragma('dart2js:noInline')
-  static ReactionContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ReactionContent>(create);
+  static ReactionContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ReactionContent>(
+          ReactionContent.$_createMessage);
   static ReactionContent? _defaultInstance;
 
   /// Target message being reacted to
@@ -791,7 +792,7 @@ class EncryptedContent extends $pb.GeneratedMessage {
     $core.List<$core.int>? aad,
     $core.String? sessionId,
   }) {
-    final result = create();
+    final result = EncryptedContent._();
     if (algorithm != null) result.algorithm = algorithm;
     if (ciphertext != null) result.ciphertext = ciphertext;
     if (nonce != null) result.nonce = nonce;
@@ -806,15 +807,15 @@ class EncryptedContent extends $pb.GeneratedMessage {
 
   factory EncryptedContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      EncryptedContent()..mergeFromBuffer(data, registry);
   factory EncryptedContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      EncryptedContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'EncryptedContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: EncryptedContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'algorithm')
     ..a<$core.List<$core.int>>(
         2, _omitFieldNames ? '' : 'ciphertext', $pb.PbFieldType.OY)
@@ -828,7 +829,7 @@ class EncryptedContent extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  EncryptedContent clone() => EncryptedContent()..mergeFromMessage(this);
+  EncryptedContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   EncryptedContent copyWith(void Function(EncryptedContent) updates) =>
       super.copyWith((message) => updates(message as EncryptedContent))
@@ -838,14 +839,15 @@ class EncryptedContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use EncryptedContent() / EncryptedContent.new instead')
   static EncryptedContent create() => EncryptedContent._();
+  static $pb.GeneratedMessage $_createMessage() => EncryptedContent._();
   @$core.override
-  EncryptedContent createEmptyInstance() => create();
-  static $pb.PbList<EncryptedContent> createRepeated() =>
-      $pb.PbList<EncryptedContent>();
+  EncryptedContent createEmptyInstance() => EncryptedContent._();
   @$core.pragma('dart2js:noInline')
-  static EncryptedContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<EncryptedContent>(create);
+  static EncryptedContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<EncryptedContent>(
+          EncryptedContent.$_createMessage);
   static EncryptedContent? _defaultInstance;
 
   /// Encryption scheme identifier
@@ -923,7 +925,7 @@ class CallContent extends $pb.GeneratedMessage {
     $core.String? iceCandidate,
     $0.Struct? metadata,
   }) {
-    final result = create();
+    final result = CallContent._();
     if (callId != null) result.callId = callId;
     if (type != null) result.type = type;
     if (action != null) result.action = action;
@@ -937,34 +939,28 @@ class CallContent extends $pb.GeneratedMessage {
 
   factory CallContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      CallContent()..mergeFromBuffer(data, registry);
   factory CallContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      CallContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'CallContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: CallContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'callId')
-    ..e<CallContent_CallType>(
-        2, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE,
-        defaultOrMaker: CallContent_CallType.CALL_TYPE_UNSPECIFIED,
-        valueOf: CallContent_CallType.valueOf,
+    ..aE<CallContent_CallType>(2, _omitFieldNames ? '' : 'type',
         enumValues: CallContent_CallType.values)
-    ..e<CallContent_CallAction>(
-        3, _omitFieldNames ? '' : 'action', $pb.PbFieldType.OE,
-        defaultOrMaker: CallContent_CallAction.CALL_ACTION_UNSPECIFIED,
-        valueOf: CallContent_CallAction.valueOf,
+    ..aE<CallContent_CallAction>(3, _omitFieldNames ? '' : 'action',
         enumValues: CallContent_CallAction.values)
     ..aOS(4, _omitFieldNames ? '' : 'sdp')
     ..aOS(5, _omitFieldNames ? '' : 'iceCandidate')
     ..aOM<$0.Struct>(8, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  CallContent clone() => CallContent()..mergeFromMessage(this);
+  CallContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   CallContent copyWith(void Function(CallContent) updates) =>
       super.copyWith((message) => updates(message as CallContent))
@@ -974,13 +970,15 @@ class CallContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use CallContent() / CallContent.new instead')
   static CallContent create() => CallContent._();
+  static $pb.GeneratedMessage $_createMessage() => CallContent._();
   @$core.override
-  CallContent createEmptyInstance() => create();
-  static $pb.PbList<CallContent> createRepeated() => $pb.PbList<CallContent>();
+  CallContent createEmptyInstance() => CallContent._();
   @$core.pragma('dart2js:noInline')
-  static CallContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<CallContent>(create);
+  static CallContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CallContent>(
+          CallContent.$_createMessage);
   static CallContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1057,7 +1055,7 @@ class MotionContent extends $pb.GeneratedMessage {
     $fixnum.Int64? closesAt,
     $core.Iterable<$core.String>? eligibleRoles,
   }) {
-    final result = create();
+    final result = MotionContent._();
     if (id != null) result.id = id;
     if (title != null) result.title = title;
     if (description != null) result.description = description;
@@ -1073,30 +1071,30 @@ class MotionContent extends $pb.GeneratedMessage {
 
   factory MotionContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MotionContent()..mergeFromBuffer(data, registry);
   factory MotionContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MotionContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MotionContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: MotionContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'title')
     ..aOS(3, _omitFieldNames ? '' : 'description')
-    ..a<$core.int>(
-        4, _omitFieldNames ? '' : 'eligibleVotes', $pb.PbFieldType.OU3)
+    ..aI(4, _omitFieldNames ? '' : 'eligibleVotes',
+        fieldType: $pb.PbFieldType.OU3)
     ..aOM<PassingRule>(7, _omitFieldNames ? '' : 'passingRule',
-        subBuilder: PassingRule.create)
-    ..pc<VoteChoice>(8, _omitFieldNames ? '' : 'choices', $pb.PbFieldType.PM,
-        subBuilder: VoteChoice.create)
+        subBuilder: PassingRule.$_createMessage)
+    ..pPM<VoteChoice>(8, _omitFieldNames ? '' : 'choices',
+        subBuilder: VoteChoice.$_createMessage)
     ..aInt64(12, _omitFieldNames ? '' : 'closesAt')
     ..pPS(13, _omitFieldNames ? '' : 'eligibleRoles')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MotionContent clone() => MotionContent()..mergeFromMessage(this);
+  MotionContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MotionContent copyWith(void Function(MotionContent) updates) =>
       super.copyWith((message) => updates(message as MotionContent))
@@ -1106,14 +1104,15 @@ class MotionContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MotionContent() / MotionContent.new instead')
   static MotionContent create() => MotionContent._();
+  static $pb.GeneratedMessage $_createMessage() => MotionContent._();
   @$core.override
-  MotionContent createEmptyInstance() => create();
-  static $pb.PbList<MotionContent> createRepeated() =>
-      $pb.PbList<MotionContent>();
+  MotionContent createEmptyInstance() => MotionContent._();
   @$core.pragma('dart2js:noInline')
-  static MotionContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<MotionContent>(create);
+  static MotionContent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MotionContent>(
+          MotionContent.$_createMessage);
   static MotionContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1193,7 +1192,7 @@ class VoteChoice extends $pb.GeneratedMessage {
     $core.String? name,
     $core.String? description,
   }) {
-    final result = create();
+    final result = VoteChoice._();
     if (id != null) result.id = id;
     if (name != null) result.name = name;
     if (description != null) result.description = description;
@@ -1204,22 +1203,22 @@ class VoteChoice extends $pb.GeneratedMessage {
 
   factory VoteChoice.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      VoteChoice()..mergeFromBuffer(data, registry);
   factory VoteChoice.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      VoteChoice()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'VoteChoice',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: VoteChoice.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'name')
     ..aOS(3, _omitFieldNames ? '' : 'description')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  VoteChoice clone() => VoteChoice()..mergeFromMessage(this);
+  VoteChoice clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   VoteChoice copyWith(void Function(VoteChoice) updates) =>
       super.copyWith((message) => updates(message as VoteChoice)) as VoteChoice;
@@ -1228,13 +1227,14 @@ class VoteChoice extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VoteChoice() / VoteChoice.new instead')
   static VoteChoice create() => VoteChoice._();
+  static $pb.GeneratedMessage $_createMessage() => VoteChoice._();
   @$core.override
-  VoteChoice createEmptyInstance() => create();
-  static $pb.PbList<VoteChoice> createRepeated() => $pb.PbList<VoteChoice>();
+  VoteChoice createEmptyInstance() => VoteChoice._();
   @$core.pragma('dart2js:noInline')
   static VoteChoice getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<VoteChoice>(create);
+      $pb.GeneratedMessage.$_defaultFor<VoteChoice>(VoteChoice.$_createMessage);
   static VoteChoice? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1273,7 +1273,7 @@ class PassingRule extends $pb.GeneratedMessage {
     $core.int? percentage,
     $core.String? passingChoiceId,
   }) {
-    final result = create();
+    final result = PassingRule._();
     if (absolute != null) result.absolute = absolute;
     if (percentage != null) result.percentage = percentage;
     if (passingChoiceId != null) result.passingChoiceId = passingChoiceId;
@@ -1284,10 +1284,10 @@ class PassingRule extends $pb.GeneratedMessage {
 
   factory PassingRule.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      PassingRule()..mergeFromBuffer(data, registry);
   factory PassingRule.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      PassingRule()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, PassingRule_Rule> _PassingRule_RuleByTag = {
     1: PassingRule_Rule.absolute,
@@ -1297,15 +1297,15 @@ class PassingRule extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'PassingRule',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: PassingRule.$_createMessage)
     ..oo(0, [1, 2])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'absolute', $pb.PbFieldType.OU3)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'percentage', $pb.PbFieldType.OU3)
+    ..aI(1, _omitFieldNames ? '' : 'absolute', fieldType: $pb.PbFieldType.OU3)
+    ..aI(2, _omitFieldNames ? '' : 'percentage', fieldType: $pb.PbFieldType.OU3)
     ..aOS(3, _omitFieldNames ? '' : 'passingChoiceId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  PassingRule clone() => PassingRule()..mergeFromMessage(this);
+  PassingRule clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   PassingRule copyWith(void Function(PassingRule) updates) =>
       super.copyWith((message) => updates(message as PassingRule))
@@ -1315,16 +1315,22 @@ class PassingRule extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PassingRule() / PassingRule.new instead')
   static PassingRule create() => PassingRule._();
+  static $pb.GeneratedMessage $_createMessage() => PassingRule._();
   @$core.override
-  PassingRule createEmptyInstance() => create();
-  static $pb.PbList<PassingRule> createRepeated() => $pb.PbList<PassingRule>();
+  PassingRule createEmptyInstance() => PassingRule._();
   @$core.pragma('dart2js:noInline')
-  static PassingRule getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<PassingRule>(create);
+  static PassingRule getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PassingRule>(
+          PassingRule.$_createMessage);
   static PassingRule? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   PassingRule_Rule whichRule() => _PassingRule_RuleByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearRule() => $_clearField($_whichOneof(0));
 
   /// Absolute number of votes required
@@ -1368,7 +1374,7 @@ class VoteCast extends $pb.GeneratedMessage {
     $core.String? motionId,
     $core.String? choiceId,
   }) {
-    final result = create();
+    final result = VoteCast._();
     if (motionId != null) result.motionId = motionId;
     if (choiceId != null) result.choiceId = choiceId;
     return result;
@@ -1378,21 +1384,21 @@ class VoteCast extends $pb.GeneratedMessage {
 
   factory VoteCast.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      VoteCast()..mergeFromBuffer(data, registry);
   factory VoteCast.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      VoteCast()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'VoteCast',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: VoteCast.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'motionId')
     ..aOS(2, _omitFieldNames ? '' : 'choiceId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  VoteCast clone() => VoteCast()..mergeFromMessage(this);
+  VoteCast clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   VoteCast copyWith(void Function(VoteCast) updates) =>
       super.copyWith((message) => updates(message as VoteCast)) as VoteCast;
@@ -1401,13 +1407,14 @@ class VoteCast extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VoteCast() / VoteCast.new instead')
   static VoteCast create() => VoteCast._();
+  static $pb.GeneratedMessage $_createMessage() => VoteCast._();
   @$core.override
-  VoteCast createEmptyInstance() => create();
-  static $pb.PbList<VoteCast> createRepeated() => $pb.PbList<VoteCast>();
+  VoteCast createEmptyInstance() => VoteCast._();
   @$core.pragma('dart2js:noInline')
-  static VoteCast getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<VoteCast>(create);
+  static VoteCast getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoteCast>(VoteCast.$_createMessage);
   static VoteCast? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1435,7 +1442,7 @@ class VoteTally extends $pb.GeneratedMessage {
     $core.String? choiceId,
     $core.int? count,
   }) {
-    final result = create();
+    final result = VoteTally._();
     if (choiceId != null) result.choiceId = choiceId;
     if (count != null) result.count = count;
     return result;
@@ -1445,21 +1452,21 @@ class VoteTally extends $pb.GeneratedMessage {
 
   factory VoteTally.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      VoteTally()..mergeFromBuffer(data, registry);
   factory VoteTally.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      VoteTally()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'VoteTally',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: VoteTally.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'choiceId')
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'count', $pb.PbFieldType.OU3)
+    ..aI(2, _omitFieldNames ? '' : 'count', fieldType: $pb.PbFieldType.OU3)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  VoteTally clone() => VoteTally()..mergeFromMessage(this);
+  VoteTally clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   VoteTally copyWith(void Function(VoteTally) updates) =>
       super.copyWith((message) => updates(message as VoteTally)) as VoteTally;
@@ -1468,13 +1475,14 @@ class VoteTally extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use VoteTally() / VoteTally.new instead')
   static VoteTally create() => VoteTally._();
+  static $pb.GeneratedMessage $_createMessage() => VoteTally._();
   @$core.override
-  VoteTally createEmptyInstance() => create();
-  static $pb.PbList<VoteTally> createRepeated() => $pb.PbList<VoteTally>();
+  VoteTally createEmptyInstance() => VoteTally._();
   @$core.pragma('dart2js:noInline')
-  static VoteTally getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<VoteTally>(create);
+  static VoteTally getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<VoteTally>(VoteTally.$_createMessage);
   static VoteTally? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1507,7 +1515,7 @@ class MotionTally extends $pb.GeneratedMessage {
     $core.bool? passed,
     $core.bool? closed,
   }) {
-    final result = create();
+    final result = MotionTally._();
     if (motionId != null) result.motionId = motionId;
     if (eligibleVotes != null) result.eligibleVotes = eligibleVotes;
     if (tallies != null) result.tallies.addAll(tallies);
@@ -1523,30 +1531,31 @@ class MotionTally extends $pb.GeneratedMessage {
 
   factory MotionTally.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MotionTally()..mergeFromBuffer(data, registry);
   factory MotionTally.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MotionTally()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MotionTally',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: MotionTally.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'motionId')
-    ..a<$core.int>(
-        2, _omitFieldNames ? '' : 'eligibleVotes', $pb.PbFieldType.OU3)
-    ..pc<VoteTally>(3, _omitFieldNames ? '' : 'tallies', $pb.PbFieldType.PM,
-        subBuilder: VoteTally.create)
-    ..a<$core.int>(
-        4, _omitFieldNames ? '' : 'totalVotesCast', $pb.PbFieldType.OU3)
-    ..a<$core.int>(6, _omitFieldNames ? '' : 'deadVotes', $pb.PbFieldType.OU3)
-    ..a<$core.int>(7, _omitFieldNames ? '' : 'targetVotes', $pb.PbFieldType.OU3)
+    ..aI(2, _omitFieldNames ? '' : 'eligibleVotes',
+        fieldType: $pb.PbFieldType.OU3)
+    ..pPM<VoteTally>(3, _omitFieldNames ? '' : 'tallies',
+        subBuilder: VoteTally.$_createMessage)
+    ..aI(4, _omitFieldNames ? '' : 'totalVotesCast',
+        fieldType: $pb.PbFieldType.OU3)
+    ..aI(6, _omitFieldNames ? '' : 'deadVotes', fieldType: $pb.PbFieldType.OU3)
+    ..aI(7, _omitFieldNames ? '' : 'targetVotes',
+        fieldType: $pb.PbFieldType.OU3)
     ..aOB(8, _omitFieldNames ? '' : 'passed')
     ..aOB(9, _omitFieldNames ? '' : 'closed')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MotionTally clone() => MotionTally()..mergeFromMessage(this);
+  MotionTally clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MotionTally copyWith(void Function(MotionTally) updates) =>
       super.copyWith((message) => updates(message as MotionTally))
@@ -1556,13 +1565,15 @@ class MotionTally extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MotionTally() / MotionTally.new instead')
   static MotionTally create() => MotionTally._();
+  static $pb.GeneratedMessage $_createMessage() => MotionTally._();
   @$core.override
-  MotionTally createEmptyInstance() => create();
-  static $pb.PbList<MotionTally> createRepeated() => $pb.PbList<MotionTally>();
+  MotionTally createEmptyInstance() => MotionTally._();
   @$core.pragma('dart2js:noInline')
-  static MotionTally getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<MotionTally>(create);
+  static MotionTally getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MotionTally>(
+          MotionTally.$_createMessage);
   static MotionTally? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1662,7 +1673,7 @@ class FormValidationRule extends $pb.GeneratedMessage {
     $core.int? minItems,
     $core.int? maxItems,
   }) {
-    final result = create();
+    final result = FormValidationRule._();
     if (code != null) result.code = code;
     if (message != null) result.message = message;
     if (required != null) result.required = required;
@@ -1680,10 +1691,10 @@ class FormValidationRule extends $pb.GeneratedMessage {
 
   factory FormValidationRule.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormValidationRule()..mergeFromBuffer(data, registry);
   factory FormValidationRule.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormValidationRule()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, FormValidationRule_Rule>
       _FormValidationRule_RuleByTag = {
@@ -1700,22 +1711,22 @@ class FormValidationRule extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormValidationRule',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormValidationRule.$_createMessage)
     ..oo(0, [3, 4, 5, 6, 7, 8, 9, 10])
     ..aOS(1, _omitFieldNames ? '' : 'code')
     ..aOS(2, _omitFieldNames ? '' : 'message')
     ..aOB(3, _omitFieldNames ? '' : 'required')
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'minLength', $pb.PbFieldType.O3)
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'maxLength', $pb.PbFieldType.O3)
-    ..a<$core.double>(6, _omitFieldNames ? '' : 'minValue', $pb.PbFieldType.OD)
-    ..a<$core.double>(7, _omitFieldNames ? '' : 'maxValue', $pb.PbFieldType.OD)
+    ..aI(4, _omitFieldNames ? '' : 'minLength')
+    ..aI(5, _omitFieldNames ? '' : 'maxLength')
+    ..aD(6, _omitFieldNames ? '' : 'minValue')
+    ..aD(7, _omitFieldNames ? '' : 'maxValue')
     ..aOS(8, _omitFieldNames ? '' : 'pattern')
-    ..a<$core.int>(9, _omitFieldNames ? '' : 'minItems', $pb.PbFieldType.O3)
-    ..a<$core.int>(10, _omitFieldNames ? '' : 'maxItems', $pb.PbFieldType.O3)
+    ..aI(9, _omitFieldNames ? '' : 'minItems')
+    ..aI(10, _omitFieldNames ? '' : 'maxItems')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormValidationRule clone() => FormValidationRule()..mergeFromMessage(this);
+  FormValidationRule clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormValidationRule copyWith(void Function(FormValidationRule) updates) =>
       super.copyWith((message) => updates(message as FormValidationRule))
@@ -1725,18 +1736,35 @@ class FormValidationRule extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormValidationRule() / FormValidationRule.new instead')
   static FormValidationRule create() => FormValidationRule._();
+  static $pb.GeneratedMessage $_createMessage() => FormValidationRule._();
   @$core.override
-  FormValidationRule createEmptyInstance() => create();
-  static $pb.PbList<FormValidationRule> createRepeated() =>
-      $pb.PbList<FormValidationRule>();
+  FormValidationRule createEmptyInstance() => FormValidationRule._();
   @$core.pragma('dart2js:noInline')
   static FormValidationRule getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormValidationRule>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormValidationRule>(
+          FormValidationRule.$_createMessage);
   static FormValidationRule? _defaultInstance;
 
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
   FormValidationRule_Rule whichRule() =>
       _FormValidationRule_RuleByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
   void clearRule() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -1837,7 +1865,7 @@ class FormConditionClause extends $pb.GeneratedMessage {
     $0.Value? value,
     $core.Iterable<$0.Value>? values,
   }) {
-    final result = create();
+    final result = FormConditionClause._();
     if (fieldKey != null) result.fieldKey = fieldKey;
     if (operator != null) result.operator = operator;
     if (value != null) result.value = value;
@@ -1849,30 +1877,26 @@ class FormConditionClause extends $pb.GeneratedMessage {
 
   factory FormConditionClause.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormConditionClause()..mergeFromBuffer(data, registry);
   factory FormConditionClause.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormConditionClause()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormConditionClause',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormConditionClause.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'fieldKey')
-    ..e<FormConditionOperator>(
-        2, _omitFieldNames ? '' : 'operator', $pb.PbFieldType.OE,
-        defaultOrMaker:
-            FormConditionOperator.FORM_CONDITION_OPERATOR_UNSPECIFIED,
-        valueOf: FormConditionOperator.valueOf,
+    ..aE<FormConditionOperator>(2, _omitFieldNames ? '' : 'operator',
         enumValues: FormConditionOperator.values)
     ..aOM<$0.Value>(3, _omitFieldNames ? '' : 'value',
-        subBuilder: $0.Value.create)
-    ..pc<$0.Value>(4, _omitFieldNames ? '' : 'values', $pb.PbFieldType.PM,
-        subBuilder: $0.Value.create)
+        subBuilder: $0.Value.$_createMessage)
+    ..pPM<$0.Value>(4, _omitFieldNames ? '' : 'values',
+        subBuilder: $0.Value.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormConditionClause clone() => FormConditionClause()..mergeFromMessage(this);
+  FormConditionClause clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormConditionClause copyWith(void Function(FormConditionClause) updates) =>
       super.copyWith((message) => updates(message as FormConditionClause))
@@ -1882,14 +1906,16 @@ class FormConditionClause extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use FormConditionClause() / FormConditionClause.new instead')
   static FormConditionClause create() => FormConditionClause._();
+  static $pb.GeneratedMessage $_createMessage() => FormConditionClause._();
   @$core.override
-  FormConditionClause createEmptyInstance() => create();
-  static $pb.PbList<FormConditionClause> createRepeated() =>
-      $pb.PbList<FormConditionClause>();
+  FormConditionClause createEmptyInstance() => FormConditionClause._();
   @$core.pragma('dart2js:noInline')
   static FormConditionClause getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormConditionClause>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormConditionClause>(
+          FormConditionClause.$_createMessage);
   static FormConditionClause? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1930,7 +1956,7 @@ class FormConditionGroup extends $pb.GeneratedMessage {
     $core.Iterable<FormConditionClause>? all,
     $core.Iterable<FormConditionClause>? any,
   }) {
-    final result = create();
+    final result = FormConditionGroup._();
     if (all != null) result.all.addAll(all);
     if (any != null) result.any.addAll(any);
     return result;
@@ -1940,25 +1966,23 @@ class FormConditionGroup extends $pb.GeneratedMessage {
 
   factory FormConditionGroup.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormConditionGroup()..mergeFromBuffer(data, registry);
   factory FormConditionGroup.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormConditionGroup()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormConditionGroup',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
-    ..pc<FormConditionClause>(
-        1, _omitFieldNames ? '' : 'all', $pb.PbFieldType.PM,
-        subBuilder: FormConditionClause.create)
-    ..pc<FormConditionClause>(
-        2, _omitFieldNames ? '' : 'any', $pb.PbFieldType.PM,
-        subBuilder: FormConditionClause.create)
+      createEmptyInstance: FormConditionGroup.$_createMessage)
+    ..pPM<FormConditionClause>(1, _omitFieldNames ? '' : 'all',
+        subBuilder: FormConditionClause.$_createMessage)
+    ..pPM<FormConditionClause>(2, _omitFieldNames ? '' : 'any',
+        subBuilder: FormConditionClause.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormConditionGroup clone() => FormConditionGroup()..mergeFromMessage(this);
+  FormConditionGroup clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormConditionGroup copyWith(void Function(FormConditionGroup) updates) =>
       super.copyWith((message) => updates(message as FormConditionGroup))
@@ -1968,14 +1992,15 @@ class FormConditionGroup extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormConditionGroup() / FormConditionGroup.new instead')
   static FormConditionGroup create() => FormConditionGroup._();
+  static $pb.GeneratedMessage $_createMessage() => FormConditionGroup._();
   @$core.override
-  FormConditionGroup createEmptyInstance() => create();
-  static $pb.PbList<FormConditionGroup> createRepeated() =>
-      $pb.PbList<FormConditionGroup>();
+  FormConditionGroup createEmptyInstance() => FormConditionGroup._();
   @$core.pragma('dart2js:noInline')
   static FormConditionGroup getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormConditionGroup>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormConditionGroup>(
+          FormConditionGroup.$_createMessage);
   static FormConditionGroup? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1993,7 +2018,7 @@ class FormOption extends $pb.GeneratedMessage {
     $core.bool? disabled,
     $0.Struct? metadata,
   }) {
-    final result = create();
+    final result = FormOption._();
     if (value != null) result.value = value;
     if (label != null) result.label = label;
     if (helpText != null) result.helpText = helpText;
@@ -2006,25 +2031,25 @@ class FormOption extends $pb.GeneratedMessage {
 
   factory FormOption.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormOption()..mergeFromBuffer(data, registry);
   factory FormOption.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormOption()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormOption',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormOption.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'value')
     ..aOS(2, _omitFieldNames ? '' : 'label')
     ..aOS(3, _omitFieldNames ? '' : 'helpText')
     ..aOB(4, _omitFieldNames ? '' : 'disabled')
     ..aOM<$0.Struct>(5, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormOption clone() => FormOption()..mergeFromMessage(this);
+  FormOption clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormOption copyWith(void Function(FormOption) updates) =>
       super.copyWith((message) => updates(message as FormOption)) as FormOption;
@@ -2033,13 +2058,14 @@ class FormOption extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormOption() / FormOption.new instead')
   static FormOption create() => FormOption._();
+  static $pb.GeneratedMessage $_createMessage() => FormOption._();
   @$core.override
-  FormOption createEmptyInstance() => create();
-  static $pb.PbList<FormOption> createRepeated() => $pb.PbList<FormOption>();
+  FormOption createEmptyInstance() => FormOption._();
   @$core.pragma('dart2js:noInline')
   static FormOption getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormOption>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormOption>(FormOption.$_createMessage);
   static FormOption? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2099,7 +2125,7 @@ class FormFormattingHint extends $pb.GeneratedMessage {
     $core.String? keyboard,
     $core.String? autocomplete,
   }) {
-    final result = create();
+    final result = FormFormattingHint._();
     if (inputMask != null) result.inputMask = inputMask;
     if (displayFormat != null) result.displayFormat = displayFormat;
     if (currencyCode != null) result.currencyCode = currencyCode;
@@ -2113,25 +2139,25 @@ class FormFormattingHint extends $pb.GeneratedMessage {
 
   factory FormFormattingHint.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormFormattingHint()..mergeFromBuffer(data, registry);
   factory FormFormattingHint.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormFormattingHint()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormFormattingHint',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormFormattingHint.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'inputMask')
     ..aOS(2, _omitFieldNames ? '' : 'displayFormat')
     ..aOS(3, _omitFieldNames ? '' : 'currencyCode')
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'decimalScale', $pb.PbFieldType.O3)
+    ..aI(4, _omitFieldNames ? '' : 'decimalScale')
     ..aOS(5, _omitFieldNames ? '' : 'keyboard')
     ..aOS(6, _omitFieldNames ? '' : 'autocomplete')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormFormattingHint clone() => FormFormattingHint()..mergeFromMessage(this);
+  FormFormattingHint clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormFormattingHint copyWith(void Function(FormFormattingHint) updates) =>
       super.copyWith((message) => updates(message as FormFormattingHint))
@@ -2141,14 +2167,15 @@ class FormFormattingHint extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormFormattingHint() / FormFormattingHint.new instead')
   static FormFormattingHint create() => FormFormattingHint._();
+  static $pb.GeneratedMessage $_createMessage() => FormFormattingHint._();
   @$core.override
-  FormFormattingHint createEmptyInstance() => create();
-  static $pb.PbList<FormFormattingHint> createRepeated() =>
-      $pb.PbList<FormFormattingHint>();
+  FormFormattingHint createEmptyInstance() => FormFormattingHint._();
   @$core.pragma('dart2js:noInline')
   static FormFormattingHint getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormFormattingHint>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormFormattingHint>(
+          FormFormattingHint.$_createMessage);
   static FormFormattingHint? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2214,7 +2241,7 @@ class FormReviewHint extends $pb.GeneratedMessage {
     $core.String? formatter,
     $core.int? order,
   }) {
-    final result = create();
+    final result = FormReviewHint._();
     if (includeInReview != null) result.includeInReview = includeInReview;
     if (label != null) result.label = label;
     if (sectionLabel != null) result.sectionLabel = sectionLabel;
@@ -2227,24 +2254,24 @@ class FormReviewHint extends $pb.GeneratedMessage {
 
   factory FormReviewHint.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormReviewHint()..mergeFromBuffer(data, registry);
   factory FormReviewHint.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormReviewHint()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormReviewHint',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormReviewHint.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'includeInReview')
     ..aOS(2, _omitFieldNames ? '' : 'label')
     ..aOS(3, _omitFieldNames ? '' : 'sectionLabel')
     ..aOS(4, _omitFieldNames ? '' : 'formatter')
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'order', $pb.PbFieldType.O3)
+    ..aI(5, _omitFieldNames ? '' : 'order')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormReviewHint clone() => FormReviewHint()..mergeFromMessage(this);
+  FormReviewHint clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormReviewHint copyWith(void Function(FormReviewHint) updates) =>
       super.copyWith((message) => updates(message as FormReviewHint))
@@ -2254,14 +2281,15 @@ class FormReviewHint extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormReviewHint() / FormReviewHint.new instead')
   static FormReviewHint create() => FormReviewHint._();
+  static $pb.GeneratedMessage $_createMessage() => FormReviewHint._();
   @$core.override
-  FormReviewHint createEmptyInstance() => create();
-  static $pb.PbList<FormReviewHint> createRepeated() =>
-      $pb.PbList<FormReviewHint>();
+  FormReviewHint createEmptyInstance() => FormReviewHint._();
   @$core.pragma('dart2js:noInline')
-  static FormReviewHint getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormReviewHint>(create);
+  static FormReviewHint getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormReviewHint>(
+          FormReviewHint.$_createMessage);
   static FormReviewHint? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2332,7 +2360,7 @@ class FormField extends $pb.GeneratedMessage {
     $core.bool? repeatable,
     $core.bool? hidden,
   }) {
-    final result = create();
+    final result = FormField._();
     if (key != null) result.key = key;
     if (type != null) result.type = type;
     if (label != null) result.label = label;
@@ -2361,54 +2389,49 @@ class FormField extends $pb.GeneratedMessage {
 
   factory FormField.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormField()..mergeFromBuffer(data, registry);
   factory FormField.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormField()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormField',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormField.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'key')
-    ..e<FormFieldType>(2, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE,
-        defaultOrMaker: FormFieldType.FORM_FIELD_TYPE_UNSPECIFIED,
-        valueOf: FormFieldType.valueOf,
+    ..aE<FormFieldType>(2, _omitFieldNames ? '' : 'type',
         enumValues: FormFieldType.values)
     ..aOS(3, _omitFieldNames ? '' : 'label')
     ..aOS(4, _omitFieldNames ? '' : 'helpText')
     ..aOS(5, _omitFieldNames ? '' : 'placeholder')
     ..aOB(6, _omitFieldNames ? '' : 'required')
     ..aOM<$0.Value>(7, _omitFieldNames ? '' : 'defaultValue',
-        subBuilder: $0.Value.create)
-    ..pc<FormValidationRule>(
-        8, _omitFieldNames ? '' : 'validationRules', $pb.PbFieldType.PM,
-        subBuilder: FormValidationRule.create)
+        subBuilder: $0.Value.$_createMessage)
+    ..pPM<FormValidationRule>(8, _omitFieldNames ? '' : 'validationRules',
+        subBuilder: FormValidationRule.$_createMessage)
     ..aOM<FormConditionGroup>(9, _omitFieldNames ? '' : 'visibilityCondition',
-        subBuilder: FormConditionGroup.create)
+        subBuilder: FormConditionGroup.$_createMessage)
     ..aOM<FormConditionGroup>(10, _omitFieldNames ? '' : 'editabilityCondition',
-        subBuilder: FormConditionGroup.create)
-    ..pc<FormOption>(11, _omitFieldNames ? '' : 'options', $pb.PbFieldType.PM,
-        subBuilder: FormOption.create)
-    ..pc<FormField>(
-        12, _omitFieldNames ? '' : 'nestedFields', $pb.PbFieldType.PM,
-        subBuilder: FormField.create)
-    ..pc<FormSection>(
-        13, _omitFieldNames ? '' : 'nestedSections', $pb.PbFieldType.PM,
-        subBuilder: FormSection.create)
+        subBuilder: FormConditionGroup.$_createMessage)
+    ..pPM<FormOption>(11, _omitFieldNames ? '' : 'options',
+        subBuilder: FormOption.$_createMessage)
+    ..pPM<FormField>(12, _omitFieldNames ? '' : 'nestedFields',
+        subBuilder: FormField.$_createMessage)
+    ..pPM<FormSection>(13, _omitFieldNames ? '' : 'nestedSections',
+        subBuilder: FormSection.$_createMessage)
     ..aOM<FormFormattingHint>(14, _omitFieldNames ? '' : 'formatting',
-        subBuilder: FormFormattingHint.create)
+        subBuilder: FormFormattingHint.$_createMessage)
     ..aOM<$0.Struct>(15, _omitFieldNames ? '' : 'uiHints',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOM<FormReviewHint>(16, _omitFieldNames ? '' : 'review',
-        subBuilder: FormReviewHint.create)
+        subBuilder: FormReviewHint.$_createMessage)
     ..pPS(17, _omitFieldNames ? '' : 'visibleToRoles')
     ..aOB(18, _omitFieldNames ? '' : 'repeatable')
     ..aOB(19, _omitFieldNames ? '' : 'hidden')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormField clone() => FormField()..mergeFromMessage(this);
+  FormField clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormField copyWith(void Function(FormField) updates) =>
       super.copyWith((message) => updates(message as FormField)) as FormField;
@@ -2417,13 +2440,14 @@ class FormField extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormField() / FormField.new instead')
   static FormField create() => FormField._();
+  static $pb.GeneratedMessage $_createMessage() => FormField._();
   @$core.override
-  FormField createEmptyInstance() => create();
-  static $pb.PbList<FormField> createRepeated() => $pb.PbList<FormField>();
+  FormField createEmptyInstance() => FormField._();
   @$core.pragma('dart2js:noInline')
-  static FormField getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormField>(create);
+  static FormField getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FormField>(FormField.$_createMessage);
   static FormField? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2588,7 +2612,7 @@ class FormSection extends $pb.GeneratedMessage {
     $core.Iterable<FormField>? fields,
     $0.Struct? uiHints,
   }) {
-    final result = create();
+    final result = FormSection._();
     if (id != null) result.id = id;
     if (title != null) result.title = title;
     if (description != null) result.description = description;
@@ -2601,26 +2625,26 @@ class FormSection extends $pb.GeneratedMessage {
 
   factory FormSection.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormSection()..mergeFromBuffer(data, registry);
   factory FormSection.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormSection()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormSection',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormSection.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'title')
     ..aOS(3, _omitFieldNames ? '' : 'description')
-    ..pc<FormField>(4, _omitFieldNames ? '' : 'fields', $pb.PbFieldType.PM,
-        subBuilder: FormField.create)
+    ..pPM<FormField>(4, _omitFieldNames ? '' : 'fields',
+        subBuilder: FormField.$_createMessage)
     ..aOM<$0.Struct>(5, _omitFieldNames ? '' : 'uiHints',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormSection clone() => FormSection()..mergeFromMessage(this);
+  FormSection clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormSection copyWith(void Function(FormSection) updates) =>
       super.copyWith((message) => updates(message as FormSection))
@@ -2630,13 +2654,15 @@ class FormSection extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormSection() / FormSection.new instead')
   static FormSection create() => FormSection._();
+  static $pb.GeneratedMessage $_createMessage() => FormSection._();
   @$core.override
-  FormSection createEmptyInstance() => create();
-  static $pb.PbList<FormSection> createRepeated() => $pb.PbList<FormSection>();
+  FormSection createEmptyInstance() => FormSection._();
   @$core.pragma('dart2js:noInline')
-  static FormSection getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormSection>(create);
+  static FormSection getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormSection>(
+          FormSection.$_createMessage);
   static FormSection? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2690,7 +2716,7 @@ class FormStep extends $pb.GeneratedMessage {
     $0.Struct? uiHints,
     FormConditionGroup? visibilityCondition,
   }) {
-    final result = create();
+    final result = FormStep._();
     if (id != null) result.id = id;
     if (title != null) result.title = title;
     if (description != null) result.description = description;
@@ -2705,28 +2731,28 @@ class FormStep extends $pb.GeneratedMessage {
 
   factory FormStep.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormStep()..mergeFromBuffer(data, registry);
   factory FormStep.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormStep()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormStep',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormStep.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'title')
     ..aOS(3, _omitFieldNames ? '' : 'description')
-    ..pc<FormSection>(4, _omitFieldNames ? '' : 'sections', $pb.PbFieldType.PM,
-        subBuilder: FormSection.create)
+    ..pPM<FormSection>(4, _omitFieldNames ? '' : 'sections',
+        subBuilder: FormSection.$_createMessage)
     ..aOM<$0.Struct>(5, _omitFieldNames ? '' : 'uiHints',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOM<FormConditionGroup>(6, _omitFieldNames ? '' : 'visibilityCondition',
-        subBuilder: FormConditionGroup.create)
+        subBuilder: FormConditionGroup.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormStep clone() => FormStep()..mergeFromMessage(this);
+  FormStep clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormStep copyWith(void Function(FormStep) updates) =>
       super.copyWith((message) => updates(message as FormStep)) as FormStep;
@@ -2735,13 +2761,14 @@ class FormStep extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormStep() / FormStep.new instead')
   static FormStep create() => FormStep._();
+  static $pb.GeneratedMessage $_createMessage() => FormStep._();
   @$core.override
-  FormStep createEmptyInstance() => create();
-  static $pb.PbList<FormStep> createRepeated() => $pb.PbList<FormStep>();
+  FormStep createEmptyInstance() => FormStep._();
   @$core.pragma('dart2js:noInline')
-  static FormStep getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormStep>(create);
+  static FormStep getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FormStep>(FormStep.$_createMessage);
   static FormStep? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2808,7 +2835,7 @@ class FormSchema extends $pb.GeneratedMessage {
     $0.Struct? workflowMetadata,
     $0.Struct? uiHints,
   }) {
-    final result = create();
+    final result = FormSchema._();
     if (formId != null) result.formId = formId;
     if (formVersion != null) result.formVersion = formVersion;
     if (title != null) result.title = title;
@@ -2824,30 +2851,30 @@ class FormSchema extends $pb.GeneratedMessage {
 
   factory FormSchema.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormSchema()..mergeFromBuffer(data, registry);
   factory FormSchema.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormSchema()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormSchema',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormSchema.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'formId')
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'formVersion', $pb.PbFieldType.O3)
+    ..aI(2, _omitFieldNames ? '' : 'formVersion')
     ..aOS(3, _omitFieldNames ? '' : 'title')
     ..aOS(4, _omitFieldNames ? '' : 'subtitle')
     ..aOS(5, _omitFieldNames ? '' : 'description')
-    ..pc<FormStep>(6, _omitFieldNames ? '' : 'steps', $pb.PbFieldType.PM,
-        subBuilder: FormStep.create)
+    ..pPM<FormStep>(6, _omitFieldNames ? '' : 'steps',
+        subBuilder: FormStep.$_createMessage)
     ..aOM<$0.Struct>(7, _omitFieldNames ? '' : 'workflowMetadata',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOM<$0.Struct>(8, _omitFieldNames ? '' : 'uiHints',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormSchema clone() => FormSchema()..mergeFromMessage(this);
+  FormSchema clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormSchema copyWith(void Function(FormSchema) updates) =>
       super.copyWith((message) => updates(message as FormSchema)) as FormSchema;
@@ -2856,13 +2883,14 @@ class FormSchema extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormSchema() / FormSchema.new instead')
   static FormSchema create() => FormSchema._();
+  static $pb.GeneratedMessage $_createMessage() => FormSchema._();
   @$core.override
-  FormSchema createEmptyInstance() => create();
-  static $pb.PbList<FormSchema> createRepeated() => $pb.PbList<FormSchema>();
+  FormSchema createEmptyInstance() => FormSchema._();
   @$core.pragma('dart2js:noInline')
   static FormSchema getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormSchema>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormSchema>(FormSchema.$_createMessage);
   static FormSchema? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2944,7 +2972,7 @@ class FormPermissions extends $pb.GeneratedMessage {
     $core.bool? canGoBack,
     $core.String? assigneeSubscriptionId,
   }) {
-    final result = create();
+    final result = FormPermissions._();
     if (canEdit != null) result.canEdit = canEdit;
     if (canSubmit != null) result.canSubmit = canSubmit;
     if (canSaveDraft != null) result.canSaveDraft = canSaveDraft;
@@ -2958,15 +2986,15 @@ class FormPermissions extends $pb.GeneratedMessage {
 
   factory FormPermissions.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormPermissions()..mergeFromBuffer(data, registry);
   factory FormPermissions.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormPermissions()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormPermissions',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormPermissions.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'canEdit')
     ..aOB(2, _omitFieldNames ? '' : 'canSubmit')
     ..aOB(3, _omitFieldNames ? '' : 'canSaveDraft')
@@ -2975,7 +3003,7 @@ class FormPermissions extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormPermissions clone() => FormPermissions()..mergeFromMessage(this);
+  FormPermissions clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormPermissions copyWith(void Function(FormPermissions) updates) =>
       super.copyWith((message) => updates(message as FormPermissions))
@@ -2985,14 +3013,15 @@ class FormPermissions extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormPermissions() / FormPermissions.new instead')
   static FormPermissions create() => FormPermissions._();
+  static $pb.GeneratedMessage $_createMessage() => FormPermissions._();
   @$core.override
-  FormPermissions createEmptyInstance() => create();
-  static $pb.PbList<FormPermissions> createRepeated() =>
-      $pb.PbList<FormPermissions>();
+  FormPermissions createEmptyInstance() => FormPermissions._();
   @$core.pragma('dart2js:noInline')
-  static FormPermissions getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormPermissions>(create);
+  static FormPermissions getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormPermissions>(
+          FormPermissions.$_createMessage);
   static FormPermissions? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3048,7 +3077,7 @@ class FormReviewItem extends $pb.GeneratedMessage {
     $core.String? displayValue,
     $core.bool? emphasized,
   }) {
-    final result = create();
+    final result = FormReviewItem._();
     if (fieldKey != null) result.fieldKey = fieldKey;
     if (label != null) result.label = label;
     if (displayValue != null) result.displayValue = displayValue;
@@ -3060,15 +3089,15 @@ class FormReviewItem extends $pb.GeneratedMessage {
 
   factory FormReviewItem.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormReviewItem()..mergeFromBuffer(data, registry);
   factory FormReviewItem.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormReviewItem()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormReviewItem',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormReviewItem.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'fieldKey')
     ..aOS(2, _omitFieldNames ? '' : 'label')
     ..aOS(3, _omitFieldNames ? '' : 'displayValue')
@@ -3076,7 +3105,7 @@ class FormReviewItem extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormReviewItem clone() => FormReviewItem()..mergeFromMessage(this);
+  FormReviewItem clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormReviewItem copyWith(void Function(FormReviewItem) updates) =>
       super.copyWith((message) => updates(message as FormReviewItem))
@@ -3086,14 +3115,15 @@ class FormReviewItem extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormReviewItem() / FormReviewItem.new instead')
   static FormReviewItem create() => FormReviewItem._();
+  static $pb.GeneratedMessage $_createMessage() => FormReviewItem._();
   @$core.override
-  FormReviewItem createEmptyInstance() => create();
-  static $pb.PbList<FormReviewItem> createRepeated() =>
-      $pb.PbList<FormReviewItem>();
+  FormReviewItem createEmptyInstance() => FormReviewItem._();
   @$core.pragma('dart2js:noInline')
-  static FormReviewItem getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormReviewItem>(create);
+  static FormReviewItem getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormReviewItem>(
+          FormReviewItem.$_createMessage);
   static FormReviewItem? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3141,7 +3171,7 @@ class FormReviewSection extends $pb.GeneratedMessage {
     $core.String? sectionTitle,
     $core.Iterable<FormReviewItem>? items,
   }) {
-    final result = create();
+    final result = FormReviewSection._();
     if (stepId != null) result.stepId = stepId;
     if (stepTitle != null) result.stepTitle = stepTitle;
     if (sectionId != null) result.sectionId = sectionId;
@@ -3154,25 +3184,25 @@ class FormReviewSection extends $pb.GeneratedMessage {
 
   factory FormReviewSection.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormReviewSection()..mergeFromBuffer(data, registry);
   factory FormReviewSection.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormReviewSection()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormReviewSection',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormReviewSection.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'stepId')
     ..aOS(2, _omitFieldNames ? '' : 'stepTitle')
     ..aOS(3, _omitFieldNames ? '' : 'sectionId')
     ..aOS(4, _omitFieldNames ? '' : 'sectionTitle')
-    ..pc<FormReviewItem>(5, _omitFieldNames ? '' : 'items', $pb.PbFieldType.PM,
-        subBuilder: FormReviewItem.create)
+    ..pPM<FormReviewItem>(5, _omitFieldNames ? '' : 'items',
+        subBuilder: FormReviewItem.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormReviewSection clone() => FormReviewSection()..mergeFromMessage(this);
+  FormReviewSection clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormReviewSection copyWith(void Function(FormReviewSection) updates) =>
       super.copyWith((message) => updates(message as FormReviewSection))
@@ -3182,14 +3212,15 @@ class FormReviewSection extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormReviewSection() / FormReviewSection.new instead')
   static FormReviewSection create() => FormReviewSection._();
+  static $pb.GeneratedMessage $_createMessage() => FormReviewSection._();
   @$core.override
-  FormReviewSection createEmptyInstance() => create();
-  static $pb.PbList<FormReviewSection> createRepeated() =>
-      $pb.PbList<FormReviewSection>();
+  FormReviewSection createEmptyInstance() => FormReviewSection._();
   @$core.pragma('dart2js:noInline')
-  static FormReviewSection getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormReviewSection>(create);
+  static FormReviewSection getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FormReviewSection>(
+          FormReviewSection.$_createMessage);
   static FormReviewSection? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3247,7 +3278,7 @@ class FormSubmissionSnapshot extends $pb.GeneratedMessage {
     $core.String? workflowMessage,
     $0.Struct? metadata,
   }) {
-    final result = create();
+    final result = FormSubmissionSnapshot._();
     if (formInstanceId != null) result.formInstanceId = formInstanceId;
     if (schemaId != null) result.schemaId = schemaId;
     if (schemaVersion != null) result.schemaVersion = schemaVersion;
@@ -3270,42 +3301,36 @@ class FormSubmissionSnapshot extends $pb.GeneratedMessage {
 
   factory FormSubmissionSnapshot.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormSubmissionSnapshot()..mergeFromBuffer(data, registry);
   factory FormSubmissionSnapshot.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormSubmissionSnapshot()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormSubmissionSnapshot',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormSubmissionSnapshot.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'formInstanceId')
     ..aOS(2, _omitFieldNames ? '' : 'schemaId')
-    ..a<$core.int>(
-        3, _omitFieldNames ? '' : 'schemaVersion', $pb.PbFieldType.O3)
+    ..aI(3, _omitFieldNames ? '' : 'schemaVersion')
     ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'submittedAt',
-        subBuilder: $1.Timestamp.create)
+        subBuilder: $1.Timestamp.$_createMessage)
     ..aOS(5, _omitFieldNames ? '' : 'submittedBySubscriptionId')
     ..aOM<$0.Struct>(6, _omitFieldNames ? '' : 'answers',
-        subBuilder: $0.Struct.create)
-    ..pc<FormReviewSection>(
-        7, _omitFieldNames ? '' : 'formattedSections', $pb.PbFieldType.PM,
-        subBuilder: FormReviewSection.create)
+        subBuilder: $0.Struct.$_createMessage)
+    ..pPM<FormReviewSection>(7, _omitFieldNames ? '' : 'formattedSections',
+        subBuilder: FormReviewSection.$_createMessage)
     ..aOS(8, _omitFieldNames ? '' : 'submissionReference')
-    ..e<FormMessageState>(
-        9, _omitFieldNames ? '' : 'status', $pb.PbFieldType.OE,
-        defaultOrMaker: FormMessageState.FORM_MESSAGE_STATE_UNSPECIFIED,
-        valueOf: FormMessageState.valueOf,
+    ..aE<FormMessageState>(9, _omitFieldNames ? '' : 'status',
         enumValues: FormMessageState.values)
     ..aOS(10, _omitFieldNames ? '' : 'backendMessage')
     ..aOS(11, _omitFieldNames ? '' : 'workflowMessage')
     ..aOM<$0.Struct>(12, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormSubmissionSnapshot clone() =>
-      FormSubmissionSnapshot()..mergeFromMessage(this);
+  FormSubmissionSnapshot clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormSubmissionSnapshot copyWith(
           void Function(FormSubmissionSnapshot) updates) =>
@@ -3316,14 +3341,16 @@ class FormSubmissionSnapshot extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FormSubmissionSnapshot() / FormSubmissionSnapshot.new instead')
   static FormSubmissionSnapshot create() => FormSubmissionSnapshot._();
+  static $pb.GeneratedMessage $_createMessage() => FormSubmissionSnapshot._();
   @$core.override
-  FormSubmissionSnapshot createEmptyInstance() => create();
-  static $pb.PbList<FormSubmissionSnapshot> createRepeated() =>
-      $pb.PbList<FormSubmissionSnapshot>();
+  FormSubmissionSnapshot createEmptyInstance() => FormSubmissionSnapshot._();
   @$core.pragma('dart2js:noInline')
   static FormSubmissionSnapshot getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormSubmissionSnapshot>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormSubmissionSnapshot>(
+          FormSubmissionSnapshot.$_createMessage);
   static FormSubmissionSnapshot? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3453,7 +3480,7 @@ class FormRequestContent extends $pb.GeneratedMessage {
     $0.Struct? workflowContext,
     $core.String? currentWorkflowState,
   }) {
-    final result = create();
+    final result = FormRequestContent._();
     if (formInstanceId != null) result.formInstanceId = formInstanceId;
     if (schemaId != null) result.schemaId = schemaId;
     if (schemaVersion != null) result.schemaVersion = schemaVersion;
@@ -3478,46 +3505,43 @@ class FormRequestContent extends $pb.GeneratedMessage {
 
   factory FormRequestContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormRequestContent()..mergeFromBuffer(data, registry);
   factory FormRequestContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormRequestContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormRequestContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormRequestContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'formInstanceId')
     ..aOS(2, _omitFieldNames ? '' : 'schemaId')
-    ..a<$core.int>(
-        3, _omitFieldNames ? '' : 'schemaVersion', $pb.PbFieldType.O3)
+    ..aI(3, _omitFieldNames ? '' : 'schemaVersion')
     ..aOS(4, _omitFieldNames ? '' : 'title')
     ..aOS(5, _omitFieldNames ? '' : 'description')
-    ..e<FormMessageState>(6, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE,
-        defaultOrMaker: FormMessageState.FORM_MESSAGE_STATE_UNSPECIFIED,
-        valueOf: FormMessageState.valueOf,
+    ..aE<FormMessageState>(6, _omitFieldNames ? '' : 'state',
         enumValues: FormMessageState.values)
     ..aOB(7, _omitFieldNames ? '' : 'reviewRequired')
     ..aOM<FormSchema>(8, _omitFieldNames ? '' : 'schema',
-        subBuilder: FormSchema.create)
+        subBuilder: FormSchema.$_createMessage)
     ..aOM<$0.Struct>(9, _omitFieldNames ? '' : 'initialValues',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOM<$0.Struct>(10, _omitFieldNames ? '' : 'serverDraftValues',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOM<FormSubmissionSnapshot>(
         11, _omitFieldNames ? '' : 'finalSubmissionSnapshot',
-        subBuilder: FormSubmissionSnapshot.create)
+        subBuilder: FormSubmissionSnapshot.$_createMessage)
     ..aOM<FormPermissions>(12, _omitFieldNames ? '' : 'permissions',
-        subBuilder: FormPermissions.create)
+        subBuilder: FormPermissions.$_createMessage)
     ..aOM<$1.Timestamp>(13, _omitFieldNames ? '' : 'expiresAt',
-        subBuilder: $1.Timestamp.create)
+        subBuilder: $1.Timestamp.$_createMessage)
     ..aOM<$0.Struct>(14, _omitFieldNames ? '' : 'workflowContext',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOS(15, _omitFieldNames ? '' : 'currentWorkflowState')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormRequestContent clone() => FormRequestContent()..mergeFromMessage(this);
+  FormRequestContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormRequestContent copyWith(void Function(FormRequestContent) updates) =>
       super.copyWith((message) => updates(message as FormRequestContent))
@@ -3527,14 +3551,15 @@ class FormRequestContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FormRequestContent() / FormRequestContent.new instead')
   static FormRequestContent create() => FormRequestContent._();
+  static $pb.GeneratedMessage $_createMessage() => FormRequestContent._();
   @$core.override
-  FormRequestContent createEmptyInstance() => create();
-  static $pb.PbList<FormRequestContent> createRepeated() =>
-      $pb.PbList<FormRequestContent>();
+  FormRequestContent createEmptyInstance() => FormRequestContent._();
   @$core.pragma('dart2js:noInline')
   static FormRequestContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormRequestContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormRequestContent>(
+          FormRequestContent.$_createMessage);
   static FormRequestContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3699,7 +3724,7 @@ class FormSubmissionResultContent extends $pb.GeneratedMessage {
     FormSubmissionSnapshot? submissionSnapshot,
     $0.Struct? metadata,
   }) {
-    final result = create();
+    final result = FormSubmissionResultContent._();
     if (formInstanceId != null) result.formInstanceId = formInstanceId;
     if (schemaId != null) result.schemaId = schemaId;
     if (schemaVersion != null) result.schemaVersion = schemaVersion;
@@ -3716,35 +3741,31 @@ class FormSubmissionResultContent extends $pb.GeneratedMessage {
 
   factory FormSubmissionResultContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FormSubmissionResultContent()..mergeFromBuffer(data, registry);
   factory FormSubmissionResultContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FormSubmissionResultContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FormSubmissionResultContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FormSubmissionResultContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'formInstanceId')
     ..aOS(2, _omitFieldNames ? '' : 'schemaId')
-    ..a<$core.int>(
-        3, _omitFieldNames ? '' : 'schemaVersion', $pb.PbFieldType.O3)
+    ..aI(3, _omitFieldNames ? '' : 'schemaVersion')
     ..aOS(4, _omitFieldNames ? '' : 'sourceEventId')
-    ..e<FormMessageState>(5, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE,
-        defaultOrMaker: FormMessageState.FORM_MESSAGE_STATE_UNSPECIFIED,
-        valueOf: FormMessageState.valueOf,
+    ..aE<FormMessageState>(5, _omitFieldNames ? '' : 'state',
         enumValues: FormMessageState.values)
     ..aOB(6, _omitFieldNames ? '' : 'reviewConfirmed')
     ..aOM<FormSubmissionSnapshot>(
         7, _omitFieldNames ? '' : 'submissionSnapshot',
-        subBuilder: FormSubmissionSnapshot.create)
+        subBuilder: FormSubmissionSnapshot.$_createMessage)
     ..aOM<$0.Struct>(8, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FormSubmissionResultContent clone() =>
-      FormSubmissionResultContent()..mergeFromMessage(this);
+  FormSubmissionResultContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FormSubmissionResultContent copyWith(
           void Function(FormSubmissionResultContent) updates) =>
@@ -3756,15 +3777,19 @@ class FormSubmissionResultContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FormSubmissionResultContent() / FormSubmissionResultContent.new instead')
   static FormSubmissionResultContent create() =>
       FormSubmissionResultContent._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      FormSubmissionResultContent._();
   @$core.override
-  FormSubmissionResultContent createEmptyInstance() => create();
-  static $pb.PbList<FormSubmissionResultContent> createRepeated() =>
-      $pb.PbList<FormSubmissionResultContent>();
+  FormSubmissionResultContent createEmptyInstance() =>
+      FormSubmissionResultContent._();
   @$core.pragma('dart2js:noInline')
   static FormSubmissionResultContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FormSubmissionResultContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<FormSubmissionResultContent>(
+          FormSubmissionResultContent.$_createMessage);
   static FormSubmissionResultContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3858,7 +3883,7 @@ class FinanceCardContent extends $pb.GeneratedMessage {
     $core.String? body,
     $core.Iterable<$core.MapEntry<$core.String, $core.String>>? data,
   }) {
-    final result = create();
+    final result = FinanceCardContent._();
     if (cardId != null) result.cardId = cardId;
     if (groupId != null) result.groupId = groupId;
     if (kind != null) result.kind = kind;
@@ -3872,15 +3897,15 @@ class FinanceCardContent extends $pb.GeneratedMessage {
 
   factory FinanceCardContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FinanceCardContent()..mergeFromBuffer(data, registry);
   factory FinanceCardContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FinanceCardContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FinanceCardContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: FinanceCardContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'cardId')
     ..aOS(2, _omitFieldNames ? '' : 'groupId')
     ..aOS(3, _omitFieldNames ? '' : 'kind')
@@ -3894,7 +3919,7 @@ class FinanceCardContent extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FinanceCardContent clone() => FinanceCardContent()..mergeFromMessage(this);
+  FinanceCardContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FinanceCardContent copyWith(void Function(FinanceCardContent) updates) =>
       super.copyWith((message) => updates(message as FinanceCardContent))
@@ -3904,14 +3929,15 @@ class FinanceCardContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FinanceCardContent() / FinanceCardContent.new instead')
   static FinanceCardContent create() => FinanceCardContent._();
+  static $pb.GeneratedMessage $_createMessage() => FinanceCardContent._();
   @$core.override
-  FinanceCardContent createEmptyInstance() => create();
-  static $pb.PbList<FinanceCardContent> createRepeated() =>
-      $pb.PbList<FinanceCardContent>();
+  FinanceCardContent createEmptyInstance() => FinanceCardContent._();
   @$core.pragma('dart2js:noInline')
   static FinanceCardContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FinanceCardContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<FinanceCardContent>(
+          FinanceCardContent.$_createMessage);
   static FinanceCardContent? _defaultInstance;
 
   /// Identifier of the finance fact this card renders. Stable across
@@ -3985,7 +4011,7 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
     StawiGenesis? genesis,
     $core.String? agentProfileId,
   }) {
-    final result = create();
+    final result = StawiRoomConversionContent._();
     if (templateId != null) result.templateId = templateId;
     if (ruleValues != null) result.ruleValues.addEntries(ruleValues);
     if (founderSubscriptionIds != null)
@@ -4000,15 +4026,15 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
 
   factory StawiRoomConversionContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiRoomConversionContent()..mergeFromBuffer(data, registry);
   factory StawiRoomConversionContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiRoomConversionContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiRoomConversionContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiRoomConversionContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'templateId')
     ..m<$core.String, $core.String>(2, _omitFieldNames ? '' : 'ruleValues',
         entryClassName: 'StawiRoomConversionContent.RuleValuesEntry',
@@ -4016,19 +4042,15 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
         valueFieldType: $pb.PbFieldType.OS,
         packageName: const $pb.PackageName('chat.v1'))
     ..pPS(3, _omitFieldNames ? '' : 'founderSubscriptionIds')
-    ..e<StawiJoinPolicy>(
-        4, _omitFieldNames ? '' : 'joinPolicy', $pb.PbFieldType.OE,
-        defaultOrMaker: StawiJoinPolicy.STAWI_JOIN_POLICY_UNSPECIFIED,
-        valueOf: StawiJoinPolicy.valueOf,
+    ..aE<StawiJoinPolicy>(4, _omitFieldNames ? '' : 'joinPolicy',
         enumValues: StawiJoinPolicy.values)
     ..aOM<StawiGenesis>(5, _omitFieldNames ? '' : 'genesis',
-        subBuilder: StawiGenesis.create)
+        subBuilder: StawiGenesis.$_createMessage)
     ..aOS(6, _omitFieldNames ? '' : 'agentProfileId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiRoomConversionContent clone() =>
-      StawiRoomConversionContent()..mergeFromMessage(this);
+  StawiRoomConversionContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiRoomConversionContent copyWith(
           void Function(StawiRoomConversionContent) updates) =>
@@ -4040,14 +4062,18 @@ class StawiRoomConversionContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StawiRoomConversionContent() / StawiRoomConversionContent.new instead')
   static StawiRoomConversionContent create() => StawiRoomConversionContent._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StawiRoomConversionContent._();
   @$core.override
-  StawiRoomConversionContent createEmptyInstance() => create();
-  static $pb.PbList<StawiRoomConversionContent> createRepeated() =>
-      $pb.PbList<StawiRoomConversionContent>();
+  StawiRoomConversionContent createEmptyInstance() =>
+      StawiRoomConversionContent._();
   @$core.pragma('dart2js:noInline')
   static StawiRoomConversionContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiRoomConversionContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<StawiRoomConversionContent>(
+          StawiRoomConversionContent.$_createMessage);
   static StawiRoomConversionContent? _defaultInstance;
 
   /// Constitution template the rules are applied to.
@@ -4119,7 +4145,7 @@ class StawiGenesis extends $pb.GeneratedMessage {
     $1.Timestamp? expiresAt,
     $core.Iterable<$core.String>? founderProfileIds,
   }) {
-    final result = create();
+    final result = StawiGenesis._();
     if (genesisId != null) result.genesisId = genesisId;
     if (genesisHash != null) result.genesisHash = genesisHash;
     if (constitutionHash != null) result.constitutionHash = constitutionHash;
@@ -4133,27 +4159,27 @@ class StawiGenesis extends $pb.GeneratedMessage {
 
   factory StawiGenesis.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiGenesis()..mergeFromBuffer(data, registry);
   factory StawiGenesis.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiGenesis()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiGenesis',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiGenesis.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'genesisId')
     ..a<$core.List<$core.int>>(
         2, _omitFieldNames ? '' : 'genesisHash', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(
         3, _omitFieldNames ? '' : 'constitutionHash', $pb.PbFieldType.OY)
     ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'expiresAt',
-        subBuilder: $1.Timestamp.create)
+        subBuilder: $1.Timestamp.$_createMessage)
     ..pPS(5, _omitFieldNames ? '' : 'founderProfileIds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiGenesis clone() => StawiGenesis()..mergeFromMessage(this);
+  StawiGenesis clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiGenesis copyWith(void Function(StawiGenesis) updates) =>
       super.copyWith((message) => updates(message as StawiGenesis))
@@ -4163,14 +4189,15 @@ class StawiGenesis extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StawiGenesis() / StawiGenesis.new instead')
   static StawiGenesis create() => StawiGenesis._();
+  static $pb.GeneratedMessage $_createMessage() => StawiGenesis._();
   @$core.override
-  StawiGenesis createEmptyInstance() => create();
-  static $pb.PbList<StawiGenesis> createRepeated() =>
-      $pb.PbList<StawiGenesis>();
+  StawiGenesis createEmptyInstance() => StawiGenesis._();
   @$core.pragma('dart2js:noInline')
-  static StawiGenesis getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiGenesis>(create);
+  static StawiGenesis getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StawiGenesis>(
+          StawiGenesis.$_createMessage);
   static StawiGenesis? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4229,7 +4256,7 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
     $core.List<$core.int>? webauthnAuthenticatorData,
     $core.List<$core.int>? webauthnClientDataJson,
   }) {
-    final result = create();
+    final result = StawiGenesisSignatureContent._();
     if (genesisId != null) result.genesisId = genesisId;
     if (signature != null) result.signature = signature;
     if (signerKeyId != null) result.signerKeyId = signerKeyId;
@@ -4245,15 +4272,15 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
 
   factory StawiGenesisSignatureContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiGenesisSignatureContent()..mergeFromBuffer(data, registry);
   factory StawiGenesisSignatureContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiGenesisSignatureContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiGenesisSignatureContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiGenesisSignatureContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'genesisId')
     ..a<$core.List<$core.int>>(
         2, _omitFieldNames ? '' : 'signature', $pb.PbFieldType.OY)
@@ -4266,8 +4293,7 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiGenesisSignatureContent clone() =>
-      StawiGenesisSignatureContent()..mergeFromMessage(this);
+  StawiGenesisSignatureContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiGenesisSignatureContent copyWith(
           void Function(StawiGenesisSignatureContent) updates) =>
@@ -4279,15 +4305,19 @@ class StawiGenesisSignatureContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StawiGenesisSignatureContent() / StawiGenesisSignatureContent.new instead')
   static StawiGenesisSignatureContent create() =>
       StawiGenesisSignatureContent._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StawiGenesisSignatureContent._();
   @$core.override
-  StawiGenesisSignatureContent createEmptyInstance() => create();
-  static $pb.PbList<StawiGenesisSignatureContent> createRepeated() =>
-      $pb.PbList<StawiGenesisSignatureContent>();
+  StawiGenesisSignatureContent createEmptyInstance() =>
+      StawiGenesisSignatureContent._();
   @$core.pragma('dart2js:noInline')
   static StawiGenesisSignatureContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiGenesisSignatureContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<StawiGenesisSignatureContent>(
+          StawiGenesisSignatureContent.$_createMessage);
   static StawiGenesisSignatureContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4368,7 +4398,7 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
     $core.List<$core.int>? webauthnAuthenticatorData,
     $core.List<$core.int>? webauthnClientDataJson,
   }) {
-    final result = create();
+    final result = StawiSignedCallContent._();
     if (callId != null) result.callId = callId;
     if (kind != null) result.kind = kind;
     if (signature != null) result.signature = signature;
@@ -4386,15 +4416,15 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
 
   factory StawiSignedCallContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiSignedCallContent()..mergeFromBuffer(data, registry);
   factory StawiSignedCallContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiSignedCallContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiSignedCallContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiSignedCallContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'callId')
     ..aOS(2, _omitFieldNames ? '' : 'kind')
     ..a<$core.List<$core.int>>(
@@ -4409,8 +4439,7 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiSignedCallContent clone() =>
-      StawiSignedCallContent()..mergeFromMessage(this);
+  StawiSignedCallContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiSignedCallContent copyWith(
           void Function(StawiSignedCallContent) updates) =>
@@ -4421,14 +4450,16 @@ class StawiSignedCallContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StawiSignedCallContent() / StawiSignedCallContent.new instead')
   static StawiSignedCallContent create() => StawiSignedCallContent._();
+  static $pb.GeneratedMessage $_createMessage() => StawiSignedCallContent._();
   @$core.override
-  StawiSignedCallContent createEmptyInstance() => create();
-  static $pb.PbList<StawiSignedCallContent> createRepeated() =>
-      $pb.PbList<StawiSignedCallContent>();
+  StawiSignedCallContent createEmptyInstance() => StawiSignedCallContent._();
   @$core.pragma('dart2js:noInline')
   static StawiSignedCallContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiSignedCallContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<StawiSignedCallContent>(
+          StawiSignedCallContent.$_createMessage);
   static StawiSignedCallContent? _defaultInstance;
 
   /// The call id settlement returned when the call was prepared.
@@ -4529,7 +4560,7 @@ class StawiCallOutcomeContent extends $pb.GeneratedMessage {
     $fixnum.Int64? blockNumber,
     $fixnum.Int64? logIndex,
   }) {
-    final result = create();
+    final result = StawiCallOutcomeContent._();
     if (callId != null) result.callId = callId;
     if (genesisId != null) result.genesisId = genesisId;
     if (state != null) result.state = state;
@@ -4547,22 +4578,18 @@ class StawiCallOutcomeContent extends $pb.GeneratedMessage {
 
   factory StawiCallOutcomeContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiCallOutcomeContent()..mergeFromBuffer(data, registry);
   factory StawiCallOutcomeContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiCallOutcomeContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiCallOutcomeContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiCallOutcomeContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'callId')
     ..aOS(2, _omitFieldNames ? '' : 'genesisId')
-    ..e<StawiCallOutcomeState>(
-        3, _omitFieldNames ? '' : 'state', $pb.PbFieldType.OE,
-        defaultOrMaker:
-            StawiCallOutcomeState.STAWI_CALL_OUTCOME_STATE_UNSPECIFIED,
-        valueOf: StawiCallOutcomeState.valueOf,
+    ..aE<StawiCallOutcomeState>(3, _omitFieldNames ? '' : 'state',
         enumValues: StawiCallOutcomeState.values)
     ..aOS(4, _omitFieldNames ? '' : 'reason')
     ..aOS(5, _omitFieldNames ? '' : 'sourceEventId')
@@ -4580,8 +4607,7 @@ class StawiCallOutcomeContent extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiCallOutcomeContent clone() =>
-      StawiCallOutcomeContent()..mergeFromMessage(this);
+  StawiCallOutcomeContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiCallOutcomeContent copyWith(
           void Function(StawiCallOutcomeContent) updates) =>
@@ -4592,14 +4618,16 @@ class StawiCallOutcomeContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StawiCallOutcomeContent() / StawiCallOutcomeContent.new instead')
   static StawiCallOutcomeContent create() => StawiCallOutcomeContent._();
+  static $pb.GeneratedMessage $_createMessage() => StawiCallOutcomeContent._();
   @$core.override
-  StawiCallOutcomeContent createEmptyInstance() => create();
-  static $pb.PbList<StawiCallOutcomeContent> createRepeated() =>
-      $pb.PbList<StawiCallOutcomeContent>();
+  StawiCallOutcomeContent createEmptyInstance() => StawiCallOutcomeContent._();
   @$core.pragma('dart2js:noInline')
   static StawiCallOutcomeContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiCallOutcomeContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<StawiCallOutcomeContent>(
+          StawiCallOutcomeContent.$_createMessage);
   static StawiCallOutcomeContent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4708,7 +4736,7 @@ class StawiAgentInvitationContent extends $pb.GeneratedMessage {
     $core.String? roomName,
     $1.Timestamp? expiresAt,
   }) {
-    final result = create();
+    final result = StawiAgentInvitationContent._();
     if (roomId != null) result.roomId = roomId;
     if (roomName != null) result.roomName = roomName;
     if (expiresAt != null) result.expiresAt = expiresAt;
@@ -4719,24 +4747,23 @@ class StawiAgentInvitationContent extends $pb.GeneratedMessage {
 
   factory StawiAgentInvitationContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiAgentInvitationContent()..mergeFromBuffer(data, registry);
   factory StawiAgentInvitationContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiAgentInvitationContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiAgentInvitationContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiAgentInvitationContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'roomId')
     ..aOS(2, _omitFieldNames ? '' : 'roomName')
     ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'expiresAt',
-        subBuilder: $1.Timestamp.create)
+        subBuilder: $1.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiAgentInvitationContent clone() =>
-      StawiAgentInvitationContent()..mergeFromMessage(this);
+  StawiAgentInvitationContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiAgentInvitationContent copyWith(
           void Function(StawiAgentInvitationContent) updates) =>
@@ -4748,15 +4775,19 @@ class StawiAgentInvitationContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StawiAgentInvitationContent() / StawiAgentInvitationContent.new instead')
   static StawiAgentInvitationContent create() =>
       StawiAgentInvitationContent._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StawiAgentInvitationContent._();
   @$core.override
-  StawiAgentInvitationContent createEmptyInstance() => create();
-  static $pb.PbList<StawiAgentInvitationContent> createRepeated() =>
-      $pb.PbList<StawiAgentInvitationContent>();
+  StawiAgentInvitationContent createEmptyInstance() =>
+      StawiAgentInvitationContent._();
   @$core.pragma('dart2js:noInline')
   static StawiAgentInvitationContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiAgentInvitationContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<StawiAgentInvitationContent>(
+          StawiAgentInvitationContent.$_createMessage);
   static StawiAgentInvitationContent? _defaultInstance;
 
   /// The room the sender is converting to a Stawi room. The sender must be its
@@ -4806,7 +4837,7 @@ class StawiAgentAcceptanceContent extends $pb.GeneratedMessage {
     $core.String? roomName,
     $1.Timestamp? expiresAt,
   }) {
-    final result = create();
+    final result = StawiAgentAcceptanceContent._();
     if (invitationEventId != null) result.invitationEventId = invitationEventId;
     if (roomId != null) result.roomId = roomId;
     if (roomName != null) result.roomName = roomName;
@@ -4818,25 +4849,24 @@ class StawiAgentAcceptanceContent extends $pb.GeneratedMessage {
 
   factory StawiAgentAcceptanceContent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StawiAgentAcceptanceContent()..mergeFromBuffer(data, registry);
   factory StawiAgentAcceptanceContent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StawiAgentAcceptanceContent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StawiAgentAcceptanceContent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StawiAgentAcceptanceContent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'invitationEventId')
     ..aOS(2, _omitFieldNames ? '' : 'roomId')
     ..aOS(3, _omitFieldNames ? '' : 'roomName')
     ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'expiresAt',
-        subBuilder: $1.Timestamp.create)
+        subBuilder: $1.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StawiAgentAcceptanceContent clone() =>
-      StawiAgentAcceptanceContent()..mergeFromMessage(this);
+  StawiAgentAcceptanceContent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StawiAgentAcceptanceContent copyWith(
           void Function(StawiAgentAcceptanceContent) updates) =>
@@ -4848,15 +4878,19 @@ class StawiAgentAcceptanceContent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StawiAgentAcceptanceContent() / StawiAgentAcceptanceContent.new instead')
   static StawiAgentAcceptanceContent create() =>
       StawiAgentAcceptanceContent._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StawiAgentAcceptanceContent._();
   @$core.override
-  StawiAgentAcceptanceContent createEmptyInstance() => create();
-  static $pb.PbList<StawiAgentAcceptanceContent> createRepeated() =>
-      $pb.PbList<StawiAgentAcceptanceContent>();
+  StawiAgentAcceptanceContent createEmptyInstance() =>
+      StawiAgentAcceptanceContent._();
   @$core.pragma('dart2js:noInline')
   static StawiAgentAcceptanceContent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StawiAgentAcceptanceContent>(create);
+      $pb.GeneratedMessage.$_defaultFor<StawiAgentAcceptanceContent>(
+          StawiAgentAcceptanceContent.$_createMessage);
   static StawiAgentAcceptanceContent? _defaultInstance;
 
   /// The event id of the StawiAgentInvitationContent being accepted, in this
@@ -4954,7 +4988,7 @@ class Payload extends $pb.GeneratedMessage {
     StawiAgentInvitationContent? stawiAgentInvitation,
     StawiAgentAcceptanceContent? stawiAgentAcceptance,
   }) {
-    final result = create();
+    final result = Payload._();
     if (type != null) result.type = type;
     if (default_7 != null) result.default_7 = default_7;
     if (roomChange != null) result.roomChange = roomChange;
@@ -4989,10 +5023,10 @@ class Payload extends $pb.GeneratedMessage {
 
   factory Payload.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Payload()..mergeFromBuffer(data, registry);
   factory Payload.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Payload()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, Payload_Data> _Payload_DataByTag = {
     7: Payload_Data.default_7,
@@ -5021,7 +5055,7 @@ class Payload extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Payload',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: Payload.$_createMessage)
     ..oo(0, [
       7,
       8,
@@ -5045,62 +5079,60 @@ class Payload extends $pb.GeneratedMessage {
       45,
       46
     ])
-    ..e<PayloadType>(1, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE,
-        defaultOrMaker: PayloadType.PAYLOAD_TYPE_UNSPECIFIED,
-        valueOf: PayloadType.valueOf,
+    ..aE<PayloadType>(1, _omitFieldNames ? '' : 'type',
         enumValues: PayloadType.values)
     ..aOM<$0.Struct>(7, _omitFieldNames ? '' : 'default',
-        subBuilder: $0.Struct.create)
+        subBuilder: $0.Struct.$_createMessage)
     ..aOM<RoomChangeContent>(8, _omitFieldNames ? '' : 'roomChange',
-        subBuilder: RoomChangeContent.create)
+        subBuilder: RoomChangeContent.$_createMessage)
     ..aOM<ModerationContent>(10, _omitFieldNames ? '' : 'moderation',
-        subBuilder: ModerationContent.create)
+        subBuilder: ModerationContent.$_createMessage)
     ..aOM<TextContent>(15, _omitFieldNames ? '' : 'text',
-        subBuilder: TextContent.create)
+        subBuilder: TextContent.$_createMessage)
     ..aOM<AttachmentContent>(16, _omitFieldNames ? '' : 'attachment',
-        subBuilder: AttachmentContent.create)
+        subBuilder: AttachmentContent.$_createMessage)
     ..aOM<ReactionContent>(17, _omitFieldNames ? '' : 'reaction',
-        subBuilder: ReactionContent.create)
+        subBuilder: ReactionContent.$_createMessage)
     ..aOM<EncryptedContent>(18, _omitFieldNames ? '' : 'encrypted',
-        subBuilder: EncryptedContent.create)
+        subBuilder: EncryptedContent.$_createMessage)
     ..aOM<CallContent>(19, _omitFieldNames ? '' : 'call',
-        subBuilder: CallContent.create)
+        subBuilder: CallContent.$_createMessage)
     ..aOM<MotionContent>(25, _omitFieldNames ? '' : 'motion',
-        subBuilder: MotionContent.create)
+        subBuilder: MotionContent.$_createMessage)
     ..aOM<VoteCast>(26, _omitFieldNames ? '' : 'vote',
-        subBuilder: VoteCast.create)
+        subBuilder: VoteCast.$_createMessage)
     ..aOM<MotionTally>(28, _omitFieldNames ? '' : 'motionTally',
-        subBuilder: MotionTally.create)
+        subBuilder: MotionTally.$_createMessage)
     ..aOM<VoteTally>(29, _omitFieldNames ? '' : 'voteTally',
-        subBuilder: VoteTally.create)
+        subBuilder: VoteTally.$_createMessage)
     ..aOM<FormRequestContent>(30, _omitFieldNames ? '' : 'formRequest',
-        subBuilder: FormRequestContent.create)
+        subBuilder: FormRequestContent.$_createMessage)
     ..aOM<FormSubmissionResultContent>(
         31, _omitFieldNames ? '' : 'formSubmissionResult',
-        subBuilder: FormSubmissionResultContent.create)
+        subBuilder: FormSubmissionResultContent.$_createMessage)
     ..aOM<FinanceCardContent>(40, _omitFieldNames ? '' : 'financeCard',
-        subBuilder: FinanceCardContent.create)
+        subBuilder: FinanceCardContent.$_createMessage)
     ..aOM<StawiRoomConversionContent>(
         41, _omitFieldNames ? '' : 'stawiRoomConversion',
-        subBuilder: StawiRoomConversionContent.create)
+        subBuilder: StawiRoomConversionContent.$_createMessage)
     ..aOM<StawiGenesisSignatureContent>(
         42, _omitFieldNames ? '' : 'stawiGenesisSignature',
-        subBuilder: StawiGenesisSignatureContent.create)
+        subBuilder: StawiGenesisSignatureContent.$_createMessage)
     ..aOM<StawiSignedCallContent>(43, _omitFieldNames ? '' : 'stawiSignedCall',
-        subBuilder: StawiSignedCallContent.create)
+        subBuilder: StawiSignedCallContent.$_createMessage)
     ..aOM<StawiCallOutcomeContent>(
         44, _omitFieldNames ? '' : 'stawiCallOutcome',
-        subBuilder: StawiCallOutcomeContent.create)
+        subBuilder: StawiCallOutcomeContent.$_createMessage)
     ..aOM<StawiAgentInvitationContent>(
         45, _omitFieldNames ? '' : 'stawiAgentInvitation',
-        subBuilder: StawiAgentInvitationContent.create)
+        subBuilder: StawiAgentInvitationContent.$_createMessage)
     ..aOM<StawiAgentAcceptanceContent>(
         46, _omitFieldNames ? '' : 'stawiAgentAcceptance',
-        subBuilder: StawiAgentAcceptanceContent.create)
+        subBuilder: StawiAgentAcceptanceContent.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Payload clone() => Payload()..mergeFromMessage(this);
+  Payload clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Payload copyWith(void Function(Payload) updates) =>
       super.copyWith((message) => updates(message as Payload)) as Payload;
@@ -5109,16 +5141,59 @@ class Payload extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Payload() / Payload.new instead')
   static Payload create() => Payload._();
+  static $pb.GeneratedMessage $_createMessage() => Payload._();
   @$core.override
-  Payload createEmptyInstance() => create();
-  static $pb.PbList<Payload> createRepeated() => $pb.PbList<Payload>();
+  Payload createEmptyInstance() => Payload._();
   @$core.pragma('dart2js:noInline')
-  static Payload getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Payload>(create);
+  static Payload getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Payload>(Payload.$_createMessage);
   static Payload? _defaultInstance;
 
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
+  @$pb.TagNumber(25)
+  @$pb.TagNumber(26)
+  @$pb.TagNumber(28)
+  @$pb.TagNumber(29)
+  @$pb.TagNumber(30)
+  @$pb.TagNumber(31)
+  @$pb.TagNumber(40)
+  @$pb.TagNumber(41)
+  @$pb.TagNumber(42)
+  @$pb.TagNumber(43)
+  @$pb.TagNumber(44)
+  @$pb.TagNumber(45)
+  @$pb.TagNumber(46)
   Payload_Data whichData() => _Payload_DataByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
+  @$pb.TagNumber(25)
+  @$pb.TagNumber(26)
+  @$pb.TagNumber(28)
+  @$pb.TagNumber(29)
+  @$pb.TagNumber(30)
+  @$pb.TagNumber(31)
+  @$pb.TagNumber(40)
+  @$pb.TagNumber(41)
+  @$pb.TagNumber(42)
+  @$pb.TagNumber(43)
+  @$pb.TagNumber(44)
+  @$pb.TagNumber(45)
+  @$pb.TagNumber(46)
   void clearData() => $_clearField($_whichOneof(0));
 
   /// The `type` MUST correspond to the populated payload.

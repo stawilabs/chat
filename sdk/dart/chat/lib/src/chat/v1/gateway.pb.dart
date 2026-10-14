@@ -8,15 +8,16 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:async' as $async;
 import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as $0;
 
 import '../../common/v1/common.pb.dart' as $2;
-import '../../google/protobuf/timestamp.pb.dart' as $0;
 import 'definitions.pb.dart' as $1;
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
@@ -32,7 +33,7 @@ class StreamHello extends $pb.GeneratedMessage {
     $core.Iterable<$core.MapEntry<$core.String, $core.String>>? capabilities,
     $0.Timestamp? clientTime,
   }) {
-    final result = create();
+    final result = StreamHello._();
     if (resumeToken != null) result.resumeToken = resumeToken;
     if (capabilities != null) result.capabilities.addEntries(capabilities);
     if (clientTime != null) result.clientTime = clientTime;
@@ -43,15 +44,15 @@ class StreamHello extends $pb.GeneratedMessage {
 
   factory StreamHello.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StreamHello()..mergeFromBuffer(data, registry);
   factory StreamHello.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StreamHello()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StreamHello',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StreamHello.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'resumeToken')
     ..m<$core.String, $core.String>(2, _omitFieldNames ? '' : 'capabilities',
         entryClassName: 'StreamHello.CapabilitiesEntry',
@@ -59,11 +60,11 @@ class StreamHello extends $pb.GeneratedMessage {
         valueFieldType: $pb.PbFieldType.OS,
         packageName: const $pb.PackageName('chat.v1'))
     ..aOM<$0.Timestamp>(3, _omitFieldNames ? '' : 'clientTime',
-        subBuilder: $0.Timestamp.create)
+        subBuilder: $0.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StreamHello clone() => StreamHello()..mergeFromMessage(this);
+  StreamHello clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StreamHello copyWith(void Function(StreamHello) updates) =>
       super.copyWith((message) => updates(message as StreamHello))
@@ -73,13 +74,15 @@ class StreamHello extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StreamHello() / StreamHello.new instead')
   static StreamHello create() => StreamHello._();
+  static $pb.GeneratedMessage $_createMessage() => StreamHello._();
   @$core.override
-  StreamHello createEmptyInstance() => create();
-  static $pb.PbList<StreamHello> createRepeated() => $pb.PbList<StreamHello>();
+  StreamHello createEmptyInstance() => StreamHello._();
   @$core.pragma('dart2js:noInline')
-  static StreamHello getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StreamHello>(create);
+  static StreamHello getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StreamHello>(
+          StreamHello.$_createMessage);
   static StreamHello? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -114,7 +117,7 @@ class StreamRequest extends $pb.GeneratedMessage {
     StreamHello? hello,
     $1.ClientCommand? command,
   }) {
-    final result = create();
+    final result = StreamRequest._();
     if (hello != null) result.hello = hello;
     if (command != null) result.command = command;
     return result;
@@ -124,10 +127,10 @@ class StreamRequest extends $pb.GeneratedMessage {
 
   factory StreamRequest.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StreamRequest()..mergeFromBuffer(data, registry);
   factory StreamRequest.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StreamRequest()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, StreamRequest_Payload>
       _StreamRequest_PayloadByTag = {
@@ -138,16 +141,16 @@ class StreamRequest extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StreamRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StreamRequest.$_createMessage)
     ..oo(0, [1, 12])
     ..aOM<StreamHello>(1, _omitFieldNames ? '' : 'hello',
-        subBuilder: StreamHello.create)
+        subBuilder: StreamHello.$_createMessage)
     ..aOM<$1.ClientCommand>(12, _omitFieldNames ? '' : 'command',
-        subBuilder: $1.ClientCommand.create)
+        subBuilder: $1.ClientCommand.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StreamRequest clone() => StreamRequest()..mergeFromMessage(this);
+  StreamRequest clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StreamRequest copyWith(void Function(StreamRequest) updates) =>
       super.copyWith((message) => updates(message as StreamRequest))
@@ -157,18 +160,23 @@ class StreamRequest extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StreamRequest() / StreamRequest.new instead')
   static StreamRequest create() => StreamRequest._();
+  static $pb.GeneratedMessage $_createMessage() => StreamRequest._();
   @$core.override
-  StreamRequest createEmptyInstance() => create();
-  static $pb.PbList<StreamRequest> createRepeated() =>
-      $pb.PbList<StreamRequest>();
+  StreamRequest createEmptyInstance() => StreamRequest._();
   @$core.pragma('dart2js:noInline')
-  static StreamRequest getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StreamRequest>(create);
+  static StreamRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StreamRequest>(
+          StreamRequest.$_createMessage);
   static StreamRequest? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(12)
   StreamRequest_Payload whichPayload() =>
       _StreamRequest_PayloadByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(12)
   void clearPayload() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -218,7 +226,7 @@ class StreamResponse extends $pb.GeneratedMessage {
     $1.TypingEvent? typingEvent,
     $2.ErrorDetail? error,
   }) {
-    final result = create();
+    final result = StreamResponse._();
     if (id != null) result.id = id;
     if (timestamp != null) result.timestamp = timestamp;
     if (message != null) result.message = message;
@@ -234,10 +242,10 @@ class StreamResponse extends $pb.GeneratedMessage {
 
   factory StreamResponse.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StreamResponse()..mergeFromBuffer(data, registry);
   factory StreamResponse.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StreamResponse()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, StreamResponse_Payload>
       _StreamResponse_PayloadByTag = {
@@ -252,27 +260,27 @@ class StreamResponse extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StreamResponse',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: StreamResponse.$_createMessage)
     ..oo(0, [10, 12, 13, 15, 17, 20])
     ..aOS(3, _omitFieldNames ? '' : 'id')
     ..aOM<$0.Timestamp>(5, _omitFieldNames ? '' : 'timestamp',
-        subBuilder: $0.Timestamp.create)
+        subBuilder: $0.Timestamp.$_createMessage)
     ..aOM<$1.RoomEvent>(10, _omitFieldNames ? '' : 'message',
-        subBuilder: $1.RoomEvent.create)
+        subBuilder: $1.RoomEvent.$_createMessage)
     ..aOM<$1.PresenceEvent>(12, _omitFieldNames ? '' : 'presenceEvent',
-        subBuilder: $1.PresenceEvent.create)
+        subBuilder: $1.PresenceEvent.$_createMessage)
     ..aOM<$1.ReceiptEvent>(13, _omitFieldNames ? '' : 'receiptEvent',
-        subBuilder: $1.ReceiptEvent.create)
+        subBuilder: $1.ReceiptEvent.$_createMessage)
     ..aOM<$1.ReadMarker>(15, _omitFieldNames ? '' : 'readEvent',
-        subBuilder: $1.ReadMarker.create)
+        subBuilder: $1.ReadMarker.$_createMessage)
     ..aOM<$1.TypingEvent>(17, _omitFieldNames ? '' : 'typingEvent',
-        subBuilder: $1.TypingEvent.create)
+        subBuilder: $1.TypingEvent.$_createMessage)
     ..aOM<$2.ErrorDetail>(20, _omitFieldNames ? '' : 'error',
-        subBuilder: $2.ErrorDetail.create)
+        subBuilder: $2.ErrorDetail.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StreamResponse clone() => StreamResponse()..mergeFromMessage(this);
+  StreamResponse clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StreamResponse copyWith(void Function(StreamResponse) updates) =>
       super.copyWith((message) => updates(message as StreamResponse))
@@ -282,18 +290,31 @@ class StreamResponse extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StreamResponse() / StreamResponse.new instead')
   static StreamResponse create() => StreamResponse._();
+  static $pb.GeneratedMessage $_createMessage() => StreamResponse._();
   @$core.override
-  StreamResponse createEmptyInstance() => create();
-  static $pb.PbList<StreamResponse> createRepeated() =>
-      $pb.PbList<StreamResponse>();
+  StreamResponse createEmptyInstance() => StreamResponse._();
   @$core.pragma('dart2js:noInline')
-  static StreamResponse getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StreamResponse>(create);
+  static StreamResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StreamResponse>(
+          StreamResponse.$_createMessage);
   static StreamResponse? _defaultInstance;
 
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(20)
   StreamResponse_Payload whichPayload() =>
       _StreamResponse_PayloadByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(20)
   void clearPayload() => $_clearField($_whichOneof(0));
 
   /// NOTE:

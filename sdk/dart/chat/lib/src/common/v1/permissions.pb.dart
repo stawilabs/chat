@@ -8,7 +8,7 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
@@ -27,7 +27,7 @@ class RoleBinding extends $pb.GeneratedMessage {
     StandardRole? role,
     $core.Iterable<$core.String>? permissions,
   }) {
-    final result = create();
+    final result = RoleBinding._();
     if (role != null) result.role = role;
     if (permissions != null) result.permissions.addAll(permissions);
     return result;
@@ -37,24 +37,22 @@ class RoleBinding extends $pb.GeneratedMessage {
 
   factory RoleBinding.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RoleBinding()..mergeFromBuffer(data, registry);
   factory RoleBinding.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RoleBinding()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'RoleBinding',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'common.v1'),
-      createEmptyInstance: create)
-    ..e<StandardRole>(1, _omitFieldNames ? '' : 'role', $pb.PbFieldType.OE,
-        defaultOrMaker: StandardRole.ROLE_UNSPECIFIED,
-        valueOf: StandardRole.valueOf,
+      createEmptyInstance: RoleBinding.$_createMessage)
+    ..aE<StandardRole>(1, _omitFieldNames ? '' : 'role',
         enumValues: StandardRole.values)
     ..pPS(2, _omitFieldNames ? '' : 'permissions')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RoleBinding clone() => RoleBinding()..mergeFromMessage(this);
+  RoleBinding clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RoleBinding copyWith(void Function(RoleBinding) updates) =>
       super.copyWith((message) => updates(message as RoleBinding))
@@ -64,13 +62,15 @@ class RoleBinding extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RoleBinding() / RoleBinding.new instead')
   static RoleBinding create() => RoleBinding._();
+  static $pb.GeneratedMessage $_createMessage() => RoleBinding._();
   @$core.override
-  RoleBinding createEmptyInstance() => create();
-  static $pb.PbList<RoleBinding> createRepeated() => $pb.PbList<RoleBinding>();
+  RoleBinding createEmptyInstance() => RoleBinding._();
   @$core.pragma('dart2js:noInline')
-  static RoleBinding getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RoleBinding>(create);
+  static RoleBinding getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RoleBinding>(
+          RoleBinding.$_createMessage);
   static RoleBinding? _defaultInstance;
 
   /// The role being granted permissions.
@@ -94,7 +94,7 @@ class MethodPermissions extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? permissions,
     $core.bool? allowUnauthenticated,
   }) {
-    final result = create();
+    final result = MethodPermissions._();
     if (permissions != null) result.permissions.addAll(permissions);
     if (allowUnauthenticated != null)
       result.allowUnauthenticated = allowUnauthenticated;
@@ -105,21 +105,21 @@ class MethodPermissions extends $pb.GeneratedMessage {
 
   factory MethodPermissions.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MethodPermissions()..mergeFromBuffer(data, registry);
   factory MethodPermissions.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MethodPermissions()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MethodPermissions',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'common.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: MethodPermissions.$_createMessage)
     ..pPS(1, _omitFieldNames ? '' : 'permissions')
     ..aOB(2, _omitFieldNames ? '' : 'allowUnauthenticated')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MethodPermissions clone() => MethodPermissions()..mergeFromMessage(this);
+  MethodPermissions clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MethodPermissions copyWith(void Function(MethodPermissions) updates) =>
       super.copyWith((message) => updates(message as MethodPermissions))
@@ -129,14 +129,15 @@ class MethodPermissions extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MethodPermissions() / MethodPermissions.new instead')
   static MethodPermissions create() => MethodPermissions._();
+  static $pb.GeneratedMessage $_createMessage() => MethodPermissions._();
   @$core.override
-  MethodPermissions createEmptyInstance() => create();
-  static $pb.PbList<MethodPermissions> createRepeated() =>
-      $pb.PbList<MethodPermissions>();
+  MethodPermissions createEmptyInstance() => MethodPermissions._();
   @$core.pragma('dart2js:noInline')
-  static MethodPermissions getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<MethodPermissions>(create);
+  static MethodPermissions getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MethodPermissions>(
+          MethodPermissions.$_createMessage);
   static MethodPermissions? _defaultInstance;
 
   /// Permissions required to call this method, e.g. "profile_view", "contact_manage".
@@ -164,7 +165,7 @@ class ServicePermissions extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? permissions,
     $core.Iterable<RoleBinding>? roleBindings,
   }) {
-    final result = create();
+    final result = ServicePermissions._();
     if (namespace != null) result.namespace = namespace;
     if (permissions != null) result.permissions.addAll(permissions);
     if (roleBindings != null) result.roleBindings.addAll(roleBindings);
@@ -175,24 +176,23 @@ class ServicePermissions extends $pb.GeneratedMessage {
 
   factory ServicePermissions.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ServicePermissions()..mergeFromBuffer(data, registry);
   factory ServicePermissions.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ServicePermissions()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ServicePermissions',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'common.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: ServicePermissions.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'namespace')
     ..pPS(2, _omitFieldNames ? '' : 'permissions')
-    ..pc<RoleBinding>(
-        3, _omitFieldNames ? '' : 'roleBindings', $pb.PbFieldType.PM,
-        subBuilder: RoleBinding.create)
+    ..pPM<RoleBinding>(3, _omitFieldNames ? '' : 'roleBindings',
+        subBuilder: RoleBinding.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ServicePermissions clone() => ServicePermissions()..mergeFromMessage(this);
+  ServicePermissions clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ServicePermissions copyWith(void Function(ServicePermissions) updates) =>
       super.copyWith((message) => updates(message as ServicePermissions))
@@ -202,14 +202,15 @@ class ServicePermissions extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ServicePermissions() / ServicePermissions.new instead')
   static ServicePermissions create() => ServicePermissions._();
+  static $pb.GeneratedMessage $_createMessage() => ServicePermissions._();
   @$core.override
-  ServicePermissions createEmptyInstance() => create();
-  static $pb.PbList<ServicePermissions> createRepeated() =>
-      $pb.PbList<ServicePermissions>();
+  ServicePermissions createEmptyInstance() => ServicePermissions._();
   @$core.pragma('dart2js:noInline')
   static ServicePermissions getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ServicePermissions>(create);
+      $pb.GeneratedMessage.$_defaultFor<ServicePermissions>(
+          ServicePermissions.$_createMessage);
   static ServicePermissions? _defaultInstance;
 
   /// Namespace for this service's permissions, used for OPL namespace generation
@@ -241,14 +242,14 @@ class Permissions {
       50000,
       $pb.PbFieldType.OM,
       defaultOrMaker: MethodPermissions.getDefault,
-      subBuilder: MethodPermissions.create);
+      subBuilder: MethodPermissions.$_createMessage);
   static final servicePermissions = $pb.Extension<ServicePermissions>(
       _omitMessageNames ? '' : 'google.protobuf.ServiceOptions',
       _omitFieldNames ? '' : 'servicePermissions',
       50000,
       $pb.PbFieldType.OM,
       defaultOrMaker: ServicePermissions.getDefault,
-      subBuilder: ServicePermissions.create);
+      subBuilder: ServicePermissions.$_createMessage);
   static void registerAllExtensions($pb.ExtensionRegistry registry) {
     registry.add(methodPermissions);
     registry.add(servicePermissions);

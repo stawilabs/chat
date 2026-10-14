@@ -8,14 +8,13 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
 import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
-
-import '../../../google/protobuf/any.pb.dart' as $0;
+import 'package:protobuf/well_known_types/google/protobuf/any.pb.dart' as $0;
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
@@ -26,7 +25,7 @@ class AdditionalPropertiesItem extends $pb.GeneratedMessage {
     SchemaOrReference? schemaOrReference,
     $core.bool? boolean,
   }) {
-    final result = create();
+    final result = AdditionalPropertiesItem._();
     if (schemaOrReference != null) result.schemaOrReference = schemaOrReference;
     if (boolean != null) result.boolean = boolean;
     return result;
@@ -36,10 +35,10 @@ class AdditionalPropertiesItem extends $pb.GeneratedMessage {
 
   factory AdditionalPropertiesItem.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      AdditionalPropertiesItem()..mergeFromBuffer(data, registry);
   factory AdditionalPropertiesItem.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      AdditionalPropertiesItem()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, AdditionalPropertiesItem_Oneof>
       _AdditionalPropertiesItem_OneofByTag = {
@@ -51,16 +50,15 @@ class AdditionalPropertiesItem extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'AdditionalPropertiesItem',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: AdditionalPropertiesItem.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<SchemaOrReference>(1, _omitFieldNames ? '' : 'schemaOrReference',
-        subBuilder: SchemaOrReference.create)
+        subBuilder: SchemaOrReference.$_createMessage)
     ..aOB(2, _omitFieldNames ? '' : 'boolean')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  AdditionalPropertiesItem clone() =>
-      AdditionalPropertiesItem()..mergeFromMessage(this);
+  AdditionalPropertiesItem clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   AdditionalPropertiesItem copyWith(
           void Function(AdditionalPropertiesItem) updates) =>
@@ -71,18 +69,25 @@ class AdditionalPropertiesItem extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AdditionalPropertiesItem() / AdditionalPropertiesItem.new instead')
   static AdditionalPropertiesItem create() => AdditionalPropertiesItem._();
+  static $pb.GeneratedMessage $_createMessage() => AdditionalPropertiesItem._();
   @$core.override
-  AdditionalPropertiesItem createEmptyInstance() => create();
-  static $pb.PbList<AdditionalPropertiesItem> createRepeated() =>
-      $pb.PbList<AdditionalPropertiesItem>();
+  AdditionalPropertiesItem createEmptyInstance() =>
+      AdditionalPropertiesItem._();
   @$core.pragma('dart2js:noInline')
   static AdditionalPropertiesItem getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<AdditionalPropertiesItem>(create);
+      $pb.GeneratedMessage.$_defaultFor<AdditionalPropertiesItem>(
+          AdditionalPropertiesItem.$_createMessage);
   static AdditionalPropertiesItem? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   AdditionalPropertiesItem_Oneof whichOneof() =>
       _AdditionalPropertiesItem_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -111,7 +116,7 @@ class Any extends $pb.GeneratedMessage {
     $0.Any? value,
     $core.String? yaml,
   }) {
-    final result = create();
+    final result = Any._();
     if (value != null) result.value = value;
     if (yaml != null) result.yaml = yaml;
     return result;
@@ -121,22 +126,23 @@ class Any extends $pb.GeneratedMessage {
 
   factory Any.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Any()..mergeFromBuffer(data, registry);
   factory Any.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Any()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Any',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..aOM<$0.Any>(1, _omitFieldNames ? '' : 'value', subBuilder: $0.Any.create)
+      createEmptyInstance: Any.$_createMessage)
+    ..aOM<$0.Any>(1, _omitFieldNames ? '' : 'value',
+        subBuilder: $0.Any.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'yaml')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Any clone() => Any()..mergeFromMessage(this);
+  Any clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Any copyWith(void Function(Any) updates) =>
       super.copyWith((message) => updates(message as Any)) as Any;
@@ -145,13 +151,14 @@ class Any extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Any() / Any.new instead')
   static Any create() => Any._();
+  static $pb.GeneratedMessage $_createMessage() => Any._();
   @$core.override
-  Any createEmptyInstance() => create();
-  static $pb.PbList<Any> createRepeated() => $pb.PbList<Any>();
+  Any createEmptyInstance() => Any._();
   @$core.pragma('dart2js:noInline')
-  static Any getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Any>(create);
+  static Any getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Any>(Any.$_createMessage);
   static Any? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -182,7 +189,7 @@ class AnyOrExpression extends $pb.GeneratedMessage {
     Any? any,
     Expression? expression,
   }) {
-    final result = create();
+    final result = AnyOrExpression._();
     if (any != null) result.any = any;
     if (expression != null) result.expression = expression;
     return result;
@@ -192,10 +199,10 @@ class AnyOrExpression extends $pb.GeneratedMessage {
 
   factory AnyOrExpression.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      AnyOrExpression()..mergeFromBuffer(data, registry);
   factory AnyOrExpression.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      AnyOrExpression()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, AnyOrExpression_Oneof>
       _AnyOrExpression_OneofByTag = {
@@ -207,15 +214,15 @@ class AnyOrExpression extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'AnyOrExpression',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: AnyOrExpression.$_createMessage)
     ..oo(0, [1, 2])
-    ..aOM<Any>(1, _omitFieldNames ? '' : 'any', subBuilder: Any.create)
+    ..aOM<Any>(1, _omitFieldNames ? '' : 'any', subBuilder: Any.$_createMessage)
     ..aOM<Expression>(2, _omitFieldNames ? '' : 'expression',
-        subBuilder: Expression.create)
+        subBuilder: Expression.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  AnyOrExpression clone() => AnyOrExpression()..mergeFromMessage(this);
+  AnyOrExpression clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   AnyOrExpression copyWith(void Function(AnyOrExpression) updates) =>
       super.copyWith((message) => updates(message as AnyOrExpression))
@@ -225,18 +232,23 @@ class AnyOrExpression extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AnyOrExpression() / AnyOrExpression.new instead')
   static AnyOrExpression create() => AnyOrExpression._();
+  static $pb.GeneratedMessage $_createMessage() => AnyOrExpression._();
   @$core.override
-  AnyOrExpression createEmptyInstance() => create();
-  static $pb.PbList<AnyOrExpression> createRepeated() =>
-      $pb.PbList<AnyOrExpression>();
+  AnyOrExpression createEmptyInstance() => AnyOrExpression._();
   @$core.pragma('dart2js:noInline')
-  static AnyOrExpression getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<AnyOrExpression>(create);
+  static AnyOrExpression getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AnyOrExpression>(
+          AnyOrExpression.$_createMessage);
   static AnyOrExpression? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   AnyOrExpression_Oneof whichOneof() =>
       _AnyOrExpression_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -268,7 +280,7 @@ class Callback extends $pb.GeneratedMessage {
     $core.Iterable<NamedPathItem>? path,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Callback._();
     if (path != null) result.path.addAll(path);
     if (specificationExtension != null)
       result.specificationExtension.addAll(specificationExtension);
@@ -279,25 +291,24 @@ class Callback extends $pb.GeneratedMessage {
 
   factory Callback.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Callback()..mergeFromBuffer(data, registry);
   factory Callback.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Callback()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Callback',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedPathItem>(1, _omitFieldNames ? '' : 'path', $pb.PbFieldType.PM,
-        subBuilder: NamedPathItem.create)
-    ..pc<NamedAny>(
-        2, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+      createEmptyInstance: Callback.$_createMessage)
+    ..pPM<NamedPathItem>(1, _omitFieldNames ? '' : 'path',
+        subBuilder: NamedPathItem.$_createMessage)
+    ..pPM<NamedAny>(2, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Callback clone() => Callback()..mergeFromMessage(this);
+  Callback clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Callback copyWith(void Function(Callback) updates) =>
       super.copyWith((message) => updates(message as Callback)) as Callback;
@@ -306,13 +317,14 @@ class Callback extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Callback() / Callback.new instead')
   static Callback create() => Callback._();
+  static $pb.GeneratedMessage $_createMessage() => Callback._();
   @$core.override
-  Callback createEmptyInstance() => create();
-  static $pb.PbList<Callback> createRepeated() => $pb.PbList<Callback>();
+  Callback createEmptyInstance() => Callback._();
   @$core.pragma('dart2js:noInline')
-  static Callback getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Callback>(create);
+  static Callback getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Callback>(Callback.$_createMessage);
   static Callback? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -329,7 +341,7 @@ class CallbackOrReference extends $pb.GeneratedMessage {
     Callback? callback,
     Reference? reference,
   }) {
-    final result = create();
+    final result = CallbackOrReference._();
     if (callback != null) result.callback = callback;
     if (reference != null) result.reference = reference;
     return result;
@@ -339,10 +351,10 @@ class CallbackOrReference extends $pb.GeneratedMessage {
 
   factory CallbackOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      CallbackOrReference()..mergeFromBuffer(data, registry);
   factory CallbackOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      CallbackOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, CallbackOrReference_Oneof>
       _CallbackOrReference_OneofByTag = {
@@ -354,16 +366,16 @@ class CallbackOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'CallbackOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: CallbackOrReference.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<Callback>(1, _omitFieldNames ? '' : 'callback',
-        subBuilder: Callback.create)
+        subBuilder: Callback.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  CallbackOrReference clone() => CallbackOrReference()..mergeFromMessage(this);
+  CallbackOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   CallbackOrReference copyWith(void Function(CallbackOrReference) updates) =>
       super.copyWith((message) => updates(message as CallbackOrReference))
@@ -373,18 +385,24 @@ class CallbackOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use CallbackOrReference() / CallbackOrReference.new instead')
   static CallbackOrReference create() => CallbackOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => CallbackOrReference._();
   @$core.override
-  CallbackOrReference createEmptyInstance() => create();
-  static $pb.PbList<CallbackOrReference> createRepeated() =>
-      $pb.PbList<CallbackOrReference>();
+  CallbackOrReference createEmptyInstance() => CallbackOrReference._();
   @$core.pragma('dart2js:noInline')
   static CallbackOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<CallbackOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<CallbackOrReference>(
+          CallbackOrReference.$_createMessage);
   static CallbackOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   CallbackOrReference_Oneof whichOneof() =>
       _CallbackOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -414,7 +432,7 @@ class CallbacksOrReferences extends $pb.GeneratedMessage {
   factory CallbacksOrReferences({
     $core.Iterable<NamedCallbackOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = CallbacksOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -424,24 +442,23 @@ class CallbacksOrReferences extends $pb.GeneratedMessage {
 
   factory CallbacksOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      CallbacksOrReferences()..mergeFromBuffer(data, registry);
   factory CallbacksOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      CallbacksOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'CallbacksOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedCallbackOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedCallbackOrReference.create)
+      createEmptyInstance: CallbacksOrReferences.$_createMessage)
+    ..pPM<NamedCallbackOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedCallbackOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  CallbacksOrReferences clone() =>
-      CallbacksOrReferences()..mergeFromMessage(this);
+  CallbacksOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   CallbacksOrReferences copyWith(
           void Function(CallbacksOrReferences) updates) =>
@@ -452,14 +469,16 @@ class CallbacksOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CallbacksOrReferences() / CallbacksOrReferences.new instead')
   static CallbacksOrReferences create() => CallbacksOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => CallbacksOrReferences._();
   @$core.override
-  CallbacksOrReferences createEmptyInstance() => create();
-  static $pb.PbList<CallbacksOrReferences> createRepeated() =>
-      $pb.PbList<CallbacksOrReferences>();
+  CallbacksOrReferences createEmptyInstance() => CallbacksOrReferences._();
   @$core.pragma('dart2js:noInline')
   static CallbacksOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<CallbacksOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<CallbacksOrReferences>(
+          CallbacksOrReferences.$_createMessage);
   static CallbacksOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -480,7 +499,7 @@ class Components extends $pb.GeneratedMessage {
     CallbacksOrReferences? callbacks,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Components._();
     if (schemas != null) result.schemas = schemas;
     if (responses != null) result.responses = responses;
     if (parameters != null) result.parameters = parameters;
@@ -499,42 +518,41 @@ class Components extends $pb.GeneratedMessage {
 
   factory Components.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Components()..mergeFromBuffer(data, registry);
   factory Components.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Components()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Components',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Components.$_createMessage)
     ..aOM<SchemasOrReferences>(1, _omitFieldNames ? '' : 'schemas',
-        subBuilder: SchemasOrReferences.create)
+        subBuilder: SchemasOrReferences.$_createMessage)
     ..aOM<ResponsesOrReferences>(2, _omitFieldNames ? '' : 'responses',
-        subBuilder: ResponsesOrReferences.create)
+        subBuilder: ResponsesOrReferences.$_createMessage)
     ..aOM<ParametersOrReferences>(3, _omitFieldNames ? '' : 'parameters',
-        subBuilder: ParametersOrReferences.create)
+        subBuilder: ParametersOrReferences.$_createMessage)
     ..aOM<ExamplesOrReferences>(4, _omitFieldNames ? '' : 'examples',
-        subBuilder: ExamplesOrReferences.create)
+        subBuilder: ExamplesOrReferences.$_createMessage)
     ..aOM<RequestBodiesOrReferences>(5, _omitFieldNames ? '' : 'requestBodies',
-        subBuilder: RequestBodiesOrReferences.create)
+        subBuilder: RequestBodiesOrReferences.$_createMessage)
     ..aOM<HeadersOrReferences>(6, _omitFieldNames ? '' : 'headers',
-        subBuilder: HeadersOrReferences.create)
+        subBuilder: HeadersOrReferences.$_createMessage)
     ..aOM<SecuritySchemesOrReferences>(
         7, _omitFieldNames ? '' : 'securitySchemes',
-        subBuilder: SecuritySchemesOrReferences.create)
+        subBuilder: SecuritySchemesOrReferences.$_createMessage)
     ..aOM<LinksOrReferences>(8, _omitFieldNames ? '' : 'links',
-        subBuilder: LinksOrReferences.create)
+        subBuilder: LinksOrReferences.$_createMessage)
     ..aOM<CallbacksOrReferences>(9, _omitFieldNames ? '' : 'callbacks',
-        subBuilder: CallbacksOrReferences.create)
-    ..pc<NamedAny>(
-        10, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: CallbacksOrReferences.$_createMessage)
+    ..pPM<NamedAny>(10, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Components clone() => Components()..mergeFromMessage(this);
+  Components clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Components copyWith(void Function(Components) updates) =>
       super.copyWith((message) => updates(message as Components)) as Components;
@@ -543,13 +561,14 @@ class Components extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Components() / Components.new instead')
   static Components create() => Components._();
+  static $pb.GeneratedMessage $_createMessage() => Components._();
   @$core.override
-  Components createEmptyInstance() => create();
-  static $pb.PbList<Components> createRepeated() => $pb.PbList<Components>();
+  Components createEmptyInstance() => Components._();
   @$core.pragma('dart2js:noInline')
   static Components getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Components>(create);
+      $pb.GeneratedMessage.$_defaultFor<Components>(Components.$_createMessage);
   static Components? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -664,7 +683,7 @@ class Contact extends $pb.GeneratedMessage {
     $core.String? email,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Contact._();
     if (name != null) result.name = name;
     if (url != null) result.url = url;
     if (email != null) result.email = email;
@@ -677,26 +696,25 @@ class Contact extends $pb.GeneratedMessage {
 
   factory Contact.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Contact()..mergeFromBuffer(data, registry);
   factory Contact.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Contact()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Contact',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Contact.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOS(2, _omitFieldNames ? '' : 'url')
     ..aOS(3, _omitFieldNames ? '' : 'email')
-    ..pc<NamedAny>(
-        4, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(4, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Contact clone() => Contact()..mergeFromMessage(this);
+  Contact clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Contact copyWith(void Function(Contact) updates) =>
       super.copyWith((message) => updates(message as Contact)) as Contact;
@@ -705,13 +723,14 @@ class Contact extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Contact() / Contact.new instead')
   static Contact create() => Contact._();
+  static $pb.GeneratedMessage $_createMessage() => Contact._();
   @$core.override
-  Contact createEmptyInstance() => create();
-  static $pb.PbList<Contact> createRepeated() => $pb.PbList<Contact>();
+  Contact createEmptyInstance() => Contact._();
   @$core.pragma('dart2js:noInline')
-  static Contact getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Contact>(create);
+  static Contact getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Contact>(Contact.$_createMessage);
   static Contact? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -753,7 +772,7 @@ class DefaultType extends $pb.GeneratedMessage {
     $core.bool? boolean,
     $core.String? string,
   }) {
-    final result = create();
+    final result = DefaultType._();
     if (number != null) result.number = number;
     if (boolean != null) result.boolean = boolean;
     if (string != null) result.string = string;
@@ -764,10 +783,10 @@ class DefaultType extends $pb.GeneratedMessage {
 
   factory DefaultType.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      DefaultType()..mergeFromBuffer(data, registry);
   factory DefaultType.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      DefaultType()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, DefaultType_Oneof> _DefaultType_OneofByTag =
       {
@@ -780,15 +799,15 @@ class DefaultType extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'DefaultType',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: DefaultType.$_createMessage)
     ..oo(0, [1, 2, 3])
-    ..a<$core.double>(1, _omitFieldNames ? '' : 'number', $pb.PbFieldType.OD)
+    ..aD(1, _omitFieldNames ? '' : 'number')
     ..aOB(2, _omitFieldNames ? '' : 'boolean')
     ..aOS(3, _omitFieldNames ? '' : 'string')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  DefaultType clone() => DefaultType()..mergeFromMessage(this);
+  DefaultType clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   DefaultType copyWith(void Function(DefaultType) updates) =>
       super.copyWith((message) => updates(message as DefaultType))
@@ -798,16 +817,24 @@ class DefaultType extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DefaultType() / DefaultType.new instead')
   static DefaultType create() => DefaultType._();
+  static $pb.GeneratedMessage $_createMessage() => DefaultType._();
   @$core.override
-  DefaultType createEmptyInstance() => create();
-  static $pb.PbList<DefaultType> createRepeated() => $pb.PbList<DefaultType>();
+  DefaultType createEmptyInstance() => DefaultType._();
   @$core.pragma('dart2js:noInline')
-  static DefaultType getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<DefaultType>(create);
+  static DefaultType getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DefaultType>(
+          DefaultType.$_createMessage);
   static DefaultType? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   DefaultType_Oneof whichOneof() => _DefaultType_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -845,7 +872,7 @@ class Discriminator extends $pb.GeneratedMessage {
     Strings? mapping,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Discriminator._();
     if (propertyName != null) result.propertyName = propertyName;
     if (mapping != null) result.mapping = mapping;
     if (specificationExtension != null)
@@ -857,26 +884,25 @@ class Discriminator extends $pb.GeneratedMessage {
 
   factory Discriminator.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Discriminator()..mergeFromBuffer(data, registry);
   factory Discriminator.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Discriminator()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Discriminator',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Discriminator.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'propertyName')
     ..aOM<Strings>(2, _omitFieldNames ? '' : 'mapping',
-        subBuilder: Strings.create)
-    ..pc<NamedAny>(
-        3, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: Strings.$_createMessage)
+    ..pPM<NamedAny>(3, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Discriminator clone() => Discriminator()..mergeFromMessage(this);
+  Discriminator clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Discriminator copyWith(void Function(Discriminator) updates) =>
       super.copyWith((message) => updates(message as Discriminator))
@@ -886,14 +912,15 @@ class Discriminator extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Discriminator() / Discriminator.new instead')
   static Discriminator create() => Discriminator._();
+  static $pb.GeneratedMessage $_createMessage() => Discriminator._();
   @$core.override
-  Discriminator createEmptyInstance() => create();
-  static $pb.PbList<Discriminator> createRepeated() =>
-      $pb.PbList<Discriminator>();
+  Discriminator createEmptyInstance() => Discriminator._();
   @$core.pragma('dart2js:noInline')
-  static Discriminator getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Discriminator>(create);
+  static Discriminator getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Discriminator>(
+          Discriminator.$_createMessage);
   static Discriminator? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -932,7 +959,7 @@ class Document extends $pb.GeneratedMessage {
     ExternalDocs? externalDocs,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Document._();
     if (openapi != null) result.openapi = openapi;
     if (info != null) result.info = info;
     if (servers != null) result.servers.addAll(servers);
@@ -950,37 +977,37 @@ class Document extends $pb.GeneratedMessage {
 
   factory Document.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Document()..mergeFromBuffer(data, registry);
   factory Document.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Document()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Document',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Document.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'openapi')
-    ..aOM<Info>(2, _omitFieldNames ? '' : 'info', subBuilder: Info.create)
-    ..pc<Server>(3, _omitFieldNames ? '' : 'servers', $pb.PbFieldType.PM,
-        subBuilder: Server.create)
-    ..aOM<Paths>(4, _omitFieldNames ? '' : 'paths', subBuilder: Paths.create)
+    ..aOM<Info>(2, _omitFieldNames ? '' : 'info',
+        subBuilder: Info.$_createMessage)
+    ..pPM<Server>(3, _omitFieldNames ? '' : 'servers',
+        subBuilder: Server.$_createMessage)
+    ..aOM<Paths>(4, _omitFieldNames ? '' : 'paths',
+        subBuilder: Paths.$_createMessage)
     ..aOM<Components>(5, _omitFieldNames ? '' : 'components',
-        subBuilder: Components.create)
-    ..pc<SecurityRequirement>(
-        6, _omitFieldNames ? '' : 'security', $pb.PbFieldType.PM,
-        subBuilder: SecurityRequirement.create)
-    ..pc<Tag>(7, _omitFieldNames ? '' : 'tags', $pb.PbFieldType.PM,
-        subBuilder: Tag.create)
+        subBuilder: Components.$_createMessage)
+    ..pPM<SecurityRequirement>(6, _omitFieldNames ? '' : 'security',
+        subBuilder: SecurityRequirement.$_createMessage)
+    ..pPM<Tag>(7, _omitFieldNames ? '' : 'tags',
+        subBuilder: Tag.$_createMessage)
     ..aOM<ExternalDocs>(8, _omitFieldNames ? '' : 'externalDocs',
-        subBuilder: ExternalDocs.create)
-    ..pc<NamedAny>(
-        9, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: ExternalDocs.$_createMessage)
+    ..pPM<NamedAny>(9, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Document clone() => Document()..mergeFromMessage(this);
+  Document clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Document copyWith(void Function(Document) updates) =>
       super.copyWith((message) => updates(message as Document)) as Document;
@@ -989,13 +1016,14 @@ class Document extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Document() / Document.new instead')
   static Document create() => Document._();
+  static $pb.GeneratedMessage $_createMessage() => Document._();
   @$core.override
-  Document createEmptyInstance() => create();
-  static $pb.PbList<Document> createRepeated() => $pb.PbList<Document>();
+  Document createEmptyInstance() => Document._();
   @$core.pragma('dart2js:noInline')
-  static Document getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Document>(create);
+  static Document getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Document>(Document.$_createMessage);
   static Document? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1074,7 +1102,7 @@ class Encoding extends $pb.GeneratedMessage {
     $core.bool? allowReserved,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Encoding._();
     if (contentType != null) result.contentType = contentType;
     if (headers != null) result.headers = headers;
     if (style != null) result.style = style;
@@ -1089,29 +1117,28 @@ class Encoding extends $pb.GeneratedMessage {
 
   factory Encoding.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Encoding()..mergeFromBuffer(data, registry);
   factory Encoding.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Encoding()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Encoding',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Encoding.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'contentType')
     ..aOM<HeadersOrReferences>(2, _omitFieldNames ? '' : 'headers',
-        subBuilder: HeadersOrReferences.create)
+        subBuilder: HeadersOrReferences.$_createMessage)
     ..aOS(3, _omitFieldNames ? '' : 'style')
     ..aOB(4, _omitFieldNames ? '' : 'explode')
     ..aOB(5, _omitFieldNames ? '' : 'allowReserved')
-    ..pc<NamedAny>(
-        6, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(6, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Encoding clone() => Encoding()..mergeFromMessage(this);
+  Encoding clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Encoding copyWith(void Function(Encoding) updates) =>
       super.copyWith((message) => updates(message as Encoding)) as Encoding;
@@ -1120,13 +1147,14 @@ class Encoding extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Encoding() / Encoding.new instead')
   static Encoding create() => Encoding._();
+  static $pb.GeneratedMessage $_createMessage() => Encoding._();
   @$core.override
-  Encoding createEmptyInstance() => create();
-  static $pb.PbList<Encoding> createRepeated() => $pb.PbList<Encoding>();
+  Encoding createEmptyInstance() => Encoding._();
   @$core.pragma('dart2js:noInline')
-  static Encoding getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Encoding>(create);
+  static Encoding getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Encoding>(Encoding.$_createMessage);
   static Encoding? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1184,7 +1212,7 @@ class Encodings extends $pb.GeneratedMessage {
   factory Encodings({
     $core.Iterable<NamedEncoding>? additionalProperties,
   }) {
-    final result = create();
+    final result = Encodings._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -1194,23 +1222,22 @@ class Encodings extends $pb.GeneratedMessage {
 
   factory Encodings.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Encodings()..mergeFromBuffer(data, registry);
   factory Encodings.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Encodings()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Encodings',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedEncoding>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedEncoding.create)
+      createEmptyInstance: Encodings.$_createMessage)
+    ..pPM<NamedEncoding>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedEncoding.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Encodings clone() => Encodings()..mergeFromMessage(this);
+  Encodings clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Encodings copyWith(void Function(Encodings) updates) =>
       super.copyWith((message) => updates(message as Encodings)) as Encodings;
@@ -1219,13 +1246,14 @@ class Encodings extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Encodings() / Encodings.new instead')
   static Encodings create() => Encodings._();
+  static $pb.GeneratedMessage $_createMessage() => Encodings._();
   @$core.override
-  Encodings createEmptyInstance() => create();
-  static $pb.PbList<Encodings> createRepeated() => $pb.PbList<Encodings>();
+  Encodings createEmptyInstance() => Encodings._();
   @$core.pragma('dart2js:noInline')
-  static Encodings getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Encodings>(create);
+  static Encodings getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Encodings>(Encodings.$_createMessage);
   static Encodings? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1240,7 +1268,7 @@ class Example extends $pb.GeneratedMessage {
     $core.String? externalValue,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Example._();
     if (summary != null) result.summary = summary;
     if (description != null) result.description = description;
     if (value != null) result.value = value;
@@ -1254,27 +1282,27 @@ class Example extends $pb.GeneratedMessage {
 
   factory Example.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Example()..mergeFromBuffer(data, registry);
   factory Example.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Example()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Example',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Example.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'summary')
     ..aOS(2, _omitFieldNames ? '' : 'description')
-    ..aOM<Any>(3, _omitFieldNames ? '' : 'value', subBuilder: Any.create)
+    ..aOM<Any>(3, _omitFieldNames ? '' : 'value',
+        subBuilder: Any.$_createMessage)
     ..aOS(4, _omitFieldNames ? '' : 'externalValue')
-    ..pc<NamedAny>(
-        5, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(5, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Example clone() => Example()..mergeFromMessage(this);
+  Example clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Example copyWith(void Function(Example) updates) =>
       super.copyWith((message) => updates(message as Example)) as Example;
@@ -1283,13 +1311,14 @@ class Example extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Example() / Example.new instead')
   static Example create() => Example._();
+  static $pb.GeneratedMessage $_createMessage() => Example._();
   @$core.override
-  Example createEmptyInstance() => create();
-  static $pb.PbList<Example> createRepeated() => $pb.PbList<Example>();
+  Example createEmptyInstance() => Example._();
   @$core.pragma('dart2js:noInline')
-  static Example getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Example>(create);
+  static Example getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Example>(Example.$_createMessage);
   static Example? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1341,7 +1370,7 @@ class ExampleOrReference extends $pb.GeneratedMessage {
     Example? example,
     Reference? reference,
   }) {
-    final result = create();
+    final result = ExampleOrReference._();
     if (example != null) result.example = example;
     if (reference != null) result.reference = reference;
     return result;
@@ -1351,10 +1380,10 @@ class ExampleOrReference extends $pb.GeneratedMessage {
 
   factory ExampleOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ExampleOrReference()..mergeFromBuffer(data, registry);
   factory ExampleOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ExampleOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, ExampleOrReference_Oneof>
       _ExampleOrReference_OneofByTag = {
@@ -1366,16 +1395,16 @@ class ExampleOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'ExampleOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: ExampleOrReference.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<Example>(1, _omitFieldNames ? '' : 'example',
-        subBuilder: Example.create)
+        subBuilder: Example.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ExampleOrReference clone() => ExampleOrReference()..mergeFromMessage(this);
+  ExampleOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ExampleOrReference copyWith(void Function(ExampleOrReference) updates) =>
       super.copyWith((message) => updates(message as ExampleOrReference))
@@ -1385,18 +1414,23 @@ class ExampleOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ExampleOrReference() / ExampleOrReference.new instead')
   static ExampleOrReference create() => ExampleOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => ExampleOrReference._();
   @$core.override
-  ExampleOrReference createEmptyInstance() => create();
-  static $pb.PbList<ExampleOrReference> createRepeated() =>
-      $pb.PbList<ExampleOrReference>();
+  ExampleOrReference createEmptyInstance() => ExampleOrReference._();
   @$core.pragma('dart2js:noInline')
   static ExampleOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ExampleOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<ExampleOrReference>(
+          ExampleOrReference.$_createMessage);
   static ExampleOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   ExampleOrReference_Oneof whichOneof() =>
       _ExampleOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -1426,7 +1460,7 @@ class ExamplesOrReferences extends $pb.GeneratedMessage {
   factory ExamplesOrReferences({
     $core.Iterable<NamedExampleOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = ExamplesOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -1436,24 +1470,23 @@ class ExamplesOrReferences extends $pb.GeneratedMessage {
 
   factory ExamplesOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ExamplesOrReferences()..mergeFromBuffer(data, registry);
   factory ExamplesOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ExamplesOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ExamplesOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedExampleOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedExampleOrReference.create)
+      createEmptyInstance: ExamplesOrReferences.$_createMessage)
+    ..pPM<NamedExampleOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedExampleOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ExamplesOrReferences clone() =>
-      ExamplesOrReferences()..mergeFromMessage(this);
+  ExamplesOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ExamplesOrReferences copyWith(void Function(ExamplesOrReferences) updates) =>
       super.copyWith((message) => updates(message as ExamplesOrReferences))
@@ -1463,14 +1496,16 @@ class ExamplesOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ExamplesOrReferences() / ExamplesOrReferences.new instead')
   static ExamplesOrReferences create() => ExamplesOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => ExamplesOrReferences._();
   @$core.override
-  ExamplesOrReferences createEmptyInstance() => create();
-  static $pb.PbList<ExamplesOrReferences> createRepeated() =>
-      $pb.PbList<ExamplesOrReferences>();
+  ExamplesOrReferences createEmptyInstance() => ExamplesOrReferences._();
   @$core.pragma('dart2js:noInline')
   static ExamplesOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ExamplesOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<ExamplesOrReferences>(
+          ExamplesOrReferences.$_createMessage);
   static ExamplesOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1481,7 +1516,7 @@ class Expression extends $pb.GeneratedMessage {
   factory Expression({
     $core.Iterable<NamedAny>? additionalProperties,
   }) {
-    final result = create();
+    final result = Expression._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -1491,23 +1526,22 @@ class Expression extends $pb.GeneratedMessage {
 
   factory Expression.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Expression()..mergeFromBuffer(data, registry);
   factory Expression.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Expression()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Expression',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedAny>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+      createEmptyInstance: Expression.$_createMessage)
+    ..pPM<NamedAny>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Expression clone() => Expression()..mergeFromMessage(this);
+  Expression clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Expression copyWith(void Function(Expression) updates) =>
       super.copyWith((message) => updates(message as Expression)) as Expression;
@@ -1516,13 +1550,14 @@ class Expression extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Expression() / Expression.new instead')
   static Expression create() => Expression._();
+  static $pb.GeneratedMessage $_createMessage() => Expression._();
   @$core.override
-  Expression createEmptyInstance() => create();
-  static $pb.PbList<Expression> createRepeated() => $pb.PbList<Expression>();
+  Expression createEmptyInstance() => Expression._();
   @$core.pragma('dart2js:noInline')
   static Expression getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Expression>(create);
+      $pb.GeneratedMessage.$_defaultFor<Expression>(Expression.$_createMessage);
   static Expression? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1536,7 +1571,7 @@ class ExternalDocs extends $pb.GeneratedMessage {
     $core.String? url,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = ExternalDocs._();
     if (description != null) result.description = description;
     if (url != null) result.url = url;
     if (specificationExtension != null)
@@ -1548,25 +1583,24 @@ class ExternalDocs extends $pb.GeneratedMessage {
 
   factory ExternalDocs.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ExternalDocs()..mergeFromBuffer(data, registry);
   factory ExternalDocs.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ExternalDocs()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ExternalDocs',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: ExternalDocs.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'description')
     ..aOS(2, _omitFieldNames ? '' : 'url')
-    ..pc<NamedAny>(
-        3, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(3, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ExternalDocs clone() => ExternalDocs()..mergeFromMessage(this);
+  ExternalDocs clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ExternalDocs copyWith(void Function(ExternalDocs) updates) =>
       super.copyWith((message) => updates(message as ExternalDocs))
@@ -1576,14 +1610,15 @@ class ExternalDocs extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ExternalDocs() / ExternalDocs.new instead')
   static ExternalDocs create() => ExternalDocs._();
+  static $pb.GeneratedMessage $_createMessage() => ExternalDocs._();
   @$core.override
-  ExternalDocs createEmptyInstance() => create();
-  static $pb.PbList<ExternalDocs> createRepeated() =>
-      $pb.PbList<ExternalDocs>();
+  ExternalDocs createEmptyInstance() => ExternalDocs._();
   @$core.pragma('dart2js:noInline')
-  static ExternalDocs getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ExternalDocs>(create);
+  static ExternalDocs getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ExternalDocs>(
+          ExternalDocs.$_createMessage);
   static ExternalDocs? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1624,7 +1659,7 @@ class Header extends $pb.GeneratedMessage {
     MediaTypes? content,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Header._();
     if (description != null) result.description = description;
     if (required != null) result.required = required;
     if (deprecated != null) result.deprecated = deprecated;
@@ -1645,16 +1680,16 @@ class Header extends $pb.GeneratedMessage {
 
   factory Header.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Header()..mergeFromBuffer(data, registry);
   factory Header.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Header()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Header',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Header.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'description')
     ..aOB(2, _omitFieldNames ? '' : 'required')
     ..aOB(3, _omitFieldNames ? '' : 'deprecated')
@@ -1663,19 +1698,19 @@ class Header extends $pb.GeneratedMessage {
     ..aOB(6, _omitFieldNames ? '' : 'explode')
     ..aOB(7, _omitFieldNames ? '' : 'allowReserved')
     ..aOM<SchemaOrReference>(8, _omitFieldNames ? '' : 'schema',
-        subBuilder: SchemaOrReference.create)
-    ..aOM<Any>(9, _omitFieldNames ? '' : 'example', subBuilder: Any.create)
+        subBuilder: SchemaOrReference.$_createMessage)
+    ..aOM<Any>(9, _omitFieldNames ? '' : 'example',
+        subBuilder: Any.$_createMessage)
     ..aOM<ExamplesOrReferences>(10, _omitFieldNames ? '' : 'examples',
-        subBuilder: ExamplesOrReferences.create)
+        subBuilder: ExamplesOrReferences.$_createMessage)
     ..aOM<MediaTypes>(11, _omitFieldNames ? '' : 'content',
-        subBuilder: MediaTypes.create)
-    ..pc<NamedAny>(
-        12, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: MediaTypes.$_createMessage)
+    ..pPM<NamedAny>(12, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Header clone() => Header()..mergeFromMessage(this);
+  Header clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Header copyWith(void Function(Header) updates) =>
       super.copyWith((message) => updates(message as Header)) as Header;
@@ -1684,13 +1719,14 @@ class Header extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Header() / Header.new instead')
   static Header create() => Header._();
+  static $pb.GeneratedMessage $_createMessage() => Header._();
   @$core.override
-  Header createEmptyInstance() => create();
-  static $pb.PbList<Header> createRepeated() => $pb.PbList<Header>();
+  Header createEmptyInstance() => Header._();
   @$core.pragma('dart2js:noInline')
-  static Header getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Header>(create);
+  static Header getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Header>(Header.$_createMessage);
   static Header? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1811,7 +1847,7 @@ class HeaderOrReference extends $pb.GeneratedMessage {
     Header? header,
     Reference? reference,
   }) {
-    final result = create();
+    final result = HeaderOrReference._();
     if (header != null) result.header = header;
     if (reference != null) result.reference = reference;
     return result;
@@ -1821,10 +1857,10 @@ class HeaderOrReference extends $pb.GeneratedMessage {
 
   factory HeaderOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      HeaderOrReference()..mergeFromBuffer(data, registry);
   factory HeaderOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      HeaderOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, HeaderOrReference_Oneof>
       _HeaderOrReference_OneofByTag = {
@@ -1836,15 +1872,16 @@ class HeaderOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'HeaderOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: HeaderOrReference.$_createMessage)
     ..oo(0, [1, 2])
-    ..aOM<Header>(1, _omitFieldNames ? '' : 'header', subBuilder: Header.create)
+    ..aOM<Header>(1, _omitFieldNames ? '' : 'header',
+        subBuilder: Header.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  HeaderOrReference clone() => HeaderOrReference()..mergeFromMessage(this);
+  HeaderOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   HeaderOrReference copyWith(void Function(HeaderOrReference) updates) =>
       super.copyWith((message) => updates(message as HeaderOrReference))
@@ -1854,18 +1891,23 @@ class HeaderOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HeaderOrReference() / HeaderOrReference.new instead')
   static HeaderOrReference create() => HeaderOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => HeaderOrReference._();
   @$core.override
-  HeaderOrReference createEmptyInstance() => create();
-  static $pb.PbList<HeaderOrReference> createRepeated() =>
-      $pb.PbList<HeaderOrReference>();
+  HeaderOrReference createEmptyInstance() => HeaderOrReference._();
   @$core.pragma('dart2js:noInline')
-  static HeaderOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<HeaderOrReference>(create);
+  static HeaderOrReference getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HeaderOrReference>(
+          HeaderOrReference.$_createMessage);
   static HeaderOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   HeaderOrReference_Oneof whichOneof() =>
       _HeaderOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -1895,7 +1937,7 @@ class HeadersOrReferences extends $pb.GeneratedMessage {
   factory HeadersOrReferences({
     $core.Iterable<NamedHeaderOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = HeadersOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -1905,23 +1947,23 @@ class HeadersOrReferences extends $pb.GeneratedMessage {
 
   factory HeadersOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      HeadersOrReferences()..mergeFromBuffer(data, registry);
   factory HeadersOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      HeadersOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'HeadersOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedHeaderOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedHeaderOrReference.create)
+      createEmptyInstance: HeadersOrReferences.$_createMessage)
+    ..pPM<NamedHeaderOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedHeaderOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  HeadersOrReferences clone() => HeadersOrReferences()..mergeFromMessage(this);
+  HeadersOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   HeadersOrReferences copyWith(void Function(HeadersOrReferences) updates) =>
       super.copyWith((message) => updates(message as HeadersOrReferences))
@@ -1931,14 +1973,16 @@ class HeadersOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use HeadersOrReferences() / HeadersOrReferences.new instead')
   static HeadersOrReferences create() => HeadersOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => HeadersOrReferences._();
   @$core.override
-  HeadersOrReferences createEmptyInstance() => create();
-  static $pb.PbList<HeadersOrReferences> createRepeated() =>
-      $pb.PbList<HeadersOrReferences>();
+  HeadersOrReferences createEmptyInstance() => HeadersOrReferences._();
   @$core.pragma('dart2js:noInline')
   static HeadersOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<HeadersOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<HeadersOrReferences>(
+          HeadersOrReferences.$_createMessage);
   static HeadersOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -1957,7 +2001,7 @@ class Info extends $pb.GeneratedMessage {
     $core.Iterable<NamedAny>? specificationExtension,
     $core.String? summary,
   }) {
-    final result = create();
+    final result = Info._();
     if (title != null) result.title = title;
     if (description != null) result.description = description;
     if (termsOfService != null) result.termsOfService = termsOfService;
@@ -1974,32 +2018,31 @@ class Info extends $pb.GeneratedMessage {
 
   factory Info.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Info()..mergeFromBuffer(data, registry);
   factory Info.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Info()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Info',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Info.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'title')
     ..aOS(2, _omitFieldNames ? '' : 'description')
     ..aOS(3, _omitFieldNames ? '' : 'termsOfService')
     ..aOM<Contact>(4, _omitFieldNames ? '' : 'contact',
-        subBuilder: Contact.create)
+        subBuilder: Contact.$_createMessage)
     ..aOM<License>(5, _omitFieldNames ? '' : 'license',
-        subBuilder: License.create)
+        subBuilder: License.$_createMessage)
     ..aOS(6, _omitFieldNames ? '' : 'version')
-    ..pc<NamedAny>(
-        7, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(7, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..aOS(8, _omitFieldNames ? '' : 'summary')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Info clone() => Info()..mergeFromMessage(this);
+  Info clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Info copyWith(void Function(Info) updates) =>
       super.copyWith((message) => updates(message as Info)) as Info;
@@ -2008,13 +2051,14 @@ class Info extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Info() / Info.new instead')
   static Info create() => Info._();
+  static $pb.GeneratedMessage $_createMessage() => Info._();
   @$core.override
-  Info createEmptyInstance() => create();
-  static $pb.PbList<Info> createRepeated() => $pb.PbList<Info>();
+  Info createEmptyInstance() => Info._();
   @$core.pragma('dart2js:noInline')
-  static Info getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Info>(create);
+  static Info getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Info>(Info.$_createMessage);
   static Info? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2092,7 +2136,7 @@ class ItemsItem extends $pb.GeneratedMessage {
   factory ItemsItem({
     $core.Iterable<SchemaOrReference>? schemaOrReference,
   }) {
-    final result = create();
+    final result = ItemsItem._();
     if (schemaOrReference != null)
       result.schemaOrReference.addAll(schemaOrReference);
     return result;
@@ -2102,23 +2146,22 @@ class ItemsItem extends $pb.GeneratedMessage {
 
   factory ItemsItem.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ItemsItem()..mergeFromBuffer(data, registry);
   factory ItemsItem.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ItemsItem()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ItemsItem',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<SchemaOrReference>(
-        1, _omitFieldNames ? '' : 'schemaOrReference', $pb.PbFieldType.PM,
-        subBuilder: SchemaOrReference.create)
+      createEmptyInstance: ItemsItem.$_createMessage)
+    ..pPM<SchemaOrReference>(1, _omitFieldNames ? '' : 'schemaOrReference',
+        subBuilder: SchemaOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ItemsItem clone() => ItemsItem()..mergeFromMessage(this);
+  ItemsItem clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ItemsItem copyWith(void Function(ItemsItem) updates) =>
       super.copyWith((message) => updates(message as ItemsItem)) as ItemsItem;
@@ -2127,13 +2170,14 @@ class ItemsItem extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ItemsItem() / ItemsItem.new instead')
   static ItemsItem create() => ItemsItem._();
+  static $pb.GeneratedMessage $_createMessage() => ItemsItem._();
   @$core.override
-  ItemsItem createEmptyInstance() => create();
-  static $pb.PbList<ItemsItem> createRepeated() => $pb.PbList<ItemsItem>();
+  ItemsItem createEmptyInstance() => ItemsItem._();
   @$core.pragma('dart2js:noInline')
-  static ItemsItem getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ItemsItem>(create);
+  static ItemsItem getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ItemsItem>(ItemsItem.$_createMessage);
   static ItemsItem? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2147,7 +2191,7 @@ class License extends $pb.GeneratedMessage {
     $core.String? url,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = License._();
     if (name != null) result.name = name;
     if (url != null) result.url = url;
     if (specificationExtension != null)
@@ -2159,25 +2203,24 @@ class License extends $pb.GeneratedMessage {
 
   factory License.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      License()..mergeFromBuffer(data, registry);
   factory License.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      License()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'License',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: License.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOS(2, _omitFieldNames ? '' : 'url')
-    ..pc<NamedAny>(
-        3, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(3, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  License clone() => License()..mergeFromMessage(this);
+  License clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   License copyWith(void Function(License) updates) =>
       super.copyWith((message) => updates(message as License)) as License;
@@ -2186,13 +2229,14 @@ class License extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use License() / License.new instead')
   static License create() => License._();
+  static $pb.GeneratedMessage $_createMessage() => License._();
   @$core.override
-  License createEmptyInstance() => create();
-  static $pb.PbList<License> createRepeated() => $pb.PbList<License>();
+  License createEmptyInstance() => License._();
   @$core.pragma('dart2js:noInline')
-  static License getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<License>(create);
+  static License getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<License>(License.$_createMessage);
   static License? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2228,7 +2272,7 @@ class Link extends $pb.GeneratedMessage {
     Server? server,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Link._();
     if (operationRef != null) result.operationRef = operationRef;
     if (operationId != null) result.operationId = operationId;
     if (parameters != null) result.parameters = parameters;
@@ -2244,31 +2288,31 @@ class Link extends $pb.GeneratedMessage {
 
   factory Link.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Link()..mergeFromBuffer(data, registry);
   factory Link.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Link()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Link',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Link.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'operationRef')
     ..aOS(2, _omitFieldNames ? '' : 'operationId')
     ..aOM<AnyOrExpression>(3, _omitFieldNames ? '' : 'parameters',
-        subBuilder: AnyOrExpression.create)
+        subBuilder: AnyOrExpression.$_createMessage)
     ..aOM<AnyOrExpression>(4, _omitFieldNames ? '' : 'requestBody',
-        subBuilder: AnyOrExpression.create)
+        subBuilder: AnyOrExpression.$_createMessage)
     ..aOS(5, _omitFieldNames ? '' : 'description')
-    ..aOM<Server>(6, _omitFieldNames ? '' : 'server', subBuilder: Server.create)
-    ..pc<NamedAny>(
-        7, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..aOM<Server>(6, _omitFieldNames ? '' : 'server',
+        subBuilder: Server.$_createMessage)
+    ..pPM<NamedAny>(7, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Link clone() => Link()..mergeFromMessage(this);
+  Link clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Link copyWith(void Function(Link) updates) =>
       super.copyWith((message) => updates(message as Link)) as Link;
@@ -2277,13 +2321,14 @@ class Link extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Link() / Link.new instead')
   static Link create() => Link._();
+  static $pb.GeneratedMessage $_createMessage() => Link._();
   @$core.override
-  Link createEmptyInstance() => create();
-  static $pb.PbList<Link> createRepeated() => $pb.PbList<Link>();
+  Link createEmptyInstance() => Link._();
   @$core.pragma('dart2js:noInline')
-  static Link getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Link>(create);
+  static Link getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Link>(Link.$_createMessage);
   static Link? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2357,7 +2402,7 @@ class LinkOrReference extends $pb.GeneratedMessage {
     Link? link,
     Reference? reference,
   }) {
-    final result = create();
+    final result = LinkOrReference._();
     if (link != null) result.link = link;
     if (reference != null) result.reference = reference;
     return result;
@@ -2367,10 +2412,10 @@ class LinkOrReference extends $pb.GeneratedMessage {
 
   factory LinkOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      LinkOrReference()..mergeFromBuffer(data, registry);
   factory LinkOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      LinkOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, LinkOrReference_Oneof>
       _LinkOrReference_OneofByTag = {
@@ -2382,15 +2427,16 @@ class LinkOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'LinkOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: LinkOrReference.$_createMessage)
     ..oo(0, [1, 2])
-    ..aOM<Link>(1, _omitFieldNames ? '' : 'link', subBuilder: Link.create)
+    ..aOM<Link>(1, _omitFieldNames ? '' : 'link',
+        subBuilder: Link.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  LinkOrReference clone() => LinkOrReference()..mergeFromMessage(this);
+  LinkOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   LinkOrReference copyWith(void Function(LinkOrReference) updates) =>
       super.copyWith((message) => updates(message as LinkOrReference))
@@ -2400,18 +2446,23 @@ class LinkOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use LinkOrReference() / LinkOrReference.new instead')
   static LinkOrReference create() => LinkOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => LinkOrReference._();
   @$core.override
-  LinkOrReference createEmptyInstance() => create();
-  static $pb.PbList<LinkOrReference> createRepeated() =>
-      $pb.PbList<LinkOrReference>();
+  LinkOrReference createEmptyInstance() => LinkOrReference._();
   @$core.pragma('dart2js:noInline')
-  static LinkOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<LinkOrReference>(create);
+  static LinkOrReference getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<LinkOrReference>(
+          LinkOrReference.$_createMessage);
   static LinkOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   LinkOrReference_Oneof whichOneof() =>
       _LinkOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -2441,7 +2492,7 @@ class LinksOrReferences extends $pb.GeneratedMessage {
   factory LinksOrReferences({
     $core.Iterable<NamedLinkOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = LinksOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -2451,23 +2502,23 @@ class LinksOrReferences extends $pb.GeneratedMessage {
 
   factory LinksOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      LinksOrReferences()..mergeFromBuffer(data, registry);
   factory LinksOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      LinksOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'LinksOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedLinkOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedLinkOrReference.create)
+      createEmptyInstance: LinksOrReferences.$_createMessage)
+    ..pPM<NamedLinkOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedLinkOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  LinksOrReferences clone() => LinksOrReferences()..mergeFromMessage(this);
+  LinksOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   LinksOrReferences copyWith(void Function(LinksOrReferences) updates) =>
       super.copyWith((message) => updates(message as LinksOrReferences))
@@ -2477,14 +2528,15 @@ class LinksOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use LinksOrReferences() / LinksOrReferences.new instead')
   static LinksOrReferences create() => LinksOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => LinksOrReferences._();
   @$core.override
-  LinksOrReferences createEmptyInstance() => create();
-  static $pb.PbList<LinksOrReferences> createRepeated() =>
-      $pb.PbList<LinksOrReferences>();
+  LinksOrReferences createEmptyInstance() => LinksOrReferences._();
   @$core.pragma('dart2js:noInline')
-  static LinksOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<LinksOrReferences>(create);
+  static LinksOrReferences getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<LinksOrReferences>(
+          LinksOrReferences.$_createMessage);
   static LinksOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2500,7 +2552,7 @@ class MediaType extends $pb.GeneratedMessage {
     Encodings? encoding,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = MediaType._();
     if (schema != null) result.schema = schema;
     if (example != null) result.example = example;
     if (examples != null) result.examples = examples;
@@ -2514,30 +2566,30 @@ class MediaType extends $pb.GeneratedMessage {
 
   factory MediaType.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MediaType()..mergeFromBuffer(data, registry);
   factory MediaType.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MediaType()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MediaType',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: MediaType.$_createMessage)
     ..aOM<SchemaOrReference>(1, _omitFieldNames ? '' : 'schema',
-        subBuilder: SchemaOrReference.create)
-    ..aOM<Any>(2, _omitFieldNames ? '' : 'example', subBuilder: Any.create)
+        subBuilder: SchemaOrReference.$_createMessage)
+    ..aOM<Any>(2, _omitFieldNames ? '' : 'example',
+        subBuilder: Any.$_createMessage)
     ..aOM<ExamplesOrReferences>(3, _omitFieldNames ? '' : 'examples',
-        subBuilder: ExamplesOrReferences.create)
+        subBuilder: ExamplesOrReferences.$_createMessage)
     ..aOM<Encodings>(4, _omitFieldNames ? '' : 'encoding',
-        subBuilder: Encodings.create)
-    ..pc<NamedAny>(
-        5, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: Encodings.$_createMessage)
+    ..pPM<NamedAny>(5, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MediaType clone() => MediaType()..mergeFromMessage(this);
+  MediaType clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MediaType copyWith(void Function(MediaType) updates) =>
       super.copyWith((message) => updates(message as MediaType)) as MediaType;
@@ -2546,13 +2598,14 @@ class MediaType extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MediaType() / MediaType.new instead')
   static MediaType create() => MediaType._();
+  static $pb.GeneratedMessage $_createMessage() => MediaType._();
   @$core.override
-  MediaType createEmptyInstance() => create();
-  static $pb.PbList<MediaType> createRepeated() => $pb.PbList<MediaType>();
+  MediaType createEmptyInstance() => MediaType._();
   @$core.pragma('dart2js:noInline')
-  static MediaType getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MediaType>(create);
+  static MediaType getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<MediaType>(MediaType.$_createMessage);
   static MediaType? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2607,7 +2660,7 @@ class MediaTypes extends $pb.GeneratedMessage {
   factory MediaTypes({
     $core.Iterable<NamedMediaType>? additionalProperties,
   }) {
-    final result = create();
+    final result = MediaTypes._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -2617,23 +2670,22 @@ class MediaTypes extends $pb.GeneratedMessage {
 
   factory MediaTypes.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MediaTypes()..mergeFromBuffer(data, registry);
   factory MediaTypes.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MediaTypes()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MediaTypes',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedMediaType>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedMediaType.create)
+      createEmptyInstance: MediaTypes.$_createMessage)
+    ..pPM<NamedMediaType>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedMediaType.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MediaTypes clone() => MediaTypes()..mergeFromMessage(this);
+  MediaTypes clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MediaTypes copyWith(void Function(MediaTypes) updates) =>
       super.copyWith((message) => updates(message as MediaTypes)) as MediaTypes;
@@ -2642,13 +2694,14 @@ class MediaTypes extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MediaTypes() / MediaTypes.new instead')
   static MediaTypes create() => MediaTypes._();
+  static $pb.GeneratedMessage $_createMessage() => MediaTypes._();
   @$core.override
-  MediaTypes createEmptyInstance() => create();
-  static $pb.PbList<MediaTypes> createRepeated() => $pb.PbList<MediaTypes>();
+  MediaTypes createEmptyInstance() => MediaTypes._();
   @$core.pragma('dart2js:noInline')
   static MediaTypes getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<MediaTypes>(create);
+      $pb.GeneratedMessage.$_defaultFor<MediaTypes>(MediaTypes.$_createMessage);
   static MediaTypes? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -2661,7 +2714,7 @@ class NamedAny extends $pb.GeneratedMessage {
     $core.String? name,
     Any? value,
   }) {
-    final result = create();
+    final result = NamedAny._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -2671,22 +2724,23 @@ class NamedAny extends $pb.GeneratedMessage {
 
   factory NamedAny.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedAny()..mergeFromBuffer(data, registry);
   factory NamedAny.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedAny()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedAny',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedAny.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
-    ..aOM<Any>(2, _omitFieldNames ? '' : 'value', subBuilder: Any.create)
+    ..aOM<Any>(2, _omitFieldNames ? '' : 'value',
+        subBuilder: Any.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedAny clone() => NamedAny()..mergeFromMessage(this);
+  NamedAny clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedAny copyWith(void Function(NamedAny) updates) =>
       super.copyWith((message) => updates(message as NamedAny)) as NamedAny;
@@ -2695,13 +2749,14 @@ class NamedAny extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NamedAny() / NamedAny.new instead')
   static NamedAny create() => NamedAny._();
+  static $pb.GeneratedMessage $_createMessage() => NamedAny._();
   @$core.override
-  NamedAny createEmptyInstance() => create();
-  static $pb.PbList<NamedAny> createRepeated() => $pb.PbList<NamedAny>();
+  NamedAny createEmptyInstance() => NamedAny._();
   @$core.pragma('dart2js:noInline')
-  static NamedAny getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NamedAny>(create);
+  static NamedAny getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NamedAny>(NamedAny.$_createMessage);
   static NamedAny? _defaultInstance;
 
   /// Map key
@@ -2733,7 +2788,7 @@ class NamedCallbackOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     CallbackOrReference? value,
   }) {
-    final result = create();
+    final result = NamedCallbackOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -2743,24 +2798,23 @@ class NamedCallbackOrReference extends $pb.GeneratedMessage {
 
   factory NamedCallbackOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedCallbackOrReference()..mergeFromBuffer(data, registry);
   factory NamedCallbackOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedCallbackOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedCallbackOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedCallbackOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<CallbackOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: CallbackOrReference.create)
+        subBuilder: CallbackOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedCallbackOrReference clone() =>
-      NamedCallbackOrReference()..mergeFromMessage(this);
+  NamedCallbackOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedCallbackOrReference copyWith(
           void Function(NamedCallbackOrReference) updates) =>
@@ -2771,14 +2825,17 @@ class NamedCallbackOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedCallbackOrReference() / NamedCallbackOrReference.new instead')
   static NamedCallbackOrReference create() => NamedCallbackOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => NamedCallbackOrReference._();
   @$core.override
-  NamedCallbackOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedCallbackOrReference> createRepeated() =>
-      $pb.PbList<NamedCallbackOrReference>();
+  NamedCallbackOrReference createEmptyInstance() =>
+      NamedCallbackOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedCallbackOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedCallbackOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedCallbackOrReference>(
+          NamedCallbackOrReference.$_createMessage);
   static NamedCallbackOrReference? _defaultInstance;
 
   /// Map key
@@ -2810,7 +2867,7 @@ class NamedEncoding extends $pb.GeneratedMessage {
     $core.String? name,
     Encoding? value,
   }) {
-    final result = create();
+    final result = NamedEncoding._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -2820,23 +2877,23 @@ class NamedEncoding extends $pb.GeneratedMessage {
 
   factory NamedEncoding.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedEncoding()..mergeFromBuffer(data, registry);
   factory NamedEncoding.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedEncoding()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedEncoding',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedEncoding.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<Encoding>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: Encoding.create)
+        subBuilder: Encoding.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedEncoding clone() => NamedEncoding()..mergeFromMessage(this);
+  NamedEncoding clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedEncoding copyWith(void Function(NamedEncoding) updates) =>
       super.copyWith((message) => updates(message as NamedEncoding))
@@ -2846,14 +2903,15 @@ class NamedEncoding extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NamedEncoding() / NamedEncoding.new instead')
   static NamedEncoding create() => NamedEncoding._();
+  static $pb.GeneratedMessage $_createMessage() => NamedEncoding._();
   @$core.override
-  NamedEncoding createEmptyInstance() => create();
-  static $pb.PbList<NamedEncoding> createRepeated() =>
-      $pb.PbList<NamedEncoding>();
+  NamedEncoding createEmptyInstance() => NamedEncoding._();
   @$core.pragma('dart2js:noInline')
-  static NamedEncoding getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedEncoding>(create);
+  static NamedEncoding getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NamedEncoding>(
+          NamedEncoding.$_createMessage);
   static NamedEncoding? _defaultInstance;
 
   /// Map key
@@ -2885,7 +2943,7 @@ class NamedExampleOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     ExampleOrReference? value,
   }) {
-    final result = create();
+    final result = NamedExampleOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -2895,24 +2953,23 @@ class NamedExampleOrReference extends $pb.GeneratedMessage {
 
   factory NamedExampleOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedExampleOrReference()..mergeFromBuffer(data, registry);
   factory NamedExampleOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedExampleOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedExampleOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedExampleOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<ExampleOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: ExampleOrReference.create)
+        subBuilder: ExampleOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedExampleOrReference clone() =>
-      NamedExampleOrReference()..mergeFromMessage(this);
+  NamedExampleOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedExampleOrReference copyWith(
           void Function(NamedExampleOrReference) updates) =>
@@ -2923,14 +2980,16 @@ class NamedExampleOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedExampleOrReference() / NamedExampleOrReference.new instead')
   static NamedExampleOrReference create() => NamedExampleOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => NamedExampleOrReference._();
   @$core.override
-  NamedExampleOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedExampleOrReference> createRepeated() =>
-      $pb.PbList<NamedExampleOrReference>();
+  NamedExampleOrReference createEmptyInstance() => NamedExampleOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedExampleOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedExampleOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedExampleOrReference>(
+          NamedExampleOrReference.$_createMessage);
   static NamedExampleOrReference? _defaultInstance;
 
   /// Map key
@@ -2962,7 +3021,7 @@ class NamedHeaderOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     HeaderOrReference? value,
   }) {
-    final result = create();
+    final result = NamedHeaderOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -2972,24 +3031,23 @@ class NamedHeaderOrReference extends $pb.GeneratedMessage {
 
   factory NamedHeaderOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedHeaderOrReference()..mergeFromBuffer(data, registry);
   factory NamedHeaderOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedHeaderOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedHeaderOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedHeaderOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<HeaderOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: HeaderOrReference.create)
+        subBuilder: HeaderOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedHeaderOrReference clone() =>
-      NamedHeaderOrReference()..mergeFromMessage(this);
+  NamedHeaderOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedHeaderOrReference copyWith(
           void Function(NamedHeaderOrReference) updates) =>
@@ -3000,14 +3058,16 @@ class NamedHeaderOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedHeaderOrReference() / NamedHeaderOrReference.new instead')
   static NamedHeaderOrReference create() => NamedHeaderOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => NamedHeaderOrReference._();
   @$core.override
-  NamedHeaderOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedHeaderOrReference> createRepeated() =>
-      $pb.PbList<NamedHeaderOrReference>();
+  NamedHeaderOrReference createEmptyInstance() => NamedHeaderOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedHeaderOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedHeaderOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedHeaderOrReference>(
+          NamedHeaderOrReference.$_createMessage);
   static NamedHeaderOrReference? _defaultInstance;
 
   /// Map key
@@ -3039,7 +3099,7 @@ class NamedLinkOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     LinkOrReference? value,
   }) {
-    final result = create();
+    final result = NamedLinkOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3049,24 +3109,23 @@ class NamedLinkOrReference extends $pb.GeneratedMessage {
 
   factory NamedLinkOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedLinkOrReference()..mergeFromBuffer(data, registry);
   factory NamedLinkOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedLinkOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedLinkOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedLinkOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<LinkOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: LinkOrReference.create)
+        subBuilder: LinkOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedLinkOrReference clone() =>
-      NamedLinkOrReference()..mergeFromMessage(this);
+  NamedLinkOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedLinkOrReference copyWith(void Function(NamedLinkOrReference) updates) =>
       super.copyWith((message) => updates(message as NamedLinkOrReference))
@@ -3076,14 +3135,16 @@ class NamedLinkOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedLinkOrReference() / NamedLinkOrReference.new instead')
   static NamedLinkOrReference create() => NamedLinkOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => NamedLinkOrReference._();
   @$core.override
-  NamedLinkOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedLinkOrReference> createRepeated() =>
-      $pb.PbList<NamedLinkOrReference>();
+  NamedLinkOrReference createEmptyInstance() => NamedLinkOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedLinkOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedLinkOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedLinkOrReference>(
+          NamedLinkOrReference.$_createMessage);
   static NamedLinkOrReference? _defaultInstance;
 
   /// Map key
@@ -3115,7 +3176,7 @@ class NamedMediaType extends $pb.GeneratedMessage {
     $core.String? name,
     MediaType? value,
   }) {
-    final result = create();
+    final result = NamedMediaType._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3125,23 +3186,23 @@ class NamedMediaType extends $pb.GeneratedMessage {
 
   factory NamedMediaType.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedMediaType()..mergeFromBuffer(data, registry);
   factory NamedMediaType.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedMediaType()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedMediaType',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedMediaType.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<MediaType>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: MediaType.create)
+        subBuilder: MediaType.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedMediaType clone() => NamedMediaType()..mergeFromMessage(this);
+  NamedMediaType clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedMediaType copyWith(void Function(NamedMediaType) updates) =>
       super.copyWith((message) => updates(message as NamedMediaType))
@@ -3151,14 +3212,15 @@ class NamedMediaType extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NamedMediaType() / NamedMediaType.new instead')
   static NamedMediaType create() => NamedMediaType._();
+  static $pb.GeneratedMessage $_createMessage() => NamedMediaType._();
   @$core.override
-  NamedMediaType createEmptyInstance() => create();
-  static $pb.PbList<NamedMediaType> createRepeated() =>
-      $pb.PbList<NamedMediaType>();
+  NamedMediaType createEmptyInstance() => NamedMediaType._();
   @$core.pragma('dart2js:noInline')
-  static NamedMediaType getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedMediaType>(create);
+  static NamedMediaType getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NamedMediaType>(
+          NamedMediaType.$_createMessage);
   static NamedMediaType? _defaultInstance;
 
   /// Map key
@@ -3190,7 +3252,7 @@ class NamedParameterOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     ParameterOrReference? value,
   }) {
-    final result = create();
+    final result = NamedParameterOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3200,24 +3262,23 @@ class NamedParameterOrReference extends $pb.GeneratedMessage {
 
   factory NamedParameterOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedParameterOrReference()..mergeFromBuffer(data, registry);
   factory NamedParameterOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedParameterOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedParameterOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedParameterOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<ParameterOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: ParameterOrReference.create)
+        subBuilder: ParameterOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedParameterOrReference clone() =>
-      NamedParameterOrReference()..mergeFromMessage(this);
+  NamedParameterOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedParameterOrReference copyWith(
           void Function(NamedParameterOrReference) updates) =>
@@ -3228,14 +3289,18 @@ class NamedParameterOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedParameterOrReference() / NamedParameterOrReference.new instead')
   static NamedParameterOrReference create() => NamedParameterOrReference._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      NamedParameterOrReference._();
   @$core.override
-  NamedParameterOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedParameterOrReference> createRepeated() =>
-      $pb.PbList<NamedParameterOrReference>();
+  NamedParameterOrReference createEmptyInstance() =>
+      NamedParameterOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedParameterOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedParameterOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedParameterOrReference>(
+          NamedParameterOrReference.$_createMessage);
   static NamedParameterOrReference? _defaultInstance;
 
   /// Map key
@@ -3267,7 +3332,7 @@ class NamedPathItem extends $pb.GeneratedMessage {
     $core.String? name,
     PathItem? value,
   }) {
-    final result = create();
+    final result = NamedPathItem._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3277,23 +3342,23 @@ class NamedPathItem extends $pb.GeneratedMessage {
 
   factory NamedPathItem.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedPathItem()..mergeFromBuffer(data, registry);
   factory NamedPathItem.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedPathItem()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedPathItem',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedPathItem.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<PathItem>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: PathItem.create)
+        subBuilder: PathItem.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedPathItem clone() => NamedPathItem()..mergeFromMessage(this);
+  NamedPathItem clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedPathItem copyWith(void Function(NamedPathItem) updates) =>
       super.copyWith((message) => updates(message as NamedPathItem))
@@ -3303,14 +3368,15 @@ class NamedPathItem extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NamedPathItem() / NamedPathItem.new instead')
   static NamedPathItem create() => NamedPathItem._();
+  static $pb.GeneratedMessage $_createMessage() => NamedPathItem._();
   @$core.override
-  NamedPathItem createEmptyInstance() => create();
-  static $pb.PbList<NamedPathItem> createRepeated() =>
-      $pb.PbList<NamedPathItem>();
+  NamedPathItem createEmptyInstance() => NamedPathItem._();
   @$core.pragma('dart2js:noInline')
-  static NamedPathItem getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedPathItem>(create);
+  static NamedPathItem getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NamedPathItem>(
+          NamedPathItem.$_createMessage);
   static NamedPathItem? _defaultInstance;
 
   /// Map key
@@ -3342,7 +3408,7 @@ class NamedRequestBodyOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     RequestBodyOrReference? value,
   }) {
-    final result = create();
+    final result = NamedRequestBodyOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3352,24 +3418,23 @@ class NamedRequestBodyOrReference extends $pb.GeneratedMessage {
 
   factory NamedRequestBodyOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedRequestBodyOrReference()..mergeFromBuffer(data, registry);
   factory NamedRequestBodyOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedRequestBodyOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedRequestBodyOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedRequestBodyOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<RequestBodyOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: RequestBodyOrReference.create)
+        subBuilder: RequestBodyOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedRequestBodyOrReference clone() =>
-      NamedRequestBodyOrReference()..mergeFromMessage(this);
+  NamedRequestBodyOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedRequestBodyOrReference copyWith(
           void Function(NamedRequestBodyOrReference) updates) =>
@@ -3381,15 +3446,19 @@ class NamedRequestBodyOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedRequestBodyOrReference() / NamedRequestBodyOrReference.new instead')
   static NamedRequestBodyOrReference create() =>
       NamedRequestBodyOrReference._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      NamedRequestBodyOrReference._();
   @$core.override
-  NamedRequestBodyOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedRequestBodyOrReference> createRepeated() =>
-      $pb.PbList<NamedRequestBodyOrReference>();
+  NamedRequestBodyOrReference createEmptyInstance() =>
+      NamedRequestBodyOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedRequestBodyOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedRequestBodyOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedRequestBodyOrReference>(
+          NamedRequestBodyOrReference.$_createMessage);
   static NamedRequestBodyOrReference? _defaultInstance;
 
   /// Map key
@@ -3421,7 +3490,7 @@ class NamedResponseOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     ResponseOrReference? value,
   }) {
-    final result = create();
+    final result = NamedResponseOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3431,24 +3500,23 @@ class NamedResponseOrReference extends $pb.GeneratedMessage {
 
   factory NamedResponseOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedResponseOrReference()..mergeFromBuffer(data, registry);
   factory NamedResponseOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedResponseOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedResponseOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedResponseOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<ResponseOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: ResponseOrReference.create)
+        subBuilder: ResponseOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedResponseOrReference clone() =>
-      NamedResponseOrReference()..mergeFromMessage(this);
+  NamedResponseOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedResponseOrReference copyWith(
           void Function(NamedResponseOrReference) updates) =>
@@ -3459,14 +3527,17 @@ class NamedResponseOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedResponseOrReference() / NamedResponseOrReference.new instead')
   static NamedResponseOrReference create() => NamedResponseOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => NamedResponseOrReference._();
   @$core.override
-  NamedResponseOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedResponseOrReference> createRepeated() =>
-      $pb.PbList<NamedResponseOrReference>();
+  NamedResponseOrReference createEmptyInstance() =>
+      NamedResponseOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedResponseOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedResponseOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedResponseOrReference>(
+          NamedResponseOrReference.$_createMessage);
   static NamedResponseOrReference? _defaultInstance;
 
   /// Map key
@@ -3498,7 +3569,7 @@ class NamedSchemaOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     SchemaOrReference? value,
   }) {
-    final result = create();
+    final result = NamedSchemaOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3508,24 +3579,23 @@ class NamedSchemaOrReference extends $pb.GeneratedMessage {
 
   factory NamedSchemaOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedSchemaOrReference()..mergeFromBuffer(data, registry);
   factory NamedSchemaOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedSchemaOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedSchemaOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedSchemaOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<SchemaOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: SchemaOrReference.create)
+        subBuilder: SchemaOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedSchemaOrReference clone() =>
-      NamedSchemaOrReference()..mergeFromMessage(this);
+  NamedSchemaOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedSchemaOrReference copyWith(
           void Function(NamedSchemaOrReference) updates) =>
@@ -3536,14 +3606,16 @@ class NamedSchemaOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedSchemaOrReference() / NamedSchemaOrReference.new instead')
   static NamedSchemaOrReference create() => NamedSchemaOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => NamedSchemaOrReference._();
   @$core.override
-  NamedSchemaOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedSchemaOrReference> createRepeated() =>
-      $pb.PbList<NamedSchemaOrReference>();
+  NamedSchemaOrReference createEmptyInstance() => NamedSchemaOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedSchemaOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedSchemaOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedSchemaOrReference>(
+          NamedSchemaOrReference.$_createMessage);
   static NamedSchemaOrReference? _defaultInstance;
 
   /// Map key
@@ -3575,7 +3647,7 @@ class NamedSecuritySchemeOrReference extends $pb.GeneratedMessage {
     $core.String? name,
     SecuritySchemeOrReference? value,
   }) {
-    final result = create();
+    final result = NamedSecuritySchemeOrReference._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3585,24 +3657,23 @@ class NamedSecuritySchemeOrReference extends $pb.GeneratedMessage {
 
   factory NamedSecuritySchemeOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedSecuritySchemeOrReference()..mergeFromBuffer(data, registry);
   factory NamedSecuritySchemeOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedSecuritySchemeOrReference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedSecuritySchemeOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedSecuritySchemeOrReference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<SecuritySchemeOrReference>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: SecuritySchemeOrReference.create)
+        subBuilder: SecuritySchemeOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedSecuritySchemeOrReference clone() =>
-      NamedSecuritySchemeOrReference()..mergeFromMessage(this);
+  NamedSecuritySchemeOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedSecuritySchemeOrReference copyWith(
           void Function(NamedSecuritySchemeOrReference) updates) =>
@@ -3614,15 +3685,19 @@ class NamedSecuritySchemeOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NamedSecuritySchemeOrReference() / NamedSecuritySchemeOrReference.new instead')
   static NamedSecuritySchemeOrReference create() =>
       NamedSecuritySchemeOrReference._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      NamedSecuritySchemeOrReference._();
   @$core.override
-  NamedSecuritySchemeOrReference createEmptyInstance() => create();
-  static $pb.PbList<NamedSecuritySchemeOrReference> createRepeated() =>
-      $pb.PbList<NamedSecuritySchemeOrReference>();
+  NamedSecuritySchemeOrReference createEmptyInstance() =>
+      NamedSecuritySchemeOrReference._();
   @$core.pragma('dart2js:noInline')
   static NamedSecuritySchemeOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedSecuritySchemeOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedSecuritySchemeOrReference>(
+          NamedSecuritySchemeOrReference.$_createMessage);
   static NamedSecuritySchemeOrReference? _defaultInstance;
 
   /// Map key
@@ -3654,7 +3729,7 @@ class NamedServerVariable extends $pb.GeneratedMessage {
     $core.String? name,
     ServerVariable? value,
   }) {
-    final result = create();
+    final result = NamedServerVariable._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3664,23 +3739,23 @@ class NamedServerVariable extends $pb.GeneratedMessage {
 
   factory NamedServerVariable.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedServerVariable()..mergeFromBuffer(data, registry);
   factory NamedServerVariable.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedServerVariable()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedServerVariable',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedServerVariable.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<ServerVariable>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: ServerVariable.create)
+        subBuilder: ServerVariable.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedServerVariable clone() => NamedServerVariable()..mergeFromMessage(this);
+  NamedServerVariable clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedServerVariable copyWith(void Function(NamedServerVariable) updates) =>
       super.copyWith((message) => updates(message as NamedServerVariable))
@@ -3690,14 +3765,16 @@ class NamedServerVariable extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use NamedServerVariable() / NamedServerVariable.new instead')
   static NamedServerVariable create() => NamedServerVariable._();
+  static $pb.GeneratedMessage $_createMessage() => NamedServerVariable._();
   @$core.override
-  NamedServerVariable createEmptyInstance() => create();
-  static $pb.PbList<NamedServerVariable> createRepeated() =>
-      $pb.PbList<NamedServerVariable>();
+  NamedServerVariable createEmptyInstance() => NamedServerVariable._();
   @$core.pragma('dart2js:noInline')
   static NamedServerVariable getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedServerVariable>(create);
+      $pb.GeneratedMessage.$_defaultFor<NamedServerVariable>(
+          NamedServerVariable.$_createMessage);
   static NamedServerVariable? _defaultInstance;
 
   /// Map key
@@ -3729,7 +3806,7 @@ class NamedString extends $pb.GeneratedMessage {
     $core.String? name,
     $core.String? value,
   }) {
-    final result = create();
+    final result = NamedString._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3739,22 +3816,22 @@ class NamedString extends $pb.GeneratedMessage {
 
   factory NamedString.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedString()..mergeFromBuffer(data, registry);
   factory NamedString.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedString()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedString',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedString.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOS(2, _omitFieldNames ? '' : 'value')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedString clone() => NamedString()..mergeFromMessage(this);
+  NamedString clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedString copyWith(void Function(NamedString) updates) =>
       super.copyWith((message) => updates(message as NamedString))
@@ -3764,13 +3841,15 @@ class NamedString extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NamedString() / NamedString.new instead')
   static NamedString create() => NamedString._();
+  static $pb.GeneratedMessage $_createMessage() => NamedString._();
   @$core.override
-  NamedString createEmptyInstance() => create();
-  static $pb.PbList<NamedString> createRepeated() => $pb.PbList<NamedString>();
+  NamedString createEmptyInstance() => NamedString._();
   @$core.pragma('dart2js:noInline')
-  static NamedString getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedString>(create);
+  static NamedString getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NamedString>(
+          NamedString.$_createMessage);
   static NamedString? _defaultInstance;
 
   /// Map key
@@ -3800,7 +3879,7 @@ class NamedStringArray extends $pb.GeneratedMessage {
     $core.String? name,
     StringArray? value,
   }) {
-    final result = create();
+    final result = NamedStringArray._();
     if (name != null) result.name = name;
     if (value != null) result.value = value;
     return result;
@@ -3810,23 +3889,23 @@ class NamedStringArray extends $pb.GeneratedMessage {
 
   factory NamedStringArray.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      NamedStringArray()..mergeFromBuffer(data, registry);
   factory NamedStringArray.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      NamedStringArray()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NamedStringArray',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: NamedStringArray.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOM<StringArray>(2, _omitFieldNames ? '' : 'value',
-        subBuilder: StringArray.create)
+        subBuilder: StringArray.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  NamedStringArray clone() => NamedStringArray()..mergeFromMessage(this);
+  NamedStringArray clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   NamedStringArray copyWith(void Function(NamedStringArray) updates) =>
       super.copyWith((message) => updates(message as NamedStringArray))
@@ -3836,14 +3915,15 @@ class NamedStringArray extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NamedStringArray() / NamedStringArray.new instead')
   static NamedStringArray create() => NamedStringArray._();
+  static $pb.GeneratedMessage $_createMessage() => NamedStringArray._();
   @$core.override
-  NamedStringArray createEmptyInstance() => create();
-  static $pb.PbList<NamedStringArray> createRepeated() =>
-      $pb.PbList<NamedStringArray>();
+  NamedStringArray createEmptyInstance() => NamedStringArray._();
   @$core.pragma('dart2js:noInline')
-  static NamedStringArray getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<NamedStringArray>(create);
+  static NamedStringArray getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NamedStringArray>(
+          NamedStringArray.$_createMessage);
   static NamedStringArray? _defaultInstance;
 
   /// Map key
@@ -3878,7 +3958,7 @@ class OauthFlow extends $pb.GeneratedMessage {
     Strings? scopes,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = OauthFlow._();
     if (authorizationUrl != null) result.authorizationUrl = authorizationUrl;
     if (tokenUrl != null) result.tokenUrl = tokenUrl;
     if (refreshUrl != null) result.refreshUrl = refreshUrl;
@@ -3892,28 +3972,27 @@ class OauthFlow extends $pb.GeneratedMessage {
 
   factory OauthFlow.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      OauthFlow()..mergeFromBuffer(data, registry);
   factory OauthFlow.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      OauthFlow()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'OauthFlow',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: OauthFlow.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'authorizationUrl')
     ..aOS(2, _omitFieldNames ? '' : 'tokenUrl')
     ..aOS(3, _omitFieldNames ? '' : 'refreshUrl')
     ..aOM<Strings>(4, _omitFieldNames ? '' : 'scopes',
-        subBuilder: Strings.create)
-    ..pc<NamedAny>(
-        5, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: Strings.$_createMessage)
+    ..pPM<NamedAny>(5, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  OauthFlow clone() => OauthFlow()..mergeFromMessage(this);
+  OauthFlow clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   OauthFlow copyWith(void Function(OauthFlow) updates) =>
       super.copyWith((message) => updates(message as OauthFlow)) as OauthFlow;
@@ -3922,13 +4001,14 @@ class OauthFlow extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use OauthFlow() / OauthFlow.new instead')
   static OauthFlow create() => OauthFlow._();
+  static $pb.GeneratedMessage $_createMessage() => OauthFlow._();
   @$core.override
-  OauthFlow createEmptyInstance() => create();
-  static $pb.PbList<OauthFlow> createRepeated() => $pb.PbList<OauthFlow>();
+  OauthFlow createEmptyInstance() => OauthFlow._();
   @$core.pragma('dart2js:noInline')
-  static OauthFlow getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<OauthFlow>(create);
+  static OauthFlow getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OauthFlow>(OauthFlow.$_createMessage);
   static OauthFlow? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -3982,7 +4062,7 @@ class OauthFlows extends $pb.GeneratedMessage {
     OauthFlow? authorizationCode,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = OauthFlows._();
     if (implicit != null) result.implicit = implicit;
     if (password != null) result.password = password;
     if (clientCredentials != null) result.clientCredentials = clientCredentials;
@@ -3996,31 +4076,30 @@ class OauthFlows extends $pb.GeneratedMessage {
 
   factory OauthFlows.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      OauthFlows()..mergeFromBuffer(data, registry);
   factory OauthFlows.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      OauthFlows()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'OauthFlows',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: OauthFlows.$_createMessage)
     ..aOM<OauthFlow>(1, _omitFieldNames ? '' : 'implicit',
-        subBuilder: OauthFlow.create)
+        subBuilder: OauthFlow.$_createMessage)
     ..aOM<OauthFlow>(2, _omitFieldNames ? '' : 'password',
-        subBuilder: OauthFlow.create)
+        subBuilder: OauthFlow.$_createMessage)
     ..aOM<OauthFlow>(3, _omitFieldNames ? '' : 'clientCredentials',
-        subBuilder: OauthFlow.create)
+        subBuilder: OauthFlow.$_createMessage)
     ..aOM<OauthFlow>(4, _omitFieldNames ? '' : 'authorizationCode',
-        subBuilder: OauthFlow.create)
-    ..pc<NamedAny>(
-        5, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: OauthFlow.$_createMessage)
+    ..pPM<NamedAny>(5, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  OauthFlows clone() => OauthFlows()..mergeFromMessage(this);
+  OauthFlows clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   OauthFlows copyWith(void Function(OauthFlows) updates) =>
       super.copyWith((message) => updates(message as OauthFlows)) as OauthFlows;
@@ -4029,13 +4108,14 @@ class OauthFlows extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use OauthFlows() / OauthFlows.new instead')
   static OauthFlows create() => OauthFlows._();
+  static $pb.GeneratedMessage $_createMessage() => OauthFlows._();
   @$core.override
-  OauthFlows createEmptyInstance() => create();
-  static $pb.PbList<OauthFlows> createRepeated() => $pb.PbList<OauthFlows>();
+  OauthFlows createEmptyInstance() => OauthFlows._();
   @$core.pragma('dart2js:noInline')
   static OauthFlows getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<OauthFlows>(create);
+      $pb.GeneratedMessage.$_defaultFor<OauthFlows>(OauthFlows.$_createMessage);
   static OauthFlows? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4090,7 +4170,7 @@ class Object extends $pb.GeneratedMessage {
   factory Object({
     $core.Iterable<NamedAny>? additionalProperties,
   }) {
-    final result = create();
+    final result = Object._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -4100,23 +4180,22 @@ class Object extends $pb.GeneratedMessage {
 
   factory Object.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Object()..mergeFromBuffer(data, registry);
   factory Object.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Object()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Object',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedAny>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+      createEmptyInstance: Object.$_createMessage)
+    ..pPM<NamedAny>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Object clone() => Object()..mergeFromMessage(this);
+  Object clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Object copyWith(void Function(Object) updates) =>
       super.copyWith((message) => updates(message as Object)) as Object;
@@ -4125,13 +4204,14 @@ class Object extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Object() / Object.new instead')
   static Object create() => Object._();
+  static $pb.GeneratedMessage $_createMessage() => Object._();
   @$core.override
-  Object createEmptyInstance() => create();
-  static $pb.PbList<Object> createRepeated() => $pb.PbList<Object>();
+  Object createEmptyInstance() => Object._();
   @$core.pragma('dart2js:noInline')
-  static Object getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Object>(create);
+  static Object getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Object>(Object.$_createMessage);
   static Object? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4155,7 +4235,7 @@ class Operation extends $pb.GeneratedMessage {
     $core.Iterable<Server>? servers,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Operation._();
     if (tags != null) result.tags.addAll(tags);
     if (summary != null) result.summary = summary;
     if (description != null) result.description = description;
@@ -4177,44 +4257,41 @@ class Operation extends $pb.GeneratedMessage {
 
   factory Operation.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Operation()..mergeFromBuffer(data, registry);
   factory Operation.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Operation()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Operation',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Operation.$_createMessage)
     ..pPS(1, _omitFieldNames ? '' : 'tags')
     ..aOS(2, _omitFieldNames ? '' : 'summary')
     ..aOS(3, _omitFieldNames ? '' : 'description')
     ..aOM<ExternalDocs>(4, _omitFieldNames ? '' : 'externalDocs',
-        subBuilder: ExternalDocs.create)
+        subBuilder: ExternalDocs.$_createMessage)
     ..aOS(5, _omitFieldNames ? '' : 'operationId')
-    ..pc<ParameterOrReference>(
-        6, _omitFieldNames ? '' : 'parameters', $pb.PbFieldType.PM,
-        subBuilder: ParameterOrReference.create)
+    ..pPM<ParameterOrReference>(6, _omitFieldNames ? '' : 'parameters',
+        subBuilder: ParameterOrReference.$_createMessage)
     ..aOM<RequestBodyOrReference>(7, _omitFieldNames ? '' : 'requestBody',
-        subBuilder: RequestBodyOrReference.create)
+        subBuilder: RequestBodyOrReference.$_createMessage)
     ..aOM<Responses>(8, _omitFieldNames ? '' : 'responses',
-        subBuilder: Responses.create)
+        subBuilder: Responses.$_createMessage)
     ..aOM<CallbacksOrReferences>(9, _omitFieldNames ? '' : 'callbacks',
-        subBuilder: CallbacksOrReferences.create)
+        subBuilder: CallbacksOrReferences.$_createMessage)
     ..aOB(10, _omitFieldNames ? '' : 'deprecated')
-    ..pc<SecurityRequirement>(
-        11, _omitFieldNames ? '' : 'security', $pb.PbFieldType.PM,
-        subBuilder: SecurityRequirement.create)
-    ..pc<Server>(12, _omitFieldNames ? '' : 'servers', $pb.PbFieldType.PM,
-        subBuilder: Server.create)
-    ..pc<NamedAny>(
-        13, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<SecurityRequirement>(11, _omitFieldNames ? '' : 'security',
+        subBuilder: SecurityRequirement.$_createMessage)
+    ..pPM<Server>(12, _omitFieldNames ? '' : 'servers',
+        subBuilder: Server.$_createMessage)
+    ..pPM<NamedAny>(13, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Operation clone() => Operation()..mergeFromMessage(this);
+  Operation clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Operation copyWith(void Function(Operation) updates) =>
       super.copyWith((message) => updates(message as Operation)) as Operation;
@@ -4223,13 +4300,14 @@ class Operation extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Operation() / Operation.new instead')
   static Operation create() => Operation._();
+  static $pb.GeneratedMessage $_createMessage() => Operation._();
   @$core.override
-  Operation createEmptyInstance() => create();
-  static $pb.PbList<Operation> createRepeated() => $pb.PbList<Operation>();
+  Operation createEmptyInstance() => Operation._();
   @$core.pragma('dart2js:noInline')
-  static Operation getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Operation>(create);
+  static Operation getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Operation>(Operation.$_createMessage);
   static Operation? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4346,7 +4424,7 @@ class Parameter extends $pb.GeneratedMessage {
     MediaTypes? content,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Parameter._();
     if (name != null) result.name = name;
     if (in_2 != null) result.in_2 = in_2;
     if (description != null) result.description = description;
@@ -4369,16 +4447,16 @@ class Parameter extends $pb.GeneratedMessage {
 
   factory Parameter.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Parameter()..mergeFromBuffer(data, registry);
   factory Parameter.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Parameter()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Parameter',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Parameter.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOS(2, _omitFieldNames ? '' : 'in')
     ..aOS(3, _omitFieldNames ? '' : 'description')
@@ -4389,19 +4467,19 @@ class Parameter extends $pb.GeneratedMessage {
     ..aOB(8, _omitFieldNames ? '' : 'explode')
     ..aOB(9, _omitFieldNames ? '' : 'allowReserved')
     ..aOM<SchemaOrReference>(10, _omitFieldNames ? '' : 'schema',
-        subBuilder: SchemaOrReference.create)
-    ..aOM<Any>(11, _omitFieldNames ? '' : 'example', subBuilder: Any.create)
+        subBuilder: SchemaOrReference.$_createMessage)
+    ..aOM<Any>(11, _omitFieldNames ? '' : 'example',
+        subBuilder: Any.$_createMessage)
     ..aOM<ExamplesOrReferences>(12, _omitFieldNames ? '' : 'examples',
-        subBuilder: ExamplesOrReferences.create)
+        subBuilder: ExamplesOrReferences.$_createMessage)
     ..aOM<MediaTypes>(13, _omitFieldNames ? '' : 'content',
-        subBuilder: MediaTypes.create)
-    ..pc<NamedAny>(
-        14, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: MediaTypes.$_createMessage)
+    ..pPM<NamedAny>(14, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Parameter clone() => Parameter()..mergeFromMessage(this);
+  Parameter clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Parameter copyWith(void Function(Parameter) updates) =>
       super.copyWith((message) => updates(message as Parameter)) as Parameter;
@@ -4410,13 +4488,14 @@ class Parameter extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Parameter() / Parameter.new instead')
   static Parameter create() => Parameter._();
+  static $pb.GeneratedMessage $_createMessage() => Parameter._();
   @$core.override
-  Parameter createEmptyInstance() => create();
-  static $pb.PbList<Parameter> createRepeated() => $pb.PbList<Parameter>();
+  Parameter createEmptyInstance() => Parameter._();
   @$core.pragma('dart2js:noInline')
-  static Parameter getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Parameter>(create);
+  static Parameter getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Parameter>(Parameter.$_createMessage);
   static Parameter? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4555,7 +4634,7 @@ class ParameterOrReference extends $pb.GeneratedMessage {
     Parameter? parameter,
     Reference? reference,
   }) {
-    final result = create();
+    final result = ParameterOrReference._();
     if (parameter != null) result.parameter = parameter;
     if (reference != null) result.reference = reference;
     return result;
@@ -4565,10 +4644,10 @@ class ParameterOrReference extends $pb.GeneratedMessage {
 
   factory ParameterOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ParameterOrReference()..mergeFromBuffer(data, registry);
   factory ParameterOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ParameterOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, ParameterOrReference_Oneof>
       _ParameterOrReference_OneofByTag = {
@@ -4580,17 +4659,16 @@ class ParameterOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'ParameterOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: ParameterOrReference.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<Parameter>(1, _omitFieldNames ? '' : 'parameter',
-        subBuilder: Parameter.create)
+        subBuilder: Parameter.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ParameterOrReference clone() =>
-      ParameterOrReference()..mergeFromMessage(this);
+  ParameterOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ParameterOrReference copyWith(void Function(ParameterOrReference) updates) =>
       super.copyWith((message) => updates(message as ParameterOrReference))
@@ -4600,18 +4678,24 @@ class ParameterOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ParameterOrReference() / ParameterOrReference.new instead')
   static ParameterOrReference create() => ParameterOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => ParameterOrReference._();
   @$core.override
-  ParameterOrReference createEmptyInstance() => create();
-  static $pb.PbList<ParameterOrReference> createRepeated() =>
-      $pb.PbList<ParameterOrReference>();
+  ParameterOrReference createEmptyInstance() => ParameterOrReference._();
   @$core.pragma('dart2js:noInline')
   static ParameterOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ParameterOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<ParameterOrReference>(
+          ParameterOrReference.$_createMessage);
   static ParameterOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   ParameterOrReference_Oneof whichOneof() =>
       _ParameterOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -4641,7 +4725,7 @@ class ParametersOrReferences extends $pb.GeneratedMessage {
   factory ParametersOrReferences({
     $core.Iterable<NamedParameterOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = ParametersOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -4651,24 +4735,23 @@ class ParametersOrReferences extends $pb.GeneratedMessage {
 
   factory ParametersOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ParametersOrReferences()..mergeFromBuffer(data, registry);
   factory ParametersOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ParametersOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ParametersOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedParameterOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedParameterOrReference.create)
+      createEmptyInstance: ParametersOrReferences.$_createMessage)
+    ..pPM<NamedParameterOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedParameterOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ParametersOrReferences clone() =>
-      ParametersOrReferences()..mergeFromMessage(this);
+  ParametersOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ParametersOrReferences copyWith(
           void Function(ParametersOrReferences) updates) =>
@@ -4679,14 +4762,16 @@ class ParametersOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ParametersOrReferences() / ParametersOrReferences.new instead')
   static ParametersOrReferences create() => ParametersOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => ParametersOrReferences._();
   @$core.override
-  ParametersOrReferences createEmptyInstance() => create();
-  static $pb.PbList<ParametersOrReferences> createRepeated() =>
-      $pb.PbList<ParametersOrReferences>();
+  ParametersOrReferences createEmptyInstance() => ParametersOrReferences._();
   @$core.pragma('dart2js:noInline')
   static ParametersOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ParametersOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<ParametersOrReferences>(
+          ParametersOrReferences.$_createMessage);
   static ParametersOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4712,7 +4797,7 @@ class PathItem extends $pb.GeneratedMessage {
     $core.Iterable<ParameterOrReference>? parameters,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = PathItem._();
     if (ref != null) result.ref = ref;
     if (summary != null) result.summary = summary;
     if (description != null) result.description = description;
@@ -4735,47 +4820,45 @@ class PathItem extends $pb.GeneratedMessage {
 
   factory PathItem.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      PathItem()..mergeFromBuffer(data, registry);
   factory PathItem.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      PathItem()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'PathItem',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: PathItem.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'Ref')
     ..aOS(2, _omitFieldNames ? '' : 'summary')
     ..aOS(3, _omitFieldNames ? '' : 'description')
     ..aOM<Operation>(4, _omitFieldNames ? '' : 'get',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(5, _omitFieldNames ? '' : 'put',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(6, _omitFieldNames ? '' : 'post',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(7, _omitFieldNames ? '' : 'delete',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(8, _omitFieldNames ? '' : 'options',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(9, _omitFieldNames ? '' : 'head',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(10, _omitFieldNames ? '' : 'patch',
-        subBuilder: Operation.create)
+        subBuilder: Operation.$_createMessage)
     ..aOM<Operation>(11, _omitFieldNames ? '' : 'trace',
-        subBuilder: Operation.create)
-    ..pc<Server>(12, _omitFieldNames ? '' : 'servers', $pb.PbFieldType.PM,
-        subBuilder: Server.create)
-    ..pc<ParameterOrReference>(
-        13, _omitFieldNames ? '' : 'parameters', $pb.PbFieldType.PM,
-        subBuilder: ParameterOrReference.create)
-    ..pc<NamedAny>(
-        14, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: Operation.$_createMessage)
+    ..pPM<Server>(12, _omitFieldNames ? '' : 'servers',
+        subBuilder: Server.$_createMessage)
+    ..pPM<ParameterOrReference>(13, _omitFieldNames ? '' : 'parameters',
+        subBuilder: ParameterOrReference.$_createMessage)
+    ..pPM<NamedAny>(14, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  PathItem clone() => PathItem()..mergeFromMessage(this);
+  PathItem clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   PathItem copyWith(void Function(PathItem) updates) =>
       super.copyWith((message) => updates(message as PathItem)) as PathItem;
@@ -4784,13 +4867,14 @@ class PathItem extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PathItem() / PathItem.new instead')
   static PathItem create() => PathItem._();
+  static $pb.GeneratedMessage $_createMessage() => PathItem._();
   @$core.override
-  PathItem createEmptyInstance() => create();
-  static $pb.PbList<PathItem> createRepeated() => $pb.PbList<PathItem>();
+  PathItem createEmptyInstance() => PathItem._();
   @$core.pragma('dart2js:noInline')
-  static PathItem getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PathItem>(create);
+  static PathItem getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PathItem>(PathItem.$_createMessage);
   static PathItem? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4924,7 +5008,7 @@ class Paths extends $pb.GeneratedMessage {
     $core.Iterable<NamedPathItem>? path,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Paths._();
     if (path != null) result.path.addAll(path);
     if (specificationExtension != null)
       result.specificationExtension.addAll(specificationExtension);
@@ -4935,25 +5019,24 @@ class Paths extends $pb.GeneratedMessage {
 
   factory Paths.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Paths()..mergeFromBuffer(data, registry);
   factory Paths.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Paths()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Paths',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedPathItem>(1, _omitFieldNames ? '' : 'path', $pb.PbFieldType.PM,
-        subBuilder: NamedPathItem.create)
-    ..pc<NamedAny>(
-        2, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+      createEmptyInstance: Paths.$_createMessage)
+    ..pPM<NamedPathItem>(1, _omitFieldNames ? '' : 'path',
+        subBuilder: NamedPathItem.$_createMessage)
+    ..pPM<NamedAny>(2, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Paths clone() => Paths()..mergeFromMessage(this);
+  Paths clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Paths copyWith(void Function(Paths) updates) =>
       super.copyWith((message) => updates(message as Paths)) as Paths;
@@ -4962,13 +5045,14 @@ class Paths extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Paths() / Paths.new instead')
   static Paths create() => Paths._();
+  static $pb.GeneratedMessage $_createMessage() => Paths._();
   @$core.override
-  Paths createEmptyInstance() => create();
-  static $pb.PbList<Paths> createRepeated() => $pb.PbList<Paths>();
+  Paths createEmptyInstance() => Paths._();
   @$core.pragma('dart2js:noInline')
-  static Paths getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Paths>(create);
+  static Paths getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Paths>(Paths.$_createMessage);
   static Paths? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -4982,7 +5066,7 @@ class Properties extends $pb.GeneratedMessage {
   factory Properties({
     $core.Iterable<NamedSchemaOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = Properties._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -4992,23 +5076,23 @@ class Properties extends $pb.GeneratedMessage {
 
   factory Properties.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Properties()..mergeFromBuffer(data, registry);
   factory Properties.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Properties()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Properties',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedSchemaOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedSchemaOrReference.create)
+      createEmptyInstance: Properties.$_createMessage)
+    ..pPM<NamedSchemaOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedSchemaOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Properties clone() => Properties()..mergeFromMessage(this);
+  Properties clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Properties copyWith(void Function(Properties) updates) =>
       super.copyWith((message) => updates(message as Properties)) as Properties;
@@ -5017,13 +5101,14 @@ class Properties extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Properties() / Properties.new instead')
   static Properties create() => Properties._();
+  static $pb.GeneratedMessage $_createMessage() => Properties._();
   @$core.override
-  Properties createEmptyInstance() => create();
-  static $pb.PbList<Properties> createRepeated() => $pb.PbList<Properties>();
+  Properties createEmptyInstance() => Properties._();
   @$core.pragma('dart2js:noInline')
   static Properties getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Properties>(create);
+      $pb.GeneratedMessage.$_defaultFor<Properties>(Properties.$_createMessage);
   static Properties? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5037,7 +5122,7 @@ class Reference extends $pb.GeneratedMessage {
     $core.String? summary,
     $core.String? description,
   }) {
-    final result = create();
+    final result = Reference._();
     if (ref != null) result.ref = ref;
     if (summary != null) result.summary = summary;
     if (description != null) result.description = description;
@@ -5048,23 +5133,23 @@ class Reference extends $pb.GeneratedMessage {
 
   factory Reference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Reference()..mergeFromBuffer(data, registry);
   factory Reference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Reference()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Reference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Reference.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'Ref')
     ..aOS(2, _omitFieldNames ? '' : 'summary')
     ..aOS(3, _omitFieldNames ? '' : 'description')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Reference clone() => Reference()..mergeFromMessage(this);
+  Reference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Reference copyWith(void Function(Reference) updates) =>
       super.copyWith((message) => updates(message as Reference)) as Reference;
@@ -5073,13 +5158,14 @@ class Reference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Reference() / Reference.new instead')
   static Reference create() => Reference._();
+  static $pb.GeneratedMessage $_createMessage() => Reference._();
   @$core.override
-  Reference createEmptyInstance() => create();
-  static $pb.PbList<Reference> createRepeated() => $pb.PbList<Reference>();
+  Reference createEmptyInstance() => Reference._();
   @$core.pragma('dart2js:noInline')
-  static Reference getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Reference>(create);
+  static Reference getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Reference>(Reference.$_createMessage);
   static Reference? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5114,7 +5200,7 @@ class RequestBodiesOrReferences extends $pb.GeneratedMessage {
   factory RequestBodiesOrReferences({
     $core.Iterable<NamedRequestBodyOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = RequestBodiesOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -5124,24 +5210,23 @@ class RequestBodiesOrReferences extends $pb.GeneratedMessage {
 
   factory RequestBodiesOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RequestBodiesOrReferences()..mergeFromBuffer(data, registry);
   factory RequestBodiesOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RequestBodiesOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'RequestBodiesOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedRequestBodyOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedRequestBodyOrReference.create)
+      createEmptyInstance: RequestBodiesOrReferences.$_createMessage)
+    ..pPM<NamedRequestBodyOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedRequestBodyOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RequestBodiesOrReferences clone() =>
-      RequestBodiesOrReferences()..mergeFromMessage(this);
+  RequestBodiesOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RequestBodiesOrReferences copyWith(
           void Function(RequestBodiesOrReferences) updates) =>
@@ -5152,14 +5237,18 @@ class RequestBodiesOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RequestBodiesOrReferences() / RequestBodiesOrReferences.new instead')
   static RequestBodiesOrReferences create() => RequestBodiesOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RequestBodiesOrReferences._();
   @$core.override
-  RequestBodiesOrReferences createEmptyInstance() => create();
-  static $pb.PbList<RequestBodiesOrReferences> createRepeated() =>
-      $pb.PbList<RequestBodiesOrReferences>();
+  RequestBodiesOrReferences createEmptyInstance() =>
+      RequestBodiesOrReferences._();
   @$core.pragma('dart2js:noInline')
   static RequestBodiesOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RequestBodiesOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<RequestBodiesOrReferences>(
+          RequestBodiesOrReferences.$_createMessage);
   static RequestBodiesOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5175,7 +5264,7 @@ class RequestBody extends $pb.GeneratedMessage {
     $core.bool? required,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = RequestBody._();
     if (description != null) result.description = description;
     if (content != null) result.content = content;
     if (required != null) result.required = required;
@@ -5188,27 +5277,26 @@ class RequestBody extends $pb.GeneratedMessage {
 
   factory RequestBody.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RequestBody()..mergeFromBuffer(data, registry);
   factory RequestBody.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RequestBody()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'RequestBody',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: RequestBody.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'description')
     ..aOM<MediaTypes>(2, _omitFieldNames ? '' : 'content',
-        subBuilder: MediaTypes.create)
+        subBuilder: MediaTypes.$_createMessage)
     ..aOB(3, _omitFieldNames ? '' : 'required')
-    ..pc<NamedAny>(
-        4, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(4, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RequestBody clone() => RequestBody()..mergeFromMessage(this);
+  RequestBody clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RequestBody copyWith(void Function(RequestBody) updates) =>
       super.copyWith((message) => updates(message as RequestBody))
@@ -5218,13 +5306,15 @@ class RequestBody extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RequestBody() / RequestBody.new instead')
   static RequestBody create() => RequestBody._();
+  static $pb.GeneratedMessage $_createMessage() => RequestBody._();
   @$core.override
-  RequestBody createEmptyInstance() => create();
-  static $pb.PbList<RequestBody> createRepeated() => $pb.PbList<RequestBody>();
+  RequestBody createEmptyInstance() => RequestBody._();
   @$core.pragma('dart2js:noInline')
-  static RequestBody getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RequestBody>(create);
+  static RequestBody getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RequestBody>(
+          RequestBody.$_createMessage);
   static RequestBody? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5267,7 +5357,7 @@ class RequestBodyOrReference extends $pb.GeneratedMessage {
     RequestBody? requestBody,
     Reference? reference,
   }) {
-    final result = create();
+    final result = RequestBodyOrReference._();
     if (requestBody != null) result.requestBody = requestBody;
     if (reference != null) result.reference = reference;
     return result;
@@ -5277,10 +5367,10 @@ class RequestBodyOrReference extends $pb.GeneratedMessage {
 
   factory RequestBodyOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RequestBodyOrReference()..mergeFromBuffer(data, registry);
   factory RequestBodyOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RequestBodyOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, RequestBodyOrReference_Oneof>
       _RequestBodyOrReference_OneofByTag = {
@@ -5292,17 +5382,16 @@ class RequestBodyOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'RequestBodyOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: RequestBodyOrReference.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<RequestBody>(1, _omitFieldNames ? '' : 'requestBody',
-        subBuilder: RequestBody.create)
+        subBuilder: RequestBody.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RequestBodyOrReference clone() =>
-      RequestBodyOrReference()..mergeFromMessage(this);
+  RequestBodyOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RequestBodyOrReference copyWith(
           void Function(RequestBodyOrReference) updates) =>
@@ -5313,18 +5402,24 @@ class RequestBodyOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RequestBodyOrReference() / RequestBodyOrReference.new instead')
   static RequestBodyOrReference create() => RequestBodyOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => RequestBodyOrReference._();
   @$core.override
-  RequestBodyOrReference createEmptyInstance() => create();
-  static $pb.PbList<RequestBodyOrReference> createRepeated() =>
-      $pb.PbList<RequestBodyOrReference>();
+  RequestBodyOrReference createEmptyInstance() => RequestBodyOrReference._();
   @$core.pragma('dart2js:noInline')
   static RequestBodyOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RequestBodyOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<RequestBodyOrReference>(
+          RequestBodyOrReference.$_createMessage);
   static RequestBodyOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   RequestBodyOrReference_Oneof whichOneof() =>
       _RequestBodyOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -5359,7 +5454,7 @@ class Response extends $pb.GeneratedMessage {
     LinksOrReferences? links,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Response._();
     if (description != null) result.description = description;
     if (headers != null) result.headers = headers;
     if (content != null) result.content = content;
@@ -5373,30 +5468,29 @@ class Response extends $pb.GeneratedMessage {
 
   factory Response.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Response()..mergeFromBuffer(data, registry);
   factory Response.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Response()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Response',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Response.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'description')
     ..aOM<HeadersOrReferences>(2, _omitFieldNames ? '' : 'headers',
-        subBuilder: HeadersOrReferences.create)
+        subBuilder: HeadersOrReferences.$_createMessage)
     ..aOM<MediaTypes>(3, _omitFieldNames ? '' : 'content',
-        subBuilder: MediaTypes.create)
+        subBuilder: MediaTypes.$_createMessage)
     ..aOM<LinksOrReferences>(4, _omitFieldNames ? '' : 'links',
-        subBuilder: LinksOrReferences.create)
-    ..pc<NamedAny>(
-        5, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: LinksOrReferences.$_createMessage)
+    ..pPM<NamedAny>(5, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Response clone() => Response()..mergeFromMessage(this);
+  Response clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Response copyWith(void Function(Response) updates) =>
       super.copyWith((message) => updates(message as Response)) as Response;
@@ -5405,13 +5499,14 @@ class Response extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Response() / Response.new instead')
   static Response create() => Response._();
+  static $pb.GeneratedMessage $_createMessage() => Response._();
   @$core.override
-  Response createEmptyInstance() => create();
-  static $pb.PbList<Response> createRepeated() => $pb.PbList<Response>();
+  Response createEmptyInstance() => Response._();
   @$core.pragma('dart2js:noInline')
-  static Response getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Response>(create);
+  static Response getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Response>(Response.$_createMessage);
   static Response? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5467,7 +5562,7 @@ class ResponseOrReference extends $pb.GeneratedMessage {
     Response? response,
     Reference? reference,
   }) {
-    final result = create();
+    final result = ResponseOrReference._();
     if (response != null) result.response = response;
     if (reference != null) result.reference = reference;
     return result;
@@ -5477,10 +5572,10 @@ class ResponseOrReference extends $pb.GeneratedMessage {
 
   factory ResponseOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ResponseOrReference()..mergeFromBuffer(data, registry);
   factory ResponseOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ResponseOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, ResponseOrReference_Oneof>
       _ResponseOrReference_OneofByTag = {
@@ -5492,16 +5587,16 @@ class ResponseOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'ResponseOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: ResponseOrReference.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<Response>(1, _omitFieldNames ? '' : 'response',
-        subBuilder: Response.create)
+        subBuilder: Response.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ResponseOrReference clone() => ResponseOrReference()..mergeFromMessage(this);
+  ResponseOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ResponseOrReference copyWith(void Function(ResponseOrReference) updates) =>
       super.copyWith((message) => updates(message as ResponseOrReference))
@@ -5511,18 +5606,24 @@ class ResponseOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use ResponseOrReference() / ResponseOrReference.new instead')
   static ResponseOrReference create() => ResponseOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => ResponseOrReference._();
   @$core.override
-  ResponseOrReference createEmptyInstance() => create();
-  static $pb.PbList<ResponseOrReference> createRepeated() =>
-      $pb.PbList<ResponseOrReference>();
+  ResponseOrReference createEmptyInstance() => ResponseOrReference._();
   @$core.pragma('dart2js:noInline')
   static ResponseOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ResponseOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<ResponseOrReference>(
+          ResponseOrReference.$_createMessage);
   static ResponseOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   ResponseOrReference_Oneof whichOneof() =>
       _ResponseOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -5555,7 +5656,7 @@ class Responses extends $pb.GeneratedMessage {
     $core.Iterable<NamedResponseOrReference>? responseOrReference,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Responses._();
     if (default_1 != null) result.default_1 = default_1;
     if (responseOrReference != null)
       result.responseOrReference.addAll(responseOrReference);
@@ -5568,28 +5669,27 @@ class Responses extends $pb.GeneratedMessage {
 
   factory Responses.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Responses()..mergeFromBuffer(data, registry);
   factory Responses.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Responses()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Responses',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Responses.$_createMessage)
     ..aOM<ResponseOrReference>(1, _omitFieldNames ? '' : 'default',
-        subBuilder: ResponseOrReference.create)
-    ..pc<NamedResponseOrReference>(
-        2, _omitFieldNames ? '' : 'responseOrReference', $pb.PbFieldType.PM,
-        subBuilder: NamedResponseOrReference.create)
-    ..pc<NamedAny>(
-        3, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: ResponseOrReference.$_createMessage)
+    ..pPM<NamedResponseOrReference>(
+        2, _omitFieldNames ? '' : 'responseOrReference',
+        subBuilder: NamedResponseOrReference.$_createMessage)
+    ..pPM<NamedAny>(3, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Responses clone() => Responses()..mergeFromMessage(this);
+  Responses clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Responses copyWith(void Function(Responses) updates) =>
       super.copyWith((message) => updates(message as Responses)) as Responses;
@@ -5598,13 +5698,14 @@ class Responses extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Responses() / Responses.new instead')
   static Responses create() => Responses._();
+  static $pb.GeneratedMessage $_createMessage() => Responses._();
   @$core.override
-  Responses createEmptyInstance() => create();
-  static $pb.PbList<Responses> createRepeated() => $pb.PbList<Responses>();
+  Responses createEmptyInstance() => Responses._();
   @$core.pragma('dart2js:noInline')
-  static Responses getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Responses>(create);
+  static Responses getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Responses>(Responses.$_createMessage);
   static Responses? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5629,7 +5730,7 @@ class ResponsesOrReferences extends $pb.GeneratedMessage {
   factory ResponsesOrReferences({
     $core.Iterable<NamedResponseOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = ResponsesOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -5639,24 +5740,23 @@ class ResponsesOrReferences extends $pb.GeneratedMessage {
 
   factory ResponsesOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ResponsesOrReferences()..mergeFromBuffer(data, registry);
   factory ResponsesOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ResponsesOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ResponsesOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedResponseOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedResponseOrReference.create)
+      createEmptyInstance: ResponsesOrReferences.$_createMessage)
+    ..pPM<NamedResponseOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedResponseOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ResponsesOrReferences clone() =>
-      ResponsesOrReferences()..mergeFromMessage(this);
+  ResponsesOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ResponsesOrReferences copyWith(
           void Function(ResponsesOrReferences) updates) =>
@@ -5667,14 +5767,16 @@ class ResponsesOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ResponsesOrReferences() / ResponsesOrReferences.new instead')
   static ResponsesOrReferences create() => ResponsesOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => ResponsesOrReferences._();
   @$core.override
-  ResponsesOrReferences createEmptyInstance() => create();
-  static $pb.PbList<ResponsesOrReferences> createRepeated() =>
-      $pb.PbList<ResponsesOrReferences>();
+  ResponsesOrReferences createEmptyInstance() => ResponsesOrReferences._();
   @$core.pragma('dart2js:noInline')
   static ResponsesOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ResponsesOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<ResponsesOrReferences>(
+          ResponsesOrReferences.$_createMessage);
   static ResponsesOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -5721,7 +5823,7 @@ class Schema extends $pb.GeneratedMessage {
     $core.String? format,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Schema._();
     if (nullable != null) result.nullable = nullable;
     if (discriminator != null) result.discriminator = discriminator;
     if (readOnly != null) result.readOnly = readOnly;
@@ -5767,32 +5869,32 @@ class Schema extends $pb.GeneratedMessage {
 
   factory Schema.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Schema()..mergeFromBuffer(data, registry);
   factory Schema.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Schema()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Schema',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Schema.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'nullable')
     ..aOM<Discriminator>(2, _omitFieldNames ? '' : 'discriminator',
-        subBuilder: Discriminator.create)
+        subBuilder: Discriminator.$_createMessage)
     ..aOB(3, _omitFieldNames ? '' : 'readOnly')
     ..aOB(4, _omitFieldNames ? '' : 'writeOnly')
-    ..aOM<Xml>(5, _omitFieldNames ? '' : 'xml', subBuilder: Xml.create)
+    ..aOM<Xml>(5, _omitFieldNames ? '' : 'xml', subBuilder: Xml.$_createMessage)
     ..aOM<ExternalDocs>(6, _omitFieldNames ? '' : 'externalDocs',
-        subBuilder: ExternalDocs.create)
-    ..aOM<Any>(7, _omitFieldNames ? '' : 'example', subBuilder: Any.create)
+        subBuilder: ExternalDocs.$_createMessage)
+    ..aOM<Any>(7, _omitFieldNames ? '' : 'example',
+        subBuilder: Any.$_createMessage)
     ..aOB(8, _omitFieldNames ? '' : 'deprecated')
     ..aOS(9, _omitFieldNames ? '' : 'title')
-    ..a<$core.double>(
-        10, _omitFieldNames ? '' : 'multipleOf', $pb.PbFieldType.OD)
-    ..a<$core.double>(11, _omitFieldNames ? '' : 'maximum', $pb.PbFieldType.OD)
+    ..aD(10, _omitFieldNames ? '' : 'multipleOf')
+    ..aD(11, _omitFieldNames ? '' : 'maximum')
     ..aOB(12, _omitFieldNames ? '' : 'exclusiveMaximum')
-    ..a<$core.double>(13, _omitFieldNames ? '' : 'minimum', $pb.PbFieldType.OD)
+    ..aD(13, _omitFieldNames ? '' : 'minimum')
     ..aOB(14, _omitFieldNames ? '' : 'exclusiveMinimum')
     ..aInt64(15, _omitFieldNames ? '' : 'maxLength')
     ..aInt64(16, _omitFieldNames ? '' : 'minLength')
@@ -5803,37 +5905,34 @@ class Schema extends $pb.GeneratedMessage {
     ..aInt64(21, _omitFieldNames ? '' : 'maxProperties')
     ..aInt64(22, _omitFieldNames ? '' : 'minProperties')
     ..pPS(23, _omitFieldNames ? '' : 'required')
-    ..pc<Any>(24, _omitFieldNames ? '' : 'enum', $pb.PbFieldType.PM,
-        subBuilder: Any.create)
+    ..pPM<Any>(24, _omitFieldNames ? '' : 'enum',
+        subBuilder: Any.$_createMessage)
     ..aOS(25, _omitFieldNames ? '' : 'type')
-    ..pc<SchemaOrReference>(
-        26, _omitFieldNames ? '' : 'allOf', $pb.PbFieldType.PM,
-        subBuilder: SchemaOrReference.create)
-    ..pc<SchemaOrReference>(
-        27, _omitFieldNames ? '' : 'oneOf', $pb.PbFieldType.PM,
-        subBuilder: SchemaOrReference.create)
-    ..pc<SchemaOrReference>(
-        28, _omitFieldNames ? '' : 'anyOf', $pb.PbFieldType.PM,
-        subBuilder: SchemaOrReference.create)
-    ..aOM<Schema>(29, _omitFieldNames ? '' : 'not', subBuilder: Schema.create)
+    ..pPM<SchemaOrReference>(26, _omitFieldNames ? '' : 'allOf',
+        subBuilder: SchemaOrReference.$_createMessage)
+    ..pPM<SchemaOrReference>(27, _omitFieldNames ? '' : 'oneOf',
+        subBuilder: SchemaOrReference.$_createMessage)
+    ..pPM<SchemaOrReference>(28, _omitFieldNames ? '' : 'anyOf',
+        subBuilder: SchemaOrReference.$_createMessage)
+    ..aOM<Schema>(29, _omitFieldNames ? '' : 'not',
+        subBuilder: Schema.$_createMessage)
     ..aOM<ItemsItem>(30, _omitFieldNames ? '' : 'items',
-        subBuilder: ItemsItem.create)
+        subBuilder: ItemsItem.$_createMessage)
     ..aOM<Properties>(31, _omitFieldNames ? '' : 'properties',
-        subBuilder: Properties.create)
+        subBuilder: Properties.$_createMessage)
     ..aOM<AdditionalPropertiesItem>(
         32, _omitFieldNames ? '' : 'additionalProperties',
-        subBuilder: AdditionalPropertiesItem.create)
+        subBuilder: AdditionalPropertiesItem.$_createMessage)
     ..aOM<DefaultType>(33, _omitFieldNames ? '' : 'default',
-        subBuilder: DefaultType.create)
+        subBuilder: DefaultType.$_createMessage)
     ..aOS(34, _omitFieldNames ? '' : 'description')
     ..aOS(35, _omitFieldNames ? '' : 'format')
-    ..pc<NamedAny>(
-        36, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(36, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Schema clone() => Schema()..mergeFromMessage(this);
+  Schema clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Schema copyWith(void Function(Schema) updates) =>
       super.copyWith((message) => updates(message as Schema)) as Schema;
@@ -5842,13 +5941,14 @@ class Schema extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Schema() / Schema.new instead')
   static Schema create() => Schema._();
+  static $pb.GeneratedMessage $_createMessage() => Schema._();
   @$core.override
-  Schema createEmptyInstance() => create();
-  static $pb.PbList<Schema> createRepeated() => $pb.PbList<Schema>();
+  Schema createEmptyInstance() => Schema._();
   @$core.pragma('dart2js:noInline')
-  static Schema getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Schema>(create);
+  static Schema getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Schema>(Schema.$_createMessage);
   static Schema? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6166,7 +6266,7 @@ class SchemaOrReference extends $pb.GeneratedMessage {
     Schema? schema,
     Reference? reference,
   }) {
-    final result = create();
+    final result = SchemaOrReference._();
     if (schema != null) result.schema = schema;
     if (reference != null) result.reference = reference;
     return result;
@@ -6176,10 +6276,10 @@ class SchemaOrReference extends $pb.GeneratedMessage {
 
   factory SchemaOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SchemaOrReference()..mergeFromBuffer(data, registry);
   factory SchemaOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SchemaOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SchemaOrReference_Oneof>
       _SchemaOrReference_OneofByTag = {
@@ -6191,15 +6291,16 @@ class SchemaOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'SchemaOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: SchemaOrReference.$_createMessage)
     ..oo(0, [1, 2])
-    ..aOM<Schema>(1, _omitFieldNames ? '' : 'schema', subBuilder: Schema.create)
+    ..aOM<Schema>(1, _omitFieldNames ? '' : 'schema',
+        subBuilder: Schema.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SchemaOrReference clone() => SchemaOrReference()..mergeFromMessage(this);
+  SchemaOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SchemaOrReference copyWith(void Function(SchemaOrReference) updates) =>
       super.copyWith((message) => updates(message as SchemaOrReference))
@@ -6209,18 +6310,23 @@ class SchemaOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SchemaOrReference() / SchemaOrReference.new instead')
   static SchemaOrReference create() => SchemaOrReference._();
+  static $pb.GeneratedMessage $_createMessage() => SchemaOrReference._();
   @$core.override
-  SchemaOrReference createEmptyInstance() => create();
-  static $pb.PbList<SchemaOrReference> createRepeated() =>
-      $pb.PbList<SchemaOrReference>();
+  SchemaOrReference createEmptyInstance() => SchemaOrReference._();
   @$core.pragma('dart2js:noInline')
-  static SchemaOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SchemaOrReference>(create);
+  static SchemaOrReference getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SchemaOrReference>(
+          SchemaOrReference.$_createMessage);
   static SchemaOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   SchemaOrReference_Oneof whichOneof() =>
       _SchemaOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -6250,7 +6356,7 @@ class SchemasOrReferences extends $pb.GeneratedMessage {
   factory SchemasOrReferences({
     $core.Iterable<NamedSchemaOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = SchemasOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -6260,23 +6366,23 @@ class SchemasOrReferences extends $pb.GeneratedMessage {
 
   factory SchemasOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SchemasOrReferences()..mergeFromBuffer(data, registry);
   factory SchemasOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SchemasOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SchemasOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedSchemaOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedSchemaOrReference.create)
+      createEmptyInstance: SchemasOrReferences.$_createMessage)
+    ..pPM<NamedSchemaOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedSchemaOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SchemasOrReferences clone() => SchemasOrReferences()..mergeFromMessage(this);
+  SchemasOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SchemasOrReferences copyWith(void Function(SchemasOrReferences) updates) =>
       super.copyWith((message) => updates(message as SchemasOrReferences))
@@ -6286,14 +6392,16 @@ class SchemasOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use SchemasOrReferences() / SchemasOrReferences.new instead')
   static SchemasOrReferences create() => SchemasOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() => SchemasOrReferences._();
   @$core.override
-  SchemasOrReferences createEmptyInstance() => create();
-  static $pb.PbList<SchemasOrReferences> createRepeated() =>
-      $pb.PbList<SchemasOrReferences>();
+  SchemasOrReferences createEmptyInstance() => SchemasOrReferences._();
   @$core.pragma('dart2js:noInline')
   static SchemasOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SchemasOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<SchemasOrReferences>(
+          SchemasOrReferences.$_createMessage);
   static SchemasOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6305,7 +6413,7 @@ class SecurityRequirement extends $pb.GeneratedMessage {
   factory SecurityRequirement({
     $core.Iterable<NamedStringArray>? additionalProperties,
   }) {
-    final result = create();
+    final result = SecurityRequirement._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -6315,23 +6423,22 @@ class SecurityRequirement extends $pb.GeneratedMessage {
 
   factory SecurityRequirement.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SecurityRequirement()..mergeFromBuffer(data, registry);
   factory SecurityRequirement.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SecurityRequirement()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SecurityRequirement',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedStringArray>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedStringArray.create)
+      createEmptyInstance: SecurityRequirement.$_createMessage)
+    ..pPM<NamedStringArray>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedStringArray.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SecurityRequirement clone() => SecurityRequirement()..mergeFromMessage(this);
+  SecurityRequirement clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SecurityRequirement copyWith(void Function(SecurityRequirement) updates) =>
       super.copyWith((message) => updates(message as SecurityRequirement))
@@ -6341,14 +6448,16 @@ class SecurityRequirement extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use SecurityRequirement() / SecurityRequirement.new instead')
   static SecurityRequirement create() => SecurityRequirement._();
+  static $pb.GeneratedMessage $_createMessage() => SecurityRequirement._();
   @$core.override
-  SecurityRequirement createEmptyInstance() => create();
-  static $pb.PbList<SecurityRequirement> createRepeated() =>
-      $pb.PbList<SecurityRequirement>();
+  SecurityRequirement createEmptyInstance() => SecurityRequirement._();
   @$core.pragma('dart2js:noInline')
   static SecurityRequirement getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SecurityRequirement>(create);
+      $pb.GeneratedMessage.$_defaultFor<SecurityRequirement>(
+          SecurityRequirement.$_createMessage);
   static SecurityRequirement? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6368,7 +6477,7 @@ class SecurityScheme extends $pb.GeneratedMessage {
     $core.String? openIdConnectUrl,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = SecurityScheme._();
     if (type != null) result.type = type;
     if (description != null) result.description = description;
     if (name != null) result.name = name;
@@ -6386,16 +6495,16 @@ class SecurityScheme extends $pb.GeneratedMessage {
 
   factory SecurityScheme.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SecurityScheme()..mergeFromBuffer(data, registry);
   factory SecurityScheme.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SecurityScheme()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SecurityScheme',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: SecurityScheme.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'type')
     ..aOS(2, _omitFieldNames ? '' : 'description')
     ..aOS(3, _omitFieldNames ? '' : 'name')
@@ -6403,15 +6512,14 @@ class SecurityScheme extends $pb.GeneratedMessage {
     ..aOS(5, _omitFieldNames ? '' : 'scheme')
     ..aOS(6, _omitFieldNames ? '' : 'bearerFormat')
     ..aOM<OauthFlows>(7, _omitFieldNames ? '' : 'flows',
-        subBuilder: OauthFlows.create)
+        subBuilder: OauthFlows.$_createMessage)
     ..aOS(8, _omitFieldNames ? '' : 'openIdConnectUrl')
-    ..pc<NamedAny>(
-        9, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(9, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SecurityScheme clone() => SecurityScheme()..mergeFromMessage(this);
+  SecurityScheme clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SecurityScheme copyWith(void Function(SecurityScheme) updates) =>
       super.copyWith((message) => updates(message as SecurityScheme))
@@ -6421,14 +6529,15 @@ class SecurityScheme extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SecurityScheme() / SecurityScheme.new instead')
   static SecurityScheme create() => SecurityScheme._();
+  static $pb.GeneratedMessage $_createMessage() => SecurityScheme._();
   @$core.override
-  SecurityScheme createEmptyInstance() => create();
-  static $pb.PbList<SecurityScheme> createRepeated() =>
-      $pb.PbList<SecurityScheme>();
+  SecurityScheme createEmptyInstance() => SecurityScheme._();
   @$core.pragma('dart2js:noInline')
-  static SecurityScheme getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SecurityScheme>(create);
+  static SecurityScheme getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SecurityScheme>(
+          SecurityScheme.$_createMessage);
   static SecurityScheme? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6516,7 +6625,7 @@ class SecuritySchemeOrReference extends $pb.GeneratedMessage {
     SecurityScheme? securityScheme,
     Reference? reference,
   }) {
-    final result = create();
+    final result = SecuritySchemeOrReference._();
     if (securityScheme != null) result.securityScheme = securityScheme;
     if (reference != null) result.reference = reference;
     return result;
@@ -6526,10 +6635,10 @@ class SecuritySchemeOrReference extends $pb.GeneratedMessage {
 
   factory SecuritySchemeOrReference.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SecuritySchemeOrReference()..mergeFromBuffer(data, registry);
   factory SecuritySchemeOrReference.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SecuritySchemeOrReference()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SecuritySchemeOrReference_Oneof>
       _SecuritySchemeOrReference_OneofByTag = {
@@ -6541,17 +6650,16 @@ class SecuritySchemeOrReference extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'SecuritySchemeOrReference',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: SecuritySchemeOrReference.$_createMessage)
     ..oo(0, [1, 2])
     ..aOM<SecurityScheme>(1, _omitFieldNames ? '' : 'securityScheme',
-        subBuilder: SecurityScheme.create)
+        subBuilder: SecurityScheme.$_createMessage)
     ..aOM<Reference>(2, _omitFieldNames ? '' : 'reference',
-        subBuilder: Reference.create)
+        subBuilder: Reference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SecuritySchemeOrReference clone() =>
-      SecuritySchemeOrReference()..mergeFromMessage(this);
+  SecuritySchemeOrReference clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SecuritySchemeOrReference copyWith(
           void Function(SecuritySchemeOrReference) updates) =>
@@ -6562,18 +6670,26 @@ class SecuritySchemeOrReference extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SecuritySchemeOrReference() / SecuritySchemeOrReference.new instead')
   static SecuritySchemeOrReference create() => SecuritySchemeOrReference._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SecuritySchemeOrReference._();
   @$core.override
-  SecuritySchemeOrReference createEmptyInstance() => create();
-  static $pb.PbList<SecuritySchemeOrReference> createRepeated() =>
-      $pb.PbList<SecuritySchemeOrReference>();
+  SecuritySchemeOrReference createEmptyInstance() =>
+      SecuritySchemeOrReference._();
   @$core.pragma('dart2js:noInline')
   static SecuritySchemeOrReference getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SecuritySchemeOrReference>(create);
+      $pb.GeneratedMessage.$_defaultFor<SecuritySchemeOrReference>(
+          SecuritySchemeOrReference.$_createMessage);
   static SecuritySchemeOrReference? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   SecuritySchemeOrReference_Oneof whichOneof() =>
       _SecuritySchemeOrReference_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -6603,7 +6719,7 @@ class SecuritySchemesOrReferences extends $pb.GeneratedMessage {
   factory SecuritySchemesOrReferences({
     $core.Iterable<NamedSecuritySchemeOrReference>? additionalProperties,
   }) {
-    final result = create();
+    final result = SecuritySchemesOrReferences._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -6613,24 +6729,23 @@ class SecuritySchemesOrReferences extends $pb.GeneratedMessage {
 
   factory SecuritySchemesOrReferences.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SecuritySchemesOrReferences()..mergeFromBuffer(data, registry);
   factory SecuritySchemesOrReferences.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SecuritySchemesOrReferences()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SecuritySchemesOrReferences',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedSecuritySchemeOrReference>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedSecuritySchemeOrReference.create)
+      createEmptyInstance: SecuritySchemesOrReferences.$_createMessage)
+    ..pPM<NamedSecuritySchemeOrReference>(
+        1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedSecuritySchemeOrReference.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SecuritySchemesOrReferences clone() =>
-      SecuritySchemesOrReferences()..mergeFromMessage(this);
+  SecuritySchemesOrReferences clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SecuritySchemesOrReferences copyWith(
           void Function(SecuritySchemesOrReferences) updates) =>
@@ -6642,15 +6757,19 @@ class SecuritySchemesOrReferences extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SecuritySchemesOrReferences() / SecuritySchemesOrReferences.new instead')
   static SecuritySchemesOrReferences create() =>
       SecuritySchemesOrReferences._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SecuritySchemesOrReferences._();
   @$core.override
-  SecuritySchemesOrReferences createEmptyInstance() => create();
-  static $pb.PbList<SecuritySchemesOrReferences> createRepeated() =>
-      $pb.PbList<SecuritySchemesOrReferences>();
+  SecuritySchemesOrReferences createEmptyInstance() =>
+      SecuritySchemesOrReferences._();
   @$core.pragma('dart2js:noInline')
   static SecuritySchemesOrReferences getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SecuritySchemesOrReferences>(create);
+      $pb.GeneratedMessage.$_defaultFor<SecuritySchemesOrReferences>(
+          SecuritySchemesOrReferences.$_createMessage);
   static SecuritySchemesOrReferences? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6666,7 +6785,7 @@ class Server extends $pb.GeneratedMessage {
     ServerVariables? variables,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Server._();
     if (url != null) result.url = url;
     if (description != null) result.description = description;
     if (variables != null) result.variables = variables;
@@ -6679,27 +6798,26 @@ class Server extends $pb.GeneratedMessage {
 
   factory Server.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Server()..mergeFromBuffer(data, registry);
   factory Server.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Server()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Server',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Server.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'url')
     ..aOS(2, _omitFieldNames ? '' : 'description')
     ..aOM<ServerVariables>(3, _omitFieldNames ? '' : 'variables',
-        subBuilder: ServerVariables.create)
-    ..pc<NamedAny>(
-        4, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: ServerVariables.$_createMessage)
+    ..pPM<NamedAny>(4, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Server clone() => Server()..mergeFromMessage(this);
+  Server clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Server copyWith(void Function(Server) updates) =>
       super.copyWith((message) => updates(message as Server)) as Server;
@@ -6708,13 +6826,14 @@ class Server extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Server() / Server.new instead')
   static Server create() => Server._();
+  static $pb.GeneratedMessage $_createMessage() => Server._();
   @$core.override
-  Server createEmptyInstance() => create();
-  static $pb.PbList<Server> createRepeated() => $pb.PbList<Server>();
+  Server createEmptyInstance() => Server._();
   @$core.pragma('dart2js:noInline')
-  static Server getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Server>(create);
+  static Server getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Server>(Server.$_createMessage);
   static Server? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6758,7 +6877,7 @@ class ServerVariable extends $pb.GeneratedMessage {
     $core.String? description,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = ServerVariable._();
     if (enum_1 != null) result.enum_1.addAll(enum_1);
     if (default_2 != null) result.default_2 = default_2;
     if (description != null) result.description = description;
@@ -6771,26 +6890,25 @@ class ServerVariable extends $pb.GeneratedMessage {
 
   factory ServerVariable.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ServerVariable()..mergeFromBuffer(data, registry);
   factory ServerVariable.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ServerVariable()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ServerVariable',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: ServerVariable.$_createMessage)
     ..pPS(1, _omitFieldNames ? '' : 'enum')
     ..aOS(2, _omitFieldNames ? '' : 'default')
     ..aOS(3, _omitFieldNames ? '' : 'description')
-    ..pc<NamedAny>(
-        4, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(4, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ServerVariable clone() => ServerVariable()..mergeFromMessage(this);
+  ServerVariable clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ServerVariable copyWith(void Function(ServerVariable) updates) =>
       super.copyWith((message) => updates(message as ServerVariable))
@@ -6800,14 +6918,15 @@ class ServerVariable extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ServerVariable() / ServerVariable.new instead')
   static ServerVariable create() => ServerVariable._();
+  static $pb.GeneratedMessage $_createMessage() => ServerVariable._();
   @$core.override
-  ServerVariable createEmptyInstance() => create();
-  static $pb.PbList<ServerVariable> createRepeated() =>
-      $pb.PbList<ServerVariable>();
+  ServerVariable createEmptyInstance() => ServerVariable._();
   @$core.pragma('dart2js:noInline')
-  static ServerVariable getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ServerVariable>(create);
+  static ServerVariable getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ServerVariable>(
+          ServerVariable.$_createMessage);
   static ServerVariable? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6839,7 +6958,7 @@ class ServerVariables extends $pb.GeneratedMessage {
   factory ServerVariables({
     $core.Iterable<NamedServerVariable>? additionalProperties,
   }) {
-    final result = create();
+    final result = ServerVariables._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -6849,23 +6968,22 @@ class ServerVariables extends $pb.GeneratedMessage {
 
   factory ServerVariables.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ServerVariables()..mergeFromBuffer(data, registry);
   factory ServerVariables.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ServerVariables()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ServerVariables',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedServerVariable>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedServerVariable.create)
+      createEmptyInstance: ServerVariables.$_createMessage)
+    ..pPM<NamedServerVariable>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedServerVariable.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ServerVariables clone() => ServerVariables()..mergeFromMessage(this);
+  ServerVariables clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ServerVariables copyWith(void Function(ServerVariables) updates) =>
       super.copyWith((message) => updates(message as ServerVariables))
@@ -6875,14 +6993,15 @@ class ServerVariables extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ServerVariables() / ServerVariables.new instead')
   static ServerVariables create() => ServerVariables._();
+  static $pb.GeneratedMessage $_createMessage() => ServerVariables._();
   @$core.override
-  ServerVariables createEmptyInstance() => create();
-  static $pb.PbList<ServerVariables> createRepeated() =>
-      $pb.PbList<ServerVariables>();
+  ServerVariables createEmptyInstance() => ServerVariables._();
   @$core.pragma('dart2js:noInline')
-  static ServerVariables getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ServerVariables>(create);
+  static ServerVariables getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ServerVariables>(
+          ServerVariables.$_createMessage);
   static ServerVariables? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -6898,7 +7017,7 @@ class SpecificationExtension extends $pb.GeneratedMessage {
     $core.bool? boolean,
     $core.String? string,
   }) {
-    final result = create();
+    final result = SpecificationExtension._();
     if (number != null) result.number = number;
     if (boolean != null) result.boolean = boolean;
     if (string != null) result.string = string;
@@ -6909,10 +7028,10 @@ class SpecificationExtension extends $pb.GeneratedMessage {
 
   factory SpecificationExtension.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SpecificationExtension()..mergeFromBuffer(data, registry);
   factory SpecificationExtension.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SpecificationExtension()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SpecificationExtension_Oneof>
       _SpecificationExtension_OneofByTag = {
@@ -6925,16 +7044,15 @@ class SpecificationExtension extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'SpecificationExtension',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: SpecificationExtension.$_createMessage)
     ..oo(0, [1, 2, 3])
-    ..a<$core.double>(1, _omitFieldNames ? '' : 'number', $pb.PbFieldType.OD)
+    ..aD(1, _omitFieldNames ? '' : 'number')
     ..aOB(2, _omitFieldNames ? '' : 'boolean')
     ..aOS(3, _omitFieldNames ? '' : 'string')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SpecificationExtension clone() =>
-      SpecificationExtension()..mergeFromMessage(this);
+  SpecificationExtension clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SpecificationExtension copyWith(
           void Function(SpecificationExtension) updates) =>
@@ -6945,18 +7063,26 @@ class SpecificationExtension extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SpecificationExtension() / SpecificationExtension.new instead')
   static SpecificationExtension create() => SpecificationExtension._();
+  static $pb.GeneratedMessage $_createMessage() => SpecificationExtension._();
   @$core.override
-  SpecificationExtension createEmptyInstance() => create();
-  static $pb.PbList<SpecificationExtension> createRepeated() =>
-      $pb.PbList<SpecificationExtension>();
+  SpecificationExtension createEmptyInstance() => SpecificationExtension._();
   @$core.pragma('dart2js:noInline')
   static SpecificationExtension getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SpecificationExtension>(create);
+      $pb.GeneratedMessage.$_defaultFor<SpecificationExtension>(
+          SpecificationExtension.$_createMessage);
   static SpecificationExtension? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   SpecificationExtension_Oneof whichOneof() =>
       _SpecificationExtension_OneofByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearOneof() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -6991,7 +7117,7 @@ class StringArray extends $pb.GeneratedMessage {
   factory StringArray({
     $core.Iterable<$core.String>? value,
   }) {
-    final result = create();
+    final result = StringArray._();
     if (value != null) result.value.addAll(value);
     return result;
   }
@@ -7000,21 +7126,21 @@ class StringArray extends $pb.GeneratedMessage {
 
   factory StringArray.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StringArray()..mergeFromBuffer(data, registry);
   factory StringArray.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StringArray()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StringArray',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: StringArray.$_createMessage)
     ..pPS(1, _omitFieldNames ? '' : 'value')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StringArray clone() => StringArray()..mergeFromMessage(this);
+  StringArray clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StringArray copyWith(void Function(StringArray) updates) =>
       super.copyWith((message) => updates(message as StringArray))
@@ -7024,13 +7150,15 @@ class StringArray extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StringArray() / StringArray.new instead')
   static StringArray create() => StringArray._();
+  static $pb.GeneratedMessage $_createMessage() => StringArray._();
   @$core.override
-  StringArray createEmptyInstance() => create();
-  static $pb.PbList<StringArray> createRepeated() => $pb.PbList<StringArray>();
+  StringArray createEmptyInstance() => StringArray._();
   @$core.pragma('dart2js:noInline')
-  static StringArray getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StringArray>(create);
+  static StringArray getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StringArray>(
+          StringArray.$_createMessage);
   static StringArray? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -7041,7 +7169,7 @@ class Strings extends $pb.GeneratedMessage {
   factory Strings({
     $core.Iterable<NamedString>? additionalProperties,
   }) {
-    final result = create();
+    final result = Strings._();
     if (additionalProperties != null)
       result.additionalProperties.addAll(additionalProperties);
     return result;
@@ -7051,23 +7179,22 @@ class Strings extends $pb.GeneratedMessage {
 
   factory Strings.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Strings()..mergeFromBuffer(data, registry);
   factory Strings.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Strings()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Strings',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
-    ..pc<NamedString>(
-        1, _omitFieldNames ? '' : 'additionalProperties', $pb.PbFieldType.PM,
-        subBuilder: NamedString.create)
+      createEmptyInstance: Strings.$_createMessage)
+    ..pPM<NamedString>(1, _omitFieldNames ? '' : 'additionalProperties',
+        subBuilder: NamedString.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Strings clone() => Strings()..mergeFromMessage(this);
+  Strings clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Strings copyWith(void Function(Strings) updates) =>
       super.copyWith((message) => updates(message as Strings)) as Strings;
@@ -7076,13 +7203,14 @@ class Strings extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Strings() / Strings.new instead')
   static Strings create() => Strings._();
+  static $pb.GeneratedMessage $_createMessage() => Strings._();
   @$core.override
-  Strings createEmptyInstance() => create();
-  static $pb.PbList<Strings> createRepeated() => $pb.PbList<Strings>();
+  Strings createEmptyInstance() => Strings._();
   @$core.pragma('dart2js:noInline')
-  static Strings getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Strings>(create);
+  static Strings getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Strings>(Strings.$_createMessage);
   static Strings? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -7097,7 +7225,7 @@ class Tag extends $pb.GeneratedMessage {
     ExternalDocs? externalDocs,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Tag._();
     if (name != null) result.name = name;
     if (description != null) result.description = description;
     if (externalDocs != null) result.externalDocs = externalDocs;
@@ -7110,27 +7238,26 @@ class Tag extends $pb.GeneratedMessage {
 
   factory Tag.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Tag()..mergeFromBuffer(data, registry);
   factory Tag.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Tag()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Tag',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Tag.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOS(2, _omitFieldNames ? '' : 'description')
     ..aOM<ExternalDocs>(3, _omitFieldNames ? '' : 'externalDocs',
-        subBuilder: ExternalDocs.create)
-    ..pc<NamedAny>(
-        4, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+        subBuilder: ExternalDocs.$_createMessage)
+    ..pPM<NamedAny>(4, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Tag clone() => Tag()..mergeFromMessage(this);
+  Tag clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Tag copyWith(void Function(Tag) updates) =>
       super.copyWith((message) => updates(message as Tag)) as Tag;
@@ -7139,13 +7266,14 @@ class Tag extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Tag() / Tag.new instead')
   static Tag create() => Tag._();
+  static $pb.GeneratedMessage $_createMessage() => Tag._();
   @$core.override
-  Tag createEmptyInstance() => create();
-  static $pb.PbList<Tag> createRepeated() => $pb.PbList<Tag>();
+  Tag createEmptyInstance() => Tag._();
   @$core.pragma('dart2js:noInline')
-  static Tag getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Tag>(create);
+  static Tag getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Tag>(Tag.$_createMessage);
   static Tag? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -7191,7 +7319,7 @@ class Xml extends $pb.GeneratedMessage {
     $core.bool? wrapped,
     $core.Iterable<NamedAny>? specificationExtension,
   }) {
-    final result = create();
+    final result = Xml._();
     if (name != null) result.name = name;
     if (namespace != null) result.namespace = namespace;
     if (prefix != null) result.prefix = prefix;
@@ -7206,28 +7334,27 @@ class Xml extends $pb.GeneratedMessage {
 
   factory Xml.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Xml()..mergeFromBuffer(data, registry);
   factory Xml.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Xml()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Xml',
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'gnostic.openapi.v3'),
-      createEmptyInstance: create)
+      createEmptyInstance: Xml.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOS(2, _omitFieldNames ? '' : 'namespace')
     ..aOS(3, _omitFieldNames ? '' : 'prefix')
     ..aOB(4, _omitFieldNames ? '' : 'attribute')
     ..aOB(5, _omitFieldNames ? '' : 'wrapped')
-    ..pc<NamedAny>(
-        6, _omitFieldNames ? '' : 'specificationExtension', $pb.PbFieldType.PM,
-        subBuilder: NamedAny.create)
+    ..pPM<NamedAny>(6, _omitFieldNames ? '' : 'specificationExtension',
+        subBuilder: NamedAny.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Xml clone() => Xml()..mergeFromMessage(this);
+  Xml clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Xml copyWith(void Function(Xml) updates) =>
       super.copyWith((message) => updates(message as Xml)) as Xml;
@@ -7236,13 +7363,14 @@ class Xml extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Xml() / Xml.new instead')
   static Xml create() => Xml._();
+  static $pb.GeneratedMessage $_createMessage() => Xml._();
   @$core.override
-  Xml createEmptyInstance() => create();
-  static $pb.PbList<Xml> createRepeated() => $pb.PbList<Xml>();
+  Xml createEmptyInstance() => Xml._();
   @$core.pragma('dart2js:noInline')
-  static Xml getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Xml>(create);
+  static Xml getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Xml>(Xml.$_createMessage);
   static Xml? _defaultInstance;
 
   @$pb.TagNumber(1)

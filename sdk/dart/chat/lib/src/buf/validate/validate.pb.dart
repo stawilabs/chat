@@ -8,17 +8,20 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
 import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
+import 'package:protobuf/well_known_types/google/protobuf/duration.pb.dart'
+    as $0;
+import 'package:protobuf/well_known_types/google/protobuf/field_mask.pb.dart'
+    as $1;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as $2;
 
 import '../../google/protobuf/descriptor.pbenum.dart' as $3;
-import '../../google/protobuf/duration.pb.dart' as $0;
-import '../../google/protobuf/field_mask.pb.dart' as $1;
-import '../../google/protobuf/timestamp.pb.dart' as $2;
 import 'validate.pbenum.dart';
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
@@ -46,7 +49,7 @@ class Rule extends $pb.GeneratedMessage {
     $core.String? message,
     $core.String? expression,
   }) {
-    final result = create();
+    final result = Rule._();
     if (id != null) result.id = id;
     if (message != null) result.message = message;
     if (expression != null) result.expression = expression;
@@ -57,22 +60,22 @@ class Rule extends $pb.GeneratedMessage {
 
   factory Rule.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Rule()..mergeFromBuffer(data, registry);
   factory Rule.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Rule()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Rule',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: Rule.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'message')
     ..aOS(3, _omitFieldNames ? '' : 'expression')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Rule clone() => Rule()..mergeFromMessage(this);
+  Rule clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Rule copyWith(void Function(Rule) updates) =>
       super.copyWith((message) => updates(message as Rule)) as Rule;
@@ -81,13 +84,14 @@ class Rule extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Rule() / Rule.new instead')
   static Rule create() => Rule._();
+  static $pb.GeneratedMessage $_createMessage() => Rule._();
   @$core.override
-  Rule createEmptyInstance() => create();
-  static $pb.PbList<Rule> createRepeated() => $pb.PbList<Rule>();
+  Rule createEmptyInstance() => Rule._();
   @$core.pragma('dart2js:noInline')
-  static Rule getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Rule>(create);
+  static Rule getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Rule>(Rule.$_createMessage);
   static Rule? _defaultInstance;
 
   /// `id` is a string that serves as a machine-readable name for this Rule.
@@ -136,7 +140,7 @@ class MessageRules extends $pb.GeneratedMessage {
     $core.Iterable<MessageOneofRule>? oneof,
     $core.Iterable<$core.String>? celExpression,
   }) {
-    final result = create();
+    final result = MessageRules._();
     if (cel != null) result.cel.addAll(cel);
     if (oneof != null) result.oneof.addAll(oneof);
     if (celExpression != null) result.celExpression.addAll(celExpression);
@@ -147,25 +151,24 @@ class MessageRules extends $pb.GeneratedMessage {
 
   factory MessageRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MessageRules()..mergeFromBuffer(data, registry);
   factory MessageRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MessageRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MessageRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
-    ..pc<Rule>(3, _omitFieldNames ? '' : 'cel', $pb.PbFieldType.PM,
-        subBuilder: Rule.create)
-    ..pc<MessageOneofRule>(
-        4, _omitFieldNames ? '' : 'oneof', $pb.PbFieldType.PM,
-        subBuilder: MessageOneofRule.create)
+      createEmptyInstance: MessageRules.$_createMessage)
+    ..pPM<Rule>(3, _omitFieldNames ? '' : 'cel',
+        subBuilder: Rule.$_createMessage)
+    ..pPM<MessageOneofRule>(4, _omitFieldNames ? '' : 'oneof',
+        subBuilder: MessageOneofRule.$_createMessage)
     ..pPS(5, _omitFieldNames ? '' : 'celExpression')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MessageRules clone() => MessageRules()..mergeFromMessage(this);
+  MessageRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MessageRules copyWith(void Function(MessageRules) updates) =>
       super.copyWith((message) => updates(message as MessageRules))
@@ -175,14 +178,15 @@ class MessageRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MessageRules() / MessageRules.new instead')
   static MessageRules create() => MessageRules._();
+  static $pb.GeneratedMessage $_createMessage() => MessageRules._();
   @$core.override
-  MessageRules createEmptyInstance() => create();
-  static $pb.PbList<MessageRules> createRepeated() =>
-      $pb.PbList<MessageRules>();
+  MessageRules createEmptyInstance() => MessageRules._();
   @$core.pragma('dart2js:noInline')
-  static MessageRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<MessageRules>(create);
+  static MessageRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MessageRules>(
+          MessageRules.$_createMessage);
   static MessageRules? _defaultInstance;
 
   /// `cel` is a repeated field of type Rule. Each Rule specifies a validation rule to be applied to this message.
@@ -268,7 +272,7 @@ class MessageOneofRule extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? fields,
     $core.bool? required,
   }) {
-    final result = create();
+    final result = MessageOneofRule._();
     if (fields != null) result.fields.addAll(fields);
     if (required != null) result.required = required;
     return result;
@@ -278,21 +282,21 @@ class MessageOneofRule extends $pb.GeneratedMessage {
 
   factory MessageOneofRule.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MessageOneofRule()..mergeFromBuffer(data, registry);
   factory MessageOneofRule.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MessageOneofRule()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MessageOneofRule',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: MessageOneofRule.$_createMessage)
     ..pPS(1, _omitFieldNames ? '' : 'fields')
     ..aOB(2, _omitFieldNames ? '' : 'required')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MessageOneofRule clone() => MessageOneofRule()..mergeFromMessage(this);
+  MessageOneofRule clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MessageOneofRule copyWith(void Function(MessageOneofRule) updates) =>
       super.copyWith((message) => updates(message as MessageOneofRule))
@@ -302,14 +306,15 @@ class MessageOneofRule extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MessageOneofRule() / MessageOneofRule.new instead')
   static MessageOneofRule create() => MessageOneofRule._();
+  static $pb.GeneratedMessage $_createMessage() => MessageOneofRule._();
   @$core.override
-  MessageOneofRule createEmptyInstance() => create();
-  static $pb.PbList<MessageOneofRule> createRepeated() =>
-      $pb.PbList<MessageOneofRule>();
+  MessageOneofRule createEmptyInstance() => MessageOneofRule._();
   @$core.pragma('dart2js:noInline')
-  static MessageOneofRule getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<MessageOneofRule>(create);
+  static MessageOneofRule getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MessageOneofRule>(
+          MessageOneofRule.$_createMessage);
   static MessageOneofRule? _defaultInstance;
 
   /// A list of field names to include in the oneof. All field names must be
@@ -335,7 +340,7 @@ class OneofRules extends $pb.GeneratedMessage {
   factory OneofRules({
     $core.bool? required,
   }) {
-    final result = create();
+    final result = OneofRules._();
     if (required != null) result.required = required;
     return result;
   }
@@ -344,20 +349,20 @@ class OneofRules extends $pb.GeneratedMessage {
 
   factory OneofRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      OneofRules()..mergeFromBuffer(data, registry);
   factory OneofRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      OneofRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'OneofRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: OneofRules.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'required')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  OneofRules clone() => OneofRules()..mergeFromMessage(this);
+  OneofRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   OneofRules copyWith(void Function(OneofRules) updates) =>
       super.copyWith((message) => updates(message as OneofRules)) as OneofRules;
@@ -366,13 +371,14 @@ class OneofRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use OneofRules() / OneofRules.new instead')
   static OneofRules create() => OneofRules._();
+  static $pb.GeneratedMessage $_createMessage() => OneofRules._();
   @$core.override
-  OneofRules createEmptyInstance() => create();
-  static $pb.PbList<OneofRules> createRepeated() => $pb.PbList<OneofRules>();
+  OneofRules createEmptyInstance() => OneofRules._();
   @$core.pragma('dart2js:noInline')
   static OneofRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<OneofRules>(create);
+      $pb.GeneratedMessage.$_defaultFor<OneofRules>(OneofRules.$_createMessage);
   static OneofRules? _defaultInstance;
 
   /// If `required` is true, exactly one field of the oneof must be set. A
@@ -458,7 +464,7 @@ class FieldRules extends $pb.GeneratedMessage {
     FieldMaskRules? fieldMask,
     $core.Iterable<$core.String>? celExpression,
   }) {
-    final result = create();
+    final result = FieldRules._();
     if (float != null) result.float = float;
     if (double_2 != null) result.double_2 = double_2;
     if (int32 != null) result.int32 = int32;
@@ -492,10 +498,10 @@ class FieldRules extends $pb.GeneratedMessage {
 
   factory FieldRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FieldRules()..mergeFromBuffer(data, registry);
   factory FieldRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FieldRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, FieldRules_Type> _FieldRules_TypeByTag = {
     1: FieldRules_Type.float,
@@ -525,7 +531,7 @@ class FieldRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FieldRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: FieldRules.$_createMessage)
     ..oo(0, [
       1,
       2,
@@ -551,60 +557,57 @@ class FieldRules extends $pb.GeneratedMessage {
       28
     ])
     ..aOM<FloatRules>(1, _omitFieldNames ? '' : 'float',
-        subBuilder: FloatRules.create)
+        subBuilder: FloatRules.$_createMessage)
     ..aOM<DoubleRules>(2, _omitFieldNames ? '' : 'double',
-        subBuilder: DoubleRules.create)
+        subBuilder: DoubleRules.$_createMessage)
     ..aOM<Int32Rules>(3, _omitFieldNames ? '' : 'int32',
-        subBuilder: Int32Rules.create)
+        subBuilder: Int32Rules.$_createMessage)
     ..aOM<Int64Rules>(4, _omitFieldNames ? '' : 'int64',
-        subBuilder: Int64Rules.create)
+        subBuilder: Int64Rules.$_createMessage)
     ..aOM<UInt32Rules>(5, _omitFieldNames ? '' : 'uint32',
-        subBuilder: UInt32Rules.create)
+        subBuilder: UInt32Rules.$_createMessage)
     ..aOM<UInt64Rules>(6, _omitFieldNames ? '' : 'uint64',
-        subBuilder: UInt64Rules.create)
+        subBuilder: UInt64Rules.$_createMessage)
     ..aOM<SInt32Rules>(7, _omitFieldNames ? '' : 'sint32',
-        subBuilder: SInt32Rules.create)
+        subBuilder: SInt32Rules.$_createMessage)
     ..aOM<SInt64Rules>(8, _omitFieldNames ? '' : 'sint64',
-        subBuilder: SInt64Rules.create)
+        subBuilder: SInt64Rules.$_createMessage)
     ..aOM<Fixed32Rules>(9, _omitFieldNames ? '' : 'fixed32',
-        subBuilder: Fixed32Rules.create)
+        subBuilder: Fixed32Rules.$_createMessage)
     ..aOM<Fixed64Rules>(10, _omitFieldNames ? '' : 'fixed64',
-        subBuilder: Fixed64Rules.create)
+        subBuilder: Fixed64Rules.$_createMessage)
     ..aOM<SFixed32Rules>(11, _omitFieldNames ? '' : 'sfixed32',
-        subBuilder: SFixed32Rules.create)
+        subBuilder: SFixed32Rules.$_createMessage)
     ..aOM<SFixed64Rules>(12, _omitFieldNames ? '' : 'sfixed64',
-        subBuilder: SFixed64Rules.create)
+        subBuilder: SFixed64Rules.$_createMessage)
     ..aOM<BoolRules>(13, _omitFieldNames ? '' : 'bool',
-        subBuilder: BoolRules.create)
+        subBuilder: BoolRules.$_createMessage)
     ..aOM<StringRules>(14, _omitFieldNames ? '' : 'string',
-        subBuilder: StringRules.create)
+        subBuilder: StringRules.$_createMessage)
     ..aOM<BytesRules>(15, _omitFieldNames ? '' : 'bytes',
-        subBuilder: BytesRules.create)
+        subBuilder: BytesRules.$_createMessage)
     ..aOM<EnumRules>(16, _omitFieldNames ? '' : 'enum',
-        subBuilder: EnumRules.create)
+        subBuilder: EnumRules.$_createMessage)
     ..aOM<RepeatedRules>(18, _omitFieldNames ? '' : 'repeated',
-        subBuilder: RepeatedRules.create)
+        subBuilder: RepeatedRules.$_createMessage)
     ..aOM<MapRules>(19, _omitFieldNames ? '' : 'map',
-        subBuilder: MapRules.create)
+        subBuilder: MapRules.$_createMessage)
     ..aOM<AnyRules>(20, _omitFieldNames ? '' : 'any',
-        subBuilder: AnyRules.create)
+        subBuilder: AnyRules.$_createMessage)
     ..aOM<DurationRules>(21, _omitFieldNames ? '' : 'duration',
-        subBuilder: DurationRules.create)
+        subBuilder: DurationRules.$_createMessage)
     ..aOM<TimestampRules>(22, _omitFieldNames ? '' : 'timestamp',
-        subBuilder: TimestampRules.create)
-    ..pc<Rule>(23, _omitFieldNames ? '' : 'cel', $pb.PbFieldType.PM,
-        subBuilder: Rule.create)
+        subBuilder: TimestampRules.$_createMessage)
+    ..pPM<Rule>(23, _omitFieldNames ? '' : 'cel',
+        subBuilder: Rule.$_createMessage)
     ..aOB(25, _omitFieldNames ? '' : 'required')
-    ..e<Ignore>(27, _omitFieldNames ? '' : 'ignore', $pb.PbFieldType.OE,
-        defaultOrMaker: Ignore.IGNORE_UNSPECIFIED,
-        valueOf: Ignore.valueOf,
-        enumValues: Ignore.values)
+    ..aE<Ignore>(27, _omitFieldNames ? '' : 'ignore', enumValues: Ignore.values)
     ..aOM<FieldMaskRules>(28, _omitFieldNames ? '' : 'fieldMask',
-        subBuilder: FieldMaskRules.create)
+        subBuilder: FieldMaskRules.$_createMessage)
     ..pPS(29, _omitFieldNames ? '' : 'celExpression');
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FieldRules clone() => FieldRules()..mergeFromMessage(this);
+  FieldRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FieldRules copyWith(void Function(FieldRules) updates) =>
       super.copyWith((message) => updates(message as FieldRules)) as FieldRules;
@@ -613,16 +616,61 @@ class FieldRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FieldRules() / FieldRules.new instead')
   static FieldRules create() => FieldRules._();
+  static $pb.GeneratedMessage $_createMessage() => FieldRules._();
   @$core.override
-  FieldRules createEmptyInstance() => create();
-  static $pb.PbList<FieldRules> createRepeated() => $pb.PbList<FieldRules>();
+  FieldRules createEmptyInstance() => FieldRules._();
   @$core.pragma('dart2js:noInline')
   static FieldRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FieldRules>(create);
+      $pb.GeneratedMessage.$_defaultFor<FieldRules>(FieldRules.$_createMessage);
   static FieldRules? _defaultInstance;
 
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(11)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
+  @$pb.TagNumber(20)
+  @$pb.TagNumber(21)
+  @$pb.TagNumber(22)
+  @$pb.TagNumber(28)
   FieldRules_Type whichType() => _FieldRules_TypeByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(11)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
+  @$pb.TagNumber(20)
+  @$pb.TagNumber(21)
+  @$pb.TagNumber(22)
+  @$pb.TagNumber(28)
   void clearType() => $_clearField($_whichOneof(0));
 
   /// Scalar Field Types
@@ -998,7 +1046,7 @@ class PredefinedRules extends $pb.GeneratedMessage {
   factory PredefinedRules({
     $core.Iterable<Rule>? cel,
   }) {
-    final result = create();
+    final result = PredefinedRules._();
     if (cel != null) result.cel.addAll(cel);
     return result;
   }
@@ -1007,21 +1055,21 @@ class PredefinedRules extends $pb.GeneratedMessage {
 
   factory PredefinedRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      PredefinedRules()..mergeFromBuffer(data, registry);
   factory PredefinedRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      PredefinedRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'PredefinedRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
-    ..pc<Rule>(1, _omitFieldNames ? '' : 'cel', $pb.PbFieldType.PM,
-        subBuilder: Rule.create)
+      createEmptyInstance: PredefinedRules.$_createMessage)
+    ..pPM<Rule>(1, _omitFieldNames ? '' : 'cel',
+        subBuilder: Rule.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  PredefinedRules clone() => PredefinedRules()..mergeFromMessage(this);
+  PredefinedRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   PredefinedRules copyWith(void Function(PredefinedRules) updates) =>
       super.copyWith((message) => updates(message as PredefinedRules))
@@ -1031,14 +1079,15 @@ class PredefinedRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PredefinedRules() / PredefinedRules.new instead')
   static PredefinedRules create() => PredefinedRules._();
+  static $pb.GeneratedMessage $_createMessage() => PredefinedRules._();
   @$core.override
-  PredefinedRules createEmptyInstance() => create();
-  static $pb.PbList<PredefinedRules> createRepeated() =>
-      $pb.PbList<PredefinedRules>();
+  PredefinedRules createEmptyInstance() => PredefinedRules._();
   @$core.pragma('dart2js:noInline')
-  static PredefinedRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<PredefinedRules>(create);
+  static PredefinedRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PredefinedRules>(
+          PredefinedRules.$_createMessage);
   static PredefinedRules? _defaultInstance;
 
   /// `cel` is a repeated field used to represent a textual expression
@@ -1077,7 +1126,7 @@ class FloatRules extends $pb.GeneratedMessage {
     $core.bool? finite,
     $core.Iterable<$core.double>? example,
   }) {
-    final result = create();
+    final result = FloatRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -1094,10 +1143,10 @@ class FloatRules extends $pb.GeneratedMessage {
 
   factory FloatRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FloatRules()..mergeFromBuffer(data, registry);
   factory FloatRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FloatRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, FloatRules_LessThan>
       _FloatRules_LessThanByTag = {
@@ -1114,14 +1163,14 @@ class FloatRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FloatRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: FloatRules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.double>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OF)
-    ..a<$core.double>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.OF)
-    ..a<$core.double>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.OF)
-    ..a<$core.double>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.OF)
-    ..a<$core.double>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.OF)
+    ..aD(1, _omitFieldNames ? '' : 'const', fieldType: $pb.PbFieldType.OF)
+    ..aD(2, _omitFieldNames ? '' : 'lt', fieldType: $pb.PbFieldType.OF)
+    ..aD(3, _omitFieldNames ? '' : 'lte', fieldType: $pb.PbFieldType.OF)
+    ..aD(4, _omitFieldNames ? '' : 'gt', fieldType: $pb.PbFieldType.OF)
+    ..aD(5, _omitFieldNames ? '' : 'gte', fieldType: $pb.PbFieldType.OF)
     ..p<$core.double>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PF)
     ..p<$core.double>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PF)
     ..aOB(8, _omitFieldNames ? '' : 'finite')
@@ -1129,7 +1178,7 @@ class FloatRules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FloatRules clone() => FloatRules()..mergeFromMessage(this);
+  FloatRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FloatRules copyWith(void Function(FloatRules) updates) =>
       super.copyWith((message) => updates(message as FloatRules)) as FloatRules;
@@ -1138,21 +1187,30 @@ class FloatRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FloatRules() / FloatRules.new instead')
   static FloatRules create() => FloatRules._();
+  static $pb.GeneratedMessage $_createMessage() => FloatRules._();
   @$core.override
-  FloatRules createEmptyInstance() => create();
-  static $pb.PbList<FloatRules> createRepeated() => $pb.PbList<FloatRules>();
+  FloatRules createEmptyInstance() => FloatRules._();
   @$core.pragma('dart2js:noInline')
   static FloatRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FloatRules>(create);
+      $pb.GeneratedMessage.$_defaultFor<FloatRules>(FloatRules.$_createMessage);
   static FloatRules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   FloatRules_LessThan whichLessThan() =>
       _FloatRules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   FloatRules_GreaterThan whichGreaterThan() =>
       _FloatRules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -1336,7 +1394,7 @@ class DoubleRules extends $pb.GeneratedMessage {
     $core.bool? finite,
     $core.Iterable<$core.double>? example,
   }) {
-    final result = create();
+    final result = DoubleRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -1353,10 +1411,10 @@ class DoubleRules extends $pb.GeneratedMessage {
 
   factory DoubleRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      DoubleRules()..mergeFromBuffer(data, registry);
   factory DoubleRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      DoubleRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, DoubleRules_LessThan>
       _DoubleRules_LessThanByTag = {
@@ -1373,14 +1431,14 @@ class DoubleRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'DoubleRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: DoubleRules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.double>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OD)
-    ..a<$core.double>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.OD)
-    ..a<$core.double>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.OD)
-    ..a<$core.double>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.OD)
-    ..a<$core.double>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.OD)
+    ..aD(1, _omitFieldNames ? '' : 'const')
+    ..aD(2, _omitFieldNames ? '' : 'lt')
+    ..aD(3, _omitFieldNames ? '' : 'lte')
+    ..aD(4, _omitFieldNames ? '' : 'gt')
+    ..aD(5, _omitFieldNames ? '' : 'gte')
     ..p<$core.double>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PD)
     ..p<$core.double>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PD)
     ..aOB(8, _omitFieldNames ? '' : 'finite')
@@ -1388,7 +1446,7 @@ class DoubleRules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  DoubleRules clone() => DoubleRules()..mergeFromMessage(this);
+  DoubleRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   DoubleRules copyWith(void Function(DoubleRules) updates) =>
       super.copyWith((message) => updates(message as DoubleRules))
@@ -1398,21 +1456,31 @@ class DoubleRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DoubleRules() / DoubleRules.new instead')
   static DoubleRules create() => DoubleRules._();
+  static $pb.GeneratedMessage $_createMessage() => DoubleRules._();
   @$core.override
-  DoubleRules createEmptyInstance() => create();
-  static $pb.PbList<DoubleRules> createRepeated() => $pb.PbList<DoubleRules>();
+  DoubleRules createEmptyInstance() => DoubleRules._();
   @$core.pragma('dart2js:noInline')
-  static DoubleRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<DoubleRules>(create);
+  static DoubleRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DoubleRules>(
+          DoubleRules.$_createMessage);
   static DoubleRules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   DoubleRules_LessThan whichLessThan() =>
       _DoubleRules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   DoubleRules_GreaterThan whichGreaterThan() =>
       _DoubleRules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -1595,7 +1663,7 @@ class Int32Rules extends $pb.GeneratedMessage {
     $core.Iterable<$core.int>? notIn,
     $core.Iterable<$core.int>? example,
   }) {
-    final result = create();
+    final result = Int32Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -1611,10 +1679,10 @@ class Int32Rules extends $pb.GeneratedMessage {
 
   factory Int32Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Int32Rules()..mergeFromBuffer(data, registry);
   factory Int32Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Int32Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, Int32Rules_LessThan>
       _Int32Rules_LessThanByTag = {
@@ -1631,21 +1699,21 @@ class Int32Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Int32Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: Int32Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.O3)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.O3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.O3)
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.O3)
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.O3)
+    ..aI(1, _omitFieldNames ? '' : 'const')
+    ..aI(2, _omitFieldNames ? '' : 'lt')
+    ..aI(3, _omitFieldNames ? '' : 'lte')
+    ..aI(4, _omitFieldNames ? '' : 'gt')
+    ..aI(5, _omitFieldNames ? '' : 'gte')
     ..p<$core.int>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.P3)
     ..p<$core.int>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.P3)
     ..p<$core.int>(8, _omitFieldNames ? '' : 'example', $pb.PbFieldType.P3)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Int32Rules clone() => Int32Rules()..mergeFromMessage(this);
+  Int32Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Int32Rules copyWith(void Function(Int32Rules) updates) =>
       super.copyWith((message) => updates(message as Int32Rules)) as Int32Rules;
@@ -1654,21 +1722,30 @@ class Int32Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Int32Rules() / Int32Rules.new instead')
   static Int32Rules create() => Int32Rules._();
+  static $pb.GeneratedMessage $_createMessage() => Int32Rules._();
   @$core.override
-  Int32Rules createEmptyInstance() => create();
-  static $pb.PbList<Int32Rules> createRepeated() => $pb.PbList<Int32Rules>();
+  Int32Rules createEmptyInstance() => Int32Rules._();
   @$core.pragma('dart2js:noInline')
   static Int32Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Int32Rules>(create);
+      $pb.GeneratedMessage.$_defaultFor<Int32Rules>(Int32Rules.$_createMessage);
   static Int32Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   Int32Rules_LessThan whichLessThan() =>
       _Int32Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   Int32Rules_GreaterThan whichGreaterThan() =>
       _Int32Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -1840,7 +1917,7 @@ class Int64Rules extends $pb.GeneratedMessage {
     $core.Iterable<$fixnum.Int64>? notIn,
     $core.Iterable<$fixnum.Int64>? example,
   }) {
-    final result = create();
+    final result = Int64Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -1856,10 +1933,10 @@ class Int64Rules extends $pb.GeneratedMessage {
 
   factory Int64Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Int64Rules()..mergeFromBuffer(data, registry);
   factory Int64Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Int64Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, Int64Rules_LessThan>
       _Int64Rules_LessThanByTag = {
@@ -1876,7 +1953,7 @@ class Int64Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Int64Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: Int64Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
     ..aInt64(1, _omitFieldNames ? '' : 'const')
@@ -1890,7 +1967,7 @@ class Int64Rules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Int64Rules clone() => Int64Rules()..mergeFromMessage(this);
+  Int64Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Int64Rules copyWith(void Function(Int64Rules) updates) =>
       super.copyWith((message) => updates(message as Int64Rules)) as Int64Rules;
@@ -1899,21 +1976,30 @@ class Int64Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Int64Rules() / Int64Rules.new instead')
   static Int64Rules create() => Int64Rules._();
+  static $pb.GeneratedMessage $_createMessage() => Int64Rules._();
   @$core.override
-  Int64Rules createEmptyInstance() => create();
-  static $pb.PbList<Int64Rules> createRepeated() => $pb.PbList<Int64Rules>();
+  Int64Rules createEmptyInstance() => Int64Rules._();
   @$core.pragma('dart2js:noInline')
   static Int64Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Int64Rules>(create);
+      $pb.GeneratedMessage.$_defaultFor<Int64Rules>(Int64Rules.$_createMessage);
   static Int64Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   Int64Rules_LessThan whichLessThan() =>
       _Int64Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   Int64Rules_GreaterThan whichGreaterThan() =>
       _Int64Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -2085,7 +2171,7 @@ class UInt32Rules extends $pb.GeneratedMessage {
     $core.Iterable<$core.int>? notIn,
     $core.Iterable<$core.int>? example,
   }) {
-    final result = create();
+    final result = UInt32Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -2101,10 +2187,10 @@ class UInt32Rules extends $pb.GeneratedMessage {
 
   factory UInt32Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      UInt32Rules()..mergeFromBuffer(data, registry);
   factory UInt32Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      UInt32Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, UInt32Rules_LessThan>
       _UInt32Rules_LessThanByTag = {
@@ -2121,21 +2207,21 @@ class UInt32Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'UInt32Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: UInt32Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OU3)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.OU3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.OU3)
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.OU3)
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.OU3)
+    ..aI(1, _omitFieldNames ? '' : 'const', fieldType: $pb.PbFieldType.OU3)
+    ..aI(2, _omitFieldNames ? '' : 'lt', fieldType: $pb.PbFieldType.OU3)
+    ..aI(3, _omitFieldNames ? '' : 'lte', fieldType: $pb.PbFieldType.OU3)
+    ..aI(4, _omitFieldNames ? '' : 'gt', fieldType: $pb.PbFieldType.OU3)
+    ..aI(5, _omitFieldNames ? '' : 'gte', fieldType: $pb.PbFieldType.OU3)
     ..p<$core.int>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PU3)
     ..p<$core.int>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PU3)
     ..p<$core.int>(8, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PU3)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  UInt32Rules clone() => UInt32Rules()..mergeFromMessage(this);
+  UInt32Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   UInt32Rules copyWith(void Function(UInt32Rules) updates) =>
       super.copyWith((message) => updates(message as UInt32Rules))
@@ -2145,21 +2231,31 @@ class UInt32Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UInt32Rules() / UInt32Rules.new instead')
   static UInt32Rules create() => UInt32Rules._();
+  static $pb.GeneratedMessage $_createMessage() => UInt32Rules._();
   @$core.override
-  UInt32Rules createEmptyInstance() => create();
-  static $pb.PbList<UInt32Rules> createRepeated() => $pb.PbList<UInt32Rules>();
+  UInt32Rules createEmptyInstance() => UInt32Rules._();
   @$core.pragma('dart2js:noInline')
-  static UInt32Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<UInt32Rules>(create);
+  static UInt32Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UInt32Rules>(
+          UInt32Rules.$_createMessage);
   static UInt32Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   UInt32Rules_LessThan whichLessThan() =>
       _UInt32Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   UInt32Rules_GreaterThan whichGreaterThan() =>
       _UInt32Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -2331,7 +2427,7 @@ class UInt64Rules extends $pb.GeneratedMessage {
     $core.Iterable<$fixnum.Int64>? notIn,
     $core.Iterable<$fixnum.Int64>? example,
   }) {
-    final result = create();
+    final result = UInt64Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -2347,10 +2443,10 @@ class UInt64Rules extends $pb.GeneratedMessage {
 
   factory UInt64Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      UInt64Rules()..mergeFromBuffer(data, registry);
   factory UInt64Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      UInt64Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, UInt64Rules_LessThan>
       _UInt64Rules_LessThanByTag = {
@@ -2367,7 +2463,7 @@ class UInt64Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'UInt64Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: UInt64Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OU6,
@@ -2386,7 +2482,7 @@ class UInt64Rules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  UInt64Rules clone() => UInt64Rules()..mergeFromMessage(this);
+  UInt64Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   UInt64Rules copyWith(void Function(UInt64Rules) updates) =>
       super.copyWith((message) => updates(message as UInt64Rules))
@@ -2396,21 +2492,31 @@ class UInt64Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UInt64Rules() / UInt64Rules.new instead')
   static UInt64Rules create() => UInt64Rules._();
+  static $pb.GeneratedMessage $_createMessage() => UInt64Rules._();
   @$core.override
-  UInt64Rules createEmptyInstance() => create();
-  static $pb.PbList<UInt64Rules> createRepeated() => $pb.PbList<UInt64Rules>();
+  UInt64Rules createEmptyInstance() => UInt64Rules._();
   @$core.pragma('dart2js:noInline')
-  static UInt64Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<UInt64Rules>(create);
+  static UInt64Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UInt64Rules>(
+          UInt64Rules.$_createMessage);
   static UInt64Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   UInt64Rules_LessThan whichLessThan() =>
       _UInt64Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   UInt64Rules_GreaterThan whichGreaterThan() =>
       _UInt64Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -2581,7 +2687,7 @@ class SInt32Rules extends $pb.GeneratedMessage {
     $core.Iterable<$core.int>? notIn,
     $core.Iterable<$core.int>? example,
   }) {
-    final result = create();
+    final result = SInt32Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -2597,10 +2703,10 @@ class SInt32Rules extends $pb.GeneratedMessage {
 
   factory SInt32Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SInt32Rules()..mergeFromBuffer(data, registry);
   factory SInt32Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SInt32Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SInt32Rules_LessThan>
       _SInt32Rules_LessThanByTag = {
@@ -2617,21 +2723,21 @@ class SInt32Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SInt32Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: SInt32Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OS3)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.OS3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.OS3)
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.OS3)
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.OS3)
+    ..aI(1, _omitFieldNames ? '' : 'const', fieldType: $pb.PbFieldType.OS3)
+    ..aI(2, _omitFieldNames ? '' : 'lt', fieldType: $pb.PbFieldType.OS3)
+    ..aI(3, _omitFieldNames ? '' : 'lte', fieldType: $pb.PbFieldType.OS3)
+    ..aI(4, _omitFieldNames ? '' : 'gt', fieldType: $pb.PbFieldType.OS3)
+    ..aI(5, _omitFieldNames ? '' : 'gte', fieldType: $pb.PbFieldType.OS3)
     ..p<$core.int>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PS3)
     ..p<$core.int>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PS3)
     ..p<$core.int>(8, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PS3)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SInt32Rules clone() => SInt32Rules()..mergeFromMessage(this);
+  SInt32Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SInt32Rules copyWith(void Function(SInt32Rules) updates) =>
       super.copyWith((message) => updates(message as SInt32Rules))
@@ -2641,21 +2747,31 @@ class SInt32Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SInt32Rules() / SInt32Rules.new instead')
   static SInt32Rules create() => SInt32Rules._();
+  static $pb.GeneratedMessage $_createMessage() => SInt32Rules._();
   @$core.override
-  SInt32Rules createEmptyInstance() => create();
-  static $pb.PbList<SInt32Rules> createRepeated() => $pb.PbList<SInt32Rules>();
+  SInt32Rules createEmptyInstance() => SInt32Rules._();
   @$core.pragma('dart2js:noInline')
-  static SInt32Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SInt32Rules>(create);
+  static SInt32Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SInt32Rules>(
+          SInt32Rules.$_createMessage);
   static SInt32Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   SInt32Rules_LessThan whichLessThan() =>
       _SInt32Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   SInt32Rules_GreaterThan whichGreaterThan() =>
       _SInt32Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -2826,7 +2942,7 @@ class SInt64Rules extends $pb.GeneratedMessage {
     $core.Iterable<$fixnum.Int64>? notIn,
     $core.Iterable<$fixnum.Int64>? example,
   }) {
-    final result = create();
+    final result = SInt64Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -2842,10 +2958,10 @@ class SInt64Rules extends $pb.GeneratedMessage {
 
   factory SInt64Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SInt64Rules()..mergeFromBuffer(data, registry);
   factory SInt64Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SInt64Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SInt64Rules_LessThan>
       _SInt64Rules_LessThanByTag = {
@@ -2862,7 +2978,7 @@ class SInt64Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SInt64Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: SInt64Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OS6,
@@ -2881,7 +2997,7 @@ class SInt64Rules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SInt64Rules clone() => SInt64Rules()..mergeFromMessage(this);
+  SInt64Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SInt64Rules copyWith(void Function(SInt64Rules) updates) =>
       super.copyWith((message) => updates(message as SInt64Rules))
@@ -2891,21 +3007,31 @@ class SInt64Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SInt64Rules() / SInt64Rules.new instead')
   static SInt64Rules create() => SInt64Rules._();
+  static $pb.GeneratedMessage $_createMessage() => SInt64Rules._();
   @$core.override
-  SInt64Rules createEmptyInstance() => create();
-  static $pb.PbList<SInt64Rules> createRepeated() => $pb.PbList<SInt64Rules>();
+  SInt64Rules createEmptyInstance() => SInt64Rules._();
   @$core.pragma('dart2js:noInline')
-  static SInt64Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SInt64Rules>(create);
+  static SInt64Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SInt64Rules>(
+          SInt64Rules.$_createMessage);
   static SInt64Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   SInt64Rules_LessThan whichLessThan() =>
       _SInt64Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   SInt64Rules_GreaterThan whichGreaterThan() =>
       _SInt64Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -3076,7 +3202,7 @@ class Fixed32Rules extends $pb.GeneratedMessage {
     $core.Iterable<$core.int>? notIn,
     $core.Iterable<$core.int>? example,
   }) {
-    final result = create();
+    final result = Fixed32Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -3092,10 +3218,10 @@ class Fixed32Rules extends $pb.GeneratedMessage {
 
   factory Fixed32Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Fixed32Rules()..mergeFromBuffer(data, registry);
   factory Fixed32Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Fixed32Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, Fixed32Rules_LessThan>
       _Fixed32Rules_LessThanByTag = {
@@ -3112,21 +3238,21 @@ class Fixed32Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Fixed32Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: Fixed32Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OF3)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.OF3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.OF3)
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.OF3)
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.OF3)
+    ..aI(1, _omitFieldNames ? '' : 'const', fieldType: $pb.PbFieldType.OF3)
+    ..aI(2, _omitFieldNames ? '' : 'lt', fieldType: $pb.PbFieldType.OF3)
+    ..aI(3, _omitFieldNames ? '' : 'lte', fieldType: $pb.PbFieldType.OF3)
+    ..aI(4, _omitFieldNames ? '' : 'gt', fieldType: $pb.PbFieldType.OF3)
+    ..aI(5, _omitFieldNames ? '' : 'gte', fieldType: $pb.PbFieldType.OF3)
     ..p<$core.int>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PF3)
     ..p<$core.int>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PF3)
     ..p<$core.int>(8, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PF3)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Fixed32Rules clone() => Fixed32Rules()..mergeFromMessage(this);
+  Fixed32Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Fixed32Rules copyWith(void Function(Fixed32Rules) updates) =>
       super.copyWith((message) => updates(message as Fixed32Rules))
@@ -3136,22 +3262,31 @@ class Fixed32Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Fixed32Rules() / Fixed32Rules.new instead')
   static Fixed32Rules create() => Fixed32Rules._();
+  static $pb.GeneratedMessage $_createMessage() => Fixed32Rules._();
   @$core.override
-  Fixed32Rules createEmptyInstance() => create();
-  static $pb.PbList<Fixed32Rules> createRepeated() =>
-      $pb.PbList<Fixed32Rules>();
+  Fixed32Rules createEmptyInstance() => Fixed32Rules._();
   @$core.pragma('dart2js:noInline')
-  static Fixed32Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Fixed32Rules>(create);
+  static Fixed32Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Fixed32Rules>(
+          Fixed32Rules.$_createMessage);
   static Fixed32Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   Fixed32Rules_LessThan whichLessThan() =>
       _Fixed32Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   Fixed32Rules_GreaterThan whichGreaterThan() =>
       _Fixed32Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value.
@@ -3322,7 +3457,7 @@ class Fixed64Rules extends $pb.GeneratedMessage {
     $core.Iterable<$fixnum.Int64>? notIn,
     $core.Iterable<$fixnum.Int64>? example,
   }) {
-    final result = create();
+    final result = Fixed64Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -3338,10 +3473,10 @@ class Fixed64Rules extends $pb.GeneratedMessage {
 
   factory Fixed64Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Fixed64Rules()..mergeFromBuffer(data, registry);
   factory Fixed64Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Fixed64Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, Fixed64Rules_LessThan>
       _Fixed64Rules_LessThanByTag = {
@@ -3358,7 +3493,7 @@ class Fixed64Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Fixed64Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: Fixed64Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OF6,
@@ -3377,7 +3512,7 @@ class Fixed64Rules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Fixed64Rules clone() => Fixed64Rules()..mergeFromMessage(this);
+  Fixed64Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Fixed64Rules copyWith(void Function(Fixed64Rules) updates) =>
       super.copyWith((message) => updates(message as Fixed64Rules))
@@ -3387,22 +3522,31 @@ class Fixed64Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Fixed64Rules() / Fixed64Rules.new instead')
   static Fixed64Rules create() => Fixed64Rules._();
+  static $pb.GeneratedMessage $_createMessage() => Fixed64Rules._();
   @$core.override
-  Fixed64Rules createEmptyInstance() => create();
-  static $pb.PbList<Fixed64Rules> createRepeated() =>
-      $pb.PbList<Fixed64Rules>();
+  Fixed64Rules createEmptyInstance() => Fixed64Rules._();
   @$core.pragma('dart2js:noInline')
-  static Fixed64Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Fixed64Rules>(create);
+  static Fixed64Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Fixed64Rules>(
+          Fixed64Rules.$_createMessage);
   static Fixed64Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   Fixed64Rules_LessThan whichLessThan() =>
       _Fixed64Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   Fixed64Rules_GreaterThan whichGreaterThan() =>
       _Fixed64Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -3573,7 +3717,7 @@ class SFixed32Rules extends $pb.GeneratedMessage {
     $core.Iterable<$core.int>? notIn,
     $core.Iterable<$core.int>? example,
   }) {
-    final result = create();
+    final result = SFixed32Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -3589,10 +3733,10 @@ class SFixed32Rules extends $pb.GeneratedMessage {
 
   factory SFixed32Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SFixed32Rules()..mergeFromBuffer(data, registry);
   factory SFixed32Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SFixed32Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SFixed32Rules_LessThan>
       _SFixed32Rules_LessThanByTag = {
@@ -3609,21 +3753,21 @@ class SFixed32Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SFixed32Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: SFixed32Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OSF3)
-    ..a<$core.int>(2, _omitFieldNames ? '' : 'lt', $pb.PbFieldType.OSF3)
-    ..a<$core.int>(3, _omitFieldNames ? '' : 'lte', $pb.PbFieldType.OSF3)
-    ..a<$core.int>(4, _omitFieldNames ? '' : 'gt', $pb.PbFieldType.OSF3)
-    ..a<$core.int>(5, _omitFieldNames ? '' : 'gte', $pb.PbFieldType.OSF3)
+    ..aI(1, _omitFieldNames ? '' : 'const', fieldType: $pb.PbFieldType.OSF3)
+    ..aI(2, _omitFieldNames ? '' : 'lt', fieldType: $pb.PbFieldType.OSF3)
+    ..aI(3, _omitFieldNames ? '' : 'lte', fieldType: $pb.PbFieldType.OSF3)
+    ..aI(4, _omitFieldNames ? '' : 'gt', fieldType: $pb.PbFieldType.OSF3)
+    ..aI(5, _omitFieldNames ? '' : 'gte', fieldType: $pb.PbFieldType.OSF3)
     ..p<$core.int>(6, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PSF3)
     ..p<$core.int>(7, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PSF3)
     ..p<$core.int>(8, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PSF3)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SFixed32Rules clone() => SFixed32Rules()..mergeFromMessage(this);
+  SFixed32Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SFixed32Rules copyWith(void Function(SFixed32Rules) updates) =>
       super.copyWith((message) => updates(message as SFixed32Rules))
@@ -3633,22 +3777,31 @@ class SFixed32Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SFixed32Rules() / SFixed32Rules.new instead')
   static SFixed32Rules create() => SFixed32Rules._();
+  static $pb.GeneratedMessage $_createMessage() => SFixed32Rules._();
   @$core.override
-  SFixed32Rules createEmptyInstance() => create();
-  static $pb.PbList<SFixed32Rules> createRepeated() =>
-      $pb.PbList<SFixed32Rules>();
+  SFixed32Rules createEmptyInstance() => SFixed32Rules._();
   @$core.pragma('dart2js:noInline')
-  static SFixed32Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SFixed32Rules>(create);
+  static SFixed32Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SFixed32Rules>(
+          SFixed32Rules.$_createMessage);
   static SFixed32Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   SFixed32Rules_LessThan whichLessThan() =>
       _SFixed32Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   SFixed32Rules_GreaterThan whichGreaterThan() =>
       _SFixed32Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -3819,7 +3972,7 @@ class SFixed64Rules extends $pb.GeneratedMessage {
     $core.Iterable<$fixnum.Int64>? notIn,
     $core.Iterable<$fixnum.Int64>? example,
   }) {
-    final result = create();
+    final result = SFixed64Rules._();
     if (const_1 != null) result.const_1 = const_1;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -3835,10 +3988,10 @@ class SFixed64Rules extends $pb.GeneratedMessage {
 
   factory SFixed64Rules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      SFixed64Rules()..mergeFromBuffer(data, registry);
   factory SFixed64Rules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      SFixed64Rules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, SFixed64Rules_LessThan>
       _SFixed64Rules_LessThanByTag = {
@@ -3855,7 +4008,7 @@ class SFixed64Rules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'SFixed64Rules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: SFixed64Rules.$_createMessage)
     ..oo(0, [2, 3])
     ..oo(1, [4, 5])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OSF6,
@@ -3875,7 +4028,7 @@ class SFixed64Rules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  SFixed64Rules clone() => SFixed64Rules()..mergeFromMessage(this);
+  SFixed64Rules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   SFixed64Rules copyWith(void Function(SFixed64Rules) updates) =>
       super.copyWith((message) => updates(message as SFixed64Rules))
@@ -3885,22 +4038,31 @@ class SFixed64Rules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SFixed64Rules() / SFixed64Rules.new instead')
   static SFixed64Rules create() => SFixed64Rules._();
+  static $pb.GeneratedMessage $_createMessage() => SFixed64Rules._();
   @$core.override
-  SFixed64Rules createEmptyInstance() => create();
-  static $pb.PbList<SFixed64Rules> createRepeated() =>
-      $pb.PbList<SFixed64Rules>();
+  SFixed64Rules createEmptyInstance() => SFixed64Rules._();
   @$core.pragma('dart2js:noInline')
-  static SFixed64Rules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<SFixed64Rules>(create);
+  static SFixed64Rules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SFixed64Rules>(
+          SFixed64Rules.$_createMessage);
   static SFixed64Rules? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   SFixed64Rules_LessThan whichLessThan() =>
       _SFixed64Rules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   SFixed64Rules_GreaterThan whichGreaterThan() =>
       _SFixed64Rules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -4062,7 +4224,7 @@ class BoolRules extends $pb.GeneratedMessage {
     $core.bool? const_1,
     $core.Iterable<$core.bool>? example,
   }) {
-    final result = create();
+    final result = BoolRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (example != null) result.example.addAll(example);
     return result;
@@ -4072,21 +4234,21 @@ class BoolRules extends $pb.GeneratedMessage {
 
   factory BoolRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      BoolRules()..mergeFromBuffer(data, registry);
   factory BoolRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      BoolRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'BoolRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: BoolRules.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'const')
     ..p<$core.bool>(2, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PB)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  BoolRules clone() => BoolRules()..mergeFromMessage(this);
+  BoolRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   BoolRules copyWith(void Function(BoolRules) updates) =>
       super.copyWith((message) => updates(message as BoolRules)) as BoolRules;
@@ -4095,13 +4257,14 @@ class BoolRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BoolRules() / BoolRules.new instead')
   static BoolRules create() => BoolRules._();
+  static $pb.GeneratedMessage $_createMessage() => BoolRules._();
   @$core.override
-  BoolRules createEmptyInstance() => create();
-  static $pb.PbList<BoolRules> createRepeated() => $pb.PbList<BoolRules>();
+  BoolRules createEmptyInstance() => BoolRules._();
   @$core.pragma('dart2js:noInline')
-  static BoolRules getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BoolRules>(create);
+  static BoolRules getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BoolRules>(BoolRules.$_createMessage);
   static BoolRules? _defaultInstance;
 
   /// `const` requires the field value to exactly match the specified boolean value.
@@ -4201,7 +4364,7 @@ class StringRules extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? example,
     $core.bool? ulid,
   }) {
-    final result = create();
+    final result = StringRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (minLen != null) result.minLen = minLen;
     if (maxLen != null) result.maxLen = maxLen;
@@ -4244,10 +4407,10 @@ class StringRules extends $pb.GeneratedMessage {
 
   factory StringRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      StringRules()..mergeFromBuffer(data, registry);
   factory StringRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      StringRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, StringRules_WellKnown>
       _StringRules_WellKnownByTag = {
@@ -4275,7 +4438,7 @@ class StringRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'StringRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: StringRules.$_createMessage)
     ..oo(0, [
       12,
       13,
@@ -4329,10 +4492,7 @@ class StringRules extends $pb.GeneratedMessage {
     ..aOB(21, _omitFieldNames ? '' : 'address')
     ..aOB(22, _omitFieldNames ? '' : 'uuid')
     ..aOS(23, _omitFieldNames ? '' : 'notContains')
-    ..e<KnownRegex>(
-        24, _omitFieldNames ? '' : 'wellKnownRegex', $pb.PbFieldType.OE,
-        defaultOrMaker: KnownRegex.KNOWN_REGEX_UNSPECIFIED,
-        valueOf: KnownRegex.valueOf,
+    ..aE<KnownRegex>(24, _omitFieldNames ? '' : 'wellKnownRegex',
         enumValues: KnownRegex.values)
     ..aOB(25, _omitFieldNames ? '' : 'strict')
     ..aOB(26, _omitFieldNames ? '' : 'ipWithPrefixlen')
@@ -4348,7 +4508,7 @@ class StringRules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  StringRules clone() => StringRules()..mergeFromMessage(this);
+  StringRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   StringRules copyWith(void Function(StringRules) updates) =>
       super.copyWith((message) => updates(message as StringRules))
@@ -4358,17 +4518,57 @@ class StringRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StringRules() / StringRules.new instead')
   static StringRules create() => StringRules._();
+  static $pb.GeneratedMessage $_createMessage() => StringRules._();
   @$core.override
-  StringRules createEmptyInstance() => create();
-  static $pb.PbList<StringRules> createRepeated() => $pb.PbList<StringRules>();
+  StringRules createEmptyInstance() => StringRules._();
   @$core.pragma('dart2js:noInline')
-  static StringRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<StringRules>(create);
+  static StringRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StringRules>(
+          StringRules.$_createMessage);
   static StringRules? _defaultInstance;
 
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
+  @$pb.TagNumber(21)
+  @$pb.TagNumber(22)
+  @$pb.TagNumber(24)
+  @$pb.TagNumber(26)
+  @$pb.TagNumber(27)
+  @$pb.TagNumber(28)
+  @$pb.TagNumber(29)
+  @$pb.TagNumber(30)
+  @$pb.TagNumber(31)
+  @$pb.TagNumber(32)
+  @$pb.TagNumber(33)
+  @$pb.TagNumber(35)
   StringRules_WellKnown whichWellKnown() =>
       _StringRules_WellKnownByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
+  @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
+  @$pb.TagNumber(21)
+  @$pb.TagNumber(22)
+  @$pb.TagNumber(24)
+  @$pb.TagNumber(26)
+  @$pb.TagNumber(27)
+  @$pb.TagNumber(28)
+  @$pb.TagNumber(29)
+  @$pb.TagNumber(30)
+  @$pb.TagNumber(31)
+  @$pb.TagNumber(32)
+  @$pb.TagNumber(33)
+  @$pb.TagNumber(35)
   void clearWellKnown() => $_clearField($_whichOneof(0));
 
   /// `const` requires the field value to exactly match the specified value. If
@@ -5116,7 +5316,7 @@ class BytesRules extends $pb.GeneratedMessage {
     $core.Iterable<$core.List<$core.int>>? example,
     $core.bool? uuid,
   }) {
-    final result = create();
+    final result = BytesRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (minLen != null) result.minLen = minLen;
     if (maxLen != null) result.maxLen = maxLen;
@@ -5139,10 +5339,10 @@ class BytesRules extends $pb.GeneratedMessage {
 
   factory BytesRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      BytesRules()..mergeFromBuffer(data, registry);
   factory BytesRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      BytesRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, BytesRules_WellKnown>
       _BytesRules_WellKnownByTag = {
@@ -5155,7 +5355,7 @@ class BytesRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'BytesRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: BytesRules.$_createMessage)
     ..oo(0, [10, 11, 12, 15])
     ..a<$core.List<$core.int>>(
         1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.OY)
@@ -5185,7 +5385,7 @@ class BytesRules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  BytesRules clone() => BytesRules()..mergeFromMessage(this);
+  BytesRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   BytesRules copyWith(void Function(BytesRules) updates) =>
       super.copyWith((message) => updates(message as BytesRules)) as BytesRules;
@@ -5194,17 +5394,26 @@ class BytesRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BytesRules() / BytesRules.new instead')
   static BytesRules create() => BytesRules._();
+  static $pb.GeneratedMessage $_createMessage() => BytesRules._();
   @$core.override
-  BytesRules createEmptyInstance() => create();
-  static $pb.PbList<BytesRules> createRepeated() => $pb.PbList<BytesRules>();
+  BytesRules createEmptyInstance() => BytesRules._();
   @$core.pragma('dart2js:noInline')
   static BytesRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<BytesRules>(create);
+      $pb.GeneratedMessage.$_defaultFor<BytesRules>(BytesRules.$_createMessage);
   static BytesRules? _defaultInstance;
 
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(11)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(15)
   BytesRules_WellKnown whichWellKnown() =>
       _BytesRules_WellKnownByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(10)
+  @$pb.TagNumber(11)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(15)
   void clearWellKnown() => $_clearField($_whichOneof(0));
 
   /// `const` requires the field value to exactly match the specified bytes
@@ -5485,7 +5694,7 @@ class EnumRules extends $pb.GeneratedMessage {
     $core.Iterable<$core.int>? notIn,
     $core.Iterable<$core.int>? example,
   }) {
-    final result = create();
+    final result = EnumRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (definedOnly != null) result.definedOnly = definedOnly;
     if (in_3 != null) result.in_3.addAll(in_3);
@@ -5498,16 +5707,16 @@ class EnumRules extends $pb.GeneratedMessage {
 
   factory EnumRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      EnumRules()..mergeFromBuffer(data, registry);
   factory EnumRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      EnumRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'EnumRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'const', $pb.PbFieldType.O3)
+      createEmptyInstance: EnumRules.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'const')
     ..aOB(2, _omitFieldNames ? '' : 'definedOnly')
     ..p<$core.int>(3, _omitFieldNames ? '' : 'in', $pb.PbFieldType.P3)
     ..p<$core.int>(4, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.P3)
@@ -5515,7 +5724,7 @@ class EnumRules extends $pb.GeneratedMessage {
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  EnumRules clone() => EnumRules()..mergeFromMessage(this);
+  EnumRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   EnumRules copyWith(void Function(EnumRules) updates) =>
       super.copyWith((message) => updates(message as EnumRules)) as EnumRules;
@@ -5524,13 +5733,14 @@ class EnumRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use EnumRules() / EnumRules.new instead')
   static EnumRules create() => EnumRules._();
+  static $pb.GeneratedMessage $_createMessage() => EnumRules._();
   @$core.override
-  EnumRules createEmptyInstance() => create();
-  static $pb.PbList<EnumRules> createRepeated() => $pb.PbList<EnumRules>();
+  EnumRules createEmptyInstance() => EnumRules._();
   @$core.pragma('dart2js:noInline')
-  static EnumRules getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<EnumRules>(create);
+  static EnumRules getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EnumRules>(EnumRules.$_createMessage);
   static EnumRules? _defaultInstance;
 
   /// `const` requires the field value to exactly match the specified enum value.
@@ -5647,7 +5857,7 @@ class RepeatedRules extends $pb.GeneratedMessage {
     $core.bool? unique,
     FieldRules? items,
   }) {
-    final result = create();
+    final result = RepeatedRules._();
     if (minItems != null) result.minItems = minItems;
     if (maxItems != null) result.maxItems = maxItems;
     if (unique != null) result.unique = unique;
@@ -5659,15 +5869,15 @@ class RepeatedRules extends $pb.GeneratedMessage {
 
   factory RepeatedRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RepeatedRules()..mergeFromBuffer(data, registry);
   factory RepeatedRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RepeatedRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'RepeatedRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: RepeatedRules.$_createMessage)
     ..a<$fixnum.Int64>(
         1, _omitFieldNames ? '' : 'minItems', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
@@ -5676,11 +5886,11 @@ class RepeatedRules extends $pb.GeneratedMessage {
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOB(3, _omitFieldNames ? '' : 'unique')
     ..aOM<FieldRules>(4, _omitFieldNames ? '' : 'items',
-        subBuilder: FieldRules.create)
+        subBuilder: FieldRules.$_createMessage)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RepeatedRules clone() => RepeatedRules()..mergeFromMessage(this);
+  RepeatedRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RepeatedRules copyWith(void Function(RepeatedRules) updates) =>
       super.copyWith((message) => updates(message as RepeatedRules))
@@ -5690,14 +5900,15 @@ class RepeatedRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RepeatedRules() / RepeatedRules.new instead')
   static RepeatedRules create() => RepeatedRules._();
+  static $pb.GeneratedMessage $_createMessage() => RepeatedRules._();
   @$core.override
-  RepeatedRules createEmptyInstance() => create();
-  static $pb.PbList<RepeatedRules> createRepeated() =>
-      $pb.PbList<RepeatedRules>();
+  RepeatedRules createEmptyInstance() => RepeatedRules._();
   @$core.pragma('dart2js:noInline')
-  static RepeatedRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<RepeatedRules>(create);
+  static RepeatedRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RepeatedRules>(
+          RepeatedRules.$_createMessage);
   static RepeatedRules? _defaultInstance;
 
   /// `min_items` requires that this field must contain at least the specified
@@ -5797,7 +6008,7 @@ class MapRules extends $pb.GeneratedMessage {
     FieldRules? keys,
     FieldRules? values,
   }) {
-    final result = create();
+    final result = MapRules._();
     if (minPairs != null) result.minPairs = minPairs;
     if (maxPairs != null) result.maxPairs = maxPairs;
     if (keys != null) result.keys = keys;
@@ -5809,15 +6020,15 @@ class MapRules extends $pb.GeneratedMessage {
 
   factory MapRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      MapRules()..mergeFromBuffer(data, registry);
   factory MapRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      MapRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'MapRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: MapRules.$_createMessage)
     ..a<$fixnum.Int64>(
         1, _omitFieldNames ? '' : 'minPairs', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
@@ -5825,13 +6036,13 @@ class MapRules extends $pb.GeneratedMessage {
         2, _omitFieldNames ? '' : 'maxPairs', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOM<FieldRules>(4, _omitFieldNames ? '' : 'keys',
-        subBuilder: FieldRules.create)
+        subBuilder: FieldRules.$_createMessage)
     ..aOM<FieldRules>(5, _omitFieldNames ? '' : 'values',
-        subBuilder: FieldRules.create)
+        subBuilder: FieldRules.$_createMessage)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  MapRules clone() => MapRules()..mergeFromMessage(this);
+  MapRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   MapRules copyWith(void Function(MapRules) updates) =>
       super.copyWith((message) => updates(message as MapRules)) as MapRules;
@@ -5840,13 +6051,14 @@ class MapRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use MapRules() / MapRules.new instead')
   static MapRules create() => MapRules._();
+  static $pb.GeneratedMessage $_createMessage() => MapRules._();
   @$core.override
-  MapRules createEmptyInstance() => create();
-  static $pb.PbList<MapRules> createRepeated() => $pb.PbList<MapRules>();
+  MapRules createEmptyInstance() => MapRules._();
   @$core.pragma('dart2js:noInline')
-  static MapRules getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<MapRules>(create);
+  static MapRules getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<MapRules>(MapRules.$_createMessage);
   static MapRules? _defaultInstance;
 
   /// Specifies the minimum number of key-value pairs allowed. If the field has
@@ -5945,7 +6157,7 @@ class AnyRules extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? in_2,
     $core.Iterable<$core.String>? notIn,
   }) {
-    final result = create();
+    final result = AnyRules._();
     if (in_2 != null) result.in_2.addAll(in_2);
     if (notIn != null) result.notIn.addAll(notIn);
     return result;
@@ -5955,21 +6167,21 @@ class AnyRules extends $pb.GeneratedMessage {
 
   factory AnyRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      AnyRules()..mergeFromBuffer(data, registry);
   factory AnyRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      AnyRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AnyRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: AnyRules.$_createMessage)
     ..pPS(2, _omitFieldNames ? '' : 'in')
     ..pPS(3, _omitFieldNames ? '' : 'notIn')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  AnyRules clone() => AnyRules()..mergeFromMessage(this);
+  AnyRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   AnyRules copyWith(void Function(AnyRules) updates) =>
       super.copyWith((message) => updates(message as AnyRules)) as AnyRules;
@@ -5978,13 +6190,14 @@ class AnyRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AnyRules() / AnyRules.new instead')
   static AnyRules create() => AnyRules._();
+  static $pb.GeneratedMessage $_createMessage() => AnyRules._();
   @$core.override
-  AnyRules createEmptyInstance() => create();
-  static $pb.PbList<AnyRules> createRepeated() => $pb.PbList<AnyRules>();
+  AnyRules createEmptyInstance() => AnyRules._();
   @$core.pragma('dart2js:noInline')
-  static AnyRules getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AnyRules>(create);
+  static AnyRules getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AnyRules>(AnyRules.$_createMessage);
   static AnyRules? _defaultInstance;
 
   ///  `in` requires the field's `type_url` to be equal to one of the
@@ -6032,7 +6245,7 @@ class DurationRules extends $pb.GeneratedMessage {
     $core.Iterable<$0.Duration>? notIn,
     $core.Iterable<$0.Duration>? example,
   }) {
-    final result = create();
+    final result = DurationRules._();
     if (const_2 != null) result.const_2 = const_2;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -6048,10 +6261,10 @@ class DurationRules extends $pb.GeneratedMessage {
 
   factory DurationRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      DurationRules()..mergeFromBuffer(data, registry);
   factory DurationRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      DurationRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, DurationRules_LessThan>
       _DurationRules_LessThanByTag = {
@@ -6068,29 +6281,29 @@ class DurationRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'DurationRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: DurationRules.$_createMessage)
     ..oo(0, [3, 4])
     ..oo(1, [5, 6])
     ..aOM<$0.Duration>(2, _omitFieldNames ? '' : 'const',
-        subBuilder: $0.Duration.create)
+        subBuilder: $0.Duration.$_createMessage)
     ..aOM<$0.Duration>(3, _omitFieldNames ? '' : 'lt',
-        subBuilder: $0.Duration.create)
+        subBuilder: $0.Duration.$_createMessage)
     ..aOM<$0.Duration>(4, _omitFieldNames ? '' : 'lte',
-        subBuilder: $0.Duration.create)
+        subBuilder: $0.Duration.$_createMessage)
     ..aOM<$0.Duration>(5, _omitFieldNames ? '' : 'gt',
-        subBuilder: $0.Duration.create)
+        subBuilder: $0.Duration.$_createMessage)
     ..aOM<$0.Duration>(6, _omitFieldNames ? '' : 'gte',
-        subBuilder: $0.Duration.create)
-    ..pc<$0.Duration>(7, _omitFieldNames ? '' : 'in', $pb.PbFieldType.PM,
-        subBuilder: $0.Duration.create)
-    ..pc<$0.Duration>(8, _omitFieldNames ? '' : 'notIn', $pb.PbFieldType.PM,
-        subBuilder: $0.Duration.create)
-    ..pc<$0.Duration>(9, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PM,
-        subBuilder: $0.Duration.create)
+        subBuilder: $0.Duration.$_createMessage)
+    ..pPM<$0.Duration>(7, _omitFieldNames ? '' : 'in',
+        subBuilder: $0.Duration.$_createMessage)
+    ..pPM<$0.Duration>(8, _omitFieldNames ? '' : 'notIn',
+        subBuilder: $0.Duration.$_createMessage)
+    ..pPM<$0.Duration>(9, _omitFieldNames ? '' : 'example',
+        subBuilder: $0.Duration.$_createMessage)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  DurationRules clone() => DurationRules()..mergeFromMessage(this);
+  DurationRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   DurationRules copyWith(void Function(DurationRules) updates) =>
       super.copyWith((message) => updates(message as DurationRules))
@@ -6100,22 +6313,31 @@ class DurationRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DurationRules() / DurationRules.new instead')
   static DurationRules create() => DurationRules._();
+  static $pb.GeneratedMessage $_createMessage() => DurationRules._();
   @$core.override
-  DurationRules createEmptyInstance() => create();
-  static $pb.PbList<DurationRules> createRepeated() =>
-      $pb.PbList<DurationRules>();
+  DurationRules createEmptyInstance() => DurationRules._();
   @$core.pragma('dart2js:noInline')
-  static DurationRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<DurationRules>(create);
+  static DurationRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DurationRules>(
+          DurationRules.$_createMessage);
   static DurationRules? _defaultInstance;
 
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
   DurationRules_LessThan whichLessThan() =>
       _DurationRules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   DurationRules_GreaterThan whichGreaterThan() =>
       _DurationRules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` dictates that the field must match the specified value of the `google.protobuf.Duration` type exactly.
@@ -6290,7 +6512,7 @@ class FieldMaskRules extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? notIn,
     $core.Iterable<$1.FieldMask>? example,
   }) {
-    final result = create();
+    final result = FieldMaskRules._();
     if (const_1 != null) result.const_1 = const_1;
     if (in_2 != null) result.in_2.addAll(in_2);
     if (notIn != null) result.notIn.addAll(notIn);
@@ -6302,25 +6524,25 @@ class FieldMaskRules extends $pb.GeneratedMessage {
 
   factory FieldMaskRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FieldMaskRules()..mergeFromBuffer(data, registry);
   factory FieldMaskRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FieldMaskRules()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FieldMaskRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: FieldMaskRules.$_createMessage)
     ..aOM<$1.FieldMask>(1, _omitFieldNames ? '' : 'const',
-        subBuilder: $1.FieldMask.create)
+        subBuilder: $1.FieldMask.$_createMessage)
     ..pPS(2, _omitFieldNames ? '' : 'in')
     ..pPS(3, _omitFieldNames ? '' : 'notIn')
-    ..pc<$1.FieldMask>(4, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PM,
-        subBuilder: $1.FieldMask.create)
+    ..pPM<$1.FieldMask>(4, _omitFieldNames ? '' : 'example',
+        subBuilder: $1.FieldMask.$_createMessage)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FieldMaskRules clone() => FieldMaskRules()..mergeFromMessage(this);
+  FieldMaskRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FieldMaskRules copyWith(void Function(FieldMaskRules) updates) =>
       super.copyWith((message) => updates(message as FieldMaskRules))
@@ -6330,14 +6552,15 @@ class FieldMaskRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FieldMaskRules() / FieldMaskRules.new instead')
   static FieldMaskRules create() => FieldMaskRules._();
+  static $pb.GeneratedMessage $_createMessage() => FieldMaskRules._();
   @$core.override
-  FieldMaskRules createEmptyInstance() => create();
-  static $pb.PbList<FieldMaskRules> createRepeated() =>
-      $pb.PbList<FieldMaskRules>();
+  FieldMaskRules createEmptyInstance() => FieldMaskRules._();
   @$core.pragma('dart2js:noInline')
-  static FieldMaskRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FieldMaskRules>(create);
+  static FieldMaskRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FieldMaskRules>(
+          FieldMaskRules.$_createMessage);
   static FieldMaskRules? _defaultInstance;
 
   /// `const` dictates that the field must match the specified value of the `google.protobuf.FieldMask` type exactly.
@@ -6430,7 +6653,7 @@ class TimestampRules extends $pb.GeneratedMessage {
     $0.Duration? within,
     $core.Iterable<$2.Timestamp>? example,
   }) {
-    final result = create();
+    final result = TimestampRules._();
     if (const_2 != null) result.const_2 = const_2;
     if (lt != null) result.lt = lt;
     if (lte != null) result.lte = lte;
@@ -6447,10 +6670,10 @@ class TimestampRules extends $pb.GeneratedMessage {
 
   factory TimestampRules.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      TimestampRules()..mergeFromBuffer(data, registry);
   factory TimestampRules.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      TimestampRules()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, TimestampRules_LessThan>
       _TimestampRules_LessThanByTag = {
@@ -6469,29 +6692,29 @@ class TimestampRules extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'TimestampRules',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: TimestampRules.$_createMessage)
     ..oo(0, [3, 4, 7])
     ..oo(1, [5, 6, 8])
     ..aOM<$2.Timestamp>(2, _omitFieldNames ? '' : 'const',
-        subBuilder: $2.Timestamp.create)
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOM<$2.Timestamp>(3, _omitFieldNames ? '' : 'lt',
-        subBuilder: $2.Timestamp.create)
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'lte',
-        subBuilder: $2.Timestamp.create)
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOM<$2.Timestamp>(5, _omitFieldNames ? '' : 'gt',
-        subBuilder: $2.Timestamp.create)
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOM<$2.Timestamp>(6, _omitFieldNames ? '' : 'gte',
-        subBuilder: $2.Timestamp.create)
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOB(7, _omitFieldNames ? '' : 'ltNow')
     ..aOB(8, _omitFieldNames ? '' : 'gtNow')
     ..aOM<$0.Duration>(9, _omitFieldNames ? '' : 'within',
-        subBuilder: $0.Duration.create)
-    ..pc<$2.Timestamp>(10, _omitFieldNames ? '' : 'example', $pb.PbFieldType.PM,
-        subBuilder: $2.Timestamp.create)
+        subBuilder: $0.Duration.$_createMessage)
+    ..pPM<$2.Timestamp>(10, _omitFieldNames ? '' : 'example',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..hasExtensions = true;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  TimestampRules clone() => TimestampRules()..mergeFromMessage(this);
+  TimestampRules clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   TimestampRules copyWith(void Function(TimestampRules) updates) =>
       super.copyWith((message) => updates(message as TimestampRules))
@@ -6501,22 +6724,35 @@ class TimestampRules extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TimestampRules() / TimestampRules.new instead')
   static TimestampRules create() => TimestampRules._();
+  static $pb.GeneratedMessage $_createMessage() => TimestampRules._();
   @$core.override
-  TimestampRules createEmptyInstance() => create();
-  static $pb.PbList<TimestampRules> createRepeated() =>
-      $pb.PbList<TimestampRules>();
+  TimestampRules createEmptyInstance() => TimestampRules._();
   @$core.pragma('dart2js:noInline')
-  static TimestampRules getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<TimestampRules>(create);
+  static TimestampRules getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TimestampRules>(
+          TimestampRules.$_createMessage);
   static TimestampRules? _defaultInstance;
 
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(7)
   TimestampRules_LessThan whichLessThan() =>
       _TimestampRules_LessThanByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(7)
   void clearLessThan() => $_clearField($_whichOneof(0));
 
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(8)
   TimestampRules_GreaterThan whichGreaterThan() =>
       _TimestampRules_GreaterThanByTag[$_whichOneof(1)]!;
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(8)
   void clearGreaterThan() => $_clearField($_whichOneof(1));
 
   /// `const` dictates that this field, of the `google.protobuf.Timestamp` type, must exactly match the specified value. If the field value doesn't correspond to the specified timestamp, an error message will be generated.
@@ -6710,7 +6946,7 @@ class Violations extends $pb.GeneratedMessage {
   factory Violations({
     $core.Iterable<Violation>? violations,
   }) {
-    final result = create();
+    final result = Violations._();
     if (violations != null) result.violations.addAll(violations);
     return result;
   }
@@ -6719,21 +6955,21 @@ class Violations extends $pb.GeneratedMessage {
 
   factory Violations.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Violations()..mergeFromBuffer(data, registry);
   factory Violations.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Violations()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Violations',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
-    ..pc<Violation>(1, _omitFieldNames ? '' : 'violations', $pb.PbFieldType.PM,
-        subBuilder: Violation.create)
+      createEmptyInstance: Violations.$_createMessage)
+    ..pPM<Violation>(1, _omitFieldNames ? '' : 'violations',
+        subBuilder: Violation.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Violations clone() => Violations()..mergeFromMessage(this);
+  Violations clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Violations copyWith(void Function(Violations) updates) =>
       super.copyWith((message) => updates(message as Violations)) as Violations;
@@ -6742,13 +6978,14 @@ class Violations extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Violations() / Violations.new instead')
   static Violations create() => Violations._();
+  static $pb.GeneratedMessage $_createMessage() => Violations._();
   @$core.override
-  Violations createEmptyInstance() => create();
-  static $pb.PbList<Violations> createRepeated() => $pb.PbList<Violations>();
+  Violations createEmptyInstance() => Violations._();
   @$core.pragma('dart2js:noInline')
   static Violations getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<Violations>(create);
+      $pb.GeneratedMessage.$_defaultFor<Violations>(Violations.$_createMessage);
   static Violations? _defaultInstance;
 
   /// `violations` is a repeated field that contains all the `Violation` messages corresponding to the violations detected.
@@ -6807,7 +7044,7 @@ class Violation extends $pb.GeneratedMessage {
     FieldPath? field_5,
     FieldPath? rule,
   }) {
-    final result = create();
+    final result = Violation._();
     if (ruleId != null) result.ruleId = ruleId;
     if (message != null) result.message = message;
     if (forKey != null) result.forKey = forKey;
@@ -6820,26 +7057,26 @@ class Violation extends $pb.GeneratedMessage {
 
   factory Violation.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      Violation()..mergeFromBuffer(data, registry);
   factory Violation.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      Violation()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'Violation',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: Violation.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'ruleId')
     ..aOS(3, _omitFieldNames ? '' : 'message')
     ..aOB(4, _omitFieldNames ? '' : 'forKey')
     ..aOM<FieldPath>(5, _omitFieldNames ? '' : 'field',
-        subBuilder: FieldPath.create)
+        subBuilder: FieldPath.$_createMessage)
     ..aOM<FieldPath>(6, _omitFieldNames ? '' : 'rule',
-        subBuilder: FieldPath.create)
+        subBuilder: FieldPath.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  Violation clone() => Violation()..mergeFromMessage(this);
+  Violation clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   Violation copyWith(void Function(Violation) updates) =>
       super.copyWith((message) => updates(message as Violation)) as Violation;
@@ -6848,13 +7085,14 @@ class Violation extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Violation() / Violation.new instead')
   static Violation create() => Violation._();
+  static $pb.GeneratedMessage $_createMessage() => Violation._();
   @$core.override
-  Violation createEmptyInstance() => create();
-  static $pb.PbList<Violation> createRepeated() => $pb.PbList<Violation>();
+  Violation createEmptyInstance() => Violation._();
   @$core.pragma('dart2js:noInline')
-  static Violation getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Violation>(create);
+  static Violation getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Violation>(Violation.$_createMessage);
   static Violation? _defaultInstance;
 
   /// `rule_id` is the unique identifier of the `Rule` that was not fulfilled.
@@ -6967,7 +7205,7 @@ class FieldPath extends $pb.GeneratedMessage {
   factory FieldPath({
     $core.Iterable<FieldPathElement>? elements,
   }) {
-    final result = create();
+    final result = FieldPath._();
     if (elements != null) result.elements.addAll(elements);
     return result;
   }
@@ -6976,22 +7214,21 @@ class FieldPath extends $pb.GeneratedMessage {
 
   factory FieldPath.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FieldPath()..mergeFromBuffer(data, registry);
   factory FieldPath.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FieldPath()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FieldPath',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
-    ..pc<FieldPathElement>(
-        1, _omitFieldNames ? '' : 'elements', $pb.PbFieldType.PM,
-        subBuilder: FieldPathElement.create)
+      createEmptyInstance: FieldPath.$_createMessage)
+    ..pPM<FieldPathElement>(1, _omitFieldNames ? '' : 'elements',
+        subBuilder: FieldPathElement.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FieldPath clone() => FieldPath()..mergeFromMessage(this);
+  FieldPath clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FieldPath copyWith(void Function(FieldPath) updates) =>
       super.copyWith((message) => updates(message as FieldPath)) as FieldPath;
@@ -7000,13 +7237,14 @@ class FieldPath extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FieldPath() / FieldPath.new instead')
   static FieldPath create() => FieldPath._();
+  static $pb.GeneratedMessage $_createMessage() => FieldPath._();
   @$core.override
-  FieldPath createEmptyInstance() => create();
-  static $pb.PbList<FieldPath> createRepeated() => $pb.PbList<FieldPath>();
+  FieldPath createEmptyInstance() => FieldPath._();
   @$core.pragma('dart2js:noInline')
-  static FieldPath getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FieldPath>(create);
+  static FieldPath getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FieldPath>(FieldPath.$_createMessage);
   static FieldPath? _defaultInstance;
 
   /// `elements` contains each element of the path, starting from the root and recursing downward.
@@ -7041,7 +7279,7 @@ class FieldPathElement extends $pb.GeneratedMessage {
     $fixnum.Int64? uintKey,
     $core.String? stringKey,
   }) {
-    final result = create();
+    final result = FieldPathElement._();
     if (fieldNumber != null) result.fieldNumber = fieldNumber;
     if (fieldName != null) result.fieldName = fieldName;
     if (fieldType != null) result.fieldType = fieldType;
@@ -7059,10 +7297,10 @@ class FieldPathElement extends $pb.GeneratedMessage {
 
   factory FieldPathElement.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      FieldPathElement()..mergeFromBuffer(data, registry);
   factory FieldPathElement.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      FieldPathElement()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, FieldPathElement_Subscript>
       _FieldPathElement_SubscriptByTag = {
@@ -7076,24 +7314,15 @@ class FieldPathElement extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'FieldPathElement',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'buf.validate'),
-      createEmptyInstance: create)
+      createEmptyInstance: FieldPathElement.$_createMessage)
     ..oo(0, [6, 7, 8, 9, 10])
-    ..a<$core.int>(1, _omitFieldNames ? '' : 'fieldNumber', $pb.PbFieldType.O3)
+    ..aI(1, _omitFieldNames ? '' : 'fieldNumber')
     ..aOS(2, _omitFieldNames ? '' : 'fieldName')
-    ..e<$3.FieldDescriptorProto_Type>(
-        3, _omitFieldNames ? '' : 'fieldType', $pb.PbFieldType.OE,
-        defaultOrMaker: $3.FieldDescriptorProto_Type.TYPE_DOUBLE,
-        valueOf: $3.FieldDescriptorProto_Type.valueOf,
+    ..aE<$3.FieldDescriptorProto_Type>(3, _omitFieldNames ? '' : 'fieldType',
         enumValues: $3.FieldDescriptorProto_Type.values)
-    ..e<$3.FieldDescriptorProto_Type>(
-        4, _omitFieldNames ? '' : 'keyType', $pb.PbFieldType.OE,
-        defaultOrMaker: $3.FieldDescriptorProto_Type.TYPE_DOUBLE,
-        valueOf: $3.FieldDescriptorProto_Type.valueOf,
+    ..aE<$3.FieldDescriptorProto_Type>(4, _omitFieldNames ? '' : 'keyType',
         enumValues: $3.FieldDescriptorProto_Type.values)
-    ..e<$3.FieldDescriptorProto_Type>(
-        5, _omitFieldNames ? '' : 'valueType', $pb.PbFieldType.OE,
-        defaultOrMaker: $3.FieldDescriptorProto_Type.TYPE_DOUBLE,
-        valueOf: $3.FieldDescriptorProto_Type.valueOf,
+    ..aE<$3.FieldDescriptorProto_Type>(5, _omitFieldNames ? '' : 'valueType',
         enumValues: $3.FieldDescriptorProto_Type.values)
     ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'index', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
@@ -7105,7 +7334,7 @@ class FieldPathElement extends $pb.GeneratedMessage {
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  FieldPathElement clone() => FieldPathElement()..mergeFromMessage(this);
+  FieldPathElement clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   FieldPathElement copyWith(void Function(FieldPathElement) updates) =>
       super.copyWith((message) => updates(message as FieldPathElement))
@@ -7115,18 +7344,29 @@ class FieldPathElement extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use FieldPathElement() / FieldPathElement.new instead')
   static FieldPathElement create() => FieldPathElement._();
+  static $pb.GeneratedMessage $_createMessage() => FieldPathElement._();
   @$core.override
-  FieldPathElement createEmptyInstance() => create();
-  static $pb.PbList<FieldPathElement> createRepeated() =>
-      $pb.PbList<FieldPathElement>();
+  FieldPathElement createEmptyInstance() => FieldPathElement._();
   @$core.pragma('dart2js:noInline')
-  static FieldPathElement getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<FieldPathElement>(create);
+  static FieldPathElement getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<FieldPathElement>(
+          FieldPathElement.$_createMessage);
   static FieldPathElement? _defaultInstance;
 
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
   FieldPathElement_Subscript whichSubscript() =>
       _FieldPathElement_SubscriptByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
   void clearSubscript() => $_clearField($_whichOneof(0));
 
   /// `field_number` is the field number this path element refers to.
@@ -7250,28 +7490,28 @@ class Validate {
       1159,
       $pb.PbFieldType.OM,
       defaultOrMaker: MessageRules.getDefault,
-      subBuilder: MessageRules.create);
+      subBuilder: MessageRules.$_createMessage);
   static final oneof = $pb.Extension<OneofRules>(
       _omitMessageNames ? '' : 'google.protobuf.OneofOptions',
       _omitFieldNames ? '' : 'oneof',
       1159,
       $pb.PbFieldType.OM,
       defaultOrMaker: OneofRules.getDefault,
-      subBuilder: OneofRules.create);
+      subBuilder: OneofRules.$_createMessage);
   static final field_1159 = $pb.Extension<FieldRules>(
       _omitMessageNames ? '' : 'google.protobuf.FieldOptions',
       _omitFieldNames ? '' : 'field_1159',
       1159,
       $pb.PbFieldType.OM,
       defaultOrMaker: FieldRules.getDefault,
-      subBuilder: FieldRules.create);
+      subBuilder: FieldRules.$_createMessage);
   static final predefined = $pb.Extension<PredefinedRules>(
       _omitMessageNames ? '' : 'google.protobuf.FieldOptions',
       _omitFieldNames ? '' : 'predefined',
       1160,
       $pb.PbFieldType.OM,
       defaultOrMaker: PredefinedRules.getDefault,
-      subBuilder: PredefinedRules.create);
+      subBuilder: PredefinedRules.$_createMessage);
   static void registerAllExtensions($pb.ExtensionRegistry registry) {
     registry.add(message);
     registry.add(oneof);

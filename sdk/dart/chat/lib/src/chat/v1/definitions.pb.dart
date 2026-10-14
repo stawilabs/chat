@@ -8,14 +8,15 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as $0;
 
 import '../../common/v1/common.pb.dart' as $2;
-import '../../google/protobuf/timestamp.pb.dart' as $0;
 import 'definitions.pbenum.dart';
 import 'payload_type.pb.dart' as $1;
 
@@ -36,7 +37,7 @@ class RoomEvent extends $pb.GeneratedMessage {
     $core.String? parentId,
     $1.Payload? payload,
   }) {
-    final result = create();
+    final result = RoomEvent._();
     if (id != null) result.id = id;
     if (roomId != null) result.roomId = roomId;
     if (subscriptionId != null) result.subscriptionId = subscriptionId;
@@ -53,33 +54,31 @@ class RoomEvent extends $pb.GeneratedMessage {
 
   factory RoomEvent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      RoomEvent()..mergeFromBuffer(data, registry);
   factory RoomEvent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      RoomEvent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'RoomEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: RoomEvent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'roomId')
     ..aOS(3, _omitFieldNames ? '' : 'subscriptionId')
-    ..e<RoomEventType>(4, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE,
-        defaultOrMaker: RoomEventType.ROOM_EVENT_TYPE_UNSPECIFIED,
-        valueOf: RoomEventType.valueOf,
+    ..aE<RoomEventType>(4, _omitFieldNames ? '' : 'type',
         enumValues: RoomEventType.values)
     ..aOM<$0.Timestamp>(7, _omitFieldNames ? '' : 'sentAt',
-        subBuilder: $0.Timestamp.create)
+        subBuilder: $0.Timestamp.$_createMessage)
     ..aOB(8, _omitFieldNames ? '' : 'edited')
     ..aOB(9, _omitFieldNames ? '' : 'redacted')
     ..aOS(10, _omitFieldNames ? '' : 'parentId')
     ..aOM<$1.Payload>(15, _omitFieldNames ? '' : 'payload',
-        subBuilder: $1.Payload.create)
+        subBuilder: $1.Payload.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  RoomEvent clone() => RoomEvent()..mergeFromMessage(this);
+  RoomEvent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   RoomEvent copyWith(void Function(RoomEvent) updates) =>
       super.copyWith((message) => updates(message as RoomEvent)) as RoomEvent;
@@ -88,13 +87,14 @@ class RoomEvent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RoomEvent() / RoomEvent.new instead')
   static RoomEvent create() => RoomEvent._();
+  static $pb.GeneratedMessage $_createMessage() => RoomEvent._();
   @$core.override
-  RoomEvent createEmptyInstance() => create();
-  static $pb.PbList<RoomEvent> createRepeated() => $pb.PbList<RoomEvent>();
+  RoomEvent createEmptyInstance() => RoomEvent._();
   @$core.pragma('dart2js:noInline')
-  static RoomEvent getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RoomEvent>(create);
+  static RoomEvent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RoomEvent>(RoomEvent.$_createMessage);
   static RoomEvent? _defaultInstance;
 
   /// NOTE:
@@ -197,7 +197,7 @@ class AckEvent extends $pb.GeneratedMessage {
     $0.Timestamp? ackAt,
     $2.ErrorDetail? error,
   }) {
-    final result = create();
+    final result = AckEvent._();
     if (roomId != null) result.roomId = roomId;
     if (eventId != null) result.eventId.addAll(eventId);
     if (subscriptionId != null) result.subscriptionId = subscriptionId;
@@ -210,26 +210,26 @@ class AckEvent extends $pb.GeneratedMessage {
 
   factory AckEvent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      AckEvent()..mergeFromBuffer(data, registry);
   factory AckEvent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      AckEvent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AckEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: AckEvent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'roomId')
     ..pPS(2, _omitFieldNames ? '' : 'eventId')
     ..aOS(3, _omitFieldNames ? '' : 'subscriptionId')
     ..aOM<$0.Timestamp>(4, _omitFieldNames ? '' : 'ackAt',
-        subBuilder: $0.Timestamp.create)
+        subBuilder: $0.Timestamp.$_createMessage)
     ..aOM<$2.ErrorDetail>(7, _omitFieldNames ? '' : 'error',
-        subBuilder: $2.ErrorDetail.create)
+        subBuilder: $2.ErrorDetail.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  AckEvent clone() => AckEvent()..mergeFromMessage(this);
+  AckEvent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   AckEvent copyWith(void Function(AckEvent) updates) =>
       super.copyWith((message) => updates(message as AckEvent)) as AckEvent;
@@ -238,13 +238,14 @@ class AckEvent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AckEvent() / AckEvent.new instead')
   static AckEvent create() => AckEvent._();
+  static $pb.GeneratedMessage $_createMessage() => AckEvent._();
   @$core.override
-  AckEvent createEmptyInstance() => create();
-  static $pb.PbList<AckEvent> createRepeated() => $pb.PbList<AckEvent>();
+  AckEvent createEmptyInstance() => AckEvent._();
   @$core.pragma('dart2js:noInline')
-  static AckEvent getDefault() =>
-      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AckEvent>(create);
+  static AckEvent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AckEvent>(AckEvent.$_createMessage);
   static AckEvent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -302,7 +303,7 @@ class ReceiptEvent extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? eventId,
     $core.String? subscriptionId,
   }) {
-    final result = create();
+    final result = ReceiptEvent._();
     if (roomId != null) result.roomId = roomId;
     if (eventId != null) result.eventId.addAll(eventId);
     if (subscriptionId != null) result.subscriptionId = subscriptionId;
@@ -313,22 +314,22 @@ class ReceiptEvent extends $pb.GeneratedMessage {
 
   factory ReceiptEvent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ReceiptEvent()..mergeFromBuffer(data, registry);
   factory ReceiptEvent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ReceiptEvent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ReceiptEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: ReceiptEvent.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'roomId')
     ..pPS(3, _omitFieldNames ? '' : 'eventId')
     ..aOS(5, _omitFieldNames ? '' : 'subscriptionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ReceiptEvent clone() => ReceiptEvent()..mergeFromMessage(this);
+  ReceiptEvent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ReceiptEvent copyWith(void Function(ReceiptEvent) updates) =>
       super.copyWith((message) => updates(message as ReceiptEvent))
@@ -338,14 +339,15 @@ class ReceiptEvent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ReceiptEvent() / ReceiptEvent.new instead')
   static ReceiptEvent create() => ReceiptEvent._();
+  static $pb.GeneratedMessage $_createMessage() => ReceiptEvent._();
   @$core.override
-  ReceiptEvent createEmptyInstance() => create();
-  static $pb.PbList<ReceiptEvent> createRepeated() =>
-      $pb.PbList<ReceiptEvent>();
+  ReceiptEvent createEmptyInstance() => ReceiptEvent._();
   @$core.pragma('dart2js:noInline')
-  static ReceiptEvent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ReceiptEvent>(create);
+  static ReceiptEvent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ReceiptEvent>(
+          ReceiptEvent.$_createMessage);
   static ReceiptEvent? _defaultInstance;
 
   @$pb.TagNumber(2)
@@ -376,7 +378,7 @@ class ReadMarker extends $pb.GeneratedMessage {
     $core.String? upToEventId,
     $core.String? subscriptionId,
   }) {
-    final result = create();
+    final result = ReadMarker._();
     if (roomId != null) result.roomId = roomId;
     if (upToEventId != null) result.upToEventId = upToEventId;
     if (subscriptionId != null) result.subscriptionId = subscriptionId;
@@ -387,22 +389,22 @@ class ReadMarker extends $pb.GeneratedMessage {
 
   factory ReadMarker.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ReadMarker()..mergeFromBuffer(data, registry);
   factory ReadMarker.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ReadMarker()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ReadMarker',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: ReadMarker.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'roomId')
     ..aOS(3, _omitFieldNames ? '' : 'upToEventId')
     ..aOS(5, _omitFieldNames ? '' : 'subscriptionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ReadMarker clone() => ReadMarker()..mergeFromMessage(this);
+  ReadMarker clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ReadMarker copyWith(void Function(ReadMarker) updates) =>
       super.copyWith((message) => updates(message as ReadMarker)) as ReadMarker;
@@ -411,13 +413,14 @@ class ReadMarker extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ReadMarker() / ReadMarker.new instead')
   static ReadMarker create() => ReadMarker._();
+  static $pb.GeneratedMessage $_createMessage() => ReadMarker._();
   @$core.override
-  ReadMarker createEmptyInstance() => create();
-  static $pb.PbList<ReadMarker> createRepeated() => $pb.PbList<ReadMarker>();
+  ReadMarker createEmptyInstance() => ReadMarker._();
   @$core.pragma('dart2js:noInline')
   static ReadMarker getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ReadMarker>(create);
+      $pb.GeneratedMessage.$_defaultFor<ReadMarker>(ReadMarker.$_createMessage);
   static ReadMarker? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -456,7 +459,7 @@ class PresenceEvent extends $pb.GeneratedMessage {
     $core.String? statusMsg,
     $0.Timestamp? lastActive,
   }) {
-    final result = create();
+    final result = PresenceEvent._();
     if (source != null) result.source = source;
     if (status != null) result.status = status;
     if (statusMsg != null) result.statusMsg = statusMsg;
@@ -468,28 +471,26 @@ class PresenceEvent extends $pb.GeneratedMessage {
 
   factory PresenceEvent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      PresenceEvent()..mergeFromBuffer(data, registry);
   factory PresenceEvent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      PresenceEvent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'PresenceEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: PresenceEvent.$_createMessage)
     ..aOM<$2.ContactLink>(1, _omitFieldNames ? '' : 'source',
-        subBuilder: $2.ContactLink.create)
-    ..e<PresenceStatus>(2, _omitFieldNames ? '' : 'status', $pb.PbFieldType.OE,
-        defaultOrMaker: PresenceStatus.PRESENCE_STATUS_UNSPECIFIED,
-        valueOf: PresenceStatus.valueOf,
+        subBuilder: $2.ContactLink.$_createMessage)
+    ..aE<PresenceStatus>(2, _omitFieldNames ? '' : 'status',
         enumValues: PresenceStatus.values)
     ..aOS(3, _omitFieldNames ? '' : 'statusMsg')
     ..aOM<$0.Timestamp>(4, _omitFieldNames ? '' : 'lastActive',
-        subBuilder: $0.Timestamp.create)
+        subBuilder: $0.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  PresenceEvent clone() => PresenceEvent()..mergeFromMessage(this);
+  PresenceEvent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   PresenceEvent copyWith(void Function(PresenceEvent) updates) =>
       super.copyWith((message) => updates(message as PresenceEvent))
@@ -499,14 +500,15 @@ class PresenceEvent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PresenceEvent() / PresenceEvent.new instead')
   static PresenceEvent create() => PresenceEvent._();
+  static $pb.GeneratedMessage $_createMessage() => PresenceEvent._();
   @$core.override
-  PresenceEvent createEmptyInstance() => create();
-  static $pb.PbList<PresenceEvent> createRepeated() =>
-      $pb.PbList<PresenceEvent>();
+  PresenceEvent createEmptyInstance() => PresenceEvent._();
   @$core.pragma('dart2js:noInline')
-  static PresenceEvent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<PresenceEvent>(create);
+  static PresenceEvent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PresenceEvent>(
+          PresenceEvent.$_createMessage);
   static PresenceEvent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -558,7 +560,7 @@ class TypingEvent extends $pb.GeneratedMessage {
     $core.bool? typing,
     $0.Timestamp? since,
   }) {
-    final result = create();
+    final result = TypingEvent._();
     if (subscriptionId != null) result.subscriptionId = subscriptionId;
     if (roomId != null) result.roomId = roomId;
     if (typing != null) result.typing = typing;
@@ -570,24 +572,24 @@ class TypingEvent extends $pb.GeneratedMessage {
 
   factory TypingEvent.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      TypingEvent()..mergeFromBuffer(data, registry);
   factory TypingEvent.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      TypingEvent()..mergeFromJson(json, registry);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'TypingEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: TypingEvent.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'subscriptionId')
     ..aOS(2, _omitFieldNames ? '' : 'roomId')
     ..aOB(3, _omitFieldNames ? '' : 'typing')
     ..aOM<$0.Timestamp>(5, _omitFieldNames ? '' : 'since',
-        subBuilder: $0.Timestamp.create)
+        subBuilder: $0.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  TypingEvent clone() => TypingEvent()..mergeFromMessage(this);
+  TypingEvent clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   TypingEvent copyWith(void Function(TypingEvent) updates) =>
       super.copyWith((message) => updates(message as TypingEvent))
@@ -597,13 +599,15 @@ class TypingEvent extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TypingEvent() / TypingEvent.new instead')
   static TypingEvent create() => TypingEvent._();
+  static $pb.GeneratedMessage $_createMessage() => TypingEvent._();
   @$core.override
-  TypingEvent createEmptyInstance() => create();
-  static $pb.PbList<TypingEvent> createRepeated() => $pb.PbList<TypingEvent>();
+  TypingEvent createEmptyInstance() => TypingEvent._();
   @$core.pragma('dart2js:noInline')
-  static TypingEvent getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<TypingEvent>(create);
+  static TypingEvent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TypingEvent>(
+          TypingEvent.$_createMessage);
   static TypingEvent? _defaultInstance;
 
   @$pb.TagNumber(1)
@@ -667,7 +671,7 @@ class ClientCommand extends $pb.GeneratedMessage {
     ReadMarker? readMarker,
     RoomEvent? event,
   }) {
-    final result = create();
+    final result = ClientCommand._();
     if (receipt != null) result.receipt = receipt;
     if (ack != null) result.ack = ack;
     if (typing != null) result.typing = typing;
@@ -681,10 +685,10 @@ class ClientCommand extends $pb.GeneratedMessage {
 
   factory ClientCommand.fromBuffer($core.List<$core.int> data,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromBuffer(data, registry);
+      ClientCommand()..mergeFromBuffer(data, registry);
   factory ClientCommand.fromJson($core.String json,
           [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
-      create()..mergeFromJson(json, registry);
+      ClientCommand()..mergeFromJson(json, registry);
 
   static const $core.Map<$core.int, ClientCommand_State>
       _ClientCommand_StateByTag = {
@@ -699,24 +703,24 @@ class ClientCommand extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'ClientCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
-      createEmptyInstance: create)
+      createEmptyInstance: ClientCommand.$_createMessage)
     ..oo(0, [2, 3, 4, 5, 8, 10])
     ..aOM<ReceiptEvent>(2, _omitFieldNames ? '' : 'receipt',
-        subBuilder: ReceiptEvent.create)
+        subBuilder: ReceiptEvent.$_createMessage)
     ..aOM<AckEvent>(3, _omitFieldNames ? '' : 'ack',
-        subBuilder: AckEvent.create)
+        subBuilder: AckEvent.$_createMessage)
     ..aOM<TypingEvent>(4, _omitFieldNames ? '' : 'typing',
-        subBuilder: TypingEvent.create)
+        subBuilder: TypingEvent.$_createMessage)
     ..aOM<PresenceEvent>(5, _omitFieldNames ? '' : 'presence',
-        subBuilder: PresenceEvent.create)
+        subBuilder: PresenceEvent.$_createMessage)
     ..aOM<ReadMarker>(8, _omitFieldNames ? '' : 'readMarker',
-        subBuilder: ReadMarker.create)
+        subBuilder: ReadMarker.$_createMessage)
     ..aOM<RoomEvent>(10, _omitFieldNames ? '' : 'event',
-        subBuilder: RoomEvent.create)
+        subBuilder: RoomEvent.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
-  ClientCommand clone() => ClientCommand()..mergeFromMessage(this);
+  ClientCommand clone() => deepCopy();
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
   ClientCommand copyWith(void Function(ClientCommand) updates) =>
       super.copyWith((message) => updates(message as ClientCommand))
@@ -726,18 +730,31 @@ class ClientCommand extends $pb.GeneratedMessage {
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ClientCommand() / ClientCommand.new instead')
   static ClientCommand create() => ClientCommand._();
+  static $pb.GeneratedMessage $_createMessage() => ClientCommand._();
   @$core.override
-  ClientCommand createEmptyInstance() => create();
-  static $pb.PbList<ClientCommand> createRepeated() =>
-      $pb.PbList<ClientCommand>();
+  ClientCommand createEmptyInstance() => ClientCommand._();
   @$core.pragma('dart2js:noInline')
-  static ClientCommand getDefault() => _defaultInstance ??=
-      $pb.GeneratedMessage.$_defaultFor<ClientCommand>(create);
+  static ClientCommand getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ClientCommand>(
+          ClientCommand.$_createMessage);
   static ClientCommand? _defaultInstance;
 
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(10)
   ClientCommand_State whichState() =>
       _ClientCommand_StateByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(2)
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(8)
+  @$pb.TagNumber(10)
   void clearState() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(2)

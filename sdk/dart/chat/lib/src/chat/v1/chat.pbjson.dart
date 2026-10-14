@@ -8,15 +8,19 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names, unused_import
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
 
+import 'package:protobuf/well_known_types/google/protobuf/struct.pbjson.dart'
+    as $2;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pbjson.dart'
+    as $3;
+
 import '../../common/v1/common.pbjson.dart' as $1;
-import '../../google/protobuf/struct.pbjson.dart' as $2;
-import '../../google/protobuf/timestamp.pbjson.dart' as $3;
 import 'definitions.pbjson.dart' as $0;
 import 'payload_type.pbjson.dart' as $4;
 
