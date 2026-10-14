@@ -248,11 +248,11 @@ final stawiRoomAssetsProvider = FutureProvider.autoDispose
           ref.watch(stawiFinanceServiceProvider).roomAssets(roomId),
     );
 
-/// The room's assets as far as they are known now: none while they load or
-/// when finance cannot describe them, and amounts then show in minor units.
+/// The room's assets as far as they are known now: unknown while they load
+/// or when finance cannot describe them, and amounts then show as "—".
 StawiAssets watchRoomAssets(WidgetRef ref, String roomId) =>
     ref.watch(stawiRoomAssetsProvider(roomId)).asData?.value ??
-    StawiAssets.empty;
+    StawiAssets.loading;
 
 /// The signed-in member's own dues in a room; null when not a member.
 final stawiMyDuesProvider = FutureProvider.autoDispose

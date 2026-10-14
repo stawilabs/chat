@@ -211,7 +211,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
         if (canLendFrom(p) && moneyUnits(p.cash) >= amount) p,
     ];
     final assets =
-        ref.read(loanAssetsProvider).asData?.value ?? StawiAssets.empty;
+        ref.read(loanAssetsProvider).asData?.value ?? StawiAssets.loading;
     if (pockets.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(

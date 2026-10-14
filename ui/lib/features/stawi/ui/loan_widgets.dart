@@ -18,15 +18,15 @@ import '../domain/stawi_money.dart';
 import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
 
-/// The deployment's asset as personal loan amounts name it. Empty while it
-/// loads or when it cannot be read: amounts then show in minor units.
+/// The deployment's asset as personal loan amounts name it. Unknown while it
+/// loads or when it cannot be read: amounts then show as "—".
 final loanAssetsProvider = FutureProvider.autoDispose<StawiAssets>(
   (ref) async =>
       StawiAssets([(await ref.watch(stawiTestAssetProvider.future)).asset]),
 );
 
 StawiAssets watchLoanAssets(WidgetRef ref) =>
-    ref.watch(loanAssetsProvider).asData?.value ?? StawiAssets.empty;
+    ref.watch(loanAssetsProvider).asData?.value ?? StawiAssets.loading;
 
 /// Whether a loan's standing order is on; an error when it cannot be read.
 final standingOrderOnProvider = FutureProvider.autoDispose

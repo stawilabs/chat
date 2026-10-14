@@ -48,6 +48,31 @@ void main() {
       );
     });
 
+    test('while the assets load every amount is "—", never minor units', () {
+      expect(StawiAssets.loading.loaded, isFalse);
+      expect(StawiAssets.empty.loaded, isTrue);
+      expect(usdcAssets.loaded, isTrue);
+      expect(formatMoney(usdcMoney('1234567'), StawiAssets.loading), '—');
+      expect(
+        formatMoney(
+          finance.Money(assetId: 'XYZ.146', amount: '1234567'),
+          StawiAssets.loading,
+        ),
+        '—',
+      );
+      expect(formatMoney(usdcMoney(''), StawiAssets.loading), '—');
+      // Adding descriptions to an unread table does not make it read.
+      expect(
+        formatMoney(
+          usdcMoney('500000'),
+          StawiAssets.loading.withAll([
+            finance.AssetInfo(assetId: 'KES.1', symbol: 'KES', decimals: 2),
+          ]),
+        ),
+        '—',
+      );
+    });
+
     test('takes symbol and decimals from the asset details', () {
       final assets = usdcAssets.withAll([
         finance.AssetInfo(assetId: 'KES.1', symbol: 'KES', decimals: 2),

@@ -1315,6 +1315,26 @@ void main() {
       );
     });
 
+    test('without an account of our own nothing is checked, even when the '
+        'prepared call and intent name none either', () {
+      final nobody = contribution()
+        ..call.address = <int>[]
+        ..financialIntent.account = <int>[];
+      for (final account in [Uint8List(0), Uint8List(20), Uint8List(19)]) {
+        for (final p in [contribution(), nobody]) {
+          expect(
+            () => checkedContribution(
+              prepared: p,
+              account: account,
+              custody: custody,
+              amount: d.amount.toString(),
+            ),
+            refusedWith(noAccountReason),
+          );
+        }
+      }
+    });
+
     test('an intent with no account, or another, is refused', () {
       for (final from in [<int>[], Uint8List(20)..[0] = 0x01]) {
         final intent = contribution().financialIntent.deepCopy()

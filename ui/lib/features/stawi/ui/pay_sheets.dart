@@ -62,6 +62,9 @@ Future<settlement.AccountCall?> showPayInstalment(
       () async => service.prepareContribution(
         custody: Uint8List.fromList(view.loan.pool),
         amount: owed.toString(),
+        // The button said "Pay an instalment": the review says so too.
+        title: (amount) =>
+            'Pay $amount toward loan #${view.loan.onchainLoanId}',
         note: groupPaymentNote,
       ),
     );

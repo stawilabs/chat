@@ -263,12 +263,21 @@ void _verifyGenesisContents(settlement.RoomGenesis genesis) {
   }
 }
 
+/// Why a call is refused when the device has no account address to check it
+/// against: an empty address would "match" a call that names none.
+const String noAccountReason = 'no account to sign from';
+
 /// The digest to sign for a prepared device call on the member's account.
+/// [account] must be the member's own 20-byte address, and the call must name
+/// exactly it.
 Uint8List checkedAccountCallDigest({
   required settlement.PrepareAccountCallResponse prepared,
   required settlement.AccountCallKind kind,
   required Uint8List account,
 }) {
+  if (account.length != 20 || account.every((b) => b == 0)) {
+    throw const SigningRefused(noAccountReason);
+  }
   final call = prepared.call;
   if (call.kind != kind) {
     throw const SigningRefused('settlement prepared another kind of call');

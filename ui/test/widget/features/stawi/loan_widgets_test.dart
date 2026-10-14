@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/domain/loan_view.dart';
+import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi/features/stawi/ui/loan_widgets.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -79,6 +80,28 @@ void main() {
       expect(find.text('300.00 USDC'), findsOneWidget);
       expect(find.text('Next: 27 Oct · 77.50 USDC'), findsOneWidget);
       expect(find.text('Active'), findsOneWidget);
+    });
+
+    testWidgets('while the asset loads, amounts are "—", not minor units', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        LoanCard(
+          view: LoanView(
+            loan(),
+            mine: [me],
+            instalments: [instalment(0, paid: 77500000), instalment(1)],
+          ),
+          assets: StawiAssets.loading,
+          counterpartyName: 'Bob',
+        ),
+      );
+      expect(find.text('—'), findsOneWidget);
+      expect(find.text('Next: 27 Oct · —'), findsOneWidget);
+      expect(find.textContaining('300000000'), findsNothing);
+      expect(find.textContaining('77500000'), findsNothing);
+      expect(find.textContaining('USDC.146'), findsNothing);
     });
 
     testWidgets('a lender sees "To Bob"; a waiting loan names who', (

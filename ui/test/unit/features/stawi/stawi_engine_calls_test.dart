@@ -151,9 +151,8 @@ void main() {
         settlement.AccountService.prepareAccountCall,
         (req) => v.prepared(req.kind),
       );
-      final prepared = await service(
-        v,
-      ).prepareEngineCall(requestFor(v, amount: ''), engines: v.engines());
+      final prepared = await service(v)
+          .prepareEngineCall(requestFor(v, amount: ''), engines: v.engines());
       final prepare = transport
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
@@ -192,9 +191,8 @@ void main() {
           );
         await serveDeployedAccount(transport, pledge.devicePrivateKey);
         await expectLater(
-          service(
-            pledge,
-          ).prepareEngineCall(entry.value, engines: pledge.engines()),
+          service(pledge)
+              .prepareEngineCall(entry.value, engines: pledge.engines()),
           throwsA(isA<SigningRefused>()),
           reason: entry.key,
         );
@@ -227,6 +225,45 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('without an account of our own the call is refused, even when the '
+        'prepared call names none', () {
+      final v = GoEngineCallVector.load().firstWhere(
+        (v) => v.name == 'loan_request',
+      );
+      final request = AccountEngineRequest(
+        call: AccountEngineCall.loanRequest,
+        custody: v.room,
+        amount: '500000000',
+        productId: hexToBytes(v.json['product_id'] as String),
+        instalments: 4,
+      );
+      final nobody = v.prepared(AccountEngineCall.loanRequest.kind)
+        ..call.address = <int>[]
+        ..financialIntent.account = <int>[];
+      for (final account in [Uint8List(0), Uint8List(20)]) {
+        for (final p in [
+          v.prepared(AccountEngineCall.loanRequest.kind),
+          nobody,
+        ]) {
+          expect(
+            () => checkedEngineCall(
+              prepared: p,
+              request: request,
+              account: account,
+              engines: v.engines(),
+            ),
+            throwsA(
+              isA<SigningRefused>().having(
+                (e) => e.reason,
+                'reason',
+                noAccountReason,
+              ),
+            ),
+          );
+        }
+      }
     });
 
     test('refuses an intent that does not bind the calldata', () async {
@@ -301,14 +338,9 @@ void main() {
   });
 
   test('secret ballots use the SDK commitment and choice numbers', () {
-    final vectors =
-        (jsonDecode(
-                  File(
-                    'test/fixtures/stawi/go_vote_commitments.json',
-                  ).readAsStringSync(),
-                )
-                as List)
-            .cast<Map<String, dynamic>>();
+    final vectors = (jsonDecode(
+      File('test/fixtures/stawi/go_vote_commitments.json').readAsStringSync(),
+    ) as List).cast<Map<String, dynamic>>();
     final v = vectors[1];
     final sealed = SealedVote(
       choice: finance.VoteChoice.valueOf(v['choice'] as int)!,
