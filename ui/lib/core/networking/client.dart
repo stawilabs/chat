@@ -43,7 +43,8 @@ import 'runtime_transport.dart';
 // Client type aliases and factory functions
 //
 // These were previously exported by stawi_api_chat and
-// antinvestor_api_files but were removed in v1.54.0.
+// antinvestor_api_files (removed in v1.54.0) and by antinvestor_api_device
+// (removed in 2.0.0).
 // ============================================================================
 
 /// Type alias for Chat client for convenience.
@@ -54,6 +55,9 @@ typedef GatewayClient = ConnectClientBase<GatewayServiceClient>;
 
 /// Type alias for Files client for convenience.
 typedef FilesClient = ConnectClientBase<FilesServiceClient>;
+
+/// Type alias for Device client for convenience.
+typedef DeviceClient = ConnectClientBase<DeviceServiceClient>;
 
 /// Creates a new Chat service client. Auth is handled by the transport
 /// (RuntimeTransport routes through AuthRuntime.fetch); SDK auth interceptors
@@ -91,6 +95,19 @@ Future<FilesClient> newFilesClient({
   return newClient<FilesServiceClient>(
     defaultEndpoint: endpoint ?? ApiConfig.filesBaseUrl,
     createServiceClient: FilesServiceClient.new,
+    createTransport: createTransport,
+    endpoint: endpoint,
+  );
+}
+
+/// Creates a new Device service client.
+Future<DeviceClient> newDeviceClient({
+  required TransportFactory createTransport,
+  String? endpoint,
+}) {
+  return newClient<DeviceServiceClient>(
+    defaultEndpoint: endpoint ?? ApiConfig.devicesBaseUrl,
+    createServiceClient: DeviceServiceClient.new,
     createTransport: createTransport,
     endpoint: endpoint,
   );
