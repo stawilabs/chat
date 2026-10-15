@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	frevents "github.com/pitabwire/frame/v2/events"
-	"github.com/pitabwire/frame/v2/queue"
+	frevents "github.com/pitabwire/frame/v3/events"
+	"github.com/pitabwire/frame/v3/queue"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/service/business"

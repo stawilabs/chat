@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'group_call_participant.dart';
@@ -9,6 +9,7 @@ part of 'group_call_participant.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -38,16 +39,21 @@ $GroupCallParticipantCopyWith<GroupCallParticipant> get copyWith => _$GroupCallP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.hasVideoSlot, hasVideoSlot) || other.hasVideoSlot == hasVideoSlot)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
+  final _this = this as GroupCallParticipant;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCallParticipant&&(identical(other.profileId, _this.profileId) || other.profileId == _this.profileId)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.joinedAt, _this.joinedAt) || other.joinedAt == _this.joinedAt)&&(identical(other.avatarUrl, _this.avatarUrl) || other.avatarUrl == _this.avatarUrl)&&(identical(other.isAudioMuted, _this.isAudioMuted) || other.isAudioMuted == _this.isAudioMuted)&&(identical(other.isVideoOff, _this.isVideoOff) || other.isVideoOff == _this.isVideoOff)&&(identical(other.isSpeaking, _this.isSpeaking) || other.isSpeaking == _this.isSpeaking)&&(identical(other.hasVideoSlot, _this.hasVideoSlot) || other.hasVideoSlot == _this.hasVideoSlot)&&(identical(other.isHost, _this.isHost) || other.isHost == _this.isHost)&&(identical(other.state, _this.state) || other.state == _this.state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,hasVideoSlot,isHost,state);
+int get hashCode {
+  final _this = this as GroupCallParticipant;
+  return Object.hash(runtimeType,_this.profileId,_this.displayName,_this.joinedAt,_this.avatarUrl,_this.isAudioMuted,_this.isVideoOff,_this.isSpeaking,_this.hasVideoSlot,_this.isHost,_this.state);
+}
 
 @override
 String toString() {
-  return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, hasVideoSlot: $hasVideoSlot, isHost: $isHost, state: $state)';
+  final _this = this as GroupCallParticipant;
+  return 'GroupCallParticipant(profileId: ${_this.profileId}, displayName: ${_this.displayName}, joinedAt: ${_this.joinedAt}, avatarUrl: ${_this.avatarUrl}, isAudioMuted: ${_this.isAudioMuted}, isVideoOff: ${_this.isVideoOff}, isSpeaking: ${_this.isSpeaking}, hasVideoSlot: ${_this.hasVideoSlot}, isHost: ${_this.isHost}, state: ${_this.state})';
 }
 
 
@@ -76,7 +82,7 @@ class _$GroupCallParticipantCopyWithImpl<$Res>
 /// Create a copy of GroupCallParticipant
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? profileId = null,Object? displayName = null,Object? joinedAt = null,Object? avatarUrl = freezed,Object? isAudioMuted = null,Object? isVideoOff = null,Object? isSpeaking = null,Object? hasVideoSlot = null,Object? isHost = null,Object? state = null,}) {
-  return _then(_self.copyWith(
+  return _then(GroupCallParticipant(
 profileId: null == profileId ? _self.profileId : profileId // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String,joinedAt: null == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
@@ -265,16 +271,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.hasVideoSlot, hasVideoSlot) || other.hasVideoSlot == hasVideoSlot)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCallParticipant&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.isAudioMuted, isAudioMuted) || other.isAudioMuted == isAudioMuted)&&(identical(other.isVideoOff, isVideoOff) || other.isVideoOff == isVideoOff)&&(identical(other.isSpeaking, isSpeaking) || other.isSpeaking == isSpeaking)&&(identical(other.hasVideoSlot, hasVideoSlot) || other.hasVideoSlot == hasVideoSlot)&&(identical(other.isHost, isHost) || other.isHost == isHost)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,hasVideoSlot,isHost,state);
+int get hashCode {
+    return Object.hash(runtimeType,profileId,displayName,joinedAt,avatarUrl,isAudioMuted,isVideoOff,isSpeaking,hasVideoSlot,isHost,state);
+}
 
 @override
 String toString() {
-  return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, hasVideoSlot: $hasVideoSlot, isHost: $isHost, state: $state)';
+    return 'GroupCallParticipant(profileId: $profileId, displayName: $displayName, joinedAt: $joinedAt, avatarUrl: $avatarUrl, isAudioMuted: $isAudioMuted, isVideoOff: $isVideoOff, isSpeaking: $isSpeaking, hasVideoSlot: $hasVideoSlot, isHost: $isHost, state: $state)';
 }
 
 

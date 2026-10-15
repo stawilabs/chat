@@ -4,13 +4,11 @@ package stawitest
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/pitabwire/util"
 
 	"github.com/stawilabs/chat/apps/default/service/stawi"
@@ -69,7 +67,7 @@ func (r *Rooms) Refuse(method string, err error) {
 
 // Refusal is a settlement refusal as the chain would give it.
 func Refusal(reason string) error {
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New(reason))
+	return connect.NewError(connect.CodeFailedPrecondition, reason)
 }
 
 // AddCall registers a prepared call, as if the app had called PrepareRoomCall.
@@ -139,7 +137,7 @@ func (r *Rooms) SubmitRoomGenesisSignature(
 	}
 	g, ok := r.geneses[sig.GenesisID]
 	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("genesis %s not found", sig.GenesisID))
+		return nil, connect.Errorf(connect.CodeNotFound, "genesis %s not found", sig.GenesisID)
 	}
 	for _, existing := range r.signatures[sig.GenesisID] {
 		if existing.SignerProfileID == sig.SignerProfileID {
@@ -163,7 +161,7 @@ func (r *Rooms) SubmitRoomCall(_ context.Context, sub stawi.CallSubmission) (*st
 	}
 	c, ok := r.calls[sub.CallID]
 	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("call %s not found", sub.CallID))
+		return nil, connect.Errorf(connect.CodeNotFound, "call %s not found", sub.CallID)
 	}
 	r.Submitted = append(r.Submitted, sub)
 	if c.State == stawi.CallStatePrepared {
@@ -181,7 +179,7 @@ func (r *Rooms) GetRoomCall(_ context.Context, callID string) (*stawi.RoomCall, 
 	}
 	c, ok := r.calls[callID]
 	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("call %s not found", callID))
+		return nil, connect.Errorf(connect.CodeNotFound, "call %s not found", callID)
 	}
 	out := *c
 	return &out, nil
@@ -227,4 +225,44 @@ func (a *Accounts) Resolve(_ context.Context, addresses []string) (map[string]st
 		}
 	}
 	return out, nil
+}
+
+// ProfileAccounts is a fake settlement GetProfileAccount: a profile without a
+// registered account answers empty, as settlement does.
+type ProfileAccounts struct {
+	mu       sync.Mutex
+	accounts map[string]stawi.ProfileAccount
+	err      error
+	// Asked records every profile looked up.
+	Asked []string
+}
+
+// NewProfileAccounts returns a fake lookup that knows no accounts.
+func NewProfileAccounts() *ProfileAccounts {
+	return &ProfileAccounts{accounts: map[string]stawi.ProfileAccount{}}
+}
+
+// Set records profileID's primary account.
+func (p *ProfileAccounts) Set(profileID string, account []byte, deployed bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.accounts[profileID] = stawi.ProfileAccount{Account: account, Deployed: deployed}
+}
+
+// Fail makes every lookup fail with err (nil restores it).
+func (p *ProfileAccounts) Fail(err error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.err = err
+}
+
+func (p *ProfileAccounts) GetProfileAccount(_ context.Context, profileID string) (*stawi.ProfileAccount, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Asked = append(p.Asked, profileID)
+	if p.err != nil {
+		return nil, p.err
+	}
+	account := p.accounts[profileID]
+	return &account, nil
 }

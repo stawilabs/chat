@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import 'signing_gate.dart';
+
 /// Where the device key's private scalar is kept. Production is the platform
 /// keystore (Keychain / Keystore); tests use a map.
 abstract interface class DeviceKeyVault {
@@ -36,23 +38,36 @@ class SecureStorageDeviceKeyVault implements DeviceKeyVault {
       _storage.write(key: key, value: value);
 }
 
-/// This device's secp256k1 key for one profile. It signs digests and
-/// publishes its public half; the private scalar never leaves this object.
-class DeviceKeyHandle {
-  DeviceKeyHandle._(this._key);
+/// The public half of this device's secp256k1 key for one profile: what the
+/// account registers and what screens show. It cannot sign; only
+/// [DeviceKeyStore.unlock] hands out a [DeviceKeyHandle], behind the device
+/// lock.
+class DevicePublicKey {
+  DevicePublicKey._(DeviceKey key)
+    : _address = Uint8List.fromList(key.address),
+      _publicKey = Uint8List.fromList(key.publicKey);
 
-  final DeviceKey _key;
+  final Uint8List _address;
+  final Uint8List _publicKey;
 
   /// The key's EVM address, keccak256(X ‖ Y)[12:]: the key id the account
   /// registers.
-  Uint8List get address => Uint8List.fromList(_key.address);
+  Uint8List get address => Uint8List.fromList(_address);
 
   /// 0x04 ‖ X ‖ Y.
-  Uint8List get publicKey => Uint8List.fromList(_key.publicKey);
+  Uint8List get publicKey => Uint8List.fromList(_publicKey);
 
   /// The key id chat and settlement name the signer by: the lowercase
   /// 0x-prefixed address.
-  String get keyId => bytesToHex0x(_key.address).toLowerCase();
+  String get keyId => bytesToHex0x(_address).toLowerCase();
+}
+
+/// This device's key for one signature, handed out by [DeviceKeyStore.unlock]
+/// once the device lock confirmed it. The private scalar never leaves it.
+final class DeviceKeyHandle extends DevicePublicKey {
+  DeviceKeyHandle._(this._key) : super._(_key);
+
+  final DeviceKey _key;
 
   /// The 65-byte r ‖ s ‖ v signature over a 32-byte prepared digest.
   Uint8List sign(List<int> digest) => signPreparedCall(digest, _key.privateKey);
@@ -60,38 +75,62 @@ class DeviceKeyHandle {
 
 /// Generates the device key on first use and keeps it in the platform's
 /// secure storage, one per profile signed in on this device. There is no way
-/// to read the private key out: it is used only through [DeviceKeyHandle].
+/// to read the private key out. [load] and [loadOrCreate] give the public
+/// half only; a key that signs comes from [unlock], behind [SigningGate].
+/// There is no default gate, so a store cannot be built that signs unasked.
 class DeviceKeyStore {
-  DeviceKeyStore(this._vault, {Random? random}) : _random = random;
+  DeviceKeyStore(this._vault, {required this._gate, this._random});
 
   final DeviceKeyVault _vault;
+  final SigningGate _gate;
   final Random? _random;
-  final Map<String, Future<DeviceKeyHandle>> _inFlight = {};
+  final Map<String, Future<DeviceKey>> _inFlight = {};
 
   static String _slot(String profileId) => 'stawi.device_key.v1.$profileId';
 
-  /// The profile's key on this device, or null if none was generated yet.
-  Future<DeviceKeyHandle?> load(String profileId) async {
+  Future<DeviceKey?> _stored(String profileId) async {
     final stored = await _vault.read(_slot(profileId));
     if (stored == null || stored.isEmpty) return null;
-    return DeviceKeyHandle._(DeviceKey.fromPrivateKey(hexToBytes(stored)));
+    return DeviceKey.fromPrivateKey(hexToBytes(stored));
   }
 
-  /// The profile's key, generated and stored the first time it is needed.
-  Future<DeviceKeyHandle> loadOrCreate(String profileId) =>
+  Future<DeviceKey> _storedOrCreated(String profileId) =>
       _inFlight.putIfAbsent(profileId, () async {
         try {
-          final existing = await load(profileId);
+          final existing = await _stored(profileId);
           if (existing != null) return existing;
           final key = DeviceKey.generate(random: _random);
           await _vault.write(_slot(profileId), bytesToHex(key.privateKey));
-          return DeviceKeyHandle._(key);
+          return key;
         } finally {
           unawaited(_inFlight.remove(profileId));
         }
       });
+
+  /// The profile's key on this device, or null if none was generated yet.
+  Future<DevicePublicKey?> load(String profileId) async {
+    final key = await _stored(profileId);
+    return key == null ? null : DevicePublicKey._(key);
+  }
+
+  /// The profile's key, generated and stored the first time it is needed.
+  Future<DevicePublicKey> loadOrCreate(String profileId) async =>
+      DevicePublicKey._(await _storedOrCreated(profileId));
+
+  /// The profile's key for one signature, once the device lock confirms
+  /// [reason] (what is about to be signed, in the person's words).
+  Future<DeviceKeyHandle> unlock(
+    String profileId, {
+    required String reason,
+  }) async {
+    await _gate.confirm(reason);
+    return DeviceKeyHandle._(await _storedOrCreated(profileId));
+  }
 }
 
 final deviceKeyStoreProvider = Provider<DeviceKeyStore>(
-  (ref) => DeviceKeyStore(const SecureStorageDeviceKeyVault()),
+  (ref) => DeviceKeyStore(
+    const SecureStorageDeviceKeyVault(),
+    gate: ref.watch(signingGateProvider),
+  ),
 );

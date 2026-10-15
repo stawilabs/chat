@@ -186,9 +186,9 @@ class CachedProfileAvatarGroup extends StatelessWidget {
                 ),
                 child: CircleAvatar(
                   radius: radius - 2,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.secondaryContainer,
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .secondaryContainer,
                   child: Text(
                     '+$extraCount',
                     style: TextStyle(

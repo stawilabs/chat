@@ -98,7 +98,7 @@ abstract class _$AutoDeleteSettingsNotifier
   AutoDeleteSettings build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AutoDeleteSettings, AutoDeleteSettings>;
     final element =
         ref.element
@@ -108,6 +108,6 @@ abstract class _$AutoDeleteSettingsNotifier
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

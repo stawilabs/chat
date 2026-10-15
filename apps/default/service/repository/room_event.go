@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"strconv"
 	"time"
 
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	"github.com/pitabwire/frame/v2/workerpool"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	"github.com/pitabwire/frame/v3/workerpool"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -132,6 +134,41 @@ func (rer *roomEventRepository) CountByRoomID(ctx context.Context, roomID string
 		Where("room_id = ? AND deleted_at IS NULL", roomID).
 		Count(&count).Error
 	return count, err
+}
+
+// HasAuthoredInRoom is a single EXISTS over room_events: an event of the room
+// sent by the subscription that is not a system event. A deleted message still
+// counts: its author took part.
+func (rer *roomEventRepository) HasAuthoredInRoom(
+	ctx context.Context, roomID, subscriptionID string,
+) (bool, error) {
+	if roomID == "" || subscriptionID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := rer.Pool().DB(ctx, true).Raw(
+		"SELECT EXISTS (SELECT 1 FROM room_events WHERE room_id = ? AND sender_id = ? AND event_type <> ?)",
+		roomID, subscriptionID, int32(chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM),
+	).Scan(&exists).Error
+	return exists, err
+}
+
+// AuthoredOfPayloadType reads the subscription's events of one payload type
+// in the room, by the payload type chat stores in the event content.
+func (rer *roomEventRepository) AuthoredOfPayloadType(
+	ctx context.Context, roomID, subscriptionID string, payloadType chatv1.PayloadType, since time.Time, limit int,
+) ([]*models.RoomEvent, error) {
+	if roomID == "" || subscriptionID == "" || limit <= 0 {
+		return nil, nil
+	}
+	var events []*models.RoomEvent
+	err := rer.Pool().DB(ctx, true).
+		Where("room_id = ? AND sender_id = ? AND created_at >= ? AND content->>? = ?",
+			roomID, subscriptionID, since, models.PayloadTypeField, strconv.Itoa(int(payloadType.Number()))).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&events).Error
+	return events, err
 }
 
 // CreateIgnoringDuplicates inserts events individually with ON CONFLICT DO NOTHING.

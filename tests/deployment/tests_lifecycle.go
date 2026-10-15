@@ -6,7 +6,6 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 )
 
@@ -135,9 +134,9 @@ func (t *CompleteRoomLifecycleTest) Run(ctx context.Context, client *Client) err
 	}
 
 	// === PHASE 10: Cleanup (Delete Room) ===
-	_, err = client.Chat().DeleteRoom(ctx, connect.NewRequest(&chatv1.DeleteRoomRequest{
+	_, err = client.Chat().DeleteRoom(ctx, &chatv1.DeleteRoomRequest{
 		RoomId: roomID,
-	}))
+	})
 	if err := a.NoError(err, "Phase 10: DeleteRoom should succeed"); err != nil {
 		return err
 	}
@@ -203,7 +202,7 @@ func (t *ActiveGroupScenarioTest) Run(ctx context.Context, client *Client) error
 		// React to the first message
 		targetEvent := history.GetEvents()[0]
 
-		_, _ = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+		_, _ = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{{
 				Id:     util.IDString(),
 				RoomId: room.GetId(),
@@ -219,7 +218,7 @@ func (t *ActiveGroupScenarioTest) Run(ctx context.Context, client *Client) error
 					},
 				},
 			}},
-		}))
+		})
 		// Reaction may or may not succeed depending on service implementation
 	}
 
@@ -363,7 +362,7 @@ func (t *MessageInteractionLifecycleTest) Run(ctx context.Context, client *Clien
 	// Interaction 1: Add multiple reactions
 	reactions := []string{"👍", "❤️", "🎉"}
 	for _, r := range reactions {
-		_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+		_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 			Event: []*chatv1.RoomEvent{{
 				Id:     util.IDString(),
 				RoomId: room.GetId(),
@@ -379,14 +378,14 @@ func (t *MessageInteractionLifecycleTest) Run(ctx context.Context, client *Clien
 					},
 				},
 			}},
-		}))
+		})
 		if err := a.NoError(err, "Add reaction should succeed"); err != nil {
 			return err
 		}
 	}
 
 	// Interaction 2: Send reply (using parent_id)
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:       util.IDString(),
 			RoomId:   room.GetId(),
@@ -399,7 +398,7 @@ func (t *MessageInteractionLifecycleTest) Run(ctx context.Context, client *Clien
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Send reply should succeed"); err != nil {
 		return err
 	}

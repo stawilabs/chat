@@ -134,9 +134,8 @@ class _GroupAvatarPickerState extends ConsumerState<GroupAvatarPicker> {
 
       widget.onAvatarChanged(result.contentUri);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Group photo updated')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Group photo updated')));
       }
     } catch (e, stackTrace) {
       AppLogger.error('Image picker error', error: e, stackTrace: stackTrace);
@@ -163,9 +162,8 @@ class _GroupAvatarPickerState extends ConsumerState<GroupAvatarPicker> {
       _localImagePath = null;
     });
     widget.onAvatarChanged(null);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Group photo removed')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Group photo removed')));
   }
 
   @override

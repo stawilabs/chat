@@ -25,8 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult.contains(ConnectivityResult.none)) {
       setState(() {
-        _errorMessage =
-            'No internet connection. Please connect to the internet and try again.';
+        _errorMessage = 'No internet connection. Please connect to the internet and try again.';
       });
       AppLogger.warning('Login attempted while offline');
       return;
@@ -105,8 +104,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else if (errorStr.contains('code exchange failed')) {
         errorMessage = 'Failed to complete authentication. Please try again.';
       } else if (errorStr.contains('no access token')) {
-        errorMessage =
-            'Authentication server did not return a valid token. Please try again.';
+        errorMessage = 'Authentication server did not return a valid token. Please try again.';
       } else if (errorStr.contains('could not save credentials')) {
         errorMessage =
             'Failed to save login credentials. Please check app permissions.';

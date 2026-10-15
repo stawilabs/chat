@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/cache"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"

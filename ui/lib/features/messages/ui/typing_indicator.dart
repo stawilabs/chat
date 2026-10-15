@@ -101,9 +101,8 @@ class _TypingDotsAnimationState extends State<_TypingDotsAnimation>
           width: 4,
           height: 4,
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: 0.6 + (opacity * 0.4)),
+            color: Theme.of(context).colorScheme.primary
+                .withValues(alpha: 0.6 + (opacity * 0.4)),
             shape: BoxShape.circle,
           ),
         );

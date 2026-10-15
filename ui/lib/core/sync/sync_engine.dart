@@ -30,6 +30,7 @@ import '../settings/settings_service.dart';
 import 'chat_event_codec.dart';
 import 'pending_job.dart' as domain_job;
 import 'pending_job_repository.dart';
+import 'room_type_wire.dart';
 import 'sync_health_monitor.dart';
 
 final pendingJobRepositoryProvider = Provider<PendingJobRepository>(
@@ -163,10 +164,9 @@ class SyncEngine with WidgetsBindingObserver {
     this._readReceiptRepo,
     this._roomSyncManager,
     this._roomRepository, {
-    required SettingsService settingsService,
-    SyncHealthMonitor? healthMonitor,
-  }) : _settingsService = settingsService,
-       _healthMonitor = healthMonitor;
+    required this._settingsService,
+    this._healthMonitor,
+  });
 
   final pb.GatewayServiceClient _gatewayClient;
   final pb.ChatServiceClient _chatClient;
@@ -523,7 +523,7 @@ class SyncEngine with WidgetsBindingObserver {
             'e2ee': 'vodozemac-0.4',
             'calls': 'webrtc',
             'offline': 'true',
-          },
+          }.entries,
           clientTime: pb.Timestamp.fromDateTime(DateTime.now()),
         );
         final helloRequest = pb.StreamRequest(hello: hello);
@@ -1051,6 +1051,14 @@ class SyncEngine with WidgetsBindingObserver {
         content['genesis'] != null &&
         existingEvent.content['genesis'] == null) {
       // The server turns a conversion into the genesis card: keep its copy.
+      await _messageRepo.replaceServerContent(event.id, content);
+    } else if (existingEvent != null &&
+        (domainType == domain.RoomEventType.stawiAgentInvitation ||
+            domainType == domain.RoomEventType.stawiAgentAcceptance) &&
+        content['expiresAt'] != null &&
+        existingEvent.content['expiresAt'] == null) {
+      // The server stamps an agent invitation or acceptance with the room's
+      // name and its expiry: keep its copy.
       await _messageRepo.replaceServerContent(event.id, content);
     }
     if (existingEvent != null) {
@@ -1842,8 +1850,12 @@ class SyncEngine with WidgetsBindingObserver {
         .map((id) => pb.ContactLink(contactId: id))
         .toList();
 
+    final localType = payload['type'] as String? ?? 'group';
     final request = pb.CreateRoomRequest(
-      id: payload['id'] as String,
+      // A DIRECT room is the server's to identify (it returns the pair's
+      // existing DM), so the server refuses a client-chosen id for it.
+      id: localType == 'direct' ? null : payload['id'] as String,
+      type: roomTypeToWire(localType),
       name: payload['name'] as String? ?? '',
       description: payload['description'] as String? ?? '',
       isPrivate: payload['isPrivate'] as bool? ?? false,
@@ -1864,6 +1876,15 @@ class SyncEngine with WidgetsBindingObserver {
         'Room created on server',
         data: {'localId': payload['id'], 'serverId': roomId},
       );
+
+      // For a direct room the server may hand back the pair's existing DM:
+      // point the local room at it.
+      final localId = payload['id'] as String;
+      if (roomId != localId) {
+        await _roomRepository.adoptServerRoomId(localId, roomId);
+        _roomSyncManager.disposeRoom(localId);
+        _roomSyncManager.onRoomDownloadedFromServer(roomId);
+      }
 
       // Sync room members immediately to get the current user's subscription ID.
       // This goes directly from CREATING → READY, skipping the intermediate
@@ -2527,6 +2548,8 @@ class SyncEngine with WidgetsBindingObserver {
       case domain.RoomEventType.stawiSignedCall:
       case domain.RoomEventType.stawiCallOutcome:
       case domain.RoomEventType.financeCard:
+      case domain.RoomEventType.stawiAgentInvitation:
+      case domain.RoomEventType.stawiAgentAcceptance:
         return pb.RoomEventType.ROOM_EVENT_TYPE_EVENT;
     }
   }

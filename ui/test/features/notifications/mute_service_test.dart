@@ -214,22 +214,18 @@ void main() {
       expect(domain.MuteDuration.forever.getMutedUntilTimestamp(), equals(0));
     });
 
-    test(
-      'getMutedUntilTimestamp should return future timestamp for timed durations',
-      () {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final timestamp = domain.MuteDuration.eightHours
-            .getMutedUntilTimestamp();
+    test('getMutedUntilTimestamp should return future timestamp for timed durations', () {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final timestamp = domain.MuteDuration.eightHours.getMutedUntilTimestamp();
 
-        expect(timestamp, greaterThan(now));
-        expect(
-          timestamp,
-          lessThanOrEqualTo(
-            now + domain.MuteDuration.eightHours.durationMs + 1000,
-          ),
-        );
-      },
-    );
+      expect(timestamp, greaterThan(now));
+      expect(
+        timestamp,
+        lessThanOrEqualTo(
+          now + domain.MuteDuration.eightHours.durationMs + 1000,
+        ),
+      );
+    });
 
     test('labels should be human-readable', () {
       expect(domain.MuteDuration.eightHours.label, equals('8 hours'));

@@ -3,11 +3,12 @@ package repository_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/frametests"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/frametests"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -125,6 +126,82 @@ func (s *EventRepositoryTestSuite) TestCountByRoomID() {
 		count, err := repo.CountByRoomID(ctx, roomID)
 		require.NoError(t, err)
 		s.GreaterOrEqual(count, int64(7))
+	})
+}
+
+// TestHasAuthoredInRoom: only a message or event the subscription sent in that
+// room counts; a system event attributed to it, or its message in another
+// room, does not.
+func (s *EventRepositoryTestSuite) TestHasAuthoredInRoom() {
+	s.withRepo(func(t *testing.T, ctx context.Context, repo repository.RoomEventRepository) {
+		roomID, otherRoom, sender := util.IDString(), util.IDString(), util.IDString()
+		put := func(room string, eventType chatv1.RoomEventType) {
+			event := &models.RoomEvent{RoomID: room, SenderID: sender, EventType: int32(eventType.Number()),
+				Content: data.JSONMap{"text": "x"}}
+			event.GenID(ctx)
+			require.NoError(t, repo.Create(ctx, event))
+		}
+
+		authored, err := repo.HasAuthoredInRoom(ctx, roomID, sender)
+		require.NoError(t, err)
+		require.False(t, authored)
+
+		put(roomID, chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM)
+		put(otherRoom, chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE)
+		authored, err = repo.HasAuthoredInRoom(ctx, roomID, sender)
+		require.NoError(t, err)
+		require.False(t, authored, "a system event or another room's message is not taking part")
+
+		put(roomID, chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT)
+		authored, err = repo.HasAuthoredInRoom(ctx, roomID, sender)
+		require.NoError(t, err)
+		require.True(t, authored)
+
+		authored, err = repo.HasAuthoredInRoom(ctx, roomID, "")
+		require.NoError(t, err)
+		require.False(t, authored)
+	})
+}
+
+// TestAuthoredOfPayloadType reads one sender's events of one payload type in
+// one room, newest first, deleted ones excluded.
+func (s *EventRepositoryTestSuite) TestAuthoredOfPayloadType() {
+	s.withRepo(func(t *testing.T, ctx context.Context, repo repository.RoomEventRepository) {
+		roomID, otherRoom, sender, other := util.IDString(), util.IDString(), util.IDString(), util.IDString()
+		acceptance := chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+		put := func(room, from string, payloadType chatv1.PayloadType) *models.RoomEvent {
+			event := &models.RoomEvent{RoomID: room, SenderID: from,
+				EventType: int32(chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT.Number()),
+				Content:   data.JSONMap{models.PayloadTypeField: payloadType.Number()}}
+			event.GenID(ctx)
+			require.NoError(t, repo.Create(ctx, event))
+			return event
+		}
+		since := time.Now().Add(-time.Hour)
+
+		first := put(roomID, sender, acceptance)
+		put(roomID, sender, chatv1.PayloadType_PAYLOAD_TYPE_TEXT)
+		put(roomID, other, acceptance)
+		put(otherRoom, sender, acceptance)
+		deleted := put(roomID, sender, acceptance)
+		require.NoError(t, repo.Delete(ctx, deleted.GetID()))
+		second := put(roomID, sender, acceptance)
+
+		got, err := repo.AuthoredOfPayloadType(ctx, roomID, sender, acceptance, since, 10)
+		require.NoError(t, err)
+		ids := make([]string, 0, len(got))
+		for _, event := range got {
+			ids = append(ids, event.GetID())
+		}
+		require.ElementsMatch(t, []string{second.GetID(), first.GetID()}, ids)
+
+		got, err = repo.AuthoredOfPayloadType(ctx, roomID, sender, acceptance, since, 1)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+
+		got, err = repo.AuthoredOfPayloadType(ctx, roomID, sender, acceptance, time.Now().Add(time.Hour), 10)
+		require.NoError(t, err)
+		require.Empty(t, got, "nothing at or after since")
 	})
 }
 

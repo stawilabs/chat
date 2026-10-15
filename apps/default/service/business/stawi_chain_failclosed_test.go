@@ -1,11 +1,10 @@
 package business_test
 
 import (
-	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/service/business"
@@ -137,7 +136,7 @@ func (s *MessageBusinessTestSuite) TestRevocationsApplyWhileProfileIsDown() {
 		cf.deliver(t, f2(cf.activated()), f2(cf.stateChanged(cf.roomID, carolAddr, none, active, 9, 0)))
 
 		stranger := address(0x5e, 1)
-		cf.accounts.Fail(connect.NewError(connect.CodeUnavailable, errors.New("profile down")))
+		cf.accounts.Fail(connect.NewError(connect.CodeUnavailable, "profile down"))
 		name, join := cf.stateChanged(cf.roomID, stranger, none, active, 10, 0)
 		require.Error(t, cf.chain.Receive(cf.ctx, name, join), "the join needs a lookup and waits")
 		name, exit := cf.stateChanged(cf.roomID, carolAddr, active, exited, 11, 0)

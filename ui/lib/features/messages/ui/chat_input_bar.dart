@@ -632,9 +632,8 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
                     decoration: InputDecoration(
                       hintText: 'Message',
                       hintStyle: AppTheme.bodyText.copyWith(
-                        color: AppTheme.getTextColor(
-                          context,
-                        ).withValues(alpha: 0.6),
+                        color: AppTheme.getTextColor(context)
+                            .withValues(alpha: 0.6),
                       ),
                       border: InputBorder.none,
                       isDense: true,

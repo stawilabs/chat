@@ -4,21 +4,27 @@ managed:
 
 plugins:
   # OpenAPI spec generation
-  - remote: buf.build/community/sudorandom-connect-openapi
+  - remote: buf.build/community/sudorandom-connect-openapi:v0.28.0
     out: ../apps/default
     opt:
       - features=connectrpc;gnostic;protovalidate
       - content-types=json
       - allow-get
 
-  # Dart protobuf generation
-  - remote: buf.build/protocolbuffers/dart:v21.1.2
+  # Dart protobuf generation for protobuf ^6.1.0. The generated code takes
+  # the well-known types (Any, Duration, FieldMask, Struct, Timestamp) from
+  # package:protobuf/well_known_types; the copies include_wkt still writes
+  # under lib/src/google/protobuf are deleted after generating, except
+  # descriptor, which buf.validate and gnostic import relatively. The
+  # .pbserver.dart files are deleted too (the SDK is client-only).
+  - remote: buf.build/protocolbuffers/dart:v25.1.0
     out: ../sdk/dart/chat/lib/src
     include_imports: true
     include_wkt: true
 
-  # Dart ConnectRPC generation
-  - remote: buf.build/connectrpc/dart
+  # Dart ConnectRPC generation for connectrpc ^2.0.0; pinned so an
+  # unversioned remote does not jump majors.
+  - remote: buf.build/connectrpc/dart:v2.0.0
     out: ../sdk/dart/chat/lib/src
     include_imports: true
     include_wkt: true

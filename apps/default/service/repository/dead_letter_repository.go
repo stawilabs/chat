@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	"github.com/pitabwire/frame/v2/workerpool"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	"github.com/pitabwire/frame/v3/workerpool"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 )

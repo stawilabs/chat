@@ -2,11 +2,11 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderBase;
 import 'package:intl/intl.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
-import 'package:stawi_finance_sdk/stawi_finance_sdk.dart'
-    show EngineCall, bytesToHex0x;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../auth/data/current_user_provider.dart';
 import '../data/stawi_account_service.dart';
@@ -18,25 +18,36 @@ import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/payoff_top_up.dart';
-import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
+import 'group_loan_request_screen.dart' show roomLoanProviders;
+import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
+import 'money_review_sheet.dart';
+import 'room_loans_tab.dart';
 import 'stawi_feedback.dart';
 
-/// A Stawi room's money, from finance's read model: savings periods and dues,
-/// share-outs, loans and members' balances, with the actions each allows.
+/// A Stawi room's money, from finance's read model: dues, share-outs, loans
+/// and members' balances, with the actions each allows.
 class RoomMoneyScreen extends StatelessWidget {
   const RoomMoneyScreen({
     required this.roomId,
     required this.roomName,
+    this.initialTab = 0,
     super.key,
   });
 
   final String roomId;
   final String roomName;
 
+  /// The tab it opens on: 0 Savings, 1 Share-outs, 2 Loans, 3 Members.
+  final int initialTab;
+
+  /// The Loans tab.
+  static const int loansTab = 2;
+
   @override
   Widget build(BuildContext context) => DefaultTabController(
     length: 4,
+    initialIndex: initialTab,
     child: Scaffold(
       appBar: AppBar(
         title: Text('Money · $roomName'),
@@ -54,7 +65,7 @@ class RoomMoneyScreen extends StatelessWidget {
         children: [
           _SavingsTab(roomId: roomId),
           _ShareOutsTab(roomId: roomId),
-          _LoansTab(roomId: roomId),
+          RoomLoansTab(roomId: roomId, roomName: roomName),
           _MembersTab(roomId: roomId),
         ],
       ),
@@ -125,29 +136,65 @@ class _Heading extends StatelessWidget {
   );
 }
 
-class _SavingsTab extends ConsumerWidget {
+/// What is read again after a money action in a room: the room's loans and
+/// balances, the member's own dues and share-outs, and the person's money.
+List<ProviderBase<Object?>> roomMoneyProviders(String roomId) => [
+  ...roomLoanProviders(roomId),
+  stawiMyDuesProvider(roomId),
+  stawiEntitlementsProvider(roomId),
+];
+
+/// Opens the form for [call] in the room and follows the call it submits
+/// until it is final; only then are the room's money and the person's read
+/// again (and the outcome said). [onSettling] is told while it is followed.
+Future<settlement.AccountCall?> runRoomEngineDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required String roomId,
+  required AccountEngineCall call,
+  finance.Loan? loan,
+  List<ProviderBase<Object?>> also = const [],
+  void Function(bool settling)? onSettling,
+}) async {
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
+  final submitted = await showDialog<settlement.AccountCall>(
+    context: context,
+    builder: (_) => AccountEngineDialog(roomId: roomId, call: call, loan: loan),
+  );
+  if (submitted == null) return null;
+  onSettling?.call(true);
+  try {
+    return await settleThenRefresh(container, service, submitted, [
+      ...roomMoneyProviders(roomId),
+      ...also,
+    ]);
+  } finally {
+    onSettling?.call(false);
+  }
+}
+
+class _SavingsTab extends ConsumerStatefulWidget {
   const _SavingsTab({required this.roomId});
 
   final String roomId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final assets = watchRoomAssets(ref, roomId);
-    String money(finance.Money m) => formatMoney(m, assets);
+  ConsumerState<_SavingsTab> createState() => _SavingsTabState();
+}
+
+class _SavingsTabState extends ConsumerState<_SavingsTab> {
+  /// While a submitted call is followed: no other amount call is offered
+  /// against figures not read again yet.
+  bool _settling = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final roomId = widget.roomId;
     return ListView(
       children: [
         const _Heading('My dues'),
-        _AsyncList<finance.Obligation>(
-          value: ref.watch(stawiObligationsProvider(roomId)),
-          empty: 'Nothing due',
-          item: (o) => ListTile(
-            title: Text('${money(o.settled)} of ${money(o.amount)}'),
-            subtitle: Text(
-              '${_stateName(o.state.name, 'OBLIGATION_STATE_')}'
-              '${o.hasDueAt() ? ' · due ${_dates.format(o.dueAt.toDateTime())}' : ''}',
-            ),
-          ),
-        ),
+        MyDuesSummary(roomId: roomId),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: OutlinedButton.icon(
@@ -176,30 +223,148 @@ class _SavingsTab extends ConsumerWidget {
               ])
                 OutlinedButton(
                   key: Key('engine-${call.name}'),
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) =>
-                        AccountEngineDialog(roomId: roomId, call: call),
-                  ),
+                  onPressed: _settling
+                      ? null
+                      : () => runRoomEngineDialog(
+                          context,
+                          ref,
+                          roomId: roomId,
+                          call: call,
+                          onSettling: (on) {
+                            if (mounted) setState(() => _settling = on);
+                          },
+                        ),
                   child: Text(call.label),
                 ),
             ],
           ),
         ),
-        const _Heading('Periods'),
-        _AsyncList<finance.Period>(
-          value: ref.watch(stawiPeriodsProvider(roomId)),
-          empty: 'No periods yet',
-          item: (p) => ListTile(
-            title: Text('Period ${p.periodIndex}'),
-            subtitle: Text(
-              '${money(p.settledTotal)} of ${money(p.expectedTotal)}'
-              ' · ${p.obligationsSettled}/${p.obligationsSettled + p.obligationsOpen} paid',
-            ),
-            trailing: Text(_stateName(p.state.name, 'PERIOD_STATE_')),
+        if (_settling)
+          const Padding(
+            key: Key('money-settling'),
+            padding: EdgeInsets.all(16),
+            child: Text(waitingForCompletion),
           ),
+      ],
+    );
+  }
+}
+
+/// The member's own dues in the room, read off the chain at one block
+/// (finance GetMemberDues): per product what is owed now, when it next falls
+/// due and what is to be paid by then; penalties owed and their standing.
+/// What cannot be read says so and offers to read it again; nothing reads as
+/// zero.
+class MyDuesSummary extends ConsumerWidget {
+  const MyDuesSummary({required this.roomId, super.key});
+
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dues = ref.watch(stawiMyDuesProvider(roomId));
+    final roomAssets = watchRoomAssets(ref, roomId);
+    Widget row(String label, String value, {Key? key}) => Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          Flexible(child: Text(value, textAlign: TextAlign.end)),
+        ],
+      ),
+    );
+    final children = dues.when<List<Widget>>(
+      loading: () => [row('Owed now', '…', key: const Key('my-dues-owed'))],
+      error: (e, _) => [
+        row(
+          'My dues',
+          'could not be read just now',
+          key: const Key('my-dues-unavailable'),
+        ),
+        TextButton(
+          key: const Key('my-dues-retry'),
+          onPressed: () => ref.invalidate(stawiMyDuesProvider(roomId)),
+          child: const Text('Try again'),
         ),
       ],
+      data: (r) {
+        if (r == null) {
+          return const [
+            Text(
+              'You are not a member of this room on chain yet',
+              key: Key('my-dues-owed'),
+            ),
+          ];
+        }
+        final d = r.dues;
+        if (!d.rulesConfigured) {
+          return const [
+            Text('This room has no dues yet', key: Key('my-dues-owed')),
+          ];
+        }
+        final assets = roomAssets.withAll(r.assets);
+        final tz = Duration(
+          seconds: d.hasCalendar() ? d.calendar.tzOffsetSeconds : 0,
+        );
+        String money(finance.Money m) => formatMoney(m, assets);
+        BigInt units(finance.Money m) =>
+            BigInt.tryParse(m.amount) ?? BigInt.zero;
+        return [
+          for (final p in d.products)
+            Padding(
+              key: Key('my-dues-${bytesToHex0x(p.productId)}'),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    productLabel(p.name, p.productId),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  row('Owed now', money(p.owedNow)),
+                  if (p.hasNextDueAt()) ...[
+                    // The date in the room's own time zone.
+                    row(
+                      'Next due ${_dates.format(p.nextDueAt.toDateTime().add(tz))}',
+                      money(p.nextDueAmount),
+                    ),
+                    row(
+                      'To pay by then',
+                      units(p.owedAtNextDue) == BigInt.zero &&
+                              units(p.nextDueAmount) > BigInt.zero
+                          ? 'Paid ahead'
+                          : money(p.owedAtNextDue),
+                    ),
+                  ] else
+                    const Text('Nothing more falls due'),
+                ],
+              ),
+            ),
+          row(
+            'Penalties owed',
+            money(d.penaltiesOwed),
+            key: const Key('my-dues-penalties'),
+          ),
+          Text(switch (d.standing) {
+            finance.MemberDuesStanding.MEMBER_DUES_STANDING_CURRENT =>
+              'You are up to date',
+            finance.MemberDuesStanding.MEMBER_DUES_STANDING_IN_ARREARS =>
+              'You are behind with your dues',
+            finance.MemberDuesStanding.MEMBER_DUES_STANDING_NO_RULES =>
+              'This room has no dues yet',
+            _ => '',
+          }, key: const Key('my-dues-standing')),
+        ];
+      },
+    );
+    return Padding(
+      key: const Key('my-dues'),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
     );
   }
 }
@@ -251,94 +416,6 @@ class _ShareOutsTab extends ConsumerWidget {
             ),
             trailing: Text(_stateName(d.state.name, 'DISTRIBUTION_STATE_')),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoansTab extends ConsumerWidget {
-  const _LoansTab({required this.roomId});
-
-  final String roomId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mine =
-        ref.watch(stawiIdentityProvider).asData?.value.addresses ??
-        const <Uint8List>[];
-    final assets = watchRoomAssets(ref, roomId);
-    void open(AccountEngineCall call, {finance.Loan? loan}) => showDialog<void>(
-      context: context,
-      builder: (_) =>
-          AccountEngineDialog(roomId: roomId, call: call, loan: loan),
-    );
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: OutlinedButton.icon(
-            key: const Key('engine-loanRequest'),
-            icon: const Icon(Icons.request_quote_outlined),
-            label: const Text('Request a loan'),
-            onPressed: () => open(AccountEngineCall.loanRequest),
-          ),
-        ),
-        const _Heading('Loans'),
-        _AsyncList<finance.Loan>(
-          value: ref.watch(stawiLoansProvider(roomId)),
-          empty: 'No loans in this room',
-          item: (loan) {
-            final isMine = mine.any((a) => bytesEqual(a, loan.borrowerAccount));
-            return ExpansionTile(
-              key: Key('loan-${loan.onchainLoanId}'),
-              title: Text(
-                'Loan #${loan.onchainLoanId} · ${formatMoney(loan.requested, assets)}'
-                '${isMine ? ' (mine)' : ''}',
-              ),
-              subtitle: Text(
-                '${_stateName(loan.state.name, 'LOAN_STATE_')}'
-                ' · outstanding '
-                '${formatMoney(loan.outstandingPrincipal, assets)}',
-              ),
-              children: [
-                _Breakdown(
-                  {
-                    'Paid out': loan.paidOut,
-                    'Pledged': loan.pledged,
-                    'Repaid principal': loan.repaidPrincipal,
-                    'Repaid interest': loan.repaidInterest,
-                    'Repaid fees': loan.repaidFees,
-                    'Repaid penalties': loan.repaidPenalties,
-                    'Recovered': loan.recovered,
-                  },
-                  assets: assets,
-                  instalments: loan.instalments,
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final call
-                        in isMine
-                            ? [
-                                AccountEngineCall.loanPayoff,
-                                AccountEngineCall.loanCancel,
-                              ]
-                            : [
-                                AccountEngineCall.loanApprove,
-                                AccountEngineCall.loanPledge,
-                                AccountEngineCall.loanUnpledge,
-                              ])
-                      TextButton(
-                        key: Key('loan-${loan.onchainLoanId}-${call.name}'),
-                        onPressed: () => open(call, loan: loan),
-                        child: Text(call.label),
-                      ),
-                  ],
-                ),
-              ],
-            );
-          },
         ),
       ],
     );
@@ -490,7 +567,10 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   final _instalments = TextEditingController();
   bool _busy = false;
   String? _error;
-  PreparedEngineCall? _prepared;
+  PreparedMoneyCall? _prepared;
+
+  /// What the member asked for, kept with [_prepared].
+  AccountEngineRequest? _request;
 
   /// For a payoff: what to pay in first, once read (null: it could not be).
   PayoffTopUp? _topUp;
@@ -560,21 +640,33 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     if (!mounted) return;
     final topUp =
         prepared != null && widget.call == AccountEngineCall.loanPayoff
-        ? await _payoffTopUp(prepared)
+        ? await _payoffTopUp(prepared, request)
         : null;
     if (!mounted) return;
     setState(() {
       _busy = false;
       _prepared = prepared;
+      _request = prepared == null ? null : request;
       _topUp = topUp;
     });
+    // A payoff that needs paying in first stays here until it is paid in;
+    // everything else goes straight to the review.
+    final payInFirst =
+        widget.call == AccountEngineCall.loanPayoff &&
+        (topUp == null || topUp.needed);
+    if (prepared != null && !payInFirst) {
+      await _sign();
+    }
   }
 
   /// What the member must pay in before [prepared] can pay the loan off, from
   /// the credit their live book says a payoff can spend; null when it cannot
   /// be read.
-  Future<PayoffTopUp?> _payoffTopUp(PreparedEngineCall prepared) async {
-    final asset = prepared.request.asset;
+  Future<PayoffTopUp?> _payoffTopUp(
+    PreparedMoneyCall prepared,
+    AccountEngineRequest request,
+  ) async {
+    final asset = request.asset;
     if (asset == null) return null;
     try {
       final identity = await ref.read(stawiIdentityProvider.future);
@@ -582,7 +674,7 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
         stawiMemberBalancesProvider(widget.roomId).future,
       );
       return payoffTopUpFor(
-        payoff: prepared.call.amount,
+        payoff: prepared.call!.amount,
         asset: asset.sdkAsset,
         balances: balances,
         myAccounts: identity.addresses,
@@ -595,46 +687,61 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
   /// Pays the top-up into the room and waits for it to land, so the payoff
   /// that follows finds the claimed dues paid and the credit there.
   Future<void> _payTopUp() async {
-    final prepared = _prepared!;
+    final request = _request!;
     final topUp = _topUp!.topUp;
     setState(() => _busy = true);
+    final container = moneyContainer(context);
     final service = ref.read(stawiAccountServiceProvider);
-    final landed = await runStawiAction(context, () async {
-      final submitted = await service.contribute(
-        custody: prepared.request.custody,
+    final submitted = await runMoneyAction(
+      context,
+      ref,
+      // The button that asked for the top-up names its amount; the review
+      // and the device lock show the same amount before signing.
+      () => service.prepareContribution(
+        roomId: widget.roomId,
+        custody: request.custody,
         amount: topUp.toString(),
-      );
-      final last = await service.followAccountCall(submitted.callId).last;
-      if (last.state != settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
-        throw StawiUnavailable(
-          last.failureReason.isNotEmpty
-              ? 'The top-up did not go through: ${last.failureReason}'
-              : 'The top-up did not go through; try again',
-        );
-      }
-      return last;
-    }, success: 'Topped up; you can sign the payoff now');
+        roomName: 'the room',
+        title: (amount) => 'Top up $amount before paying off',
+      ),
+    );
+    // Followed until it is final, which says how it ended; the balances are
+    // read again then.
+    final last = submitted == null
+        ? null
+        : await settleThenRefresh(
+            container,
+            service,
+            submitted,
+            roomMoneyProviders(widget.roomId),
+          );
     if (!mounted) return;
-    ref.invalidate(stawiMemberBalancesProvider(widget.roomId));
     setState(() {
       _busy = false;
-      if (landed != null) _toppedUp = true;
+      if (last?.state == settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL) {
+        _toppedUp = true;
+      }
     });
   }
 
+  /// Reviews what was prepared and, once confirmed, signs and submits it.
+  /// Cancelling the review signs nothing and returns to the form.
   Future<void> _sign() async {
     final prepared = _prepared!;
     setState(() => _busy = true);
-    final call = await runStawiAction(
-      context,
-      () => ref.read(stawiAccountServiceProvider).submitEngineCall(prepared),
-      success: 'Signed and submitted: ${prepared.request.summary}',
-    );
+    final call = await reviewAndSubmit(context, ref, prepared);
     if (!mounted) return;
     if (call != null) {
-      Navigator.of(context).pop();
+      // The submitted call goes back to whoever opened the form, to follow
+      // until it is final.
+      Navigator.of(context).pop(call);
     } else {
-      setState(() => _busy = false);
+      setState(() {
+        _busy = false;
+        _prepared = null;
+        _request = null;
+        _topUp = null;
+      });
     }
   }
 
@@ -658,7 +765,13 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                       (
                         id: Uint8List.fromList(p.productId),
                         label: productLabel(p.name, p.productId),
-                        terms: loanProductTerms(p, assets),
+                        terms: plainLoanType(
+                          p,
+                          assets,
+                          RoomCalendarLabel.of(
+                            products.hasCalendar() ? products.calendar : null,
+                          ),
+                        ),
                       ),
                   ]
                 : [
@@ -748,13 +861,11 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
                   decoration: const InputDecoration(labelText: 'Instalments'),
                 ),
             ] else ...[
-              _Review(call: prepared.call, request: prepared.request),
-              if (widget.call == AccountEngineCall.loanPayoff)
-                _TopUpNotice(
-                  topUp: _topUp,
-                  toppedUp: _toppedUp,
-                  request: prepared.request,
-                ),
+              _TopUpNotice(
+                topUp: _topUp,
+                toppedUp: _toppedUp,
+                request: _request!,
+              ),
             ],
             if (_error != null)
               Padding(
@@ -785,57 +896,15 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
             child: Text(
               _busy
                   ? 'Topping up…'
-                  : 'Top up ${_formatTopUp(prepared.request, _topUp!.topUp)}',
+                  : 'Top up ${_formatTopUp(_request!, _topUp!.topUp)}',
             ),
           )
         else
           FilledButton(
-            key: const Key('engine-sign'),
+            key: const Key('engine-continue'),
             onPressed: _busy ? null : _sign,
-            child: Text(_busy ? 'Signing…' : 'Sign and submit'),
+            child: Text(_busy ? 'Signing…' : 'Review'),
           ),
-      ],
-    );
-  }
-}
-
-/// What the account will do, decoded from the call settlement prepared and
-/// checked on this device.
-class _Review extends StatelessWidget {
-  const _Review({required this.call, required this.request});
-
-  final EngineCall call;
-  final AccountEngineRequest request;
-
-  @override
-  Widget build(BuildContext context) {
-    final quoted =
-        request.call == AccountEngineCall.loanPayoff && request.amount.isEmpty;
-    final asset = request.asset;
-    final shown = asset == null
-        ? '${call.amount}'
-        : formatUnits(call.amount, asset);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(request.summary, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        if (call.loanId > BigInt.zero) Text('Loan #${call.loanId}'),
-        if (call.amount > BigInt.zero)
-          Text(
-            quoted
-                ? 'Pays at most $shown (settlement’s quote, with headroom; '
-                      'only what the loan takes is paid)'
-                : 'Amount $shown',
-            key: const Key('engine-review-amount'),
-          ),
-        if (call.instalments > 0) Text('${call.instalments} instalments'),
-        const SizedBox(height: 8),
-        Text(
-          'Checked on this device: this is the call you asked for, on this '
-          'room, from your account, on the room’s own engine.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
       ],
     );
   }

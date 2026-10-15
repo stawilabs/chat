@@ -7,13 +7,18 @@ import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_agent_invitations.dart';
+import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
+import 'package:stawi/features/stawi/ui/agent_picker.dart';
 import 'package:stawi/features/stawi/ui/contribute_screen.dart';
 import 'package:stawi/features/stawi/ui/convert_room_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_account_screen.dart';
@@ -36,11 +41,11 @@ void main() {
   group('StawiAccountScreen', () {
     late FakeConnectTransport transport;
     late DeviceKeyStore keys;
-    late DeviceKeyHandle key;
+    late DevicePublicKey key;
 
     setUp(() async {
       transport = FakeConnectTransport();
-      keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+      keys = DeviceKeyStore(vaultWith('p1', anvilKey), gate: SigningGate.open);
       key = (await keys.load('p1'))!;
     });
 
@@ -61,6 +66,7 @@ void main() {
           ),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
+              roomAssets: testRoomAssets,
               accounts: settlement.AccountServiceClient(transport),
               keys: keys,
               proofs:
@@ -147,7 +153,7 @@ void main() {
 
   group('test funds', () {
     late FakeConnectTransport transport;
-    late DeviceKeyHandle key;
+    late DevicePublicKey key;
 
     setUp(() async {
       transport = FakeConnectTransport()
@@ -165,7 +171,10 @@ void main() {
             asset: usdcInfo,
           ),
         );
-      key = (await DeviceKeyStore(vaultWith('p1', anvilKey)).load('p1'))!;
+      key = (await DeviceKeyStore(
+        vaultWith('p1', anvilKey),
+        gate: SigningGate.open,
+      ).load('p1'))!;
     });
 
     Widget screen({required bool showTestFunds}) => ProviderScope(
@@ -179,8 +188,12 @@ void main() {
         ),
         stawiAccountServiceProvider.overrideWithValue(
           StawiAccountService(
+            roomAssets: testRoomAssets,
             accounts: settlement.AccountServiceClient(transport),
-            keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+            keys: DeviceKeyStore(
+              MemoryDeviceKeyVault(),
+              gate: SigningGate.open,
+            ),
             proofs: refusingSessionProofs,
             identity: () async => identityWith('p1', account),
           ),
@@ -256,26 +269,13 @@ void main() {
     tester,
   ) async {
     final custody = Uint8List.fromList(List.filled(20, 0xc0));
-    final digest = keccak256(Uint8List.fromList([7]));
     final transport = FakeConnectTransport()
       ..on(
         settlement.AccountService.prepareAccountCall,
-        (req) => settlement.PrepareAccountCallResponse(
-          callId: 'acct000000000000000c',
-          intentDigest: digest,
-          financialIntent: finance.FinancialIntent(
-            type: finance.IntentType.INTENT_TYPE_CONTRIBUTION,
-            destination: finance.ValueLocation(
-              kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
-              address: req.params.room,
-            ),
-            amount: req.params.amount,
-          ),
-          call: settlement.AccountCall(
-            callId: 'acct000000000000000c',
-            address: req.address,
-            kind: req.kind,
-          ),
+        (req) => preparedContribution(
+          account: req.address,
+          custody: req.params.room,
+          amount: req.params.amount,
         ),
       )
       ..on(
@@ -293,7 +293,15 @@ void main() {
           ),
         ),
       );
-    final keys = DeviceKeyStore(vaultWith('p1', anvilKey));
+    transport.on(
+      settlement.AccountService.getAsset,
+      (req) => settlement.GetAssetResponse(asset: usdcInfo),
+    );
+    await serveDeployedAccount(transport, anvilKey);
+    final keys = DeviceKeyStore(
+      vaultWith('p1', anvilKey),
+      gate: SigningGate.open,
+    );
 
     await tester.pumpWidget(
       ProviderScope(
@@ -303,6 +311,7 @@ void main() {
           stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
           stawiAccountServiceProvider.overrideWithValue(
             StawiAccountService(
+              roomAssets: testRoomAssets,
               accounts: settlement.AccountServiceClient(transport),
               keys: keys,
               proofs: refusingSessionProofs,
@@ -319,6 +328,14 @@ void main() {
     await tester.enterText(find.byKey(const Key('contribute-amount')), '500');
     await tester.tap(find.byKey(const Key('contribute-submit')));
     await tester.pumpAndSettle();
+    // Nothing is signed until the person confirms what was prepared.
+    expect(find.byKey(const Key('money-review')), findsOneWidget);
+    expect(
+      transport.requestsTo(settlement.AccountService.submitAccountCall),
+      isEmpty,
+    );
+    await tester.tap(find.byKey(const Key('money-review-sign')));
+    await tester.pumpAndSettle();
 
     final prepare = transport
         .requestsTo(settlement.AccountService.prepareAccountCall)
@@ -328,6 +345,11 @@ void main() {
     final submit = transport
         .requestsTo(settlement.AccountService.submitAccountCall)
         .single;
+    final digest = preparedContribution(
+      account: account,
+      custody: custody,
+      amount: '500000000',
+    ).intentDigest;
     expect(
       recoverDeviceAddress(digest, submit.authorization),
       (await keys.load('p1'))!.address,
@@ -351,6 +373,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('stawi-contribute')), findsOneWidget);
     expect(find.byKey(const Key('stawi-statement')), findsOneWidget);
+  });
+
+  testWidgets('an active Stawi room states the Stawi fee and opens its loans', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiRoomPhaseProvider.overrideWith(
+            (ref, id) => const AsyncValue.data(StawiRoomPhase.active),
+          ),
+          roomProtocolFeeProvider.overrideWith(
+            (ref, id) async => finance.RoomProtocolFee(incomeFeeBps: 1000),
+          ),
+          stawiPendingRevealsProvider.overrideWith((ref, id) async => []),
+        ],
+        child: const MaterialApp(
+          home: StawiRoomScreen(roomId: roomId, roomName: 'Chama'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('stawi-fee')),
+        matching: find.text('Stawi fee 10% of interest, fees and penalties'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('stawi-loans')), findsOneWidget);
+  });
+
+  testWidgets('a Stawi fee that cannot be read is said so, not shown as none', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiRoomPhaseProvider.overrideWith(
+            (ref, id) => const AsyncValue.data(StawiRoomPhase.active),
+          ),
+          roomProtocolFeeProvider.overrideWith((ref, id) async => null),
+          stawiPendingRevealsProvider.overrideWith((ref, id) async => []),
+        ],
+        child: const MaterialApp(
+          home: StawiRoomScreen(roomId: roomId, roomName: 'Chama'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Stawi fee: could not be read just now'), findsOneWidget);
   });
 
   testWidgets('ConvertRoomScreen sends the chosen template and founders', (
@@ -399,7 +472,10 @@ void main() {
           stawiRoomServiceProvider.overrideWithValue(
             StawiRoomService(
               rooms: settlement.RoomServiceClient(FakeConnectTransport()),
-              keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
               identity: () async => identityWith('p1', account),
               send: sender.call,
             ),
@@ -430,6 +506,205 @@ void main() {
     expect(view.templateId, 'ug_savings_basic');
     expect(view.founderSubscriptionIds, unorderedEquals(['sub-me', 'sub-2']));
     expect(view.joinPolicy, StawiJoinPolicy.private);
+    expect(
+      view.agentProfileId,
+      isEmpty,
+      reason: 'no agent unless one is named',
+    );
+  });
+
+  testWidgets('ConvertRoomScreen names the agent: a member, or a DM partner '
+      'once they accepted an agent invitation', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1080, 4000)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sender = RecordingActSender();
+    // Agent invitations sent into DMs, and where each DM's invitation for
+    // this room stands.
+    final invitations = RecordingActSender();
+    final status = <String, AgentInviteStatus>{};
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiTemplatesProvider.overrideWith(
+            (ref) async => [
+              finance.PolicyTemplate(
+                templateId: 'ug_savings_basic',
+                name: 'Uganda savings room',
+              ),
+            ],
+          ),
+          roomMembersProvider.overrideWith(
+            (ref, roomId) async => [
+              RoomSubscriptionInfo(
+                id: 'sub-me',
+                profileId: 'p1',
+                contactId: null,
+                name: 'Me',
+                avatarUrl: null,
+                role: 'owner',
+                joinedAt: 0,
+              ),
+              RoomSubscriptionInfo(
+                id: 'sub-2',
+                profileId: 'p2',
+                contactId: null,
+                name: 'Amina',
+                avatarUrl: null,
+                role: 'member',
+                joinedAt: 1,
+              ),
+            ],
+          ),
+          directRoomListerProvider.overrideWithValue(
+            () async => const [
+              DirectRoomRef(roomId: 'dm-carol', name: 'Carol'),
+              DirectRoomRef(roomId: 'dm-dan', name: 'Dan'),
+            ],
+          ),
+          counterpartyAccountsProvider.overrideWithValue(
+            (roomId) async => roomId == 'dm-carol'
+                ? DirectPartnerAccount(
+                    profileId: 'p-carol',
+                    account: Uint8List.fromList(List.filled(20, 0xca)),
+                    deployed: true,
+                  )
+                : throw const DirectPartnerRefused(),
+          ),
+          currentProfileIdProvider.overrideWith((ref) async => 'p1'),
+          stawiRoomServiceProvider.overrideWithValue(
+            StawiRoomService(
+              rooms: settlement.RoomServiceClient(FakeConnectTransport()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
+              identity: () async => identityWith('p1', account),
+              send: sender.call,
+            ),
+          ),
+          agentActSenderProvider.overrideWithValue(invitations.call),
+          agentInviteStatusProvider.overrideWith(
+            (ref, key) => Stream.value(
+              key.roomId == roomId
+                  ? status[key.dmRoomId] ?? AgentInviteStatus.none
+                  : AgentInviteStatus.none,
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: ConvertRoomScreen(roomId: roomId)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final agent = find.byKey(const Key('stawi-agent'));
+    expect(
+      find.descendant(of: agent, matching: find.text('No agent')),
+      findsOneWidget,
+    );
+
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('agent-none')), findsOneWidget);
+    // Only someone the founders can confirm is offered: a founder (me), or
+    // a DM partner who has written. Amina is neither yet.
+    bool enabled(String key) =>
+        tester.widget<ListTile>(find.byKey(Key(key))).enabled;
+    expect(enabled('agent-member-sub-me'), isTrue);
+    expect(enabled('agent-member-sub-2'), isFalse);
+    expect(find.text(agentUnconfirmableReason), findsOneWidget);
+    await tester.tap(find.byKey(const Key('agent-member-sub-2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('stawi-agent-picker')), findsOneWidget);
+    Navigator.of(tester.element(find.byKey(const Key('agent-none')))).pop();
+    await tester.pumpAndSettle();
+
+    // As a founder she can be the agent; no longer one, she is chosen again.
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(enabled('agent-member-sub-2'), isTrue);
+    // Carol has written, but is not a member: she is invited first.
+    expect(enabled('agent-dm-dm-carol'), isFalse);
+    expect(
+      find.text(
+        'The agent must be a room member or someone who accepted your agent '
+        'invitation for this room',
+      ),
+      findsOneWidget,
+    );
+    expect(enabled('agent-dm-dm-dan'), isFalse);
+    expect(find.text('Dan needs to send you a message first'), findsOneWidget);
+    expect(find.byKey(const Key('agent-invite-dm-dan')), findsNothing);
+    await tester.tap(find.byKey(const Key('agent-invite-dm-carol')));
+    await tester.pumpAndSettle();
+    final invite = invitations.sent.single;
+    expect(invite.roomId, 'dm-carol');
+    expect(invite.type, RoomEventType.stawiAgentInvitation);
+    expect(StawiAgentInvitationView.fromContent(invite.content).roomId, roomId);
+    expect(sender.sent, isEmpty, reason: 'nothing is sent into this room');
+    Navigator.of(tester.element(find.byKey(const Key('agent-none')))).pop();
+    await tester.pumpAndSettle();
+
+    // Invited, not accepted yet: still not offered.
+    status['dm-carol'] = AgentInviteStatus.invited;
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(enabled('agent-dm-dm-carol'), isFalse);
+    expect(find.text('Invited; waiting for Carol to accept'), findsOneWidget);
+    Navigator.of(tester.element(find.byKey(const Key('agent-none')))).pop();
+    await tester.pumpAndSettle();
+
+    // She accepted in the DM: now she can be chosen.
+    status['dm-carol'] = AgentInviteStatus.accepted;
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    expect(enabled('agent-dm-dm-carol'), isTrue);
+
+    // A member first, then a DM partner instead.
+    await tester.tap(find.byKey(const Key('agent-member-sub-2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: agent, matching: find.text('Amina')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: agent, matching: find.text('No agent')),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Amina is no longer a founder; choose the agent again'),
+      findsOneWidget,
+    );
+    await tester.tap(agent);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('agent-dm-dm-dan')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('stawi-agent-picker')),
+      findsOneWidget,
+      reason: 'a partner who has not written cannot be chosen',
+    );
+    await tester.tap(find.byKey(const Key('agent-dm-dm-carol')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: agent, matching: find.text('Carol')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('template-ug_savings_basic')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('stawi-send-conversion')));
+    await tester.tap(find.byKey(const Key('stawi-send-conversion')));
+    await tester.pumpAndSettle();
+
+    final view = StawiConversionView.fromContent(sender.sent.single.content);
+    expect(view.agentProfileId, 'p-carol');
+    expect(view.founderSubscriptionIds, ['sub-me']);
   });
 
   testWidgets('ConvertRoomScreen holds the founding quorum to the founders', (
@@ -481,7 +756,10 @@ void main() {
           stawiRoomServiceProvider.overrideWithValue(
             StawiRoomService(
               rooms: settlement.RoomServiceClient(FakeConnectTransport()),
-              keys: DeviceKeyStore(MemoryDeviceKeyVault()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
               identity: () async => identityWith('p1', account),
               send: sender.call,
             ),

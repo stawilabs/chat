@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'search_result.dart';
@@ -9,6 +9,7 @@ part of 'search_result.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -29,16 +30,21 @@ $MessageSearchResultCopyWith<MessageSearchResult> get copyWith => _$MessageSearc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageSearchResult&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.roomName, roomName) || other.roomName == roomName)&&(identical(other.text, text) || other.text == text)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.query, query) || other.query == query));
+  final _this = this as MessageSearchResult;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageSearchResult&&(identical(other.messageId, _this.messageId) || other.messageId == _this.messageId)&&(identical(other.roomId, _this.roomId) || other.roomId == _this.roomId)&&(identical(other.roomName, _this.roomName) || other.roomName == _this.roomName)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.senderId, _this.senderId) || other.senderId == _this.senderId)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.query, _this.query) || other.query == _this.query));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,messageId,roomId,roomName,text,senderId,timestamp,query);
+int get hashCode {
+  final _this = this as MessageSearchResult;
+  return Object.hash(runtimeType,_this.messageId,_this.roomId,_this.roomName,_this.text,_this.senderId,_this.timestamp,_this.query);
+}
 
 @override
 String toString() {
-  return 'MessageSearchResult(messageId: $messageId, roomId: $roomId, roomName: $roomName, text: $text, senderId: $senderId, timestamp: $timestamp, query: $query)';
+  final _this = this as MessageSearchResult;
+  return 'MessageSearchResult(messageId: ${_this.messageId}, roomId: ${_this.roomId}, roomName: ${_this.roomName}, text: ${_this.text}, senderId: ${_this.senderId}, timestamp: ${_this.timestamp}, query: ${_this.query})';
 }
 
 
@@ -67,7 +73,7 @@ class _$MessageSearchResultCopyWithImpl<$Res>
 /// Create a copy of MessageSearchResult
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? messageId = null,Object? roomId = null,Object? roomName = null,Object? text = null,Object? senderId = null,Object? timestamp = null,Object? query = null,}) {
-  return _then(_self.copyWith(
+  return _then(MessageSearchResult(
 messageId: null == messageId ? _self.messageId : messageId // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,roomName: null == roomName ? _self.roomName : roomName // ignore: cast_nullable_to_non_nullable
@@ -241,16 +247,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageSearchResult&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.roomName, roomName) || other.roomName == roomName)&&(identical(other.text, text) || other.text == text)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.query, query) || other.query == query));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageSearchResult&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.roomName, roomName) || other.roomName == roomName)&&(identical(other.text, text) || other.text == text)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.query, query) || other.query == query));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,messageId,roomId,roomName,text,senderId,timestamp,query);
+int get hashCode {
+    return Object.hash(runtimeType,messageId,roomId,roomName,text,senderId,timestamp,query);
+}
 
 @override
 String toString() {
-  return 'MessageSearchResult(messageId: $messageId, roomId: $roomId, roomName: $roomName, text: $text, senderId: $senderId, timestamp: $timestamp, query: $query)';
+    return 'MessageSearchResult(messageId: $messageId, roomId: $roomId, roomName: $roomName, text: $text, senderId: $senderId, timestamp: $timestamp, query: $query)';
 }
 
 

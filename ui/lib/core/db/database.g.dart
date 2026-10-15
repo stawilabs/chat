@@ -12323,32 +12323,30 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
 }
 
-typedef $$ProfilesTableCreateCompanionBuilder =
-    ProfilesCompanion Function({
-      required String id,
-      Value<String?> name,
-      Value<String?> avatarUrl,
-      Value<int?> updatedAt,
-      Value<String?> metadata,
-      Value<int> status,
-      Value<String?> statusMessage,
-      Value<int?> statusUpdatedAt,
-      Value<String?> bio,
-      Value<int> rowid,
-    });
-typedef $$ProfilesTableUpdateCompanionBuilder =
-    ProfilesCompanion Function({
-      Value<String> id,
-      Value<String?> name,
-      Value<String?> avatarUrl,
-      Value<int?> updatedAt,
-      Value<String?> metadata,
-      Value<int> status,
-      Value<String?> statusMessage,
-      Value<int?> statusUpdatedAt,
-      Value<String?> bio,
-      Value<int> rowid,
-    });
+typedef $$ProfilesTableCreateCompanionBuilder = ProfilesCompanion Function({
+  required String id,
+  Value<String?> name,
+  Value<String?> avatarUrl,
+  Value<int?> updatedAt,
+  Value<String?> metadata,
+  Value<int> status,
+  Value<String?> statusMessage,
+  Value<int?> statusUpdatedAt,
+  Value<String?> bio,
+  Value<int> rowid,
+});
+typedef $$ProfilesTableUpdateCompanionBuilder = ProfilesCompanion Function({
+  Value<String> id,
+  Value<String?> name,
+  Value<String?> avatarUrl,
+  Value<int?> updatedAt,
+  Value<String?> metadata,
+  Value<int> status,
+  Value<String?> statusMessage,
+  Value<int?> statusUpdatedAt,
+  Value<String?> bio,
+  Value<int> rowid,
+});
 
 class $$ProfilesTableFilterComposer
     extends Composer<_$AppDatabase, $ProfilesTable> {
@@ -12576,7 +12574,16 @@ class $$ProfilesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ProfilesTable, Profile>(table),
+                  BaseReferences<_$AppDatabase, $ProfilesTable, Profile>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -12597,36 +12604,34 @@ typedef $$ProfilesTableProcessedTableManager =
       Profile,
       PrefetchHooks Function()
     >;
-typedef $$RosterTableCreateCompanionBuilder =
-    RosterCompanion Function({
-      required String id,
-      Value<String?> rosterId,
-      Value<String?> profileId,
-      Value<String?> contactId,
-      Value<int> contactType,
-      required String contactDetail,
-      Value<bool> isVerified,
-      Value<String?> displayName,
-      Value<bool> isBlocked,
-      Value<int?> syncedAt,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
-typedef $$RosterTableUpdateCompanionBuilder =
-    RosterCompanion Function({
-      Value<String> id,
-      Value<String?> rosterId,
-      Value<String?> profileId,
-      Value<String?> contactId,
-      Value<int> contactType,
-      Value<String> contactDetail,
-      Value<bool> isVerified,
-      Value<String?> displayName,
-      Value<bool> isBlocked,
-      Value<int?> syncedAt,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
+typedef $$RosterTableCreateCompanionBuilder = RosterCompanion Function({
+  required String id,
+  Value<String?> rosterId,
+  Value<String?> profileId,
+  Value<String?> contactId,
+  Value<int> contactType,
+  required String contactDetail,
+  Value<bool> isVerified,
+  Value<String?> displayName,
+  Value<bool> isBlocked,
+  Value<int?> syncedAt,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
+typedef $$RosterTableUpdateCompanionBuilder = RosterCompanion Function({
+  Value<String> id,
+  Value<String?> rosterId,
+  Value<String?> profileId,
+  Value<String?> contactId,
+  Value<int> contactType,
+  Value<String> contactDetail,
+  Value<bool> isVerified,
+  Value<String?> displayName,
+  Value<bool> isBlocked,
+  Value<int?> syncedAt,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
 
 class $$RosterTableFilterComposer
     extends Composer<_$AppDatabase, $RosterTable> {
@@ -12892,7 +12897,16 @@ class $$RosterTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$RosterTable, RosterData>(table),
+                  BaseReferences<_$AppDatabase, $RosterTable, RosterData>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -12913,36 +12927,34 @@ typedef $$RosterTableProcessedTableManager =
       RosterData,
       PrefetchHooks Function()
     >;
-typedef $$RoomsTableCreateCompanionBuilder =
-    RoomsCompanion Function({
-      required String id,
-      Value<String?> name,
-      Value<String?> type,
-      Value<String?> lastEventId,
-      Value<int?> lastEventIndex,
-      Value<int> unreadCount,
-      Value<String?> metadata,
-      Value<int?> disappearingTimeout,
-      Value<int?> mutedUntil,
-      Value<int?> memberLimit,
-      Value<bool> memberLimitEnabled,
-      Value<int> rowid,
-    });
-typedef $$RoomsTableUpdateCompanionBuilder =
-    RoomsCompanion Function({
-      Value<String> id,
-      Value<String?> name,
-      Value<String?> type,
-      Value<String?> lastEventId,
-      Value<int?> lastEventIndex,
-      Value<int> unreadCount,
-      Value<String?> metadata,
-      Value<int?> disappearingTimeout,
-      Value<int?> mutedUntil,
-      Value<int?> memberLimit,
-      Value<bool> memberLimitEnabled,
-      Value<int> rowid,
-    });
+typedef $$RoomsTableCreateCompanionBuilder = RoomsCompanion Function({
+  required String id,
+  Value<String?> name,
+  Value<String?> type,
+  Value<String?> lastEventId,
+  Value<int?> lastEventIndex,
+  Value<int> unreadCount,
+  Value<String?> metadata,
+  Value<int?> disappearingTimeout,
+  Value<int?> mutedUntil,
+  Value<int?> memberLimit,
+  Value<bool> memberLimitEnabled,
+  Value<int> rowid,
+});
+typedef $$RoomsTableUpdateCompanionBuilder = RoomsCompanion Function({
+  Value<String> id,
+  Value<String?> name,
+  Value<String?> type,
+  Value<String?> lastEventId,
+  Value<int?> lastEventIndex,
+  Value<int> unreadCount,
+  Value<String?> metadata,
+  Value<int?> disappearingTimeout,
+  Value<int?> mutedUntil,
+  Value<int?> memberLimit,
+  Value<bool> memberLimitEnabled,
+  Value<int> rowid,
+});
 
 final class $$RoomsTableReferences
     extends BaseReferences<_$AppDatabase, $RoomsTable, Room> {
@@ -12952,10 +12964,7 @@ final class $$RoomsTableReferences
   _roomSubscriptionsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.roomSubscriptions,
-        aliasName: $_aliasNameGenerator(
-          db.rooms.id,
-          db.roomSubscriptions.roomId,
-        ),
+        aliasName: 'rooms__id__room_subscriptions__room_id',
       );
 
   $$RoomSubscriptionsTableProcessedTableManager get roomSubscriptionsRefs {
@@ -12975,7 +12984,7 @@ final class $$RoomsTableReferences
   static MultiTypedResultKey<$RoomEventsTable, List<RoomEvent>>
   _roomEventsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.roomEvents,
-    aliasName: $_aliasNameGenerator(db.rooms.id, db.roomEvents.roomId),
+    aliasName: 'rooms__id__room_events__room_id',
   );
 
   $$RoomEventsTableProcessedTableManager get roomEventsRefs {
@@ -12993,7 +13002,7 @@ final class $$RoomsTableReferences
   static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
   _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.transactions,
-    aliasName: $_aliasNameGenerator(db.rooms.id, db.transactions.roomId),
+    aliasName: 'rooms__id__transactions__room_id',
   );
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
@@ -13011,7 +13020,7 @@ final class $$RoomsTableReferences
   static MultiTypedResultKey<$InviteLinksTable, List<InviteLink>>
   _inviteLinksRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.inviteLinks,
-    aliasName: $_aliasNameGenerator(db.rooms.id, db.inviteLinks.roomId),
+    aliasName: 'rooms__id__invite_links__room_id',
   );
 
   $$InviteLinksTableProcessedTableManager get inviteLinksRefs {
@@ -13503,8 +13512,10 @@ class $$RoomsTableTableManager
               ),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) =>
-                    (e.readTable(table), $$RoomsTableReferences(db, table, e)),
+                (e) => (
+                  e.readTable<$RoomsTable, Room>(table),
+                  $$RoomsTableReferences(db, table, e),
+                ),
               )
               .toList(),
           prefetchHooksCallback:
@@ -13666,9 +13677,8 @@ final class $$RoomSubscriptionsTableReferences
     super.$_typedResult,
   );
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.roomSubscriptions.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('room_subscriptions__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -13919,7 +13929,7 @@ class $$RoomSubscriptionsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$RoomSubscriptionsTable, RoomSubscription>(table),
                   $$RoomSubscriptionsTableReferences(db, table, e),
                 ),
               )
@@ -13945,19 +13955,15 @@ class $$RoomSubscriptionsTableTableManager
                     >
                   >(state) {
                     if (roomId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.roomId,
-                                referencedTable:
-                                    $$RoomSubscriptionsTableReferences
-                                        ._roomIdTable(db),
-                                referencedColumn:
-                                    $$RoomSubscriptionsTableReferences
-                                        ._roomIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.roomId,
+                        referencedTable: $$RoomSubscriptionsTableReferences
+                            ._roomIdTable(db),
+                        referencedColumn: $$RoomSubscriptionsTableReferences
+                            ._roomIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -13985,72 +13991,69 @@ typedef $$RoomSubscriptionsTableProcessedTableManager =
       RoomSubscription,
       PrefetchHooks Function({bool roomId})
     >;
-typedef $$RoomEventsTableCreateCompanionBuilder =
-    RoomEventsCompanion Function({
-      required String id,
-      required String roomId,
-      required String senderId,
-      Value<String?> senderContactId,
-      required int type,
-      Value<String?> content,
-      Value<String?> parentId,
-      Value<int> status,
-      Value<int?> createdAt,
-      Value<int?> serverTs,
-      Value<String?> localId,
-      Value<int?> editedAt,
-      Value<String?> originalContent,
-      Value<bool> redacted,
-      Value<int?> redactedAt,
-      Value<String?> redactedBy,
-      Value<int> retryCount,
-      Value<String?> errorMessage,
-      Value<String?> forwardedFromRoom,
-      Value<String?> forwardedFromEvent,
-      Value<int> forwardCount,
-      Value<bool> forwardRestricted,
-      Value<int?> expiresAt,
-      Value<bool> starred,
-      Value<int?> starredAt,
-      Value<int> rowid,
-    });
-typedef $$RoomEventsTableUpdateCompanionBuilder =
-    RoomEventsCompanion Function({
-      Value<String> id,
-      Value<String> roomId,
-      Value<String> senderId,
-      Value<String?> senderContactId,
-      Value<int> type,
-      Value<String?> content,
-      Value<String?> parentId,
-      Value<int> status,
-      Value<int?> createdAt,
-      Value<int?> serverTs,
-      Value<String?> localId,
-      Value<int?> editedAt,
-      Value<String?> originalContent,
-      Value<bool> redacted,
-      Value<int?> redactedAt,
-      Value<String?> redactedBy,
-      Value<int> retryCount,
-      Value<String?> errorMessage,
-      Value<String?> forwardedFromRoom,
-      Value<String?> forwardedFromEvent,
-      Value<int> forwardCount,
-      Value<bool> forwardRestricted,
-      Value<int?> expiresAt,
-      Value<bool> starred,
-      Value<int?> starredAt,
-      Value<int> rowid,
-    });
+typedef $$RoomEventsTableCreateCompanionBuilder = RoomEventsCompanion Function({
+  required String id,
+  required String roomId,
+  required String senderId,
+  Value<String?> senderContactId,
+  required int type,
+  Value<String?> content,
+  Value<String?> parentId,
+  Value<int> status,
+  Value<int?> createdAt,
+  Value<int?> serverTs,
+  Value<String?> localId,
+  Value<int?> editedAt,
+  Value<String?> originalContent,
+  Value<bool> redacted,
+  Value<int?> redactedAt,
+  Value<String?> redactedBy,
+  Value<int> retryCount,
+  Value<String?> errorMessage,
+  Value<String?> forwardedFromRoom,
+  Value<String?> forwardedFromEvent,
+  Value<int> forwardCount,
+  Value<bool> forwardRestricted,
+  Value<int?> expiresAt,
+  Value<bool> starred,
+  Value<int?> starredAt,
+  Value<int> rowid,
+});
+typedef $$RoomEventsTableUpdateCompanionBuilder = RoomEventsCompanion Function({
+  Value<String> id,
+  Value<String> roomId,
+  Value<String> senderId,
+  Value<String?> senderContactId,
+  Value<int> type,
+  Value<String?> content,
+  Value<String?> parentId,
+  Value<int> status,
+  Value<int?> createdAt,
+  Value<int?> serverTs,
+  Value<String?> localId,
+  Value<int?> editedAt,
+  Value<String?> originalContent,
+  Value<bool> redacted,
+  Value<int?> redactedAt,
+  Value<String?> redactedBy,
+  Value<int> retryCount,
+  Value<String?> errorMessage,
+  Value<String?> forwardedFromRoom,
+  Value<String?> forwardedFromEvent,
+  Value<int> forwardCount,
+  Value<bool> forwardRestricted,
+  Value<int?> expiresAt,
+  Value<bool> starred,
+  Value<int?> starredAt,
+  Value<int> rowid,
+});
 
 final class $$RoomEventsTableReferences
     extends BaseReferences<_$AppDatabase, $RoomEventsTable, RoomEvent> {
   $$RoomEventsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.roomEvents.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('room_events__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -14639,7 +14642,7 @@ class $$RoomEventsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$RoomEventsTable, RoomEvent>(table),
                   $$RoomEventsTableReferences(db, table, e),
                 ),
               )
@@ -14665,17 +14668,15 @@ class $$RoomEventsTableTableManager
                     >
                   >(state) {
                     if (roomId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.roomId,
-                                referencedTable: $$RoomEventsTableReferences
-                                    ._roomIdTable(db),
-                                referencedColumn: $$RoomEventsTableReferences
-                                    ._roomIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.roomId,
+                        referencedTable: $$RoomEventsTableReferences
+                            ._roomIdTable(db),
+                        referencedColumn: $$RoomEventsTableReferences
+                            ._roomIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -14703,24 +14704,22 @@ typedef $$RoomEventsTableProcessedTableManager =
       RoomEvent,
       PrefetchHooks Function({bool roomId})
     >;
-typedef $$SessionsTableCreateCompanionBuilder =
-    SessionsCompanion Function({
-      required String sessionId,
-      required String profileId,
-      required String deviceId,
-      Value<Uint8List?> ratchetState,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
-typedef $$SessionsTableUpdateCompanionBuilder =
-    SessionsCompanion Function({
-      Value<String> sessionId,
-      Value<String> profileId,
-      Value<String> deviceId,
-      Value<Uint8List?> ratchetState,
-      Value<int?> createdAt,
-      Value<int> rowid,
-    });
+typedef $$SessionsTableCreateCompanionBuilder = SessionsCompanion Function({
+  required String sessionId,
+  required String profileId,
+  required String deviceId,
+  Value<Uint8List?> ratchetState,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
+typedef $$SessionsTableUpdateCompanionBuilder = SessionsCompanion Function({
+  Value<String> sessionId,
+  Value<String> profileId,
+  Value<String> deviceId,
+  Value<Uint8List?> ratchetState,
+  Value<int?> createdAt,
+  Value<int> rowid,
+});
 
 class $$SessionsTableFilterComposer
     extends Composer<_$AppDatabase, $SessionsTable> {
@@ -14878,7 +14877,16 @@ class $$SessionsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SessionsTable, Session>(table),
+                  BaseReferences<_$AppDatabase, $SessionsTable, Session>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -14899,20 +14907,18 @@ typedef $$SessionsTableProcessedTableManager =
       Session,
       PrefetchHooks Function()
     >;
-typedef $$PrekeysTableCreateCompanionBuilder =
-    PrekeysCompanion Function({
-      Value<int> id,
-      Value<String?> publicKey,
-      Value<String?> privateKey,
-      Value<bool> isSigned,
-    });
-typedef $$PrekeysTableUpdateCompanionBuilder =
-    PrekeysCompanion Function({
-      Value<int> id,
-      Value<String?> publicKey,
-      Value<String?> privateKey,
-      Value<bool> isSigned,
-    });
+typedef $$PrekeysTableCreateCompanionBuilder = PrekeysCompanion Function({
+  Value<int> id,
+  Value<String?> publicKey,
+  Value<String?> privateKey,
+  Value<bool> isSigned,
+});
+typedef $$PrekeysTableUpdateCompanionBuilder = PrekeysCompanion Function({
+  Value<int> id,
+  Value<String?> publicKey,
+  Value<String?> privateKey,
+  Value<bool> isSigned,
+});
 
 class $$PrekeysTableFilterComposer
     extends Composer<_$AppDatabase, $PrekeysTable> {
@@ -15049,7 +15055,16 @@ class $$PrekeysTableTableManager
                 isSigned: isSigned,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$PrekeysTable, Prekey>(table),
+                  BaseReferences<_$AppDatabase, $PrekeysTable, Prekey>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15320,7 +15335,16 @@ class $$PendingJobsTableTableManager
                 lastError: lastError,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$PendingJobsTable, PendingJob>(table),
+                  BaseReferences<_$AppDatabase, $PendingJobsTable, PendingJob>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15369,9 +15393,8 @@ final class $$TransactionsTableReferences
     extends BaseReferences<_$AppDatabase, $TransactionsTable, Transaction> {
   $$TransactionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.transactions.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('transactions__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -15619,7 +15642,7 @@ class $$TransactionsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$TransactionsTable, Transaction>(table),
                   $$TransactionsTableReferences(db, table, e),
                 ),
               )
@@ -15645,17 +15668,15 @@ class $$TransactionsTableTableManager
                     >
                   >(state) {
                     if (roomId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.roomId,
-                                referencedTable: $$TransactionsTableReferences
-                                    ._roomIdTable(db),
-                                referencedColumn: $$TransactionsTableReferences
-                                    ._roomIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.roomId,
+                        referencedTable: $$TransactionsTableReferences
+                            ._roomIdTable(db),
+                        referencedColumn: $$TransactionsTableReferences
+                            ._roomIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -15821,7 +15842,16 @@ class $$SyncMetadataTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SyncMetadataTable, SyncMetadataData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SyncMetadataTable,
+                    SyncMetadataData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -15983,7 +16013,16 @@ class $$UserSettingsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$UserSettingsTable, UserSetting>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UserSettingsTable,
+                    UserSetting
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16007,22 +16046,20 @@ typedef $$UserSettingsTableProcessedTableManager =
       UserSetting,
       PrefetchHooks Function()
     >;
-typedef $$DraftsTableCreateCompanionBuilder =
-    DraftsCompanion Function({
-      required String roomId,
-      required String content,
-      Value<String?> replyToId,
-      required int updatedAt,
-      Value<int> rowid,
-    });
-typedef $$DraftsTableUpdateCompanionBuilder =
-    DraftsCompanion Function({
-      Value<String> roomId,
-      Value<String> content,
-      Value<String?> replyToId,
-      Value<int> updatedAt,
-      Value<int> rowid,
-    });
+typedef $$DraftsTableCreateCompanionBuilder = DraftsCompanion Function({
+  required String roomId,
+  required String content,
+  Value<String?> replyToId,
+  required int updatedAt,
+  Value<int> rowid,
+});
+typedef $$DraftsTableUpdateCompanionBuilder = DraftsCompanion Function({
+  Value<String> roomId,
+  Value<String> content,
+  Value<String?> replyToId,
+  Value<int> updatedAt,
+  Value<int> rowid,
+});
 
 class $$DraftsTableFilterComposer
     extends Composer<_$AppDatabase, $DraftsTable> {
@@ -16161,7 +16198,16 @@ class $$DraftsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DraftsTable, Draft>(table),
+                  BaseReferences<_$AppDatabase, $DraftsTable, Draft>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16411,7 +16457,16 @@ class $$FormMessageDraftsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FormMessageDraftsTable, FormMessageDraft>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $FormMessageDraftsTable,
+                    FormMessageDraft
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16609,7 +16664,16 @@ class $$ReadReceiptsTableTableManager
                 readAt: readAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ReadReceiptsTable, ReadReceipt>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ReadReceiptsTable,
+                    ReadReceipt
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16633,28 +16697,26 @@ typedef $$ReadReceiptsTableProcessedTableManager =
       ReadReceipt,
       PrefetchHooks Function()
     >;
-typedef $$ReportsTableCreateCompanionBuilder =
-    ReportsCompanion Function({
-      required String id,
-      required String reportedUserId,
-      required String reason,
-      Value<String?> details,
-      Value<String?> evidenceEventIds,
-      required int reportedAt,
-      Value<String> status,
-      Value<int> rowid,
-    });
-typedef $$ReportsTableUpdateCompanionBuilder =
-    ReportsCompanion Function({
-      Value<String> id,
-      Value<String> reportedUserId,
-      Value<String> reason,
-      Value<String?> details,
-      Value<String?> evidenceEventIds,
-      Value<int> reportedAt,
-      Value<String> status,
-      Value<int> rowid,
-    });
+typedef $$ReportsTableCreateCompanionBuilder = ReportsCompanion Function({
+  required String id,
+  required String reportedUserId,
+  required String reason,
+  Value<String?> details,
+  Value<String?> evidenceEventIds,
+  required int reportedAt,
+  Value<String> status,
+  Value<int> rowid,
+});
+typedef $$ReportsTableUpdateCompanionBuilder = ReportsCompanion Function({
+  Value<String> id,
+  Value<String> reportedUserId,
+  Value<String> reason,
+  Value<String?> details,
+  Value<String?> evidenceEventIds,
+  Value<int> reportedAt,
+  Value<String> status,
+  Value<int> rowid,
+});
 
 class $$ReportsTableFilterComposer
     extends Composer<_$AppDatabase, $ReportsTable> {
@@ -16850,7 +16912,16 @@ class $$ReportsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ReportsTable, Report>(table),
+                  BaseReferences<_$AppDatabase, $ReportsTable, Report>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -16906,9 +16977,8 @@ final class $$InviteLinksTableReferences
     extends BaseReferences<_$AppDatabase, $InviteLinksTable, InviteLink> {
   $$InviteLinksTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $RoomsTable _roomIdTable(_$AppDatabase db) => db.rooms.createAlias(
-    $_aliasNameGenerator(db.inviteLinks.roomId, db.rooms.id),
-  );
+  static $RoomsTable _roomIdTable(_$AppDatabase db) =>
+      db.rooms.createAlias('invite_links__room_id__rooms__id');
 
   $$RoomsTableProcessedTableManager get roomId {
     final $_column = $_itemColumn<String>('room_id')!;
@@ -16927,10 +16997,7 @@ final class $$InviteLinksTableReferences
   static MultiTypedResultKey<$InviteLinkJoinsTable, List<InviteLinkJoin>>
   _inviteLinkJoinsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.inviteLinkJoins,
-    aliasName: $_aliasNameGenerator(
-      db.inviteLinks.id,
-      db.inviteLinkJoins.inviteLinkId,
-    ),
+    aliasName: 'invite_links__id__invite_link_joins__invite_link_id',
   );
 
   $$InviteLinkJoinsTableProcessedTableManager get inviteLinkJoinsRefs {
@@ -17314,7 +17381,7 @@ class $$InviteLinksTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$InviteLinksTable, InviteLink>(table),
                   $$InviteLinksTableReferences(db, table, e),
                 ),
               )
@@ -17343,19 +17410,15 @@ class $$InviteLinksTableTableManager
                         >
                       >(state) {
                         if (roomId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.roomId,
-                                    referencedTable:
-                                        $$InviteLinksTableReferences
-                                            ._roomIdTable(db),
-                                    referencedColumn:
-                                        $$InviteLinksTableReferences
-                                            ._roomIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.roomId,
+                            referencedTable: $$InviteLinksTableReferences
+                                ._roomIdTable(db),
+                            referencedColumn: $$InviteLinksTableReferences
+                                ._roomIdTable(db)
+                                .id,
+                          ) as T;
                         }
 
                         return state;
@@ -17431,13 +17494,9 @@ final class $$InviteLinkJoinsTableReferences
     super.$_typedResult,
   );
 
-  static $InviteLinksTable _inviteLinkIdTable(_$AppDatabase db) =>
-      db.inviteLinks.createAlias(
-        $_aliasNameGenerator(
-          db.inviteLinkJoins.inviteLinkId,
-          db.inviteLinks.id,
-        ),
-      );
+  static $InviteLinksTable _inviteLinkIdTable(_$AppDatabase db) => db
+      .inviteLinks
+      .createAlias('invite_link_joins__invite_link_id__invite_links__id');
 
   $$InviteLinksTableProcessedTableManager get inviteLinkId {
     final $_column = $_itemColumn<String>('invite_link_id')!;
@@ -17664,7 +17723,7 @@ class $$InviteLinkJoinsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$InviteLinkJoinsTable, InviteLinkJoin>(table),
                   $$InviteLinkJoinsTableReferences(db, table, e),
                 ),
               )
@@ -17690,19 +17749,15 @@ class $$InviteLinkJoinsTableTableManager
                     >
                   >(state) {
                     if (inviteLinkId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.inviteLinkId,
-                                referencedTable:
-                                    $$InviteLinkJoinsTableReferences
-                                        ._inviteLinkIdTable(db),
-                                referencedColumn:
-                                    $$InviteLinkJoinsTableReferences
-                                        ._inviteLinkIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.inviteLinkId,
+                        referencedTable: $$InviteLinkJoinsTableReferences
+                            ._inviteLinkIdTable(db),
+                        referencedColumn: $$InviteLinkJoinsTableReferences
+                            ._inviteLinkIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -17921,7 +17976,16 @@ class $$UploadChunksTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$UploadChunksTable, UploadChunk>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UploadChunksTable,
+                    UploadChunk
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -18237,7 +18301,16 @@ class $$DownloadChunksTableTableManager
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DownloadChunksTable, DownloadChunk>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DownloadChunksTable,
+                    DownloadChunk
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -18669,7 +18742,16 @@ class $$TransferJobsTableTableManager
                 nextRetryAt: nextRetryAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$TransferJobsTable, TransferJob>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $TransferJobsTable,
+                    TransferJob
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -19019,7 +19101,16 @@ class $$CallHistoryTableTableManager
                 isDeleted: isDeleted,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$CallHistoryTable, CallHistoryData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CallHistoryTable,
+                    CallHistoryData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -19337,7 +19428,16 @@ class $$AnalyticsEventsTableTableManager
                 syncedAt: syncedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$AnalyticsEventsTable, AnalyticsEvent>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AnalyticsEventsTable,
+                    AnalyticsEvent
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

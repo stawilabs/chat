@@ -6,7 +6,7 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 import 'stawi_money.dart';
 
 /// The calls a member's own account makes on a room's engines: loans
-/// (LoanEngine) and withdrawals and amount choices (RulesEngine). Each is a
+/// (LoanBook) and withdrawals and amount choices (RulesEngine). Each is a
 /// device-signed AccountService call settlement prepares as an ENGINE_CALL
 /// intent, checked on the device with the SDK before it is signed.
 enum AccountEngineCall {
@@ -131,7 +131,7 @@ class AccountEngineRequest {
   /// Integer minor units; empty for a payoff settlement quotes.
   final String amount;
 
-  /// The loan's number on the room's LoanEngine.
+  /// The loan's number on the room's LoanBook.
   final int loanId;
   final Uint8List? productId;
   final int instalments;
@@ -141,6 +141,21 @@ class AccountEngineRequest {
 
   /// The room's asset, to show [amount] in; null shows minor units.
   final StawiAsset? asset;
+
+  /// What the member asked for, as the SDK compares it field for field with
+  /// the prepared calldata (verifyEngineCallIntent `expected:`). A payoff
+  /// with no amount asks for settlement's quote (amount zero).
+  sdk.EngineCall get expected => sdk.EngineCall(
+    action: call.action,
+    room: custody,
+    loanId: call.takesLoan ? BigInt.from(loanId) : null,
+    productId: call.takesProduct ? productId : null,
+    amount: amount.isEmpty ? BigInt.zero : BigInt.parse(amount),
+    instalments: call == AccountEngineCall.loanRequest ? instalments : 0,
+    replaces: call == AccountEngineCall.loanRequest
+        ? BigInt.from(replaces)
+        : null,
+  );
 
   String get _shown => asset == null || amount.isEmpty
       ? amount

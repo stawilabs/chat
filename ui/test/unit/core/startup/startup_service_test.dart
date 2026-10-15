@@ -82,9 +82,8 @@ void main() {
         isFalse,
       );
       expect(
-        const StartupProgress(
-          state: StartupState.initializingCritical,
-        ).isComplete,
+        const StartupProgress(state: StartupState.initializingCritical)
+            .isComplete,
         isFalse,
       );
       expect(
@@ -107,15 +106,13 @@ void main() {
         isFalse,
       );
       expect(
-        const StartupProgress(
-          state: StartupState.initializingCritical,
-        ).isInteractive,
+        const StartupProgress(state: StartupState.initializingCritical)
+            .isInteractive,
         isFalse,
       );
       expect(
-        const StartupProgress(
-          state: StartupState.initializingEssential,
-        ).isInteractive,
+        const StartupProgress(state: StartupState.initializingEssential)
+            .isInteractive,
         isFalse,
       );
       expect(

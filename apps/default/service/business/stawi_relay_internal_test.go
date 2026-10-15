@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/service/models"

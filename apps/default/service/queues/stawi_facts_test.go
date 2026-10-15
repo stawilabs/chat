@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	frevents "github.com/pitabwire/frame/v2/events"
+	frevents "github.com/pitabwire/frame/v3/events"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/service/business"

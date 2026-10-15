@@ -131,9 +131,8 @@ void main() {
           ),
         ),
       )!;
-      final genesis = StawiConversionView.fromContent(
-        conversion.content,
-      ).genesis!;
+      final genesis = StawiConversionView.fromContent(conversion.content)
+          .genesis!;
       expect(genesis.genesisId, 'gen1');
       expect(genesis.genesisHash, hash);
       expect(genesis.isFounder('p2'), isTrue);
@@ -162,7 +161,7 @@ void main() {
             cardId: 'k1',
             kind: 'PROPOSAL',
             title: 'New proposal',
-            data: {'proposal_id': 'prop1'},
+            data: {'proposal_id': 'prop1'}.entries,
           ),
         ),
       )!;

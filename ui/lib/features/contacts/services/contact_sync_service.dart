@@ -101,10 +101,9 @@ class ContactSyncResult {
 /// - Tracks last sync time
 class ContactSyncService {
   ContactSyncService({
-    required ContactSyncRepository syncRepository,
-    required SettingsService settingsService,
-  }) : _syncRepository = syncRepository,
-       _settingsService = settingsService;
+    required this._syncRepository,
+    required this._settingsService,
+  });
 
   final ContactSyncRepository _syncRepository;
   final SettingsService _settingsService;

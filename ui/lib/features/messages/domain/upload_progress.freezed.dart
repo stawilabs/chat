@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'upload_progress.dart';
@@ -9,6 +9,7 @@ part of 'upload_progress.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -42,16 +43,21 @@ $UploadProgressCopyWith<UploadProgress> get copyWith => _$UploadProgressCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UploadProgress&&(identical(other.localId, localId) || other.localId == localId)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.state, state) || other.state == state)&&(identical(other.error, error) || other.error == error)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.totalBytes, totalBytes) || other.totalBytes == totalBytes)&&(identical(other.uploadedBytes, uploadedBytes) || other.uploadedBytes == uploadedBytes)&&(identical(other.currentChunk, currentChunk) || other.currentChunk == currentChunk)&&(identical(other.totalChunks, totalChunks) || other.totalChunks == totalChunks)&&(identical(other.uploadId, uploadId) || other.uploadId == uploadId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.retryCount, retryCount) || other.retryCount == retryCount)&&(identical(other.isChunked, isChunked) || other.isChunked == isChunked));
+  final _this = this as UploadProgress;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UploadProgress&&(identical(other.localId, _this.localId) || other.localId == _this.localId)&&(identical(other.progress, _this.progress) || other.progress == _this.progress)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.error, _this.error) || other.error == _this.error)&&(identical(other.fileName, _this.fileName) || other.fileName == _this.fileName)&&(identical(other.totalBytes, _this.totalBytes) || other.totalBytes == _this.totalBytes)&&(identical(other.uploadedBytes, _this.uploadedBytes) || other.uploadedBytes == _this.uploadedBytes)&&(identical(other.currentChunk, _this.currentChunk) || other.currentChunk == _this.currentChunk)&&(identical(other.totalChunks, _this.totalChunks) || other.totalChunks == _this.totalChunks)&&(identical(other.uploadId, _this.uploadId) || other.uploadId == _this.uploadId)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&(identical(other.completedAt, _this.completedAt) || other.completedAt == _this.completedAt)&&(identical(other.retryCount, _this.retryCount) || other.retryCount == _this.retryCount)&&(identical(other.isChunked, _this.isChunked) || other.isChunked == _this.isChunked));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,localId,progress,state,error,fileName,totalBytes,uploadedBytes,currentChunk,totalChunks,uploadId,startedAt,completedAt,retryCount,isChunked);
+int get hashCode {
+  final _this = this as UploadProgress;
+  return Object.hash(runtimeType,_this.localId,_this.progress,_this.state,_this.error,_this.fileName,_this.totalBytes,_this.uploadedBytes,_this.currentChunk,_this.totalChunks,_this.uploadId,_this.startedAt,_this.completedAt,_this.retryCount,_this.isChunked);
+}
 
 @override
 String toString() {
-  return 'UploadProgress(localId: $localId, progress: $progress, state: $state, error: $error, fileName: $fileName, totalBytes: $totalBytes, uploadedBytes: $uploadedBytes, currentChunk: $currentChunk, totalChunks: $totalChunks, uploadId: $uploadId, startedAt: $startedAt, completedAt: $completedAt, retryCount: $retryCount, isChunked: $isChunked)';
+  final _this = this as UploadProgress;
+  return 'UploadProgress(localId: ${_this.localId}, progress: ${_this.progress}, state: ${_this.state}, error: ${_this.error}, fileName: ${_this.fileName}, totalBytes: ${_this.totalBytes}, uploadedBytes: ${_this.uploadedBytes}, currentChunk: ${_this.currentChunk}, totalChunks: ${_this.totalChunks}, uploadId: ${_this.uploadId}, startedAt: ${_this.startedAt}, completedAt: ${_this.completedAt}, retryCount: ${_this.retryCount}, isChunked: ${_this.isChunked})';
 }
 
 
@@ -80,7 +86,7 @@ class _$UploadProgressCopyWithImpl<$Res>
 /// Create a copy of UploadProgress
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? localId = null,Object? progress = null,Object? state = null,Object? error = freezed,Object? fileName = freezed,Object? totalBytes = freezed,Object? uploadedBytes = null,Object? currentChunk = null,Object? totalChunks = null,Object? uploadId = freezed,Object? startedAt = freezed,Object? completedAt = freezed,Object? retryCount = null,Object? isChunked = null,}) {
-  return _then(_self.copyWith(
+  return _then(UploadProgress(
 localId: null == localId ? _self.localId : localId // ignore: cast_nullable_to_non_nullable
 as String,progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
 as double,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
@@ -281,16 +287,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UploadProgress&&(identical(other.localId, localId) || other.localId == localId)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.state, state) || other.state == state)&&(identical(other.error, error) || other.error == error)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.totalBytes, totalBytes) || other.totalBytes == totalBytes)&&(identical(other.uploadedBytes, uploadedBytes) || other.uploadedBytes == uploadedBytes)&&(identical(other.currentChunk, currentChunk) || other.currentChunk == currentChunk)&&(identical(other.totalChunks, totalChunks) || other.totalChunks == totalChunks)&&(identical(other.uploadId, uploadId) || other.uploadId == uploadId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.retryCount, retryCount) || other.retryCount == retryCount)&&(identical(other.isChunked, isChunked) || other.isChunked == isChunked));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UploadProgress&&(identical(other.localId, localId) || other.localId == localId)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.state, state) || other.state == state)&&(identical(other.error, error) || other.error == error)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.totalBytes, totalBytes) || other.totalBytes == totalBytes)&&(identical(other.uploadedBytes, uploadedBytes) || other.uploadedBytes == uploadedBytes)&&(identical(other.currentChunk, currentChunk) || other.currentChunk == currentChunk)&&(identical(other.totalChunks, totalChunks) || other.totalChunks == totalChunks)&&(identical(other.uploadId, uploadId) || other.uploadId == uploadId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.retryCount, retryCount) || other.retryCount == retryCount)&&(identical(other.isChunked, isChunked) || other.isChunked == isChunked));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,localId,progress,state,error,fileName,totalBytes,uploadedBytes,currentChunk,totalChunks,uploadId,startedAt,completedAt,retryCount,isChunked);
+int get hashCode {
+    return Object.hash(runtimeType,localId,progress,state,error,fileName,totalBytes,uploadedBytes,currentChunk,totalChunks,uploadId,startedAt,completedAt,retryCount,isChunked);
+}
 
 @override
 String toString() {
-  return 'UploadProgress(localId: $localId, progress: $progress, state: $state, error: $error, fileName: $fileName, totalBytes: $totalBytes, uploadedBytes: $uploadedBytes, currentChunk: $currentChunk, totalChunks: $totalChunks, uploadId: $uploadId, startedAt: $startedAt, completedAt: $completedAt, retryCount: $retryCount, isChunked: $isChunked)';
+    return 'UploadProgress(localId: $localId, progress: $progress, state: $state, error: $error, fileName: $fileName, totalBytes: $totalBytes, uploadedBytes: $uploadedBytes, currentChunk: $currentChunk, totalChunks: $totalChunks, uploadId: $uploadId, startedAt: $startedAt, completedAt: $completedAt, retryCount: $retryCount, isChunked: $isChunked)';
 }
 
 

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"github.com/antinvestor/common/v2/permissions"
+	"github.com/antinvestor/common/v3/permissions"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stawilabs/chat/apps/default/tests/testketo"

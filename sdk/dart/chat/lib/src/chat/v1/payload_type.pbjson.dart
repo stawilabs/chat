@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: chat/v1/payload_type.proto
-//
-// @dart = 2.12
+// Generated from chat/v1/payload_type.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -36,6 +38,8 @@ const PayloadType$json = {
     {'1': 'PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE', '2': 42},
     {'1': 'PAYLOAD_TYPE_STAWI_SIGNED_CALL', '2': 43},
     {'1': 'PAYLOAD_TYPE_STAWI_CALL_OUTCOME', '2': 44},
+    {'1': 'PAYLOAD_TYPE_STAWI_AGENT_INVITATION', '2': 45},
+    {'1': 'PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE', '2': 46},
   ],
 };
 
@@ -51,7 +55,9 @@ final $typed_data.Uint8List payloadTypeDescriptor = $convert.base64Decode(
     'ZPUk1fU1VCTUlTU0lPTl9SRVNVTFQQHxIdChlQQVlMT0FEX1RZUEVfRklOQU5DRV9DQVJEECgS'
     'JgoiUEFZTE9BRF9UWVBFX1NUQVdJX1JPT01fQ09OVkVSU0lPThApEigKJFBBWUxPQURfVFlQRV'
     '9TVEFXSV9HRU5FU0lTX1NJR05BVFVSRRAqEiIKHlBBWUxPQURfVFlQRV9TVEFXSV9TSUdORURf'
-    'Q0FMTBArEiMKH1BBWUxPQURfVFlQRV9TVEFXSV9DQUxMX09VVENPTUUQLA==');
+    'Q0FMTBArEiMKH1BBWUxPQURfVFlQRV9TVEFXSV9DQUxMX09VVENPTUUQLBInCiNQQVlMT0FEX1'
+    'RZUEVfU1RBV0lfQUdFTlRfSU5WSVRBVElPThAtEicKI1BBWUxPQURfVFlQRV9TVEFXSV9BR0VO'
+    'VF9BQ0NFUFRBTkNFEC4=');
 
 @$core.Deprecated('Use roomChangeActionDescriptor instead')
 const RoomChangeAction$json = {
@@ -217,11 +223,37 @@ final $typed_data.Uint8List stawiCallOutcomeStateDescriptor = $convert.base64Dec
 const RoomChangeContent$json = {
   '1': 'RoomChangeContent',
   '2': [
-    {'1': 'action', '3': 1, '4': 1, '5': 14, '6': '.chat.v1.RoomChangeAction', '10': 'action'},
-    {'1': 'actor_subscription_id', '3': 2, '4': 1, '5': 9, '10': 'actorSubscriptionId'},
-    {'1': 'target_subscription_ids', '3': 3, '4': 3, '5': 9, '10': 'targetSubscriptionIds'},
+    {
+      '1': 'action',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.RoomChangeAction',
+      '10': 'action'
+    },
+    {
+      '1': 'actor_subscription_id',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'actorSubscriptionId'
+    },
+    {
+      '1': 'target_subscription_ids',
+      '3': 3,
+      '4': 3,
+      '5': 9,
+      '10': 'targetSubscriptionIds'
+    },
     {'1': 'body', '3': 4, '4': 1, '5': 9, '10': 'body'},
-    {'1': 'details', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'details'},
+    {
+      '1': 'details',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'details'
+    },
   ],
 };
 
@@ -238,10 +270,40 @@ const ModerationContent$json = {
   '1': 'ModerationContent',
   '2': [
     {'1': 'body', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'body'},
-    {'1': 'actor_subscription_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'actorSubscriptionId'},
-    {'1': 'target_subscription_ids', '3': 3, '4': 3, '5': 9, '8': {}, '10': 'targetSubscriptionIds'},
-    {'1': 'metadata', '3': 8, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'metadata'},
-    {'1': 'language', '3': 4, '4': 1, '5': 9, '8': {}, '9': 0, '10': 'language', '17': true},
+    {
+      '1': 'actor_subscription_id',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'actorSubscriptionId'
+    },
+    {
+      '1': 'target_subscription_ids',
+      '3': 3,
+      '4': 3,
+      '5': 9,
+      '8': {},
+      '10': 'targetSubscriptionIds'
+    },
+    {
+      '1': 'metadata',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'metadata'
+    },
+    {
+      '1': 'language',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '9': 0,
+      '10': 'language',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_language'},
@@ -264,7 +326,14 @@ const TextContent$json = {
   '2': [
     {'1': 'body', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'body'},
     {'1': 'format', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'format'},
-    {'1': 'annotations', '3': 3, '4': 3, '5': 11, '6': '.chat.v1.TextAnnotation', '10': 'annotations'},
+    {
+      '1': 'annotations',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.TextAnnotation',
+      '10': 'annotations'
+    },
     {'1': 'lang', '3': 4, '4': 1, '5': 9, '9': 0, '10': 'lang', '17': true},
   ],
   '8': [
@@ -283,7 +352,14 @@ final $typed_data.Uint8List textContentDescriptor = $convert.base64Decode(
 const TextAnnotation$json = {
   '1': 'TextAnnotation',
   '2': [
-    {'1': 'type', '3': 1, '4': 1, '5': 14, '6': '.chat.v1.TextAnnotation.Type', '10': 'type'},
+    {
+      '1': 'type',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.TextAnnotation.Type',
+      '10': 'type'
+    },
     {'1': 'offset', '3': 2, '4': 1, '5': 5, '10': 'offset'},
     {'1': 'length', '3': 3, '4': 1, '5': 5, '10': 'length'},
     {'1': 'value', '3': 4, '4': 1, '5': 9, '10': 'value'},
@@ -321,10 +397,34 @@ const AttachmentContent$json = {
     {'1': 'mime_type', '3': 3, '4': 1, '5': 9, '10': 'mimeType'},
     {'1': 'size_bytes', '3': 4, '4': 1, '5': 3, '10': 'sizeBytes'},
     {'1': 'uri', '3': 5, '4': 1, '5': 9, '10': 'uri'},
-    {'1': 'previews', '3': 6, '4': 3, '5': 11, '6': '.chat.v1.AttachmentPreview', '10': 'previews'},
-    {'1': 'caption', '3': 7, '4': 1, '5': 11, '6': '.chat.v1.TextContent', '9': 0, '10': 'caption', '17': true},
+    {
+      '1': 'previews',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.AttachmentPreview',
+      '10': 'previews'
+    },
+    {
+      '1': 'caption',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.TextContent',
+      '9': 0,
+      '10': 'caption',
+      '17': true
+    },
     {'1': 'encrypted', '3': 8, '4': 1, '5': 8, '10': 'encrypted'},
-    {'1': 'checksum', '3': 9, '4': 1, '5': 9, '9': 1, '10': 'checksum', '17': true},
+    {
+      '1': 'checksum',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '9': 1,
+      '10': 'checksum',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_caption'},
@@ -364,7 +464,14 @@ final $typed_data.Uint8List attachmentPreviewDescriptor = $convert.base64Decode(
 const ReactionContent$json = {
   '1': 'ReactionContent',
   '2': [
-    {'1': 'target_event_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'targetEventId'},
+    {
+      '1': 'target_event_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'targetEventId'
+    },
     {'1': 'reaction', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'reaction'},
     {'1': 'add', '3': 3, '4': 1, '5': 8, '10': 'add'},
   ],
@@ -383,10 +490,26 @@ const EncryptedContent$json = {
     {'1': 'algorithm', '3': 1, '4': 1, '5': 9, '10': 'algorithm'},
     {'1': 'ciphertext', '3': 2, '4': 1, '5': 12, '10': 'ciphertext'},
     {'1': 'nonce', '3': 3, '4': 1, '5': 12, '9': 0, '10': 'nonce', '17': true},
-    {'1': 'sender_key_id', '3': 4, '4': 1, '5': 9, '9': 1, '10': 'senderKeyId', '17': true},
+    {
+      '1': 'sender_key_id',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '9': 1,
+      '10': 'senderKeyId',
+      '17': true
+    },
     {'1': 'recipient_key_ids', '3': 5, '4': 3, '5': 9, '10': 'recipientKeyIds'},
     {'1': 'aad', '3': 6, '4': 1, '5': 12, '9': 2, '10': 'aad', '17': true},
-    {'1': 'session_id', '3': 7, '4': 1, '5': 9, '9': 3, '10': 'sessionId', '17': true},
+    {
+      '1': 'session_id',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '9': 3,
+      '10': 'sessionId',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_nonce'},
@@ -410,11 +533,40 @@ const CallContent$json = {
   '1': 'CallContent',
   '2': [
     {'1': 'call_id', '3': 1, '4': 1, '5': 9, '10': 'callId'},
-    {'1': 'type', '3': 2, '4': 1, '5': 14, '6': '.chat.v1.CallContent.CallType', '10': 'type'},
-    {'1': 'action', '3': 3, '4': 1, '5': 14, '6': '.chat.v1.CallContent.CallAction', '10': 'action'},
+    {
+      '1': 'type',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.CallContent.CallType',
+      '10': 'type'
+    },
+    {
+      '1': 'action',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.CallContent.CallAction',
+      '10': 'action'
+    },
     {'1': 'sdp', '3': 4, '4': 1, '5': 9, '9': 0, '10': 'sdp', '17': true},
-    {'1': 'ice_candidate', '3': 5, '4': 1, '5': 9, '9': 1, '10': 'iceCandidate', '17': true},
-    {'1': 'metadata', '3': 8, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'metadata'},
+    {
+      '1': 'ice_candidate',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '9': 1,
+      '10': 'iceCandidate',
+      '17': true
+    },
+    {
+      '1': 'metadata',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'metadata'
+    },
   ],
   '4': [CallContent_CallType$json, CallContent_CallAction$json],
   '8': [
@@ -467,10 +619,40 @@ const MotionContent$json = {
     {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
     {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
     {'1': 'eligible_roles', '3': 13, '4': 3, '5': 9, '10': 'eligibleRoles'},
-    {'1': 'eligible_votes', '3': 4, '4': 1, '5': 13, '9': 0, '10': 'eligibleVotes', '17': true},
-    {'1': 'passing_rule', '3': 7, '4': 1, '5': 11, '6': '.chat.v1.PassingRule', '10': 'passingRule'},
-    {'1': 'choices', '3': 8, '4': 3, '5': 11, '6': '.chat.v1.VoteChoice', '10': 'choices'},
-    {'1': 'closes_at', '3': 12, '4': 1, '5': 3, '9': 1, '10': 'closesAt', '17': true},
+    {
+      '1': 'eligible_votes',
+      '3': 4,
+      '4': 1,
+      '5': 13,
+      '9': 0,
+      '10': 'eligibleVotes',
+      '17': true
+    },
+    {
+      '1': 'passing_rule',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.PassingRule',
+      '10': 'passingRule'
+    },
+    {
+      '1': 'choices',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.VoteChoice',
+      '10': 'choices'
+    },
+    {
+      '1': 'closes_at',
+      '3': 12,
+      '4': 1,
+      '5': 3,
+      '9': 1,
+      '10': 'closesAt',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_eligible_votes'},
@@ -494,7 +676,15 @@ const VoteChoice$json = {
   '2': [
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
-    {'1': 'description', '3': 3, '4': 1, '5': 9, '9': 0, '10': 'description', '17': true},
+    {
+      '1': 'description',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '9': 0,
+      '10': 'description',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_description'},
@@ -559,7 +749,14 @@ const MotionTally$json = {
   '2': [
     {'1': 'motion_id', '3': 1, '4': 1, '5': 9, '10': 'motionId'},
     {'1': 'eligible_votes', '3': 2, '4': 1, '5': 13, '10': 'eligibleVotes'},
-    {'1': 'tallies', '3': 3, '4': 3, '5': 11, '6': '.chat.v1.VoteTally', '10': 'tallies'},
+    {
+      '1': 'tallies',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.VoteTally',
+      '10': 'tallies'
+    },
     {'1': 'total_votes_cast', '3': 4, '4': 1, '5': 13, '10': 'totalVotesCast'},
     {'1': 'dead_votes', '3': 6, '4': 1, '5': 13, '10': 'deadVotes'},
     {'1': 'target_votes', '3': 7, '4': 1, '5': 13, '10': 'targetVotes'},
@@ -611,9 +808,30 @@ const FormConditionClause$json = {
   '1': 'FormConditionClause',
   '2': [
     {'1': 'field_key', '3': 1, '4': 1, '5': 9, '10': 'fieldKey'},
-    {'1': 'operator', '3': 2, '4': 1, '5': 14, '6': '.chat.v1.FormConditionOperator', '10': 'operator'},
-    {'1': 'value', '3': 3, '4': 1, '5': 11, '6': '.google.protobuf.Value', '10': 'value'},
-    {'1': 'values', '3': 4, '4': 3, '5': 11, '6': '.google.protobuf.Value', '10': 'values'},
+    {
+      '1': 'operator',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.FormConditionOperator',
+      '10': 'operator'
+    },
+    {
+      '1': 'value',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Value',
+      '10': 'value'
+    },
+    {
+      '1': 'values',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.google.protobuf.Value',
+      '10': 'values'
+    },
   ],
 };
 
@@ -628,8 +846,22 @@ final $typed_data.Uint8List formConditionClauseDescriptor = $convert.base64Decod
 const FormConditionGroup$json = {
   '1': 'FormConditionGroup',
   '2': [
-    {'1': 'all', '3': 1, '4': 3, '5': 11, '6': '.chat.v1.FormConditionClause', '10': 'all'},
-    {'1': 'any', '3': 2, '4': 3, '5': 11, '6': '.chat.v1.FormConditionClause', '10': 'any'},
+    {
+      '1': 'all',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormConditionClause',
+      '10': 'all'
+    },
+    {
+      '1': 'any',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormConditionClause',
+      '10': 'any'
+    },
   ],
 };
 
@@ -647,7 +879,14 @@ const FormOption$json = {
     {'1': 'label', '3': 2, '4': 1, '5': 9, '10': 'label'},
     {'1': 'help_text', '3': 3, '4': 1, '5': 9, '10': 'helpText'},
     {'1': 'disabled', '3': 4, '4': 1, '5': 8, '10': 'disabled'},
-    {'1': 'metadata', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'metadata'},
+    {
+      '1': 'metadata',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'metadata'
+    },
   ],
 };
 
@@ -703,21 +942,98 @@ const FormField$json = {
   '1': 'FormField',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
-    {'1': 'type', '3': 2, '4': 1, '5': 14, '6': '.chat.v1.FormFieldType', '10': 'type'},
+    {
+      '1': 'type',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.FormFieldType',
+      '10': 'type'
+    },
     {'1': 'label', '3': 3, '4': 1, '5': 9, '10': 'label'},
     {'1': 'help_text', '3': 4, '4': 1, '5': 9, '10': 'helpText'},
     {'1': 'placeholder', '3': 5, '4': 1, '5': 9, '10': 'placeholder'},
     {'1': 'required', '3': 6, '4': 1, '5': 8, '10': 'required'},
-    {'1': 'default_value', '3': 7, '4': 1, '5': 11, '6': '.google.protobuf.Value', '10': 'defaultValue'},
-    {'1': 'validation_rules', '3': 8, '4': 3, '5': 11, '6': '.chat.v1.FormValidationRule', '10': 'validationRules'},
-    {'1': 'visibility_condition', '3': 9, '4': 1, '5': 11, '6': '.chat.v1.FormConditionGroup', '10': 'visibilityCondition'},
-    {'1': 'editability_condition', '3': 10, '4': 1, '5': 11, '6': '.chat.v1.FormConditionGroup', '10': 'editabilityCondition'},
-    {'1': 'options', '3': 11, '4': 3, '5': 11, '6': '.chat.v1.FormOption', '10': 'options'},
-    {'1': 'nested_fields', '3': 12, '4': 3, '5': 11, '6': '.chat.v1.FormField', '10': 'nestedFields'},
-    {'1': 'nested_sections', '3': 13, '4': 3, '5': 11, '6': '.chat.v1.FormSection', '10': 'nestedSections'},
-    {'1': 'formatting', '3': 14, '4': 1, '5': 11, '6': '.chat.v1.FormFormattingHint', '10': 'formatting'},
-    {'1': 'ui_hints', '3': 15, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'uiHints'},
-    {'1': 'review', '3': 16, '4': 1, '5': 11, '6': '.chat.v1.FormReviewHint', '10': 'review'},
+    {
+      '1': 'default_value',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Value',
+      '10': 'defaultValue'
+    },
+    {
+      '1': 'validation_rules',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormValidationRule',
+      '10': 'validationRules'
+    },
+    {
+      '1': 'visibility_condition',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormConditionGroup',
+      '10': 'visibilityCondition'
+    },
+    {
+      '1': 'editability_condition',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormConditionGroup',
+      '10': 'editabilityCondition'
+    },
+    {
+      '1': 'options',
+      '3': 11,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormOption',
+      '10': 'options'
+    },
+    {
+      '1': 'nested_fields',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormField',
+      '10': 'nestedFields'
+    },
+    {
+      '1': 'nested_sections',
+      '3': 13,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormSection',
+      '10': 'nestedSections'
+    },
+    {
+      '1': 'formatting',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormFormattingHint',
+      '10': 'formatting'
+    },
+    {
+      '1': 'ui_hints',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'uiHints'
+    },
+    {
+      '1': 'review',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormReviewHint',
+      '10': 'review'
+    },
     {'1': 'visible_to_roles', '3': 17, '4': 3, '5': 9, '10': 'visibleToRoles'},
     {'1': 'repeatable', '3': 18, '4': 1, '5': 8, '10': 'repeatable'},
     {'1': 'hidden', '3': 19, '4': 1, '5': 8, '10': 'hidden'},
@@ -751,8 +1067,22 @@ const FormSection$json = {
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
     {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
-    {'1': 'fields', '3': 4, '4': 3, '5': 11, '6': '.chat.v1.FormField', '10': 'fields'},
-    {'1': 'ui_hints', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'uiHints'},
+    {
+      '1': 'fields',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormField',
+      '10': 'fields'
+    },
+    {
+      '1': 'ui_hints',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'uiHints'
+    },
   ],
 };
 
@@ -770,9 +1100,30 @@ const FormStep$json = {
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
     {'1': 'description', '3': 3, '4': 1, '5': 9, '10': 'description'},
-    {'1': 'sections', '3': 4, '4': 3, '5': 11, '6': '.chat.v1.FormSection', '10': 'sections'},
-    {'1': 'ui_hints', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'uiHints'},
-    {'1': 'visibility_condition', '3': 6, '4': 1, '5': 11, '6': '.chat.v1.FormConditionGroup', '10': 'visibilityCondition'},
+    {
+      '1': 'sections',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormSection',
+      '10': 'sections'
+    },
+    {
+      '1': 'ui_hints',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'uiHints'
+    },
+    {
+      '1': 'visibility_condition',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormConditionGroup',
+      '10': 'visibilityCondition'
+    },
   ],
 };
 
@@ -793,9 +1144,30 @@ const FormSchema$json = {
     {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
     {'1': 'subtitle', '3': 4, '4': 1, '5': 9, '10': 'subtitle'},
     {'1': 'description', '3': 5, '4': 1, '5': 9, '10': 'description'},
-    {'1': 'steps', '3': 6, '4': 3, '5': 11, '6': '.chat.v1.FormStep', '10': 'steps'},
-    {'1': 'workflow_metadata', '3': 7, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'workflowMetadata'},
-    {'1': 'ui_hints', '3': 8, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'uiHints'},
+    {
+      '1': 'steps',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormStep',
+      '10': 'steps'
+    },
+    {
+      '1': 'workflow_metadata',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'workflowMetadata'
+    },
+    {
+      '1': 'ui_hints',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'uiHints'
+    },
   ],
 };
 
@@ -816,7 +1188,13 @@ const FormPermissions$json = {
     {'1': 'can_submit', '3': 2, '4': 1, '5': 8, '10': 'canSubmit'},
     {'1': 'can_save_draft', '3': 3, '4': 1, '5': 8, '10': 'canSaveDraft'},
     {'1': 'can_go_back', '3': 4, '4': 1, '5': 8, '10': 'canGoBack'},
-    {'1': 'assignee_subscription_id', '3': 5, '4': 1, '5': 9, '10': 'assigneeSubscriptionId'},
+    {
+      '1': 'assignee_subscription_id',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'assigneeSubscriptionId'
+    },
   ],
 };
 
@@ -852,7 +1230,14 @@ const FormReviewSection$json = {
     {'1': 'step_title', '3': 2, '4': 1, '5': 9, '10': 'stepTitle'},
     {'1': 'section_id', '3': 3, '4': 1, '5': 9, '10': 'sectionId'},
     {'1': 'section_title', '3': 4, '4': 1, '5': 9, '10': 'sectionTitle'},
-    {'1': 'items', '3': 5, '4': 3, '5': 11, '6': '.chat.v1.FormReviewItem', '10': 'items'},
+    {
+      '1': 'items',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormReviewItem',
+      '10': 'items'
+    },
   ],
 };
 
@@ -870,15 +1255,62 @@ const FormSubmissionSnapshot$json = {
     {'1': 'form_instance_id', '3': 1, '4': 1, '5': 9, '10': 'formInstanceId'},
     {'1': 'schema_id', '3': 2, '4': 1, '5': 9, '10': 'schemaId'},
     {'1': 'schema_version', '3': 3, '4': 1, '5': 5, '10': 'schemaVersion'},
-    {'1': 'submitted_at', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'submittedAt'},
-    {'1': 'submitted_by_subscription_id', '3': 5, '4': 1, '5': 9, '10': 'submittedBySubscriptionId'},
-    {'1': 'answers', '3': 6, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'answers'},
-    {'1': 'formatted_sections', '3': 7, '4': 3, '5': 11, '6': '.chat.v1.FormReviewSection', '10': 'formattedSections'},
-    {'1': 'submission_reference', '3': 8, '4': 1, '5': 9, '10': 'submissionReference'},
-    {'1': 'status', '3': 9, '4': 1, '5': 14, '6': '.chat.v1.FormMessageState', '10': 'status'},
+    {
+      '1': 'submitted_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'submittedAt'
+    },
+    {
+      '1': 'submitted_by_subscription_id',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'submittedBySubscriptionId'
+    },
+    {
+      '1': 'answers',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'answers'
+    },
+    {
+      '1': 'formatted_sections',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FormReviewSection',
+      '10': 'formattedSections'
+    },
+    {
+      '1': 'submission_reference',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'submissionReference'
+    },
+    {
+      '1': 'status',
+      '3': 9,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.FormMessageState',
+      '10': 'status'
+    },
     {'1': 'backend_message', '3': 10, '4': 1, '5': 9, '10': 'backendMessage'},
     {'1': 'workflow_message', '3': 11, '4': 1, '5': 9, '10': 'workflowMessage'},
-    {'1': 'metadata', '3': 12, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'metadata'},
+    {
+      '1': 'metadata',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'metadata'
+    },
   ],
 };
 
@@ -906,16 +1338,78 @@ const FormRequestContent$json = {
     {'1': 'schema_version', '3': 3, '4': 1, '5': 5, '10': 'schemaVersion'},
     {'1': 'title', '3': 4, '4': 1, '5': 9, '10': 'title'},
     {'1': 'description', '3': 5, '4': 1, '5': 9, '10': 'description'},
-    {'1': 'state', '3': 6, '4': 1, '5': 14, '6': '.chat.v1.FormMessageState', '10': 'state'},
+    {
+      '1': 'state',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.FormMessageState',
+      '10': 'state'
+    },
     {'1': 'review_required', '3': 7, '4': 1, '5': 8, '10': 'reviewRequired'},
-    {'1': 'schema', '3': 8, '4': 1, '5': 11, '6': '.chat.v1.FormSchema', '10': 'schema'},
-    {'1': 'initial_values', '3': 9, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'initialValues'},
-    {'1': 'server_draft_values', '3': 10, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'serverDraftValues'},
-    {'1': 'final_submission_snapshot', '3': 11, '4': 1, '5': 11, '6': '.chat.v1.FormSubmissionSnapshot', '10': 'finalSubmissionSnapshot'},
-    {'1': 'permissions', '3': 12, '4': 1, '5': 11, '6': '.chat.v1.FormPermissions', '10': 'permissions'},
-    {'1': 'expires_at', '3': 13, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'expiresAt'},
-    {'1': 'workflow_context', '3': 14, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'workflowContext'},
-    {'1': 'current_workflow_state', '3': 15, '4': 1, '5': 9, '10': 'currentWorkflowState'},
+    {
+      '1': 'schema',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormSchema',
+      '10': 'schema'
+    },
+    {
+      '1': 'initial_values',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'initialValues'
+    },
+    {
+      '1': 'server_draft_values',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'serverDraftValues'
+    },
+    {
+      '1': 'final_submission_snapshot',
+      '3': 11,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormSubmissionSnapshot',
+      '10': 'finalSubmissionSnapshot'
+    },
+    {
+      '1': 'permissions',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormPermissions',
+      '10': 'permissions'
+    },
+    {
+      '1': 'expires_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+    {
+      '1': 'workflow_context',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'workflowContext'
+    },
+    {
+      '1': 'current_workflow_state',
+      '3': 15,
+      '4': 1,
+      '5': 9,
+      '10': 'currentWorkflowState'
+    },
   ],
 };
 
@@ -945,10 +1439,31 @@ const FormSubmissionResultContent$json = {
     {'1': 'schema_id', '3': 2, '4': 1, '5': 9, '10': 'schemaId'},
     {'1': 'schema_version', '3': 3, '4': 1, '5': 5, '10': 'schemaVersion'},
     {'1': 'source_event_id', '3': 4, '4': 1, '5': 9, '10': 'sourceEventId'},
-    {'1': 'state', '3': 5, '4': 1, '5': 14, '6': '.chat.v1.FormMessageState', '10': 'state'},
+    {
+      '1': 'state',
+      '3': 5,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.FormMessageState',
+      '10': 'state'
+    },
     {'1': 'review_confirmed', '3': 6, '4': 1, '5': 8, '10': 'reviewConfirmed'},
-    {'1': 'submission_snapshot', '3': 7, '4': 1, '5': 11, '6': '.chat.v1.FormSubmissionSnapshot', '10': 'submissionSnapshot'},
-    {'1': 'metadata', '3': 8, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '10': 'metadata'},
+    {
+      '1': 'submission_snapshot',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormSubmissionSnapshot',
+      '10': 'submissionSnapshot'
+    },
+    {
+      '1': 'metadata',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'metadata'
+    },
   ],
 };
 
@@ -972,7 +1487,15 @@ const FinanceCardContent$json = {
     {'1': 'kind', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'kind'},
     {'1': 'title', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'title'},
     {'1': 'body', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'body'},
-    {'1': 'data', '3': 6, '4': 3, '5': 11, '6': '.chat.v1.FinanceCardContent.DataEntry', '8': {}, '10': 'data'},
+    {
+      '1': 'data',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.FinanceCardContent.DataEntry',
+      '8': {},
+      '10': 'data'
+    },
   ],
   '3': [FinanceCardContent_DataEntry$json],
 };
@@ -1001,10 +1524,48 @@ const StawiRoomConversionContent$json = {
   '1': 'StawiRoomConversionContent',
   '2': [
     {'1': 'template_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'templateId'},
-    {'1': 'rule_values', '3': 2, '4': 3, '5': 11, '6': '.chat.v1.StawiRoomConversionContent.RuleValuesEntry', '8': {}, '10': 'ruleValues'},
-    {'1': 'founder_subscription_ids', '3': 3, '4': 3, '5': 9, '8': {}, '10': 'founderSubscriptionIds'},
-    {'1': 'join_policy', '3': 4, '4': 1, '5': 14, '6': '.chat.v1.StawiJoinPolicy', '8': {}, '10': 'joinPolicy'},
-    {'1': 'genesis', '3': 5, '4': 1, '5': 11, '6': '.chat.v1.StawiGenesis', '10': 'genesis'},
+    {
+      '1': 'rule_values',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.v1.StawiRoomConversionContent.RuleValuesEntry',
+      '8': {},
+      '10': 'ruleValues'
+    },
+    {
+      '1': 'founder_subscription_ids',
+      '3': 3,
+      '4': 3,
+      '5': 9,
+      '8': {},
+      '10': 'founderSubscriptionIds'
+    },
+    {
+      '1': 'join_policy',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.StawiJoinPolicy',
+      '8': {},
+      '10': 'joinPolicy'
+    },
+    {
+      '1': 'genesis',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiGenesis',
+      '10': 'genesis'
+    },
+    {
+      '1': 'agent_profile_id',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'agentProfileId'
+    },
   ],
   '3': [StawiRoomConversionContent_RuleValuesEntry$json],
 };
@@ -1028,18 +1589,47 @@ final $typed_data.Uint8List stawiRoomConversionContentDescriptor = $convert.base
     'kgEiCAEQQBgBIhpyGBADGCgyEl5bMC05YS16Xy1dezMsNDB9JFIWZm91bmRlclN1YnNjcmlwdG'
     'lvbklkcxJFCgtqb2luX3BvbGljeRgEIAEoDjIYLmNoYXQudjEuU3Rhd2lKb2luUG9saWN5Qgq6'
     'SAeCAQQQASAAUgpqb2luUG9saWN5Ei8KB2dlbmVzaXMYBSABKAsyFS5jaGF0LnYxLlN0YXdpR2'
-    'VuZXNpc1IHZ2VuZXNpcxo9Cg9SdWxlVmFsdWVzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoF'
-    'dmFsdWUYAiABKAlSBXZhbHVlOgI4AQ==');
+    'VuZXNpc1IHZ2VuZXNpcxJCChBhZ2VudF9wcm9maWxlX2lkGAYgASgJQhi6SBVyEzIRXihbMC05'
+    'YS12XXsyMH0pPyRSDmFnZW50UHJvZmlsZUlkGj0KD1J1bGVWYWx1ZXNFbnRyeRIQCgNrZXkYAS'
+    'ABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
 
 @$core.Deprecated('Use stawiGenesisDescriptor instead')
 const StawiGenesis$json = {
   '1': 'StawiGenesis',
   '2': [
     {'1': 'genesis_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
-    {'1': 'genesis_hash', '3': 2, '4': 1, '5': 12, '8': {}, '10': 'genesisHash'},
-    {'1': 'constitution_hash', '3': 3, '4': 1, '5': 12, '8': {}, '10': 'constitutionHash'},
-    {'1': 'expires_at', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'expiresAt'},
-    {'1': 'founder_profile_ids', '3': 5, '4': 3, '5': 9, '8': {}, '10': 'founderProfileIds'},
+    {
+      '1': 'genesis_hash',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '8': {},
+      '10': 'genesisHash'
+    },
+    {
+      '1': 'constitution_hash',
+      '3': 3,
+      '4': 1,
+      '5': 12,
+      '8': {},
+      '10': 'constitutionHash'
+    },
+    {
+      '1': 'expires_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+    {
+      '1': 'founder_profile_ids',
+      '3': 5,
+      '4': 3,
+      '5': 9,
+      '8': {},
+      '10': 'founderProfileIds'
+    },
   ],
 };
 
@@ -1057,10 +1647,31 @@ const StawiGenesisSignatureContent$json = {
   '2': [
     {'1': 'genesis_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
     {'1': 'signature', '3': 2, '4': 1, '5': 12, '8': {}, '10': 'signature'},
-    {'1': 'signer_key_id', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'signerKeyId'},
+    {
+      '1': 'signer_key_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'signerKeyId'
+    },
     {'1': 'algorithm', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'algorithm'},
-    {'1': 'webauthn_authenticator_data', '3': 5, '4': 1, '5': 12, '8': {}, '10': 'webauthnAuthenticatorData'},
-    {'1': 'webauthn_client_data_json', '3': 6, '4': 1, '5': 12, '8': {}, '10': 'webauthnClientDataJson'},
+    {
+      '1': 'webauthn_authenticator_data',
+      '3': 5,
+      '4': 1,
+      '5': 12,
+      '8': {},
+      '10': 'webauthnAuthenticatorData'
+    },
+    {
+      '1': 'webauthn_client_data_json',
+      '3': 6,
+      '4': 1,
+      '5': 12,
+      '8': {},
+      '10': 'webauthnClientDataJson'
+    },
   ],
 };
 
@@ -1081,11 +1692,32 @@ const StawiSignedCallContent$json = {
     {'1': 'call_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'callId'},
     {'1': 'kind', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'kind'},
     {'1': 'signature', '3': 3, '4': 1, '5': 12, '8': {}, '10': 'signature'},
-    {'1': 'signer_key_id', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'signerKeyId'},
+    {
+      '1': 'signer_key_id',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'signerKeyId'
+    },
     {'1': 'summary', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'summary'},
     {'1': 'algorithm', '3': 6, '4': 1, '5': 9, '8': {}, '10': 'algorithm'},
-    {'1': 'webauthn_authenticator_data', '3': 7, '4': 1, '5': 12, '8': {}, '10': 'webauthnAuthenticatorData'},
-    {'1': 'webauthn_client_data_json', '3': 8, '4': 1, '5': 12, '8': {}, '10': 'webauthnClientDataJson'},
+    {
+      '1': 'webauthn_authenticator_data',
+      '3': 7,
+      '4': 1,
+      '5': 12,
+      '8': {},
+      '10': 'webauthnAuthenticatorData'
+    },
+    {
+      '1': 'webauthn_client_data_json',
+      '3': 8,
+      '4': 1,
+      '5': 12,
+      '8': {},
+      '10': 'webauthnClientDataJson'
+    },
   ],
 };
 
@@ -1106,9 +1738,24 @@ const StawiCallOutcomeContent$json = {
   '2': [
     {'1': 'call_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'callId'},
     {'1': 'genesis_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'genesisId'},
-    {'1': 'state', '3': 3, '4': 1, '5': 14, '6': '.chat.v1.StawiCallOutcomeState', '8': {}, '10': 'state'},
+    {
+      '1': 'state',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.StawiCallOutcomeState',
+      '8': {},
+      '10': 'state'
+    },
     {'1': 'reason', '3': 4, '4': 1, '5': 9, '8': {}, '10': 'reason'},
-    {'1': 'source_event_id', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'sourceEventId'},
+    {
+      '1': 'source_event_id',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'sourceEventId'
+    },
     {'1': 'kind', '3': 6, '4': 1, '5': 9, '8': {}, '10': 'kind'},
     {'1': 'chain_id', '3': 7, '4': 1, '5': 4, '10': 'chainId'},
     {'1': 'tx_hash', '3': 8, '4': 1, '5': 12, '8': {}, '10': 'txHash'},
@@ -1128,30 +1775,264 @@ final $typed_data.Uint8List stawiCallOutcomeContentDescriptor = $convert.base64D
     'YXNoEiEKDGJsb2NrX251bWJlchgJIAEoBFILYmxvY2tOdW1iZXISGwoJbG9nX2luZGV4GAogAS'
     'gEUghsb2dJbmRleA==');
 
+@$core.Deprecated('Use stawiAgentInvitationContentDescriptor instead')
+const StawiAgentInvitationContent$json = {
+  '1': 'StawiAgentInvitationContent',
+  '2': [
+    {'1': 'room_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
+    {'1': 'room_name', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomName'},
+    {
+      '1': 'expires_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+  ],
+};
+
+/// Descriptor for `StawiAgentInvitationContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiAgentInvitationContentDescriptor = $convert.base64Decode(
+    'ChtTdGF3aUFnZW50SW52aXRhdGlvbkNvbnRlbnQSNgoHcm9vbV9pZBgBIAEoCUIdukgachgQAx'
+    'goMhJeWzAtOWEtel8tXXszLDQwfSRSBnJvb21JZBIlCglyb29tX25hbWUYAiABKAlCCLpIBXID'
+    'GIACUghyb29tTmFtZRI5CgpleHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbW'
+    'VzdGFtcFIJZXhwaXJlc0F0');
+
+@$core.Deprecated('Use stawiAgentAcceptanceContentDescriptor instead')
+const StawiAgentAcceptanceContent$json = {
+  '1': 'StawiAgentAcceptanceContent',
+  '2': [
+    {
+      '1': 'invitation_event_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'invitationEventId'
+    },
+    {'1': 'room_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
+    {'1': 'room_name', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'roomName'},
+    {
+      '1': 'expires_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+  ],
+};
+
+/// Descriptor for `StawiAgentAcceptanceContent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List stawiAgentAcceptanceContentDescriptor = $convert.base64Decode(
+    'ChtTdGF3aUFnZW50QWNjZXB0YW5jZUNvbnRlbnQSTQoTaW52aXRhdGlvbl9ldmVudF9pZBgBIA'
+    'EoCUIdukgachgQAxgoMhJeWzAtOWEtel8tXXszLDQwfSRSEWludml0YXRpb25FdmVudElkEiAK'
+    'B3Jvb21faWQYAiABKAlCB7pIBHICGChSBnJvb21JZBIlCglyb29tX25hbWUYAyABKAlCCLpIBX'
+    'IDGIACUghyb29tTmFtZRI5CgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRp'
+    'bWVzdGFtcFIJZXhwaXJlc0F0');
+
 @$core.Deprecated('Use payloadDescriptor instead')
 const Payload$json = {
   '1': 'Payload',
   '2': [
-    {'1': 'type', '3': 1, '4': 1, '5': 14, '6': '.chat.v1.PayloadType', '10': 'type'},
-    {'1': 'default', '3': 7, '4': 1, '5': 11, '6': '.google.protobuf.Struct', '9': 0, '10': 'default'},
-    {'1': 'room_change', '3': 8, '4': 1, '5': 11, '6': '.chat.v1.RoomChangeContent', '9': 0, '10': 'roomChange'},
-    {'1': 'moderation', '3': 10, '4': 1, '5': 11, '6': '.chat.v1.ModerationContent', '9': 0, '10': 'moderation'},
-    {'1': 'text', '3': 15, '4': 1, '5': 11, '6': '.chat.v1.TextContent', '9': 0, '10': 'text'},
-    {'1': 'attachment', '3': 16, '4': 1, '5': 11, '6': '.chat.v1.AttachmentContent', '9': 0, '10': 'attachment'},
-    {'1': 'reaction', '3': 17, '4': 1, '5': 11, '6': '.chat.v1.ReactionContent', '9': 0, '10': 'reaction'},
-    {'1': 'encrypted', '3': 18, '4': 1, '5': 11, '6': '.chat.v1.EncryptedContent', '9': 0, '10': 'encrypted'},
-    {'1': 'call', '3': 19, '4': 1, '5': 11, '6': '.chat.v1.CallContent', '9': 0, '10': 'call'},
-    {'1': 'motion', '3': 25, '4': 1, '5': 11, '6': '.chat.v1.MotionContent', '9': 0, '10': 'motion'},
-    {'1': 'motion_tally', '3': 28, '4': 1, '5': 11, '6': '.chat.v1.MotionTally', '9': 0, '10': 'motionTally'},
-    {'1': 'vote', '3': 26, '4': 1, '5': 11, '6': '.chat.v1.VoteCast', '9': 0, '10': 'vote'},
-    {'1': 'vote_tally', '3': 29, '4': 1, '5': 11, '6': '.chat.v1.VoteTally', '9': 0, '10': 'voteTally'},
-    {'1': 'form_request', '3': 30, '4': 1, '5': 11, '6': '.chat.v1.FormRequestContent', '9': 0, '10': 'formRequest'},
-    {'1': 'form_submission_result', '3': 31, '4': 1, '5': 11, '6': '.chat.v1.FormSubmissionResultContent', '9': 0, '10': 'formSubmissionResult'},
-    {'1': 'finance_card', '3': 40, '4': 1, '5': 11, '6': '.chat.v1.FinanceCardContent', '9': 0, '10': 'financeCard'},
-    {'1': 'stawi_room_conversion', '3': 41, '4': 1, '5': 11, '6': '.chat.v1.StawiRoomConversionContent', '9': 0, '10': 'stawiRoomConversion'},
-    {'1': 'stawi_genesis_signature', '3': 42, '4': 1, '5': 11, '6': '.chat.v1.StawiGenesisSignatureContent', '9': 0, '10': 'stawiGenesisSignature'},
-    {'1': 'stawi_signed_call', '3': 43, '4': 1, '5': 11, '6': '.chat.v1.StawiSignedCallContent', '9': 0, '10': 'stawiSignedCall'},
-    {'1': 'stawi_call_outcome', '3': 44, '4': 1, '5': 11, '6': '.chat.v1.StawiCallOutcomeContent', '9': 0, '10': 'stawiCallOutcome'},
+    {
+      '1': 'type',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.PayloadType',
+      '10': 'type'
+    },
+    {
+      '1': 'default',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '9': 0,
+      '10': 'default'
+    },
+    {
+      '1': 'room_change',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.RoomChangeContent',
+      '9': 0,
+      '10': 'roomChange'
+    },
+    {
+      '1': 'moderation',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ModerationContent',
+      '9': 0,
+      '10': 'moderation'
+    },
+    {
+      '1': 'text',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.TextContent',
+      '9': 0,
+      '10': 'text'
+    },
+    {
+      '1': 'attachment',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.AttachmentContent',
+      '9': 0,
+      '10': 'attachment'
+    },
+    {
+      '1': 'reaction',
+      '3': 17,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.ReactionContent',
+      '9': 0,
+      '10': 'reaction'
+    },
+    {
+      '1': 'encrypted',
+      '3': 18,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.EncryptedContent',
+      '9': 0,
+      '10': 'encrypted'
+    },
+    {
+      '1': 'call',
+      '3': 19,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.CallContent',
+      '9': 0,
+      '10': 'call'
+    },
+    {
+      '1': 'motion',
+      '3': 25,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.MotionContent',
+      '9': 0,
+      '10': 'motion'
+    },
+    {
+      '1': 'motion_tally',
+      '3': 28,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.MotionTally',
+      '9': 0,
+      '10': 'motionTally'
+    },
+    {
+      '1': 'vote',
+      '3': 26,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.VoteCast',
+      '9': 0,
+      '10': 'vote'
+    },
+    {
+      '1': 'vote_tally',
+      '3': 29,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.VoteTally',
+      '9': 0,
+      '10': 'voteTally'
+    },
+    {
+      '1': 'form_request',
+      '3': 30,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormRequestContent',
+      '9': 0,
+      '10': 'formRequest'
+    },
+    {
+      '1': 'form_submission_result',
+      '3': 31,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FormSubmissionResultContent',
+      '9': 0,
+      '10': 'formSubmissionResult'
+    },
+    {
+      '1': 'finance_card',
+      '3': 40,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.FinanceCardContent',
+      '9': 0,
+      '10': 'financeCard'
+    },
+    {
+      '1': 'stawi_room_conversion',
+      '3': 41,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiRoomConversionContent',
+      '9': 0,
+      '10': 'stawiRoomConversion'
+    },
+    {
+      '1': 'stawi_genesis_signature',
+      '3': 42,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiGenesisSignatureContent',
+      '9': 0,
+      '10': 'stawiGenesisSignature'
+    },
+    {
+      '1': 'stawi_signed_call',
+      '3': 43,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiSignedCallContent',
+      '9': 0,
+      '10': 'stawiSignedCall'
+    },
+    {
+      '1': 'stawi_call_outcome',
+      '3': 44,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiCallOutcomeContent',
+      '9': 0,
+      '10': 'stawiCallOutcome'
+    },
+    {
+      '1': 'stawi_agent_invitation',
+      '3': 45,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiAgentInvitationContent',
+      '9': 0,
+      '10': 'stawiAgentInvitation'
+    },
+    {
+      '1': 'stawi_agent_acceptance',
+      '3': 46,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.StawiAgentAcceptanceContent',
+      '9': 0,
+      '10': 'stawiAgentAcceptance'
+    },
   ],
   '8': [
     {'1': 'data'},
@@ -1182,6 +2063,8 @@ final $typed_data.Uint8List payloadDescriptor = $convert.base64Decode(
     '52MS5TdGF3aUdlbmVzaXNTaWduYXR1cmVDb250ZW50SABSFXN0YXdpR2VuZXNpc1NpZ25hdHVy'
     'ZRJNChFzdGF3aV9zaWduZWRfY2FsbBgrIAEoCzIfLmNoYXQudjEuU3Rhd2lTaWduZWRDYWxsQ2'
     '9udGVudEgAUg9zdGF3aVNpZ25lZENhbGwSUAoSc3Rhd2lfY2FsbF9vdXRjb21lGCwgASgLMiAu'
-    'Y2hhdC52MS5TdGF3aUNhbGxPdXRjb21lQ29udGVudEgAUhBzdGF3aUNhbGxPdXRjb21lQgYKBG'
-    'RhdGE=');
-
+    'Y2hhdC52MS5TdGF3aUNhbGxPdXRjb21lQ29udGVudEgAUhBzdGF3aUNhbGxPdXRjb21lElwKFn'
+    'N0YXdpX2FnZW50X2ludml0YXRpb24YLSABKAsyJC5jaGF0LnYxLlN0YXdpQWdlbnRJbnZpdGF0'
+    'aW9uQ29udGVudEgAUhRzdGF3aUFnZW50SW52aXRhdGlvbhJcChZzdGF3aV9hZ2VudF9hY2NlcH'
+    'RhbmNlGC4gASgLMiQuY2hhdC52MS5TdGF3aUFnZW50QWNjZXB0YW5jZUNvbnRlbnRIAFIUc3Rh'
+    'd2lBZ2VudEFjY2VwdGFuY2VCBgoEZGF0YQ==');

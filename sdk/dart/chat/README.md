@@ -6,7 +6,7 @@ Dart client library for the Stawi Chat API.
 
 ```yaml
 dependencies:
-  stawi_api_chat: ^1.55.0
+  stawi_api_chat: ^2.0.0
 ```
 
 ## Usage

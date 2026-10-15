@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,6 +34,23 @@ type mockRoomBusiness struct {
 	searchRoomSubsFn          func(ctx context.Context, req *chatv1.SearchRoomSubscriptionsRequest, searchedBy *commonv1.ContactLink) ([]*chatv1.RoomSubscription, error)
 	getSubForContactFn        func(ctx context.Context, roomID string, contact *commonv1.ContactLink) (*models.RoomSubscription, error)
 	updateSubSettingsFn       func(ctx context.Context, req *chatv1.UpdateSubscriptionSettingsRequest, updatedBy *commonv1.ContactLink) (*chatv1.SubscriptionSettings, error)
+	resolvePersonalRoomFn     func(ctx context.Context, req *chatv1.CreateRoomRequest) (*chatv1.Room, error)
+}
+
+func (m *mockRoomBusiness) GetDirectPartnerAccount(
+	_ context.Context, _ string, _ *commonv1.ContactLink,
+) (*chatv1.GetDirectPartnerAccountResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockRoomBusiness) ResolvePersonalRoom(
+	ctx context.Context,
+	req *chatv1.CreateRoomRequest,
+) (*chatv1.Room, error) {
+	if m.resolvePersonalRoomFn != nil {
+		return m.resolvePersonalRoomFn(ctx, req)
+	}
+	return nil, errors.New("not implemented")
 }
 
 func (m *mockRoomBusiness) CreateRoom(
@@ -361,9 +379,9 @@ func lightweightSystemCtx() context.Context {
 func TestSendEvent_EmptyEvents(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err := chatServer.SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -379,20 +397,20 @@ func TestSendEvent_TooManyEvents(t *testing.T) {
 			Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "msg"}}},
 		}
 	}
-	_, err := chatServer.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{Event: events}))
+	_, err := chatServer.SendEvent(ctx, &chatv1.SendEventRequest{Event: events})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestSendEvent_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.SendEvent(context.Background(), connect.NewRequest(&chatv1.SendEventRequest{
+	_, err := chatServer.SendEvent(context.Background(), &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			RoomId:  util.IDString(),
 			Type:    chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
 			Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "msg"}}},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -401,16 +419,16 @@ func TestSendEvent_Unauthenticated(t *testing.T) {
 func TestGetHistory_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{RoomId: ""}))
+	_, err := chatServer.GetHistory(ctx, &chatv1.GetHistoryRequest{RoomId: ""})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestGetHistory_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.GetHistory(context.Background(), connect.NewRequest(&chatv1.GetHistoryRequest{
+	_, err := chatServer.GetHistory(context.Background(), &chatv1.GetHistoryRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -418,16 +436,16 @@ func TestGetHistory_Unauthenticated(t *testing.T) {
 
 func TestGetEvent_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.GetEvent(context.Background(), connect.NewRequest(&chatv1.GetEventRequest{
+	_, err := chatServer.GetEvent(context.Background(), &chatv1.GetEventRequest{
 		EventId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestGetEvent_EmptyEventID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.GetEvent(ctx, connect.NewRequest(&chatv1.GetEventRequest{EventId: ""}))
+	_, err := chatServer.GetEvent(ctx, &chatv1.GetEventRequest{EventId: ""})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -436,16 +454,16 @@ func TestGetEvent_EmptyEventID(t *testing.T) {
 
 func TestGetRoom_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.GetRoom(context.Background(), connect.NewRequest(&chatv1.GetRoomRequest{
+	_, err := chatServer.GetRoom(context.Background(), &chatv1.GetRoomRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestGetRoom_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.GetRoom(ctx, connect.NewRequest(&chatv1.GetRoomRequest{RoomId: ""}))
+	_, err := chatServer.GetRoom(ctx, &chatv1.GetRoomRequest{RoomId: ""})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -455,7 +473,7 @@ func TestGetRoom_EmptyRoomID(t *testing.T) {
 func TestSearchRooms_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	err := chatServer.SearchRooms(context.Background(),
-		connect.NewRequest(&chatv1.SearchRoomsRequest{Query: "test"}), nil)
+		&chatv1.SearchRoomsRequest{Query: "test"}, chatv1connect.ChatServiceSearchRoomsServerStream{})
 	require.Error(t, err)
 }
 
@@ -463,9 +481,9 @@ func TestSearchRooms_Unauthenticated(t *testing.T) {
 
 func TestCreateRoom_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.CreateRoom(context.Background(), connect.NewRequest(&chatv1.CreateRoomRequest{
+	_, err := chatServer.CreateRoom(context.Background(), &chatv1.CreateRoomRequest{
 		Name: "Test Room",
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -474,19 +492,19 @@ func TestCreateRoom_Unauthenticated(t *testing.T) {
 func TestUpdateRoom_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.UpdateRoom(ctx, connect.NewRequest(&chatv1.UpdateRoomRequest{
+	_, err := chatServer.UpdateRoom(ctx, &chatv1.UpdateRoomRequest{
 		RoomId: "",
 		Name:   "Updated Name",
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestUpdateRoom_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.UpdateRoom(context.Background(), connect.NewRequest(&chatv1.UpdateRoomRequest{
+	_, err := chatServer.UpdateRoom(context.Background(), &chatv1.UpdateRoomRequest{
 		RoomId: util.IDString(),
 		Name:   "Updated Name",
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -495,15 +513,15 @@ func TestUpdateRoom_Unauthenticated(t *testing.T) {
 func TestDeleteRoom_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.DeleteRoom(ctx, connect.NewRequest(&chatv1.DeleteRoomRequest{RoomId: ""}))
+	_, err := chatServer.DeleteRoom(ctx, &chatv1.DeleteRoomRequest{RoomId: ""})
 	require.Error(t, err)
 }
 
 func TestDeleteRoom_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.DeleteRoom(context.Background(), connect.NewRequest(&chatv1.DeleteRoomRequest{
+	_, err := chatServer.DeleteRoom(context.Background(), &chatv1.DeleteRoomRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -512,10 +530,10 @@ func TestDeleteRoom_Unauthenticated(t *testing.T) {
 func TestAddRoomSubscriptions_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.AddRoomSubscriptions(ctx, connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+	_, err := chatServer.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
 		RoomId:  "",
 		Members: []*chatv1.RoomSubscription{},
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -523,9 +541,9 @@ func TestAddRoomSubscriptions_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	_, err := chatServer.AddRoomSubscriptions(
 		context.Background(),
-		connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+		&chatv1.AddRoomSubscriptionsRequest{
 			RoomId: util.IDString(),
-		}),
+		},
 	)
 	require.Error(t, err)
 }
@@ -535,10 +553,10 @@ func TestAddRoomSubscriptions_Unauthenticated(t *testing.T) {
 func TestRemoveRoomSubscriptions_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.RemoveRoomSubscriptions(ctx, connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+	_, err := chatServer.RemoveRoomSubscriptions(ctx, &chatv1.RemoveRoomSubscriptionsRequest{
 		RoomId:         "",
 		SubscriptionId: []string{util.IDString()},
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -546,10 +564,10 @@ func TestRemoveRoomSubscriptions_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	_, err := chatServer.RemoveRoomSubscriptions(
 		context.Background(),
-		connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+		&chatv1.RemoveRoomSubscriptionsRequest{
 			RoomId:         util.IDString(),
 			SubscriptionId: []string{util.IDString()},
-		}),
+		},
 	)
 	require.Error(t, err)
 }
@@ -559,11 +577,11 @@ func TestRemoveRoomSubscriptions_Unauthenticated(t *testing.T) {
 func TestUpdateSubscriptionRole_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.UpdateSubscriptionRole(ctx, connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+	_, err := chatServer.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{
 		RoomId:         "",
 		SubscriptionId: util.IDString(),
 		Roles:          []string{"moderator"},
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -571,11 +589,11 @@ func TestUpdateSubscriptionRole_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	_, err := chatServer.UpdateSubscriptionRole(
 		context.Background(),
-		connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+		&chatv1.UpdateSubscriptionRoleRequest{
 			RoomId:         util.IDString(),
 			SubscriptionId: util.IDString(),
 			Roles:          []string{"moderator"},
-		}),
+		},
 	)
 	require.Error(t, err)
 }
@@ -585,9 +603,9 @@ func TestUpdateSubscriptionRole_Unauthenticated(t *testing.T) {
 func TestSearchRoomSubscriptions_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SearchRoomSubscriptions(ctx, connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+	_, err := chatServer.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
 		RoomId: "",
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -595,9 +613,9 @@ func TestSearchRoomSubscriptions_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	_, err := chatServer.SearchRoomSubscriptions(
 		context.Background(),
-		connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+		&chatv1.SearchRoomSubscriptionsRequest{
 			RoomId: util.IDString(),
-		}),
+		},
 	)
 	require.Error(t, err)
 }
@@ -607,9 +625,9 @@ func TestSearchRoomSubscriptions_Unauthenticated(t *testing.T) {
 func TestUpdateSubscriptionSettings_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.UpdateSubscriptionSettings(ctx, connect.NewRequest(&chatv1.UpdateSubscriptionSettingsRequest{
+	_, err := chatServer.UpdateSubscriptionSettings(ctx, &chatv1.UpdateSubscriptionSettingsRequest{
 		RoomId: "",
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -618,9 +636,9 @@ func TestUpdateSubscriptionSettings_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	_, err := chatServer.UpdateSubscriptionSettings(
 		context.Background(),
-		connect.NewRequest(&chatv1.UpdateSubscriptionSettingsRequest{
+		&chatv1.UpdateSubscriptionSettingsRequest{
 			RoomId: util.IDString(),
-		}),
+		},
 	)
 	require.Error(t, err)
 }
@@ -630,9 +648,9 @@ func TestUpdateSubscriptionSettings_Unauthenticated(t *testing.T) {
 func TestGetSubscriptionSettings_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.GetSubscriptionSettings(ctx, connect.NewRequest(&chatv1.GetSubscriptionSettingsRequest{
+	_, err := chatServer.GetSubscriptionSettings(ctx, &chatv1.GetSubscriptionSettingsRequest{
 		RoomId: "",
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -641,9 +659,9 @@ func TestGetSubscriptionSettings_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	_, err := chatServer.GetSubscriptionSettings(
 		context.Background(),
-		connect.NewRequest(&chatv1.GetSubscriptionSettingsRequest{
+		&chatv1.GetSubscriptionSettingsRequest{
 			RoomId: util.IDString(),
-		}),
+		},
 	)
 	require.Error(t, err)
 }
@@ -653,16 +671,16 @@ func TestGetSubscriptionSettings_Unauthenticated(t *testing.T) {
 func TestListProposals_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.ListProposals(ctx, connect.NewRequest(&chatv1.ListProposalsRequest{RoomId: ""}))
+	_, err := chatServer.ListProposals(ctx, &chatv1.ListProposalsRequest{RoomId: ""})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestListProposals_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.ListProposals(context.Background(), connect.NewRequest(&chatv1.ListProposalsRequest{
+	_, err := chatServer.ListProposals(context.Background(), &chatv1.ListProposalsRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -671,11 +689,11 @@ func TestListProposals_Unauthenticated(t *testing.T) {
 func TestSubmitProposal_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	_, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     "",
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -683,11 +701,11 @@ func TestSubmitProposal_EmptyRoomID(t *testing.T) {
 func TestSubmitProposal_EmptyProposalID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	_, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: "",
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -695,22 +713,22 @@ func TestSubmitProposal_EmptyProposalID(t *testing.T) {
 func TestSubmitProposal_UnspecifiedAction(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	_, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_UNSPECIFIED,
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestSubmitProposal_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.SubmitProposal(context.Background(), connect.NewRequest(&chatv1.SubmitProposalRequest{
+	_, err := chatServer.SubmitProposal(context.Background(), &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -718,22 +736,22 @@ func TestSubmitProposal_Unauthenticated(t *testing.T) {
 
 func TestLive_Unauthenticated(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
-	_, err := chatServer.Live(context.Background(), connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(context.Background(), &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Typing{
 				Typing: &chatv1.TypingEvent{RoomId: util.IDString(), Typing: true},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_EmptyClientStates(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -745,7 +763,7 @@ func TestLive_TooManyClientStates(t *testing.T) {
 	for i := range states {
 		states[i] = &chatv1.ClientCommand{}
 	}
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{ClientStates: states}))
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{ClientStates: states})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -753,35 +771,35 @@ func TestLive_TooManyClientStates(t *testing.T) {
 func TestLive_DeliveryReceipt_NilReceipt(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Receipt{Receipt: nil},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_DeliveryReceipt_EmptyEventIDs(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Receipt{
 				Receipt: &chatv1.ReceiptEvent{RoomId: util.IDString(), EventId: []string{}},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_ReadMarker_NilReadMarker(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_ReadMarker{ReadMarker: nil},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -789,68 +807,68 @@ func TestLive_ReadMarker_EmptyUpToEventID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
 	roomID := util.IDString()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_ReadMarker{
 				ReadMarker: &chatv1.ReadMarker{RoomId: &roomID, UpToEventId: ""},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_Typing_NilTypingEvent(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Typing{Typing: nil},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_Typing_EmptyRoomID(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Typing{
 				Typing: &chatv1.TypingEvent{RoomId: "", Typing: true},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_Presence_NilPresenceEvent(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Presence{Presence: nil},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_RoomEvent_NilEvent(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Event{Event: nil},
 		}},
-	}))
+	})
 	require.Error(t, err)
 }
 
 func TestLive_UnknownCommandType(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{}},
-	}))
+	})
 	require.Error(t, err)
 }
 
@@ -869,13 +887,13 @@ func TestSendEvent_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err := chatServer.SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			RoomId:  util.IDString(),
 			Type:    chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
 			Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "hi"}}},
 		}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -889,16 +907,16 @@ func TestSendEvent_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	resp, err := chatServer.SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			RoomId:  util.IDString(),
 			Type:    chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
 			Payload: &chatv1.Payload{Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "hi"}}},
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetAck(), 1)
-	assert.Equal(t, []string{"e1"}, resp.Msg.GetAck()[0].GetEventId())
+	require.Len(t, resp.GetAck(), 1)
+	assert.Equal(t, []string{"e1"}, resp.GetAck()[0].GetEventId())
 }
 
 // --- GetHistory business paths ---
@@ -912,9 +930,9 @@ func TestGetHistory_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	_, err := chatServer.GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -928,11 +946,11 @@ func TestGetHistory_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	resp, err := chatServer.GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEvents(), 1)
+	require.Len(t, resp.GetEvents(), 1)
 }
 
 func TestGetHistory_WithCursorLimit(t *testing.T) {
@@ -944,10 +962,10 @@ func TestGetHistory_WithCursorLimit(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	resp, err := chatServer.GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId: util.IDString(),
 		Cursor: &commonv1.PageCursor{Limit: 10},
-	}))
+	})
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 }
@@ -961,10 +979,10 @@ func TestGetHistory_CursorLimitExceedsMax(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.GetHistory(ctx, connect.NewRequest(&chatv1.GetHistoryRequest{
+	resp, err := chatServer.GetHistory(ctx, &chatv1.GetHistoryRequest{
 		RoomId: util.IDString(),
 		Cursor: &commonv1.PageCursor{Limit: 200}, // exceeds MaxBatchSize
-	}))
+	})
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 }
@@ -980,9 +998,9 @@ func TestCreateRoom_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	_, err := chatServer.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Name: "Test Room",
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -996,11 +1014,11 @@ func TestCreateRoom_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	resp, err := chatServer.CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Name: "Test Room",
-	}))
+	})
 	require.NoError(t, err)
-	assert.Equal(t, "room-1", resp.Msg.GetRoom().GetId())
+	assert.Equal(t, "room-1", resp.GetRoom().GetId())
 }
 
 // --- SearchRooms business error path ---
@@ -1015,7 +1033,7 @@ func TestSearchRooms_BusinessError(t *testing.T) {
 	}
 	ctx := lightweightAuthCtx()
 	err := chatServer.SearchRooms(ctx,
-		connect.NewRequest(&chatv1.SearchRoomsRequest{Query: "test"}), nil)
+		&chatv1.SearchRoomsRequest{Query: "test"}, chatv1connect.ChatServiceSearchRoomsServerStream{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "search failed")
 }
@@ -1023,9 +1041,9 @@ func TestSearchRooms_BusinessError(t *testing.T) {
 func TestSearchRooms_NilMsg(t *testing.T) {
 	chatServer := &handlers.ChatServer{}
 	ctx := lightweightAuthCtx()
-	// SearchRoomsRequest with nil msg - use empty request which is valid Go proto
+	// A nil request message is refused before any business call.
 	err := chatServer.SearchRooms(ctx,
-		&connect.Request[chatv1.SearchRoomsRequest]{}, nil)
+		nil, chatv1connect.ChatServiceSearchRoomsServerStream{})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -1041,9 +1059,9 @@ func TestDeleteRoom_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.DeleteRoom(ctx, connect.NewRequest(&chatv1.DeleteRoomRequest{
+	_, err := chatServer.DeleteRoom(ctx, &chatv1.DeleteRoomRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1057,9 +1075,9 @@ func TestDeleteRoom_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.DeleteRoom(ctx, connect.NewRequest(&chatv1.DeleteRoomRequest{
+	resp, err := chatServer.DeleteRoom(ctx, &chatv1.DeleteRoomRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 }
@@ -1079,16 +1097,16 @@ func TestAddRoomSubscriptions_PartialBatchError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.AddRoomSubscriptions(ctx, connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+	resp, err := chatServer.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
 		RoomId: util.IDString(),
 		Members: []*chatv1.RoomSubscription{
 			{Member: &commonv1.ContactLink{ContactId: "c1"}},
 			{Member: &commonv1.ContactLink{ContactId: "c2"}},
 		},
-	}))
+	})
 	require.NoError(t, err) // partial batch returns success with error detail
-	require.NotNil(t, resp.Msg.GetError())
-	assert.Contains(t, resp.Msg.GetError().GetMessage(), "partial batch failure")
+	require.NotNil(t, resp.GetError())
+	assert.Contains(t, resp.GetError().GetMessage(), "partial batch failure")
 }
 
 func TestAddRoomSubscriptions_BusinessError(t *testing.T) {
@@ -1100,10 +1118,10 @@ func TestAddRoomSubscriptions_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.AddRoomSubscriptions(ctx, connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+	_, err := chatServer.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
 		RoomId:  util.IDString(),
 		Members: []*chatv1.RoomSubscription{{Member: &commonv1.ContactLink{ContactId: "c1"}}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1117,12 +1135,12 @@ func TestAddRoomSubscriptions_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.AddRoomSubscriptions(ctx, connect.NewRequest(&chatv1.AddRoomSubscriptionsRequest{
+	resp, err := chatServer.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
 		RoomId:  util.IDString(),
 		Members: []*chatv1.RoomSubscription{{Member: &commonv1.ContactLink{ContactId: "c1"}}},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 // --- RemoveRoomSubscriptions business paths ---
@@ -1140,13 +1158,13 @@ func TestRemoveRoomSubscriptions_PartialBatchError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.RemoveRoomSubscriptions(ctx, connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+	resp, err := chatServer.RemoveRoomSubscriptions(ctx, &chatv1.RemoveRoomSubscriptionsRequest{
 		RoomId:         util.IDString(),
 		SubscriptionId: []string{"sub1", "sub2"},
-	}))
+	})
 	require.NoError(t, err)
-	require.NotNil(t, resp.Msg.GetError())
-	assert.Contains(t, resp.Msg.GetError().GetMessage(), "partial batch failure")
+	require.NotNil(t, resp.GetError())
+	assert.Contains(t, resp.GetError().GetMessage(), "partial batch failure")
 }
 
 func TestRemoveRoomSubscriptions_BusinessError(t *testing.T) {
@@ -1158,10 +1176,10 @@ func TestRemoveRoomSubscriptions_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.RemoveRoomSubscriptions(ctx, connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+	_, err := chatServer.RemoveRoomSubscriptions(ctx, &chatv1.RemoveRoomSubscriptionsRequest{
 		RoomId:         util.IDString(),
 		SubscriptionId: []string{util.IDString()},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1175,12 +1193,12 @@ func TestRemoveRoomSubscriptions_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.RemoveRoomSubscriptions(ctx, connect.NewRequest(&chatv1.RemoveRoomSubscriptionsRequest{
+	resp, err := chatServer.RemoveRoomSubscriptions(ctx, &chatv1.RemoveRoomSubscriptionsRequest{
 		RoomId:         util.IDString(),
 		SubscriptionId: []string{util.IDString()},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 // --- UpdateSubscriptionRole business paths ---
@@ -1194,11 +1212,11 @@ func TestUpdateSubscriptionRole_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.UpdateSubscriptionRole(ctx, connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+	_, err := chatServer.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{
 		RoomId:         util.IDString(),
 		SubscriptionId: util.IDString(),
 		Roles:          []string{"moderator"},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1212,11 +1230,11 @@ func TestUpdateSubscriptionRole_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.UpdateSubscriptionRole(ctx, connect.NewRequest(&chatv1.UpdateSubscriptionRoleRequest{
+	resp, err := chatServer.UpdateSubscriptionRole(ctx, &chatv1.UpdateSubscriptionRoleRequest{
 		RoomId:         util.IDString(),
 		SubscriptionId: util.IDString(),
 		Roles:          []string{"moderator"},
-	}))
+	})
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 }
@@ -1232,9 +1250,9 @@ func TestSearchRoomSubscriptions_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SearchRoomSubscriptions(ctx, connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+	_, err := chatServer.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1248,11 +1266,11 @@ func TestSearchRoomSubscriptions_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.SearchRoomSubscriptions(ctx, connect.NewRequest(&chatv1.SearchRoomSubscriptionsRequest{
+	resp, err := chatServer.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetMembers(), 1)
+	require.Len(t, resp.GetMembers(), 1)
 }
 
 // --- ListProposals business paths ---
@@ -1266,9 +1284,9 @@ func TestListProposals_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.ListProposals(ctx, connect.NewRequest(&chatv1.ListProposalsRequest{
+	_, err := chatServer.ListProposals(ctx, &chatv1.ListProposalsRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1282,11 +1300,11 @@ func TestListProposals_BusinessSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.ListProposals(ctx, connect.NewRequest(&chatv1.ListProposalsRequest{
+	resp, err := chatServer.ListProposals(ctx, &chatv1.ListProposalsRequest{
 		RoomId: util.IDString(),
-	}))
+	})
 	require.NoError(t, err)
-	assert.Empty(t, resp.Msg.GetProposals())
+	assert.Empty(t, resp.GetProposals())
 }
 
 // --- SubmitProposal business paths ---
@@ -1300,14 +1318,14 @@ func TestSubmitProposal_RejectSuccess(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	resp, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_REJECT,
 		Reason:     strPtr("not appropriate"),
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 func TestSubmitProposal_ApproveProposalError(t *testing.T) {
@@ -1319,15 +1337,15 @@ func TestSubmitProposal_ApproveProposalError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	resp, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-	}))
+	})
 	// Proposal errors are returned in response error field, not as gRPC error
 	require.NoError(t, err)
-	require.NotNil(t, resp.Msg.GetError())
-	assert.Contains(t, resp.Msg.GetError().GetMessage(), "proposal not found")
+	require.NotNil(t, resp.GetError())
+	assert.Contains(t, resp.GetError().GetMessage(), "proposal not found")
 }
 
 func TestSubmitProposal_RejectProposalError(t *testing.T) {
@@ -1339,15 +1357,15 @@ func TestSubmitProposal_RejectProposalError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	resp, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	resp, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_REJECT,
 		Reason:     strPtr("test"),
-	}))
+	})
 	require.NoError(t, err)
-	require.NotNil(t, resp.Msg.GetError())
-	assert.Contains(t, resp.Msg.GetError().GetMessage(), "expired")
+	require.NotNil(t, resp.GetError())
+	assert.Contains(t, resp.GetError().GetMessage(), "expired")
 }
 
 func TestSubmitProposal_ApproveNonProposalError(t *testing.T) {
@@ -1359,11 +1377,11 @@ func TestSubmitProposal_ApproveNonProposalError(t *testing.T) {
 		},
 	}
 	ctx := lightweightAuthCtx()
-	_, err := chatServer.SubmitProposal(ctx, connect.NewRequest(&chatv1.SubmitProposalRequest{
+	_, err := chatServer.SubmitProposal(ctx, &chatv1.SubmitProposalRequest{
 		RoomId:     util.IDString(),
 		ProposalId: util.IDString(),
 		Action:     chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE,
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
@@ -1380,13 +1398,13 @@ func TestLive_TypingState_BusinessError(t *testing.T) {
 	}
 	ctx := lightweightSystemCtx()
 	// Single state - all fail means gRPC error is returned
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Typing{
 				Typing: &chatv1.TypingEvent{RoomId: util.IDString(), Typing: true},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -1400,7 +1418,7 @@ func TestLive_PresenceState_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Presence{
 				Presence: &chatv1.PresenceEvent{
@@ -1408,7 +1426,7 @@ func TestLive_PresenceState_BusinessError(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -1422,7 +1440,7 @@ func TestLive_DeliveryReceiptState_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Receipt{
 				Receipt: &chatv1.ReceiptEvent{
@@ -1431,7 +1449,7 @@ func TestLive_DeliveryReceiptState_BusinessError(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -1446,7 +1464,7 @@ func TestLive_ReadMarkerState_BusinessError(t *testing.T) {
 	}
 	ctx := lightweightSystemCtx()
 	roomID := util.IDString()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_ReadMarker{
 				ReadMarker: &chatv1.ReadMarker{
@@ -1455,7 +1473,7 @@ func TestLive_ReadMarkerState_BusinessError(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -1469,7 +1487,7 @@ func TestLive_RoomEventState_BusinessError(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	_, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	_, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Event{
 				Event: &chatv1.RoomEvent{
@@ -1479,7 +1497,7 @@ func TestLive_RoomEventState_BusinessError(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -1500,15 +1518,15 @@ func TestLive_PartialFailure(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{
 			{State: &chatv1.ClientCommand_Typing{Typing: &chatv1.TypingEvent{RoomId: util.IDString(), Typing: true}}},
 			{State: &chatv1.ClientCommand_Typing{Typing: &chatv1.TypingEvent{RoomId: util.IDString(), Typing: false}}},
 		},
-	}))
+	})
 	require.NoError(t, err) // partial success returns response, not error
-	require.NotNil(t, resp.Msg.GetError())
-	assert.Contains(t, resp.Msg.GetError().GetMessage(), "partial batch failure")
+	require.NotNil(t, resp.GetError())
+	assert.Contains(t, resp.GetError().GetMessage(), "partial batch failure")
 }
 
 // --- Live handler: all states succeed ---
@@ -1522,13 +1540,13 @@ func TestLive_AllStatesSucceed(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{
 			{State: &chatv1.ClientCommand_Typing{Typing: &chatv1.TypingEvent{RoomId: util.IDString(), Typing: true}}},
 		},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 // --- Live handler: success paths for each state type ---
@@ -1542,15 +1560,15 @@ func TestLive_PresenceState_Success(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Presence{
 				Presence: &chatv1.PresenceEvent{Status: chatv1.PresenceStatus_PRESENCE_STATUS_ONLINE},
 			},
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 func TestLive_DeliveryReceiptState_Success(t *testing.T) {
@@ -1562,7 +1580,7 @@ func TestLive_DeliveryReceiptState_Success(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Receipt{
 				Receipt: &chatv1.ReceiptEvent{
@@ -1571,9 +1589,9 @@ func TestLive_DeliveryReceiptState_Success(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 func TestLive_ReadMarkerState_Success(t *testing.T) {
@@ -1586,7 +1604,7 @@ func TestLive_ReadMarkerState_Success(t *testing.T) {
 	}
 	ctx := lightweightSystemCtx()
 	roomID := util.IDString()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_ReadMarker{
 				ReadMarker: &chatv1.ReadMarker{
@@ -1595,9 +1613,9 @@ func TestLive_ReadMarkerState_Success(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 func TestLive_RoomEventState_Success(t *testing.T) {
@@ -1609,7 +1627,7 @@ func TestLive_RoomEventState_Success(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{{
 			State: &chatv1.ClientCommand_Event{
 				Event: &chatv1.RoomEvent{
@@ -1619,9 +1637,9 @@ func TestLive_RoomEventState_Success(t *testing.T) {
 				},
 			},
 		}},
-	}))
+	})
 	require.NoError(t, err)
-	assert.Nil(t, resp.Msg.GetError())
+	assert.Nil(t, resp.GetError())
 }
 
 // --- Live handler: nil client state in batch ---
@@ -1635,16 +1653,16 @@ func TestLive_NilClientStateInBatch(t *testing.T) {
 		},
 	}
 	ctx := lightweightSystemCtx()
-	resp, err := chatServer.Live(ctx, connect.NewRequest(&chatv1.LiveRequest{
+	resp, err := chatServer.Live(ctx, &chatv1.LiveRequest{
 		ClientStates: []*chatv1.ClientCommand{
 			nil, // nil state at index 0
 			{State: &chatv1.ClientCommand_Typing{Typing: &chatv1.TypingEvent{RoomId: util.IDString(), Typing: true}}},
 		},
-	}))
+	})
 	// One succeeded, one failed (nil) - partial failure
 	require.NoError(t, err)
-	require.NotNil(t, resp.Msg.GetError())
-	assert.Contains(t, resp.Msg.GetError().GetMessage(), "partial batch failure")
+	require.NotNil(t, resp.GetError())
+	assert.Contains(t, resp.GetError().GetMessage(), "partial batch failure")
 }
 
 // TestSendEvent_ServicePrincipalTakesTheCardPath: a service principal (no
@@ -1664,7 +1682,7 @@ func TestSendEvent_ServicePrincipalTakesTheCardPath(t *testing.T) {
 			},
 		},
 	}
-	req := connect.NewRequest(&chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{RoomId: util.IDString()}}})
+	req := &chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{RoomId: util.IDString()}}}
 
 	claims := &security.AuthenticationClaims{TenantID: "t", PartitionID: "p",
 		Roles: []string{security.ConstantSystemInternalRole}}

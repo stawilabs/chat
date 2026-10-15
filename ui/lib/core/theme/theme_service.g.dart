@@ -52,7 +52,7 @@ abstract class _$ThemeModeNotifier extends $Notifier<AppThemeMode> {
   AppThemeMode build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AppThemeMode, AppThemeMode>;
     final element =
         ref.element
@@ -62,7 +62,7 @@ abstract class _$ThemeModeNotifier extends $Notifier<AppThemeMode> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -110,7 +110,7 @@ abstract class _$FontSizeNotifier extends $Notifier<AppFontSize> {
   AppFontSize build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AppFontSize, AppFontSize>;
     final element =
         ref.element
@@ -120,7 +120,7 @@ abstract class _$FontSizeNotifier extends $Notifier<AppFontSize> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -169,7 +169,7 @@ abstract class _$AccentColorNotifier extends $Notifier<Color> {
   Color build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<Color, Color>;
     final element =
         ref.element
@@ -179,7 +179,7 @@ abstract class _$AccentColorNotifier extends $Notifier<Color> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -228,7 +228,7 @@ abstract class _$ChatWallpaperNotifier extends $Notifier<String?> {
   String? build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<String?, String?>;
     final element =
         ref.element
@@ -238,7 +238,7 @@ abstract class _$ChatWallpaperNotifier extends $Notifier<String?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

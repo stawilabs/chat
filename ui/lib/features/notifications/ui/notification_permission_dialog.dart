@@ -211,9 +211,8 @@ class NotificationPermissionDialog extends StatelessWidget {
           onPressed: () async {
             if (isPermanentlyDenied) {
               // Open settings and return result
-              Navigator.of(
-                context,
-              ).pop(NotificationPermissionResult.openSettings);
+              Navigator.of(context)
+                  .pop(NotificationPermissionResult.openSettings);
             } else {
               // Request permission
               final status = await Permission.notification.request();
@@ -222,14 +221,12 @@ class NotificationPermissionDialog extends StatelessWidget {
               if (status.isGranted) {
                 Navigator.of(context).pop(NotificationPermissionResult.granted);
               } else if (status.isPermanentlyDenied) {
-                Navigator.of(
-                  context,
-                ).pop(NotificationPermissionResult.openSettings);
+                Navigator.of(context)
+                    .pop(NotificationPermissionResult.openSettings);
               } else {
                 // User denied - close dialog
-                Navigator.of(
-                  context,
-                ).pop(NotificationPermissionResult.declined);
+                Navigator.of(context)
+                    .pop(NotificationPermissionResult.declined);
               }
             }
           },

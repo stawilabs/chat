@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: events/v1/events.proto
-//
-// @dart = 2.12
+// Generated from events/v1/events.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -17,8 +19,22 @@ import 'dart:typed_data' as $typed_data;
 const Subscription$json = {
   '1': 'Subscription',
   '2': [
-    {'1': 'subscription_id', '3': 3, '4': 1, '5': 9, '8': {}, '10': 'subscriptionId'},
-    {'1': 'contact_link', '3': 5, '4': 1, '5': 11, '6': '.common.v1.ContactLink', '10': 'contactLink'},
+    {
+      '1': 'subscription_id',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '8': {},
+      '10': 'subscriptionId'
+    },
+    {
+      '1': 'contact_link',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.common.v1.ContactLink',
+      '10': 'contactLink'
+    },
   ],
 };
 
@@ -33,9 +49,30 @@ const RoomAction$json = {
   '1': 'RoomAction',
   '2': [
     {'1': 'room_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
-    {'1': 'action', '3': 2, '4': 1, '5': 14, '6': '.chat.v1.RoomChangeAction', '10': 'action'},
-    {'1': 'actor', '3': 5, '4': 1, '5': 11, '6': '.events.v1.Subscription', '10': 'actor'},
-    {'1': 'targets', '3': 10, '4': 3, '5': 11, '6': '.events.v1.Subscription', '10': 'targets'},
+    {
+      '1': 'action',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.RoomChangeAction',
+      '10': 'action'
+    },
+    {
+      '1': 'actor',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.events.v1.Subscription',
+      '10': 'actor'
+    },
+    {
+      '1': 'targets',
+      '3': 10,
+      '4': 3,
+      '5': 11,
+      '6': '.events.v1.Subscription',
+      '10': 'targets'
+    },
     {'1': 'details', '3': 15, '4': 1, '5': 9, '10': 'details'},
     {'1': 'roles', '3': 20, '4': 3, '5': 9, '10': 'roles'},
   ],
@@ -53,7 +90,14 @@ final $typed_data.Uint8List roomActionDescriptor = $convert.base64Decode(
 const RoomActionList$json = {
   '1': 'RoomActionList',
   '2': [
-    {'1': 'actions', '3': 1, '4': 3, '5': 11, '6': '.events.v1.RoomAction', '10': 'actions'},
+    {
+      '1': 'actions',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.events.v1.RoomAction',
+      '10': 'actions'
+    },
   ],
 };
 
@@ -68,11 +112,39 @@ const Link$json = {
   '2': [
     {'1': 'event_id', '3': 1, '4': 1, '5': 9, '8': {}, '10': 'eventId'},
     {'1': 'room_id', '3': 2, '4': 1, '5': 9, '8': {}, '10': 'roomId'},
-    {'1': 'source', '3': 3, '4': 1, '5': 11, '6': '.events.v1.Subscription', '10': 'source'},
+    {
+      '1': 'source',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.events.v1.Subscription',
+      '10': 'source'
+    },
     {'1': 'parent_id', '3': 5, '4': 1, '5': 9, '8': {}, '10': 'parentId'},
-    {'1': 'event_type', '3': 7, '4': 1, '5': 14, '6': '.chat.v1.RoomEventType', '10': 'eventType'},
-    {'1': 'created_at', '3': 10, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'createdAt'},
-    {'1': 'cursor', '3': 15, '4': 1, '5': 11, '6': '.common.v1.PageCursor', '10': 'cursor'},
+    {
+      '1': 'event_type',
+      '3': 7,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.v1.RoomEventType',
+      '10': 'eventType'
+    },
+    {
+      '1': 'created_at',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'cursor',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.common.v1.PageCursor',
+      '10': 'cursor'
+    },
   ],
 };
 
@@ -90,10 +162,38 @@ final $typed_data.Uint8List linkDescriptor = $convert.base64Decode(
 const Broadcast$json = {
   '1': 'Broadcast',
   '2': [
-    {'1': 'event', '3': 1, '4': 1, '5': 11, '6': '.events.v1.Link', '10': 'event'},
-    {'1': 'destinations', '3': 2, '4': 3, '5': 11, '6': '.events.v1.Subscription', '10': 'destinations'},
-    {'1': 'priority', '3': 3, '4': 1, '5': 14, '6': '.events.v1.Broadcast.Priority', '10': 'priority'},
-    {'1': 'payload', '3': 4, '4': 1, '5': 11, '6': '.chat.v1.Payload', '10': 'payload'},
+    {
+      '1': 'event',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.events.v1.Link',
+      '10': 'event'
+    },
+    {
+      '1': 'destinations',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.events.v1.Subscription',
+      '10': 'destinations'
+    },
+    {
+      '1': 'priority',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.events.v1.Broadcast.Priority',
+      '10': 'priority'
+    },
+    {
+      '1': 'payload',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.Payload',
+      '10': 'payload'
+    },
   ],
   '4': [Broadcast_Priority$json],
 };
@@ -121,10 +221,38 @@ final $typed_data.Uint8List broadcastDescriptor = $convert.base64Decode(
 const Delivery$json = {
   '1': 'Delivery',
   '2': [
-    {'1': 'event', '3': 1, '4': 1, '5': 11, '6': '.events.v1.Link', '10': 'event'},
-    {'1': 'destination', '3': 2, '4': 1, '5': 11, '6': '.events.v1.Subscription', '10': 'destination'},
-    {'1': 'source', '3': 3, '4': 1, '5': 11, '6': '.events.v1.Subscription', '10': 'source'},
-    {'1': 'payload', '3': 5, '4': 1, '5': 11, '6': '.chat.v1.Payload', '10': 'payload'},
+    {
+      '1': 'event',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.events.v1.Link',
+      '10': 'event'
+    },
+    {
+      '1': 'destination',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.events.v1.Subscription',
+      '10': 'destination'
+    },
+    {
+      '1': 'source',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.events.v1.Subscription',
+      '10': 'source'
+    },
+    {
+      '1': 'payload',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.chat.v1.Payload',
+      '10': 'payload'
+    },
     {'1': 'is_compressed', '3': 10, '4': 1, '5': 8, '10': 'isCompressed'},
     {'1': 'retry_count', '3': 11, '4': 1, '5': 5, '10': 'retryCount'},
     {'1': 'device_id', '3': 12, '4': 1, '5': 9, '8': {}, '10': 'deviceId'},
@@ -139,4 +267,3 @@ final $typed_data.Uint8List deliveryDescriptor = $convert.base64Decode(
     'FkGAUgASgLMhAuY2hhdC52MS5QYXlsb2FkUgdwYXlsb2FkEiMKDWlzX2NvbXByZXNzZWQYCiAB'
     'KAhSDGlzQ29tcHJlc3NlZBIfCgtyZXRyeV9jb3VudBgLIAEoBVIKcmV0cnlDb3VudBI4CglkZX'
     'ZpY2VfaWQYDCABKAlCG7pIGHIWEAMYKDIQWzAtOWEtel8tXXszLDQwfVIIZGV2aWNlSWQ=');
-

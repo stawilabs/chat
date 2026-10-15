@@ -167,9 +167,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
               decoration: InputDecoration(
                 hintText: 'Search by name, phone, or email...',
                 hintStyle: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).appBarTheme.foregroundColor?.withValues(alpha: 0.6),
+                  color: Theme.of(context).appBarTheme.foregroundColor
+                      ?.withValues(alpha: 0.6),
                 ),
                 border: InputBorder.none,
               ),
@@ -426,9 +425,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
       } catch (e) {
         AppLogger.error('Failed to open chat', error: e);
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to open chat: $e')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Failed to open chat: $e')));
         }
       }
     } else {
@@ -451,8 +449,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
                 Navigator.pop(context);
                 SharePlus.instance.share(
                   ShareParams(
-                    text:
-                        'Join me on Stawi! Download the app: https://stawi.org/invite',
+                    text: 'Join me on Stawi! Download the app: https://stawi.org/invite',
                   ),
                 );
               },
@@ -918,9 +915,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
     } catch (e) {
       AppLogger.error('Failed to open chat', error: e);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to open chat: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to open chat: $e')));
       }
     }
   }
@@ -939,8 +935,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
                 Navigator.pop(context);
                 SharePlus.instance.share(
                   ShareParams(
-                    text:
-                        'Join me on Stawi! Download the app: https://stawi.org/invite',
+                    text: 'Join me on Stawi! Download the app: https://stawi.org/invite',
                   ),
                 );
               },

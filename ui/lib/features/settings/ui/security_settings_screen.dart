@@ -136,9 +136,8 @@ class _SecuritySettingsScreenState
               padding: const EdgeInsets.all(16),
               child: Text(
                 'Lock after inactivity',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
             const Divider(height: 1),
@@ -273,9 +272,9 @@ class _SecuritySettingsScreenState
                                   'to access the app after the configured timeout.',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                       ),
                                 ),
                               ],
@@ -377,15 +376,13 @@ class _SecuritySettingsScreenState
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       title: Text(
         title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       trailing: Icon(
         Icons.chevron_right,

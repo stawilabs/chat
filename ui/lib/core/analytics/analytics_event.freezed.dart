@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'analytics_event.dart';
@@ -9,6 +9,7 @@ part of 'analytics_event.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $AnalyticsEventCopyWith<AnalyticsEvent> get copyWith => _$AnalyticsEventCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AnalyticsEvent&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.name, name) || other.name == name)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.screenName, screenName) || other.screenName == screenName)&&const DeepCollectionEquality().equals(other.properties, properties)&&const DeepCollectionEquality().equals(other.userProperties, userProperties)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
+  final _this = this as AnalyticsEvent;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AnalyticsEvent&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.screenName, _this.screenName) || other.screenName == _this.screenName)&&const DeepCollectionEquality().equals(other.properties, _this.properties)&&const DeepCollectionEquality().equals(other.userProperties, _this.userProperties)&&(identical(other.isSynced, _this.isSynced) || other.isSynced == _this.isSynced));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,name,timestamp,userId,sessionId,screenName,const DeepCollectionEquality().hash(properties),const DeepCollectionEquality().hash(userProperties),isSynced);
+int get hashCode {
+  final _this = this as AnalyticsEvent;
+  return Object.hash(runtimeType,_this.id,_this.type,_this.name,_this.timestamp,_this.userId,_this.sessionId,_this.screenName,const DeepCollectionEquality().hash(_this.properties),const DeepCollectionEquality().hash(_this.userProperties),_this.isSynced);
+}
 
 @override
 String toString() {
-  return 'AnalyticsEvent(id: $id, type: $type, name: $name, timestamp: $timestamp, userId: $userId, sessionId: $sessionId, screenName: $screenName, properties: $properties, userProperties: $userProperties, isSynced: $isSynced)';
+  final _this = this as AnalyticsEvent;
+  return 'AnalyticsEvent(id: ${_this.id}, type: ${_this.type}, name: ${_this.name}, timestamp: ${_this.timestamp}, userId: ${_this.userId}, sessionId: ${_this.sessionId}, screenName: ${_this.screenName}, properties: ${_this.properties}, userProperties: ${_this.userProperties}, isSynced: ${_this.isSynced})';
 }
 
 
@@ -66,7 +72,7 @@ class _$AnalyticsEventCopyWithImpl<$Res>
 /// Create a copy of AnalyticsEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? name = null,Object? timestamp = null,Object? userId = freezed,Object? sessionId = freezed,Object? screenName = freezed,Object? properties = freezed,Object? userProperties = freezed,Object? isSynced = null,}) {
-  return _then(_self.copyWith(
+  return _then(AnalyticsEvent(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as AnalyticsEventType,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -218,7 +224,7 @@ return $default(_that.id,_that.type,_that.name,_that.timestamp,_that.userId,_tha
 @JsonSerializable()
 
 class _AnalyticsEvent extends AnalyticsEvent {
-  const _AnalyticsEvent({required this.id, required this.type, required this.name, required this.timestamp, this.userId, this.sessionId, this.screenName, final  Map<String, dynamic>? properties, final  Map<String, dynamic>? userProperties, this.isSynced = false}): _properties = properties,_userProperties = userProperties,super._();
+  const _AnalyticsEvent({required this.id, required this.type, required this.name, required this.timestamp, this.userId, this.sessionId, this.screenName,  Map<String, dynamic>? properties,  Map<String, dynamic>? userProperties, this.isSynced = false}): _properties = properties,_userProperties = userProperties,super._();
   factory _AnalyticsEvent.fromJson(Map<String, dynamic> json) => _$AnalyticsEventFromJson(json);
 
 @override final  String id;
@@ -261,16 +267,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AnalyticsEvent&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.name, name) || other.name == name)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.screenName, screenName) || other.screenName == screenName)&&const DeepCollectionEquality().equals(other._properties, _properties)&&const DeepCollectionEquality().equals(other._userProperties, _userProperties)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AnalyticsEvent&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.name, name) || other.name == name)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.screenName, screenName) || other.screenName == screenName)&&const DeepCollectionEquality().equals(other.properties, _properties)&&const DeepCollectionEquality().equals(other.userProperties, _userProperties)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,name,timestamp,userId,sessionId,screenName,const DeepCollectionEquality().hash(_properties),const DeepCollectionEquality().hash(_userProperties),isSynced);
+int get hashCode {
+    return Object.hash(runtimeType,id,type,name,timestamp,userId,sessionId,screenName,const DeepCollectionEquality().hash(_properties),const DeepCollectionEquality().hash(_userProperties),isSynced);
+}
 
 @override
 String toString() {
-  return 'AnalyticsEvent(id: $id, type: $type, name: $name, timestamp: $timestamp, userId: $userId, sessionId: $sessionId, screenName: $screenName, properties: $properties, userProperties: $userProperties, isSynced: $isSynced)';
+    return 'AnalyticsEvent(id: $id, type: $type, name: $name, timestamp: $timestamp, userId: $userId, sessionId: $sessionId, screenName: $screenName, properties: $properties, userProperties: $userProperties, isSynced: $isSynced)';
 }
 
 
@@ -334,16 +342,21 @@ $AnalyticsUserPropertiesCopyWith<AnalyticsUserProperties> get copyWith => _$Anal
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AnalyticsUserProperties&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.accountCreatedAt, accountCreatedAt) || other.accountCreatedAt == accountCreatedAt)&&(identical(other.lastLoginAt, lastLoginAt) || other.lastLoginAt == lastLoginAt)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceModel, deviceModel) || other.deviceModel == deviceModel)&&(identical(other.osVersion, osVersion) || other.osVersion == osVersion)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.totalRooms, totalRooms) || other.totalRooms == totalRooms)&&(identical(other.totalContacts, totalContacts) || other.totalContacts == totalContacts)&&const DeepCollectionEquality().equals(other.customProperties, customProperties));
+  final _this = this as AnalyticsUserProperties;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AnalyticsUserProperties&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.phoneNumber, _this.phoneNumber) || other.phoneNumber == _this.phoneNumber)&&(identical(other.accountCreatedAt, _this.accountCreatedAt) || other.accountCreatedAt == _this.accountCreatedAt)&&(identical(other.lastLoginAt, _this.lastLoginAt) || other.lastLoginAt == _this.lastLoginAt)&&(identical(other.appVersion, _this.appVersion) || other.appVersion == _this.appVersion)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.deviceModel, _this.deviceModel) || other.deviceModel == _this.deviceModel)&&(identical(other.osVersion, _this.osVersion) || other.osVersion == _this.osVersion)&&(identical(other.locale, _this.locale) || other.locale == _this.locale)&&(identical(other.totalRooms, _this.totalRooms) || other.totalRooms == _this.totalRooms)&&(identical(other.totalContacts, _this.totalContacts) || other.totalContacts == _this.totalContacts)&&const DeepCollectionEquality().equals(other.customProperties, _this.customProperties));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,displayName,email,phoneNumber,accountCreatedAt,lastLoginAt,appVersion,platform,deviceModel,osVersion,locale,totalRooms,totalContacts,const DeepCollectionEquality().hash(customProperties));
+int get hashCode {
+  final _this = this as AnalyticsUserProperties;
+  return Object.hash(runtimeType,_this.userId,_this.displayName,_this.email,_this.phoneNumber,_this.accountCreatedAt,_this.lastLoginAt,_this.appVersion,_this.platform,_this.deviceModel,_this.osVersion,_this.locale,_this.totalRooms,_this.totalContacts,const DeepCollectionEquality().hash(_this.customProperties));
+}
 
 @override
 String toString() {
-  return 'AnalyticsUserProperties(userId: $userId, displayName: $displayName, email: $email, phoneNumber: $phoneNumber, accountCreatedAt: $accountCreatedAt, lastLoginAt: $lastLoginAt, appVersion: $appVersion, platform: $platform, deviceModel: $deviceModel, osVersion: $osVersion, locale: $locale, totalRooms: $totalRooms, totalContacts: $totalContacts, customProperties: $customProperties)';
+  final _this = this as AnalyticsUserProperties;
+  return 'AnalyticsUserProperties(userId: ${_this.userId}, displayName: ${_this.displayName}, email: ${_this.email}, phoneNumber: ${_this.phoneNumber}, accountCreatedAt: ${_this.accountCreatedAt}, lastLoginAt: ${_this.lastLoginAt}, appVersion: ${_this.appVersion}, platform: ${_this.platform}, deviceModel: ${_this.deviceModel}, osVersion: ${_this.osVersion}, locale: ${_this.locale}, totalRooms: ${_this.totalRooms}, totalContacts: ${_this.totalContacts}, customProperties: ${_this.customProperties})';
 }
 
 
@@ -372,7 +385,7 @@ class _$AnalyticsUserPropertiesCopyWithImpl<$Res>
 /// Create a copy of AnalyticsUserProperties
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? userId = freezed,Object? displayName = freezed,Object? email = freezed,Object? phoneNumber = freezed,Object? accountCreatedAt = freezed,Object? lastLoginAt = freezed,Object? appVersion = freezed,Object? platform = freezed,Object? deviceModel = freezed,Object? osVersion = freezed,Object? locale = freezed,Object? totalRooms = freezed,Object? totalContacts = freezed,Object? customProperties = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AnalyticsUserProperties(
 userId: freezed == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -528,7 +541,7 @@ return $default(_that.userId,_that.displayName,_that.email,_that.phoneNumber,_th
 @JsonSerializable()
 
 class _AnalyticsUserProperties implements AnalyticsUserProperties {
-  const _AnalyticsUserProperties({this.userId, this.displayName, this.email, this.phoneNumber, this.accountCreatedAt, this.lastLoginAt, this.appVersion, this.platform, this.deviceModel, this.osVersion, this.locale, this.totalRooms, this.totalContacts, final  Map<String, dynamic>? customProperties}): _customProperties = customProperties;
+  const _AnalyticsUserProperties({this.userId, this.displayName, this.email, this.phoneNumber, this.accountCreatedAt, this.lastLoginAt, this.appVersion, this.platform, this.deviceModel, this.osVersion, this.locale, this.totalRooms, this.totalContacts,  Map<String, dynamic>? customProperties}): _customProperties = customProperties;
   factory _AnalyticsUserProperties.fromJson(Map<String, dynamic> json) => _$AnalyticsUserPropertiesFromJson(json);
 
 @override final  String? userId;
@@ -567,16 +580,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AnalyticsUserProperties&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.accountCreatedAt, accountCreatedAt) || other.accountCreatedAt == accountCreatedAt)&&(identical(other.lastLoginAt, lastLoginAt) || other.lastLoginAt == lastLoginAt)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceModel, deviceModel) || other.deviceModel == deviceModel)&&(identical(other.osVersion, osVersion) || other.osVersion == osVersion)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.totalRooms, totalRooms) || other.totalRooms == totalRooms)&&(identical(other.totalContacts, totalContacts) || other.totalContacts == totalContacts)&&const DeepCollectionEquality().equals(other._customProperties, _customProperties));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AnalyticsUserProperties&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.accountCreatedAt, accountCreatedAt) || other.accountCreatedAt == accountCreatedAt)&&(identical(other.lastLoginAt, lastLoginAt) || other.lastLoginAt == lastLoginAt)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceModel, deviceModel) || other.deviceModel == deviceModel)&&(identical(other.osVersion, osVersion) || other.osVersion == osVersion)&&(identical(other.locale, locale) || other.locale == locale)&&(identical(other.totalRooms, totalRooms) || other.totalRooms == totalRooms)&&(identical(other.totalContacts, totalContacts) || other.totalContacts == totalContacts)&&const DeepCollectionEquality().equals(other.customProperties, _customProperties));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,displayName,email,phoneNumber,accountCreatedAt,lastLoginAt,appVersion,platform,deviceModel,osVersion,locale,totalRooms,totalContacts,const DeepCollectionEquality().hash(_customProperties));
+int get hashCode {
+    return Object.hash(runtimeType,userId,displayName,email,phoneNumber,accountCreatedAt,lastLoginAt,appVersion,platform,deviceModel,osVersion,locale,totalRooms,totalContacts,const DeepCollectionEquality().hash(_customProperties));
+}
 
 @override
 String toString() {
-  return 'AnalyticsUserProperties(userId: $userId, displayName: $displayName, email: $email, phoneNumber: $phoneNumber, accountCreatedAt: $accountCreatedAt, lastLoginAt: $lastLoginAt, appVersion: $appVersion, platform: $platform, deviceModel: $deviceModel, osVersion: $osVersion, locale: $locale, totalRooms: $totalRooms, totalContacts: $totalContacts, customProperties: $customProperties)';
+    return 'AnalyticsUserProperties(userId: $userId, displayName: $displayName, email: $email, phoneNumber: $phoneNumber, accountCreatedAt: $accountCreatedAt, lastLoginAt: $lastLoginAt, appVersion: $appVersion, platform: $platform, deviceModel: $deviceModel, osVersion: $osVersion, locale: $locale, totalRooms: $totalRooms, totalContacts: $totalContacts, customProperties: $customProperties)';
 }
 
 
@@ -644,16 +659,21 @@ $AnalyticsSessionCopyWith<AnalyticsSession> get copyWith => _$AnalyticsSessionCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AnalyticsSession&&(identical(other.id, id) || other.id == id)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.screenViewCount, screenViewCount) || other.screenViewCount == screenViewCount)&&(identical(other.entryScreen, entryScreen) || other.entryScreen == entryScreen)&&(identical(other.exitScreen, exitScreen) || other.exitScreen == exitScreen)&&(identical(other.userId, userId) || other.userId == userId)&&const DeepCollectionEquality().equals(other.deviceInfo, deviceInfo));
+  final _this = this as AnalyticsSession;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AnalyticsSession&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.startTime, _this.startTime) || other.startTime == _this.startTime)&&(identical(other.endTime, _this.endTime) || other.endTime == _this.endTime)&&(identical(other.eventCount, _this.eventCount) || other.eventCount == _this.eventCount)&&(identical(other.screenViewCount, _this.screenViewCount) || other.screenViewCount == _this.screenViewCount)&&(identical(other.entryScreen, _this.entryScreen) || other.entryScreen == _this.entryScreen)&&(identical(other.exitScreen, _this.exitScreen) || other.exitScreen == _this.exitScreen)&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&const DeepCollectionEquality().equals(other.deviceInfo, _this.deviceInfo));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,startTime,endTime,eventCount,screenViewCount,entryScreen,exitScreen,userId,const DeepCollectionEquality().hash(deviceInfo));
+int get hashCode {
+  final _this = this as AnalyticsSession;
+  return Object.hash(runtimeType,_this.id,_this.startTime,_this.endTime,_this.eventCount,_this.screenViewCount,_this.entryScreen,_this.exitScreen,_this.userId,const DeepCollectionEquality().hash(_this.deviceInfo));
+}
 
 @override
 String toString() {
-  return 'AnalyticsSession(id: $id, startTime: $startTime, endTime: $endTime, eventCount: $eventCount, screenViewCount: $screenViewCount, entryScreen: $entryScreen, exitScreen: $exitScreen, userId: $userId, deviceInfo: $deviceInfo)';
+  final _this = this as AnalyticsSession;
+  return 'AnalyticsSession(id: ${_this.id}, startTime: ${_this.startTime}, endTime: ${_this.endTime}, eventCount: ${_this.eventCount}, screenViewCount: ${_this.screenViewCount}, entryScreen: ${_this.entryScreen}, exitScreen: ${_this.exitScreen}, userId: ${_this.userId}, deviceInfo: ${_this.deviceInfo})';
 }
 
 
@@ -682,7 +702,7 @@ class _$AnalyticsSessionCopyWithImpl<$Res>
 /// Create a copy of AnalyticsSession
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? startTime = null,Object? endTime = freezed,Object? eventCount = null,Object? screenViewCount = null,Object? entryScreen = freezed,Object? exitScreen = freezed,Object? userId = freezed,Object? deviceInfo = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AnalyticsSession(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,endTime: freezed == endTime ? _self.endTime : endTime // ignore: cast_nullable_to_non_nullable
@@ -833,7 +853,7 @@ return $default(_that.id,_that.startTime,_that.endTime,_that.eventCount,_that.sc
 @JsonSerializable()
 
 class _AnalyticsSession extends AnalyticsSession {
-  const _AnalyticsSession({required this.id, required this.startTime, this.endTime, this.eventCount = 0, this.screenViewCount = 0, this.entryScreen, this.exitScreen, this.userId, final  Map<String, dynamic>? deviceInfo}): _deviceInfo = deviceInfo,super._();
+  const _AnalyticsSession({required this.id, required this.startTime, this.endTime, this.eventCount = 0, this.screenViewCount = 0, this.entryScreen, this.exitScreen, this.userId,  Map<String, dynamic>? deviceInfo}): _deviceInfo = deviceInfo,super._();
   factory _AnalyticsSession.fromJson(Map<String, dynamic> json) => _$AnalyticsSessionFromJson(json);
 
 @override final  String id;
@@ -867,16 +887,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AnalyticsSession&&(identical(other.id, id) || other.id == id)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.screenViewCount, screenViewCount) || other.screenViewCount == screenViewCount)&&(identical(other.entryScreen, entryScreen) || other.entryScreen == entryScreen)&&(identical(other.exitScreen, exitScreen) || other.exitScreen == exitScreen)&&(identical(other.userId, userId) || other.userId == userId)&&const DeepCollectionEquality().equals(other._deviceInfo, _deviceInfo));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AnalyticsSession&&(identical(other.id, id) || other.id == id)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.screenViewCount, screenViewCount) || other.screenViewCount == screenViewCount)&&(identical(other.entryScreen, entryScreen) || other.entryScreen == entryScreen)&&(identical(other.exitScreen, exitScreen) || other.exitScreen == exitScreen)&&(identical(other.userId, userId) || other.userId == userId)&&const DeepCollectionEquality().equals(other.deviceInfo, _deviceInfo));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,startTime,endTime,eventCount,screenViewCount,entryScreen,exitScreen,userId,const DeepCollectionEquality().hash(_deviceInfo));
+int get hashCode {
+    return Object.hash(runtimeType,id,startTime,endTime,eventCount,screenViewCount,entryScreen,exitScreen,userId,const DeepCollectionEquality().hash(_deviceInfo));
+}
 
 @override
 String toString() {
-  return 'AnalyticsSession(id: $id, startTime: $startTime, endTime: $endTime, eventCount: $eventCount, screenViewCount: $screenViewCount, entryScreen: $entryScreen, exitScreen: $exitScreen, userId: $userId, deviceInfo: $deviceInfo)';
+    return 'AnalyticsSession(id: $id, startTime: $startTime, endTime: $endTime, eventCount: $eventCount, screenViewCount: $screenViewCount, entryScreen: $entryScreen, exitScreen: $exitScreen, userId: $userId, deviceInfo: $deviceInfo)';
 }
 
 

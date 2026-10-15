@@ -2,12 +2,11 @@ package chatutil
 
 import (
 	"context"
-	"errors"
 	"slices"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/security"
 )
 
 // AuthContactLink extracts contact link from validated authentication claims.
@@ -16,7 +15,7 @@ func AuthContactLink(ctx context.Context, roles ...string) (*commonv1.ContactLin
 	if authClaims == nil {
 		return nil, connect.NewError(
 			connect.CodeUnauthenticated,
-			errors.New("request needs to be authenticated"),
+			"request needs to be authenticated",
 		)
 	}
 
@@ -24,7 +23,7 @@ func AuthContactLink(ctx context.Context, roles ...string) (*commonv1.ContactLin
 		if !slices.Contains(authClaims.GetRoles(), item) {
 			return nil, connect.NewError(
 				connect.CodeUnauthenticated,
-				errors.New("request not authorized"),
+				"request not authorized",
 			)
 		}
 	}
@@ -33,7 +32,7 @@ func AuthContactLink(ctx context.Context, roles ...string) (*commonv1.ContactLin
 	if err != nil || profileID == "" {
 		return nil, connect.NewError(
 			connect.CodeUnauthenticated,
-			errors.New("invalid authentication claims"),
+			"invalid authentication claims",
 		)
 	}
 
@@ -41,7 +40,7 @@ func AuthContactLink(ctx context.Context, roles ...string) (*commonv1.ContactLin
 	if contactID == "" {
 		return nil, connect.NewError(
 			connect.CodeUnauthenticated,
-			errors.New("invalid authentication claims"),
+			"invalid authentication claims",
 		)
 	}
 
@@ -55,7 +54,7 @@ func IsValidContactLink(contactLink *commonv1.ContactLink) error {
 	if contactLink == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("no contact link specified"),
+			"no contact link specified",
 		)
 	}
 
@@ -63,7 +62,7 @@ func IsValidContactLink(contactLink *commonv1.ContactLink) error {
 	if contactLink.GetContactId() == "" && contactLink.GetDetail() == "" {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("no contact specified"),
+			"no contact specified",
 		)
 	}
 

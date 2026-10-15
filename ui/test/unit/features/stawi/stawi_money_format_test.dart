@@ -23,7 +23,7 @@ void main() {
       expect(formatMoney(usdcMoney('1234567'), usdcAssets), '1.234567 USDC');
       expect(formatMoney(usdcMoney('500000'), usdcAssets), '0.50 USDC');
       expect(formatMoney(usdcMoney('1'), usdcAssets), '0.000001 USDC');
-      expect(formatMoney(usdcMoney(''), usdcAssets), '0.00 USDC');
+      expect(formatMoney(usdcMoney(''), usdcAssets), '—');
       expect(formatUnits(BigInt.from(-2500000), usdc), '-2.50 USDC');
     });
 
@@ -45,6 +45,31 @@ void main() {
       expect(
         formatMoney(usdcMoney('1234567'), StawiAssets.empty),
         '1,234,567 USDC.146',
+      );
+    });
+
+    test('while the assets load every amount is "—", never minor units', () {
+      expect(StawiAssets.loading.loaded, isFalse);
+      expect(StawiAssets.empty.loaded, isTrue);
+      expect(usdcAssets.loaded, isTrue);
+      expect(formatMoney(usdcMoney('1234567'), StawiAssets.loading), '—');
+      expect(
+        formatMoney(
+          finance.Money(assetId: 'XYZ.146', amount: '1234567'),
+          StawiAssets.loading,
+        ),
+        '—',
+      );
+      expect(formatMoney(usdcMoney(''), StawiAssets.loading), '—');
+      // Adding descriptions to an unread table does not make it read.
+      expect(
+        formatMoney(
+          usdcMoney('500000'),
+          StawiAssets.loading.withAll([
+            finance.AssetInfo(assetId: 'KES.1', symbol: 'KES', decimals: 2),
+          ]),
+        ),
+        '—',
       );
     });
 
@@ -97,7 +122,7 @@ void main() {
 
   test('the loan picker label', () {
     expect(
-      loanProductTerms(
+      plainLoanType(
         finance.RoomLoanProduct(
           maxAmount: usdcMoney('900000000'),
           rateBps: 300,
@@ -105,10 +130,13 @@ void main() {
           minInstalments: 1,
           maxInstalments: 6,
           feeBps: 50,
+          officerApprovals: 1,
         ),
         usdcAssets,
+        RoomCalendarLabel.periods,
       ),
-      'up to 900.00 USDC · 3% per period · 1–6 instalments · fee 0.5%',
+      'Product — borrow up to 900.00 USDC; repay over 1 to 6 periods; 3% '
+      'interest a period; fee 0.5%; approved by 1 officer.',
     );
   });
 

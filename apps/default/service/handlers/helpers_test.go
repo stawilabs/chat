@@ -8,7 +8,7 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -317,7 +317,7 @@ func TestToAPIError_GenericError(t *testing.T) {
 func TestToAPIError_ConnectError(t *testing.T) {
 	ps := &ChatServer{}
 	// A connect.Error is recognized and passed through preserving its code.
-	inputErr := connect.NewError(connect.CodeInvalidArgument, errors.New("bad input"))
+	inputErr := connect.NewError(connect.CodeInvalidArgument, "bad input")
 	result := ps.toAPIError(context.Background(), inputErr)
 
 	require.Error(t, result)

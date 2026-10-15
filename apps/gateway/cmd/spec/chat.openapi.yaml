@@ -23,6 +23,8 @@ x-service-permissions:
   - proposal_view
   - proposal_manage
   - stawi_card_post
+  - stawi_room_resolve
+  - direct_partner_account_view
 paths:
   /chat.v1.GatewayService/Stream: {}
 components:

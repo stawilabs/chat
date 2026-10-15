@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../../../core/db/database.dart';
 import '../domain/room.dart' as domain;
 import '../domain/room_with_last_message.dart';
+import 'room_id_remap.dart';
 
 /// Repository for chat room operations
 ///
@@ -118,6 +119,110 @@ class RoomRepository {
             memberLimitEnabled: Value(room.memberLimitEnabled),
           ),
         );
+  }
+
+  /// Points a locally created room at the id the server assigned.
+  ///
+  /// A direct room is identified by the server (it returns the pair's existing
+  /// DM), so its id can differ from the one the app proposed. Everything that
+  /// referenced [localId] is moved to [serverId] and the local row is removed.
+  /// Rows already stored under [serverId] win over the local copy.
+  Future<void> adoptServerRoomId(String localId, String serverId) async {
+    if (localId == serverId) return;
+    await _database.transaction(() async {
+      final local = await getRoomById(localId);
+      if (local == null) return;
+
+      if (await getRoomById(serverId) == null) {
+        await insertRoom(
+          domain.Room(
+            id: serverId,
+            name: local.name,
+            type: local.type,
+            lastEventId: local.lastEventId,
+            lastEventIndex: local.lastEventIndex,
+            unreadCount: local.unreadCount,
+            metadata: local.metadata,
+            disappearingTimeout: local.disappearingTimeout,
+            mutedUntil: local.mutedUntil,
+            memberLimit: local.memberLimit,
+            memberLimitEnabled: local.memberLimitEnabled,
+          ),
+        );
+      }
+
+      // The provisional subscription id embeds the room id.
+      await _database.customUpdate(
+        'UPDATE room_subscriptions SET id = ? WHERE id = ?',
+        variables: [
+          Variable.withString('provisional_$serverId'),
+          Variable.withString('provisional_$localId'),
+        ],
+        updates: {_database.roomSubscriptions},
+      );
+      // Drafts are one per room: the server room's own draft wins.
+      await _database.customUpdate(
+        'DELETE FROM drafts WHERE room_id = ? AND EXISTS '
+        '(SELECT 1 FROM drafts WHERE room_id = ?)',
+        variables: [
+          Variable.withString(localId),
+          Variable.withString(serverId),
+        ],
+        updates: {_database.drafts},
+      );
+      for (final table in const [
+        'room_subscriptions',
+        'room_events',
+        'transactions',
+        'invite_links',
+        'drafts',
+        'form_message_drafts',
+        'read_receipts',
+        'transfer_jobs',
+      ]) {
+        await _database.customUpdate(
+          'UPDATE $table SET room_id = ? WHERE room_id = ?',
+          variables: [
+            Variable.withString(serverId),
+            Variable.withString(localId),
+          ],
+          updates: _database.allTables.toSet(),
+        );
+      }
+      await _database.customUpdate(
+        'UPDATE room_events SET sender_id = ? WHERE sender_id = ?',
+        variables: [
+          Variable.withString('provisional_$serverId'),
+          Variable.withString('provisional_$localId'),
+        ],
+        updates: {_database.roomEvents},
+      );
+
+      // Queued sends still address the local id.
+      final jobs = await _database.select(_database.pendingJobs).get();
+      for (final job in jobs) {
+        final raw = job.payload;
+        if (raw == null || !raw.contains(localId)) continue;
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map<String, dynamic>) continue;
+        var changed = false;
+        for (final key in const ['roomId', 'room_id']) {
+          if (decoded[key] == localId) {
+            decoded[key] = serverId;
+            changed = true;
+          }
+        }
+        if (!changed) continue;
+        await (_database.update(_database.pendingJobs)
+              ..where((t) => t.id.equals(job.id)))
+            .write(PendingJobsCompanion(payload: Value(jsonEncode(decoded))));
+      }
+
+      await (_database.delete(
+        _database.rooms,
+      )..where((t) => t.id.equals(localId))).go();
+    });
+    announceRoomIdRemap(localId, serverId);
   }
 
   /// Update disappearing messages timeout for a room

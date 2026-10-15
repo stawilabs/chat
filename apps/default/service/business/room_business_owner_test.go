@@ -2,16 +2,15 @@ package business_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	"buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/frametests/definition"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
@@ -26,13 +25,15 @@ type contactProfiles struct {
 	byContact map[string]string
 }
 
-func (c *contactProfiles) GetByContact(_ context.Context, req *connect.Request[profilev1.GetByContactRequest]) (
-	*connect.Response[profilev1.GetByContactResponse], error) {
-	id, ok := c.byContact[req.Msg.GetContact()]
+func (c *contactProfiles) GetByContact(
+	_ context.Context,
+	req *profilev1.GetByContactRequest,
+) (*profilev1.GetByContactResponse, error) {
+	id, ok := c.byContact[req.GetContact()]
 	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("contact not found"))
+		return nil, connect.NewError(connect.CodeNotFound, "contact not found")
 	}
-	return connect.NewResponse(&profilev1.GetByContactResponse{Data: &profilev1.ProfileObject{Id: id}}), nil
+	return &profilev1.GetByContactResponse{Data: &profilev1.ProfileObject{Id: id}}, nil
 }
 
 // A room whose creator cannot be made its owner is not created, even when

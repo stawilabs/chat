@@ -314,9 +314,8 @@ void main() {
   group('CallStats description strings', () {
     test('qualityDescription for all levels', () {
       expect(
-        const CallStats(
-          quality: ConnectionQuality.excellent,
-        ).qualityDescription,
+        const CallStats(quality: ConnectionQuality.excellent)
+            .qualityDescription,
         equals('Excellent'),
       );
       expect(

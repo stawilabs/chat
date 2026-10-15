@@ -8,17 +8,17 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
-	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
-	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	"buf.build/gen/go/antinvestor/notification/connectrpc/go/v2/notification/v1/notificationv1connect"
+	"buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/cache"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/security"
-	"github.com/pitabwire/frame/v2/security/authorizer"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/cache"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/security"
+	"github.com/pitabwire/frame/v3/security/authorizer"
 	"github.com/pitabwire/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,13 +33,15 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
+	"github.com/stawilabs/chat/pkg/connectserver"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 // Constants for pagination and batch sizes.
 const (
-	// MaxBatchSize defines the maximum number of items to process in a single batch.
-	MaxBatchSize = 50
+	// MaxBatchSize defines the maximum number of items to process in a single
+	// batch. ChatService's read limit is sized from it.
+	MaxBatchSize = connectserver.MaxBatchEvents
 
 	// Default timeout constants.
 	defaultTimeout     = 30 * time.Second
@@ -64,8 +66,9 @@ type ChatServer struct {
 type ServerOption func(*serverOptions)
 
 type serverOptions struct {
-	stawiRooms    stawi.Rooms
-	stawiAccounts stawi.AccountResolver
+	stawiRooms      stawi.Rooms
+	stawiAccounts   stawi.AccountResolver
+	profileAccounts stawi.ProfileAccounts
 }
 
 // WithStawi gives the server settlement's RoomService and the profile account
@@ -75,6 +78,12 @@ func WithStawi(rooms stawi.Rooms, accounts stawi.AccountResolver) ServerOption {
 		o.stawiRooms = rooms
 		o.stawiAccounts = accounts
 	}
+}
+
+// WithProfileAccounts gives the server settlement's profile account lookup,
+// which GetDirectPartnerAccount calls once chat has checked the DM.
+func WithProfileAccounts(accounts stawi.ProfileAccounts) ServerOption {
+	return func(o *serverOptions) { o.profileAccounts = accounts }
 }
 
 // NewChatServer creates a new ChatServer with the business layers initialized.
@@ -114,21 +123,9 @@ func NewChatServer(
 
 	// Initialize business layers
 	subscriptionSvc := business.NewSubscriptionService(service, subRepo)
-	callPolicy := business.DefaultCallPolicyConfig()
-	switch cfg := service.Config().(type) {
-	case aconfig.ChatConfig:
-		callPolicy = business.CallPolicyConfig{
-			DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
-			MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
-			MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
-		}
-	case *aconfig.ChatConfig:
-		callPolicy = business.CallPolicyConfig{
-			DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
-			MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
-			MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
-		}
-	}
+	callPolicy := callPolicyOf(service.Config())
+	serviceChecker := authorizer.NewFunctionChecker(
+		service.SecurityManager().GetAuthorizer(ctx), business.ServiceNamespace)
 	messageBusiness := business.NewMessageBusiness(
 		eventsMan,
 		eventRepo,
@@ -146,8 +143,7 @@ func NewChatServer(
 			Bindings: stawiBindings,
 			CallRepo: repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
 		}),
-		business.WithServiceCards(authorizer.NewFunctionChecker( // stawi_card_post gate
-			service.SecurityManager().GetAuthorizer(ctx), business.ServiceNamespace)),
+		business.WithServiceCards(serviceChecker), // stawi_card_post gate
 	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
@@ -164,6 +160,8 @@ func NewChatServer(
 		profileCli,
 		authzMiddleware,
 		business.WithStawiBindings(stawiBindings),
+		business.WithPersonalRooms(serviceChecker), // stawi_room_resolve gate
+		business.WithProfileAccounts(options.profileAccounts),
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,
@@ -185,6 +183,25 @@ func NewChatServer(
 	}
 }
 
+// callPolicyOf is the call policy chat's configuration sets, or the default.
+func callPolicyOf(config any) business.CallPolicyConfig {
+	var cfg *aconfig.ChatConfig
+	switch c := config.(type) {
+	case aconfig.ChatConfig:
+		cfg = &c
+	case *aconfig.ChatConfig:
+		cfg = c
+	}
+	if cfg == nil {
+		return business.DefaultCallPolicyConfig()
+	}
+	return business.CallPolicyConfig{
+		DirectCallMemberLimit: cfg.CallDirectMaxParticipants,
+		MeshCallMemberLimit:   cfg.CallMeshMaxParticipants,
+		MaxVideoPublishers:    cfg.CallMaxVideoPublishers,
+	}
+}
+
 // toAPIError converts internal errors to appropriate gRPC status codes.
 func (ps *ChatServer) toAPIError(ctx context.Context, err error) error {
 	if err == nil {
@@ -197,19 +214,20 @@ func (ps *ChatServer) toAPIError(ctx context.Context, err error) error {
 		return connectErr
 	}
 
-	// Check if it's already a gRPC status error
+	// A gRPC status error keeps its code and message. Connect v2 would send
+	// it as a bare CodeUnknown; the codes share their numbering.
 	if grpcError, ok := status.FromError(err); ok {
-		return grpcError.Err()
+		return connect.NewError(connect.Code(grpcError.Code()), grpcError.Message()).WithCause(err)
 	}
 
 	// Handle specific error types
 	switch {
 	case data.ErrorIsNoRows(err):
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, err.Error()).WithCause(err)
 	default:
 		// Log internal errors for debugging
 		util.Log(ctx).WithError(err).Error("Internal server error")
-		return connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+		return connect.NewError(connect.CodeInternal, "internal server error")
 	}
 }
 
@@ -223,8 +241,8 @@ func (ps *ChatServer) withTimeout(ctx context.Context, timeout time.Duration) (c
 
 func (ps *ChatServer) SendEvent(
 	ctx context.Context,
-	req *connect.Request[chatv1.SendEventRequest],
-) (*connect.Response[chatv1.SendEventResponse], error) {
+	req *chatv1.SendEventRequest,
+) (*chatv1.SendEventResponse, error) {
 	// A service principal (no contact) posts display-only cards through its
 	// own, separately authorized path; everyone else must be a contact.
 	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetContactID() == "" &&
@@ -237,18 +255,18 @@ func (ps *ChatServer) SendEvent(
 		return nil, err
 	}
 
-	if len(req.Msg.GetEvent()) == 0 {
+	if len(req.GetEvent()) == 0 {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("at least one event must be provided"),
+			"at least one event must be provided",
 		)
 	}
 
 	// Limit batch size for resource efficiency
-	if len(req.Msg.GetEvent()) > MaxBatchSize {
-		return nil, connect.NewError(
+	if len(req.GetEvent()) > MaxBatchSize {
+		return nil, connect.Errorf(
 			connect.CodeInvalidArgument,
-			fmt.Errorf("too many events: max %d allowed", MaxBatchSize),
+			"too many events: max %d allowed", MaxBatchSize,
 		)
 	}
 
@@ -257,38 +275,38 @@ func (ps *ChatServer) SendEvent(
 	defer cancel()
 
 	// Send the events
-	acks, err := ps.MessageBusiness.SendEvents(timeoutCtx, req.Msg, authenticatedContact)
+	acks, err := ps.MessageBusiness.SendEvents(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.SendEventResponse{
+	return &chatv1.SendEventResponse{
 		Ack: acks,
-	}), nil
+	}, nil
 }
 
 // sendServiceEvents is SendEvent for a service principal posting cards.
 func (ps *ChatServer) sendServiceEvents(
 	ctx context.Context,
-	req *connect.Request[chatv1.SendEventRequest],
-) (*connect.Response[chatv1.SendEventResponse], error) {
-	if len(req.Msg.GetEvent()) > MaxBatchSize {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("too many events: max %d allowed", MaxBatchSize))
+	req *chatv1.SendEventRequest,
+) (*chatv1.SendEventResponse, error) {
+	if len(req.GetEvent()) > MaxBatchSize {
+		return nil, connect.Errorf(connect.CodeInvalidArgument,
+			"too many events: max %d allowed", MaxBatchSize)
 	}
 	timeoutCtx, cancel := ps.withTimeout(ctx, sendEventsTimeout)
 	defer cancel()
-	acks, err := ps.MessageBusiness.SendServiceEvents(timeoutCtx, req.Msg)
+	acks, err := ps.MessageBusiness.SendServiceEvents(timeoutCtx, req)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
-	return connect.NewResponse(&chatv1.SendEventResponse{Ack: acks}), nil
+	return &chatv1.SendEventResponse{Ack: acks}, nil
 }
 
 func (ps *ChatServer) GetHistory(
 	ctx context.Context,
-	req *connect.Request[chatv1.GetHistoryRequest],
-) (*connect.Response[chatv1.GetHistoryResponse], error) {
+	req *chatv1.GetHistoryRequest,
+) (*chatv1.GetHistoryResponse, error) {
 	// Validate authentication
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
@@ -296,17 +314,17 @@ func (ps *ChatServer) GetHistory(
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
@@ -314,117 +332,159 @@ func (ps *ChatServer) GetHistory(
 	timeoutCtx, cancel := ps.withTimeout(ctx, updateStateTimeout)
 	defer cancel()
 
-	events, err := ps.MessageBusiness.GetHistory(timeoutCtx, req.Msg, authenticatedContact)
+	events, err := ps.MessageBusiness.GetHistory(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.GetHistoryResponse{
+	return &chatv1.GetHistoryResponse{
 		Events:     events,
 		NextCursor: nextCursorFromEvents(events),
 		PrevCursor: prevCursorFromEvents(events),
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) GetEvent(
 	ctx context.Context,
-	req *connect.Request[chatv1.GetEventRequest],
-) (*connect.Response[chatv1.GetEventResponse], error) {
+	req *chatv1.GetEventRequest,
+) (*chatv1.GetEventResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Msg.GetEventId() == "" {
+	if req.GetEventId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("event_id must be specified"),
+			"event_id must be specified",
 		)
 	}
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	event, err := ps.MessageBusiness.GetMessage(timeoutCtx, req.Msg.GetEventId(), authenticatedContact)
+	event, err := ps.MessageBusiness.GetMessage(timeoutCtx, req.GetEventId(), authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.GetEventResponse{
+	return &chatv1.GetEventResponse{
 		Event: event.ToAPI(ctx, models.NewPayloadConverter()),
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) GetRoom(
 	ctx context.Context,
-	req *connect.Request[chatv1.GetRoomRequest],
-) (*connect.Response[chatv1.GetRoomResponse], error) {
+	req *chatv1.GetRoomRequest,
+) (*chatv1.GetRoomResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	room, err := ps.RoomBusiness.GetRoom(timeoutCtx, req.Msg.GetRoomId(), authenticatedContact)
+	room, err := ps.RoomBusiness.GetRoom(timeoutCtx, req.GetRoomId(), authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.GetRoomResponse{
+	return &chatv1.GetRoomResponse{
 		Room: room,
-	}), nil
+	}, nil
+}
+
+// GetDirectPartnerAccount answers the Stawi account of the other person in
+// the caller's DM. Only a person (a contact) asks; the room decides the rest.
+func (ps *ChatServer) GetDirectPartnerAccount(
+	ctx context.Context,
+	req *chatv1.GetDirectPartnerAccountRequest,
+) (*chatv1.GetDirectPartnerAccountResponse, error) {
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.GetRoomId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "room_id must be specified")
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := ps.RoomBusiness.GetDirectPartnerAccount(timeoutCtx, req.GetRoomId(), authenticatedContact)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+	return resp, nil
 }
 
 func (ps *ChatServer) CreateRoom(
 	ctx context.Context,
-	req *connect.Request[chatv1.CreateRoomRequest],
-) (*connect.Response[chatv1.CreateRoomResponse], error) {
+	req *chatv1.CreateRoomRequest,
+) (*chatv1.CreateRoomResponse, error) {
+	// A contactless internal caller (a service principal) never creates a
+	// group or channel here: its CreateRoom is always a personal-room
+	// resolution (a person's DM, or its own room with a person), authorized
+	// by stawi_room_resolve. Any other type it asks for is refused.
+	if claims := security.ClaimsFromContext(ctx); claims != nil && claims.GetContactID() == "" &&
+		claims.IsInternalSystem() {
+		if req == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "request cannot be nil")
+		}
+		timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+		defer cancel()
+		room, err := ps.RoomBusiness.ResolvePersonalRoom(timeoutCtx, req)
+		if err != nil {
+			return nil, ps.toAPIError(ctx, err)
+		}
+		return &chatv1.CreateRoomResponse{Room: room}, nil
+	}
+
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		"room_name":           req.Msg.GetName(),
+		"room_name":           req.GetName(),
 		chatutil.KeyProfileID: authenticatedContact.GetProfileId(),
 	}).Debug("CreateRoom request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	room, err := ps.RoomBusiness.CreateRoom(timeoutCtx, req.Msg, authenticatedContact)
+	room, err := ps.RoomBusiness.CreateRoom(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
 	util.Log(ctx).WithField(chatutil.KeyRoomID, room.GetId()).Debug("CreateRoom success")
 
-	return connect.NewResponse(&chatv1.CreateRoomResponse{
+	return &chatv1.CreateRoomResponse{
 		Room: room,
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) SearchRooms(
 	ctx context.Context,
-	req *connect.Request[chatv1.SearchRoomsRequest],
-	stream *connect.ServerStream[chatv1.SearchRoomsResponse],
+	req *chatv1.SearchRoomsRequest,
+	stream chatv1connect.ChatServiceSearchRoomsServerStream,
 ) error {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
@@ -432,16 +492,16 @@ func (ps *ChatServer) SearchRooms(
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	util.Log(ctx).WithField("query", req.Msg.GetQuery()).Debug("SearchRooms request")
+	util.Log(ctx).WithField("query", req.GetQuery()).Debug("SearchRooms request")
 
-	rooms, err := ps.RoomBusiness.SearchRooms(ctx, req.Msg, authenticatedContact)
+	rooms, err := ps.RoomBusiness.SearchRooms(ctx, req, authenticatedContact)
 	if err != nil {
 		return err
 	}
@@ -458,373 +518,373 @@ func (ps *ChatServer) SearchRooms(
 
 func (ps *ChatServer) UpdateRoom(
 	ctx context.Context,
-	req *connect.Request[chatv1.UpdateRoomRequest],
-) (*connect.Response[chatv1.UpdateRoomResponse], error) {
+	req *chatv1.UpdateRoomRequest,
+) (*chatv1.UpdateRoomResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		chatutil.KeyRoomID:    req.Msg.GetRoomId(),
+		chatutil.KeyRoomID:    req.GetRoomId(),
 		chatutil.KeyProfileID: authenticatedContact.GetProfileId(),
 	}).Debug("UpdateRoom request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	room, err := ps.RoomBusiness.UpdateRoom(timeoutCtx, req.Msg, authenticatedContact)
+	room, err := ps.RoomBusiness.UpdateRoom(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("UpdateRoom success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("UpdateRoom success")
 
-	return connect.NewResponse(&chatv1.UpdateRoomResponse{
+	return &chatv1.UpdateRoomResponse{
 		Room: room,
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) DeleteRoom(
 	ctx context.Context,
-	req *connect.Request[chatv1.DeleteRoomRequest],
-) (*connect.Response[chatv1.DeleteRoomResponse], error) {
+	req *chatv1.DeleteRoomRequest,
+) (*chatv1.DeleteRoomResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		chatutil.KeyRoomID:    req.Msg.GetRoomId(),
+		chatutil.KeyRoomID:    req.GetRoomId(),
 		chatutil.KeyProfileID: authenticatedContact.GetProfileId(),
 	}).Debug("DeleteRoom request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	err = ps.RoomBusiness.DeleteRoom(timeoutCtx, req.Msg, authenticatedContact)
+	err = ps.RoomBusiness.DeleteRoom(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("DeleteRoom success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("DeleteRoom success")
 
-	return connect.NewResponse(&chatv1.DeleteRoomResponse{}), nil
+	return &chatv1.DeleteRoomResponse{}, nil
 }
 
 //nolint:dupl // structurally similar to RemoveRoomSubscriptions but differs in types and business method
 func (ps *ChatServer) AddRoomSubscriptions(
 	ctx context.Context,
-	req *connect.Request[chatv1.AddRoomSubscriptionsRequest],
-) (*connect.Response[chatv1.AddRoomSubscriptionsResponse], error) {
+	req *chatv1.AddRoomSubscriptionsRequest,
+) (*chatv1.AddRoomSubscriptionsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		chatutil.KeyRoomID: req.Msg.GetRoomId(),
-		"member_count":     len(req.Msg.GetMembers()),
+		chatutil.KeyRoomID: req.GetRoomId(),
+		"member_count":     len(req.GetMembers()),
 	}).Debug("AddRoomSubscriptions request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	err = ps.RoomBusiness.AddRoomSubscriptions(timeoutCtx, req.Msg, authenticatedContact)
+	err = ps.RoomBusiness.AddRoomSubscriptions(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		// Check for partial batch error - some members added, some failed
 		if pbe, ok := service.IsPartialBatchError(err); ok {
-			return connect.NewResponse(&chatv1.AddRoomSubscriptionsResponse{
-				RoomId: req.Msg.GetRoomId(),
+			return &chatv1.AddRoomSubscriptionsResponse{
+				RoomId: req.GetRoomId(),
 				Error: &commonv1.ErrorDetail{
 					Code:    int32(connect.CodeInvalidArgument),
 					Message: pbe.Error(),
 				},
-			}), nil
+			}, nil
 		}
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("AddRoomSubscriptions success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("AddRoomSubscriptions success")
 
-	return connect.NewResponse(&chatv1.AddRoomSubscriptionsResponse{
-		RoomId: req.Msg.GetRoomId(),
-	}), nil
+	return &chatv1.AddRoomSubscriptionsResponse{
+		RoomId: req.GetRoomId(),
+	}, nil
 }
 
 //nolint:dupl // structurally similar to AddRoomSubscriptions but differs in types and business method
 func (ps *ChatServer) RemoveRoomSubscriptions(
 	ctx context.Context,
-	req *connect.Request[chatv1.RemoveRoomSubscriptionsRequest],
-) (*connect.Response[chatv1.RemoveRoomSubscriptionsResponse], error) {
+	req *chatv1.RemoveRoomSubscriptionsRequest,
+) (*chatv1.RemoveRoomSubscriptionsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		chatutil.KeyRoomID:   req.Msg.GetRoomId(),
-		"subscription_count": len(req.Msg.GetSubscriptionId()),
+		chatutil.KeyRoomID:   req.GetRoomId(),
+		"subscription_count": len(req.GetSubscriptionId()),
 	}).Debug("RemoveRoomSubscriptions request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	err = ps.RoomBusiness.RemoveRoomSubscriptions(timeoutCtx, req.Msg, authenticatedContact)
+	err = ps.RoomBusiness.RemoveRoomSubscriptions(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		// Check for partial batch error - some removals succeeded, some failed lookup
 		if pbe, ok := service.IsPartialBatchError(err); ok {
-			return connect.NewResponse(&chatv1.RemoveRoomSubscriptionsResponse{
-				RoomId: req.Msg.GetRoomId(),
+			return &chatv1.RemoveRoomSubscriptionsResponse{
+				RoomId: req.GetRoomId(),
 				Error: &commonv1.ErrorDetail{
 					Code:    int32(connect.CodeInvalidArgument),
 					Message: pbe.Error(),
 				},
-			}), nil
+			}, nil
 		}
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("RemoveRoomSubscriptions success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("RemoveRoomSubscriptions success")
 
-	return connect.NewResponse(&chatv1.RemoveRoomSubscriptionsResponse{
-		RoomId: req.Msg.GetRoomId(),
-	}), nil
+	return &chatv1.RemoveRoomSubscriptionsResponse{
+		RoomId: req.GetRoomId(),
+	}, nil
 }
 
 func (ps *ChatServer) UpdateSubscriptionRole(
 	ctx context.Context,
-	req *connect.Request[chatv1.UpdateSubscriptionRoleRequest],
-) (*connect.Response[chatv1.UpdateSubscriptionRoleResponse], error) {
+	req *chatv1.UpdateSubscriptionRoleRequest,
+) (*chatv1.UpdateSubscriptionRoleResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		chatutil.KeyRoomID:         req.Msg.GetRoomId(),
-		chatutil.KeySubscriptionID: req.Msg.GetSubscriptionId(),
-		"new_roles":                req.Msg.GetRoles(),
+		chatutil.KeyRoomID:         req.GetRoomId(),
+		chatutil.KeySubscriptionID: req.GetSubscriptionId(),
+		"new_roles":                req.GetRoles(),
 	}).Debug("UpdateSubscriptionRole request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	err = ps.RoomBusiness.UpdateSubscriptionRole(timeoutCtx, req.Msg, authenticatedContact)
+	err = ps.RoomBusiness.UpdateSubscriptionRole(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("UpdateSubscriptionRole success")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("UpdateSubscriptionRole success")
 
-	return connect.NewResponse(&chatv1.UpdateSubscriptionRoleResponse{}), nil
+	return &chatv1.UpdateSubscriptionRoleResponse{}, nil
 }
 
 func (ps *ChatServer) SearchRoomSubscriptions(
 	ctx context.Context,
-	req *connect.Request[chatv1.SearchRoomSubscriptionsRequest],
-) (*connect.Response[chatv1.SearchRoomSubscriptionsResponse], error) {
+	req *chatv1.SearchRoomSubscriptionsRequest,
+) (*chatv1.SearchRoomSubscriptionsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
-	util.Log(ctx).WithField(chatutil.KeyRoomID, req.Msg.GetRoomId()).Debug("SearchRoomSubscriptions request")
+	util.Log(ctx).WithField(chatutil.KeyRoomID, req.GetRoomId()).Debug("SearchRoomSubscriptions request")
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	subscriptions, err := ps.RoomBusiness.SearchRoomSubscriptions(timeoutCtx, req.Msg, authenticatedContact)
+	subscriptions, err := ps.RoomBusiness.SearchRoomSubscriptions(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
 	util.Log(ctx).WithFields(map[string]any{
-		chatutil.KeyRoomID: req.Msg.GetRoomId(),
+		chatutil.KeyRoomID: req.GetRoomId(),
 		"result_count":     len(subscriptions),
 	}).Debug("SearchRoomSubscriptions success")
 
-	return connect.NewResponse(&chatv1.SearchRoomSubscriptionsResponse{
-		RoomId:     req.Msg.GetRoomId(),
+	return &chatv1.SearchRoomSubscriptionsResponse{
+		RoomId:     req.GetRoomId(),
 		Members:    subscriptions,
 		NextCursor: nextCursorFromSubscriptions(subscriptions),
 		PrevCursor: prevCursorFromSubscriptions(subscriptions),
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) GetSubscriptionSettings(
 	ctx context.Context,
-	req *connect.Request[chatv1.GetSubscriptionSettingsRequest],
-) (*connect.Response[chatv1.GetSubscriptionSettingsResponse], error) {
+	req *chatv1.GetSubscriptionSettingsRequest,
+) (*chatv1.GetSubscriptionSettingsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	// Look up the caller's subscription for this room
-	sub, subErr := ps.RoomBusiness.GetSubscriptionForContact(ctx, req.Msg.GetRoomId(), authenticatedContact)
+	sub, subErr := ps.RoomBusiness.GetSubscriptionForContact(ctx, req.GetRoomId(), authenticatedContact)
 	if subErr != nil {
 		return nil, ps.toAPIError(ctx, subErr)
 	}
 
-	return connect.NewResponse(&chatv1.GetSubscriptionSettingsResponse{
+	return &chatv1.GetSubscriptionSettingsResponse{
 		Settings: sub.ToSettings(),
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) UpdateSubscriptionSettings(
 	ctx context.Context,
-	req *connect.Request[chatv1.UpdateSubscriptionSettingsRequest],
-) (*connect.Response[chatv1.UpdateSubscriptionSettingsResponse], error) {
+	req *chatv1.UpdateSubscriptionSettingsRequest,
+) (*chatv1.UpdateSubscriptionSettingsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	settings, err := ps.RoomBusiness.UpdateSubscriptionSettings(timeoutCtx, req.Msg, authenticatedContact)
+	settings, err := ps.RoomBusiness.UpdateSubscriptionSettings(timeoutCtx, req, authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.UpdateSubscriptionSettingsResponse{
+	return &chatv1.UpdateSubscriptionSettingsResponse{
 		Settings: settings,
-	}), nil
+	}, nil
 }
 
 // ListProposals returns proposals for a room, optionally filtered by state.
 func (ps *ChatServer) ListProposals(
 	ctx context.Context,
-	req *connect.Request[chatv1.ListProposalsRequest],
-) (*connect.Response[chatv1.ListProposalsResponse], error) {
+	req *chatv1.ListProposalsRequest,
+) (*chatv1.ListProposalsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
 	// Get pending proposals (business layer handles access checks)
-	proposals, err := ps.ProposalManagement.ListPending(ctx, req.Msg.GetRoomId(), authenticatedContact)
+	proposals, err := ps.ProposalManagement.ListPending(ctx, req.GetRoomId(), authenticatedContact)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
@@ -835,115 +895,116 @@ func (ps *ChatServer) ListProposals(
 		apiProposals = append(apiProposals, proposalToAPI(p))
 	}
 
-	return connect.NewResponse(&chatv1.ListProposalsResponse{
+	return &chatv1.ListProposalsResponse{
 		Proposals: apiProposals,
-	}), nil
+	}, nil
 }
 
 // SubmitProposal handles approval or rejection of a proposal.
 func (ps *ChatServer) SubmitProposal(
 	ctx context.Context,
-	req *connect.Request[chatv1.SubmitProposalRequest],
-) (*connect.Response[chatv1.SubmitProposalResponse], error) {
+	req *chatv1.SubmitProposalRequest,
+) (*chatv1.SubmitProposalResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	if req.Msg.GetRoomId() == "" {
+	if req.GetRoomId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("room_id must be specified"),
+			"room_id must be specified",
 		)
 	}
 
-	if req.Msg.GetProposalId() == "" {
+	if req.GetProposalId() == "" {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("proposal_id must be specified"),
+			"proposal_id must be specified",
 		)
 	}
 
 	// Process based on action
-	switch req.Msg.GetAction() {
+	switch req.GetAction() {
 	case chatv1.ProposalAction_PROPOSAL_ACTION_APPROVE:
 		err = ps.ProposalManagement.Approve(
 			ctx,
-			req.Msg.GetRoomId(),
-			req.Msg.GetProposalId(),
+			req.GetRoomId(),
+			req.GetProposalId(),
 			authenticatedContact,
 		)
 	case chatv1.ProposalAction_PROPOSAL_ACTION_REJECT:
 		err = ps.ProposalManagement.Reject(
 			ctx,
-			req.Msg.GetRoomId(),
-			req.Msg.GetProposalId(),
-			req.Msg.GetReason(),
+			req.GetRoomId(),
+			req.GetProposalId(),
+			req.GetReason(),
 			authenticatedContact,
 		)
 	case chatv1.ProposalAction_PROPOSAL_ACTION_UNSPECIFIED:
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("action must be APPROVE or REJECT"),
+			"action must be APPROVE or REJECT",
 		)
 	}
 
 	if err != nil {
 		// Return error in response for expected errors
 		if isProposalError(err) {
-			return connect.NewResponse(&chatv1.SubmitProposalResponse{
+			return &chatv1.SubmitProposalResponse{
 				Error: &commonv1.ErrorDetail{
 					Code:    int32(connect.CodeOf(err)), //nolint:gosec // connect codes fit in int32
 					Message: err.Error(),
 				},
-			}), nil
+			}, nil
 		}
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.SubmitProposalResponse{}), nil
+	return &chatv1.SubmitProposalResponse{}, nil
 }
 
 // Live handles client realtime updates (typing indicators, presence, read receipts).
 func (ps *ChatServer) Live(
 	ctx context.Context,
-	req *connect.Request[chatv1.LiveRequest],
-) (*connect.Response[chatv1.LiveResponse], error) {
+	req *chatv1.LiveRequest,
+) (*chatv1.LiveResponse, error) {
 	// Input validation
-	if req.Msg == nil {
+	if req == nil {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			errors.New("request cannot be nil"),
+			"request cannot be nil",
 		)
 	}
 
-	util.Log(ctx).WithField("client_state_count", len(req.Msg.GetClientStates())).Debug("Live request")
+	util.Log(ctx).WithField("client_state_count", len(req.GetClientStates())).Debug("Live request")
 
 	// Validate client states
-	if len(req.Msg.GetClientStates()) == 0 {
+	if len(req.GetClientStates()) == 0 {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			status.Error(codes.InvalidArgument, "at least one client state must be provided"),
+			status.Error(codes.InvalidArgument, "at least one client state must be provided").Error(),
 		)
 	}
 
 	// Limit batch size for resource efficiency
-	if len(req.Msg.GetClientStates()) > MaxBatchSize {
+	if len(req.GetClientStates()) > MaxBatchSize {
 		return nil, connect.NewError(
 			connect.CodeInvalidArgument,
-			status.Error(codes.InvalidArgument, fmt.Sprintf("too many client states: max %d allowed", MaxBatchSize)),
+			status.Error(codes.InvalidArgument, fmt.Sprintf("too many client states: max %d allowed", MaxBatchSize)).
+				Error(),
 		)
 	}
 
-	authenticatedContact, err := ps.liveRequestSource(ctx, req.Msg)
+	authenticatedContact, err := ps.liveRequestSource(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -951,7 +1012,7 @@ func (ps *ChatServer) Live(
 	// Process each client state
 	var errorList []string
 
-	for i, clientState := range req.Msg.GetClientStates() {
+	for i, clientState := range req.GetClientStates() {
 		if clientState == nil {
 			errorList = append(errorList, fmt.Sprintf("client state at index %d is nil", i))
 			continue
@@ -968,7 +1029,7 @@ func (ps *ChatServer) Live(
 	response := &chatv1.LiveResponse{}
 
 	if len(errorList) > 0 {
-		total := len(req.Msg.GetClientStates())
+		total := len(req.GetClientStates())
 		failed := len(errorList)
 		succeeded := total - failed
 
@@ -981,14 +1042,14 @@ func (ps *ChatServer) Live(
 
 		// If all failed, return error via gRPC status
 		if succeeded == 0 {
-			return nil, connect.NewError(
+			return nil, connect.Errorf(
 				connect.CodeInvalidArgument,
-				fmt.Errorf("all %d client states failed: %s", failed, strings.Join(errorList, "; ")),
+				"all %d client states failed: %s", failed, strings.Join(errorList, "; "),
 			)
 		}
 	}
 
-	return connect.NewResponse(response), nil
+	return response, nil
 }
 
 // Helper methods
@@ -1160,7 +1221,7 @@ func (ps *ChatServer) liveRequestSource(
 		// source has an active subscription to the target room.
 		if source.GetProfileId() == "" {
 			return nil, connect.NewError(connect.CodePermissionDenied,
-				errors.New("impersonated source must carry a profile_id"))
+				"impersonated source must carry a profile_id")
 		}
 
 		// Audit the impersonation for non-repudiation.
@@ -1333,8 +1394,8 @@ func isProposalError(err error) bool {
 
 func (ps *ChatServer) ResolveReplayCursor(
 	ctx context.Context,
-	req *connect.Request[chatv1.ResolveReplayCursorRequest],
-) (*connect.Response[chatv1.ResolveReplayCursorResponse], error) {
+	req *chatv1.ResolveReplayCursorRequest,
+) (*chatv1.ResolveReplayCursorResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
@@ -1347,8 +1408,8 @@ func (ps *ChatServer) ResolveReplayCursor(
 	}()
 
 	profileID := authenticatedContact.GetProfileId()
-	deviceID := req.Msg.GetDeviceId()
-	token := req.Msg.GetToken()
+	deviceID := req.GetDeviceId()
+	token := req.GetToken()
 
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
@@ -1356,10 +1417,10 @@ func (ps *ChatServer) ResolveReplayCursor(
 	// Try cursor-based lookup first.
 	entry, err := ps.DeviceReplayRepo.GetByCursor(timeoutCtx, profileID, deviceID, token)
 	if err == nil && entry != nil {
-		return connect.NewResponse(&chatv1.ResolveReplayCursorResponse{
+		return &chatv1.ResolveReplayCursorResponse{
 			Cursor: entry.GetID(),
 			Found:  true,
-		}), nil
+		}, nil
 	}
 	if err != nil && !data.ErrorIsNoRows(err) {
 		return nil, ps.toAPIError(ctx, err)
@@ -1368,25 +1429,25 @@ func (ps *ChatServer) ResolveReplayCursor(
 	// Fall back to event-ID-based lookup (rolling upgrade support).
 	entry, err = ps.DeviceReplayRepo.GetByEventID(timeoutCtx, profileID, deviceID, token)
 	if err == nil && entry != nil {
-		return connect.NewResponse(&chatv1.ResolveReplayCursorResponse{
+		return &chatv1.ResolveReplayCursorResponse{
 			Cursor: entry.GetID(),
 			Found:  true,
-		}), nil
+		}, nil
 	}
 	if err != nil && !data.ErrorIsNoRows(err) {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.ResolveReplayCursorResponse{
+	return &chatv1.ResolveReplayCursorResponse{
 		Cursor: "",
 		Found:  false,
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) GetLatestReplayCursor(
 	ctx context.Context,
-	req *connect.Request[chatv1.GetLatestReplayCursorRequest],
-) (*connect.Response[chatv1.GetLatestReplayCursorResponse], error) {
+	req *chatv1.GetLatestReplayCursorRequest,
+) (*chatv1.GetLatestReplayCursorResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
@@ -1398,21 +1459,21 @@ func (ps *ChatServer) GetLatestReplayCursor(
 	cursor, err := ps.DeviceReplayRepo.GetLatestCursor(
 		timeoutCtx,
 		authenticatedContact.GetProfileId(),
-		req.Msg.GetDeviceId(),
+		req.GetDeviceId(),
 	)
 	if err != nil {
 		return nil, ps.toAPIError(ctx, err)
 	}
 
-	return connect.NewResponse(&chatv1.GetLatestReplayCursorResponse{
+	return &chatv1.GetLatestReplayCursorResponse{
 		Cursor: cursor,
-	}), nil
+	}, nil
 }
 
 func (ps *ChatServer) ListReplayEvents(
 	ctx context.Context,
-	req *connect.Request[chatv1.ListReplayEventsRequest],
-) (*connect.Response[chatv1.ListReplayEventsResponse], error) {
+	req *chatv1.ListReplayEventsRequest,
+) (*chatv1.ListReplayEventsResponse, error) {
 	authenticatedContact, err := chatutil.AuthContactLink(ctx)
 	if err != nil {
 		return nil, err
@@ -1427,7 +1488,7 @@ func (ps *ChatServer) ListReplayEvents(
 	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	limit := int(req.Msg.GetLimit())
+	limit := int(req.GetLimit())
 	if limit <= 0 || limit > MaxBatchSize {
 		limit = MaxBatchSize
 	}
@@ -1435,9 +1496,9 @@ func (ps *ChatServer) ListReplayEvents(
 	entries, err := ps.DeviceReplayRepo.ListAfterCursor(
 		timeoutCtx,
 		authenticatedContact.GetProfileId(),
-		req.Msg.GetDeviceId(),
-		req.Msg.GetAfterCursor(),
-		req.Msg.GetUpperBoundCursor(),
+		req.GetDeviceId(),
+		req.GetAfterCursor(),
+		req.GetUpperBoundCursor(),
 		limit,
 	)
 	if err != nil {
@@ -1455,7 +1516,7 @@ func (ps *ChatServer) ListReplayEvents(
 		})
 	}
 
-	return connect.NewResponse(&chatv1.ListReplayEventsResponse{
+	return &chatv1.ListReplayEventsResponse{
 		Entries: replayEntries,
-	}), nil
+	}, nil
 }

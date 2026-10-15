@@ -8,51 +8,6 @@ import '../../messages/domain/room_event.dart' as domain;
 
 part 'detail_panel_providers.g.dart';
 
-/// Provider for active motions in a room
-/// Returns motions that haven't expired yet
-@riverpod
-Stream<List<domain.RoomEvent>> activeMotions(Ref ref, String roomId) {
-  final db = AppDatabase.instance;
-
-  // Watch room events and filter for active motions
-  return (db.select(db.roomEvents)
-        ..where((t) => t.roomId.equals(roomId))
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-      .watch()
-      .map((events) {
-        final now = DateTime.now();
-
-        return events
-            .where((event) {
-              if (event.type != domain.RoomEventType.motion.storageCode) {
-                return false;
-              }
-
-              // Parse content to check deadline
-              try {
-                final content = event.content != null
-                    ? (jsonDecode(event.content!) as Map<String, dynamic>)
-                    : <String, dynamic>{};
-
-                final deadlineMs = content['deadline'] as int?;
-                if (deadlineMs == null) return false;
-
-                final deadline = DateTime.fromMillisecondsSinceEpoch(
-                  deadlineMs,
-                );
-                final status = content['status'] as String? ?? 'active';
-
-                // Include if not expired and status is active
-                return now.isBefore(deadline) && status == 'active';
-              } catch (e) {
-                return false;
-              }
-            })
-            .map(_toRoomEvent)
-            .toList();
-      });
-}
-
 /// Provider for room members
 /// Returns list of members in a room with their profile info
 @riverpod
@@ -121,22 +76,6 @@ Stream<List<domain.RoomEvent>> roomMedia(Ref ref, String roomId) {
           (t) =>
               t.type.equals(domain.RoomEventType.image.storageCode) |
               t.type.equals(domain.RoomEventType.video.storageCode),
-        )
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
-        ..limit(50))
-      .watch()
-      .map((events) => events.map(_toRoomEvent).toList());
-}
-
-/// Provider for recent transactions in a room
-@riverpod
-Stream<List<domain.RoomEvent>> roomTransactions(Ref ref, String roomId) {
-  final db = AppDatabase.instance;
-
-  return (db.select(db.roomEvents)
-        ..where((t) => t.roomId.equals(roomId))
-        ..where(
-          (t) => t.type.equals(domain.RoomEventType.transaction.storageCode),
         )
         ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
         ..limit(50))

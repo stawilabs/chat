@@ -3,15 +3,15 @@ package queues_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync/atomic"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -24,123 +24,110 @@ import (
 // testDeviceClient is a stub implementation of devicev1connect.DeviceServiceClient.
 // The Notify method delegates to NotifyFunc if set; all other methods return unimplemented errors.
 type testDeviceClient struct {
-	NotifyFunc    func(context.Context, *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error)
+	NotifyFunc    func(context.Context, *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error)
 	notifyCounter atomic.Uint64
 }
 
 func (c *testDeviceClient) unimplemented(method string) error {
-	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("%s not implemented", method))
+	return connect.Errorf(connect.CodeUnimplemented, "%s not implemented", method)
 }
 
 func (c *testDeviceClient) GetById( //nolint:revive,staticcheck // method name must match generated DeviceServiceClient interface
 	context.Context,
-	*connect.Request[devicev1.GetByIdRequest],
-) (*connect.Response[devicev1.GetByIdResponse], error) {
+	*devicev1.GetByIdRequest,
+) (*devicev1.GetByIdResponse, error) {
 	return nil, c.unimplemented("GetById")
 }
 
 func (c *testDeviceClient) GetBySessionId( //nolint:revive,staticcheck // method name must match generated DeviceServiceClient interface
 	context.Context,
-	*connect.Request[devicev1.GetBySessionIdRequest],
-) (*connect.Response[devicev1.GetBySessionIdResponse], error) {
+	*devicev1.GetBySessionIdRequest,
+) (*devicev1.GetBySessionIdResponse, error) {
 	return nil, c.unimplemented("GetBySessionId")
 }
 
 func (c *testDeviceClient) Search(
-	context.Context,
-	*connect.Request[devicev1.SearchRequest],
-) (*connect.ServerStreamForClient[devicev1.SearchResponse], error) {
-	return nil, errors.New("no devices found")
+	context.Context, *devicev1.SearchRequest,
+) (devicev1connect.DeviceServiceSearchClientStream, error) {
+	return devicev1connect.DeviceServiceSearchClientStream{}, errors.New("no devices found")
 }
 
 func (c *testDeviceClient) Create(
-	context.Context,
-	*connect.Request[devicev1.CreateRequest],
-) (*connect.Response[devicev1.CreateResponse], error) {
+	context.Context, *devicev1.CreateRequest,
+) (*devicev1.CreateResponse, error) {
 	return nil, c.unimplemented("Create")
 }
 
 func (c *testDeviceClient) Update(
-	context.Context,
-	*connect.Request[devicev1.UpdateRequest],
-) (*connect.Response[devicev1.UpdateResponse], error) {
+	context.Context, *devicev1.UpdateRequest,
+) (*devicev1.UpdateResponse, error) {
 	return nil, c.unimplemented("Update")
 }
 
 func (c *testDeviceClient) Link(
-	context.Context,
-	*connect.Request[devicev1.LinkRequest],
-) (*connect.Response[devicev1.LinkResponse], error) {
+	context.Context, *devicev1.LinkRequest,
+) (*devicev1.LinkResponse, error) {
 	return nil, c.unimplemented("Link")
 }
 
 func (c *testDeviceClient) Remove(
-	context.Context,
-	*connect.Request[devicev1.RemoveRequest],
-) (*connect.Response[devicev1.RemoveResponse], error) {
+	context.Context, *devicev1.RemoveRequest,
+) (*devicev1.RemoveResponse, error) {
 	return nil, c.unimplemented("Remove")
 }
 
 func (c *testDeviceClient) Log(
-	context.Context,
-	*connect.Request[devicev1.LogRequest],
-) (*connect.Response[devicev1.LogResponse], error) {
+	context.Context, *devicev1.LogRequest,
+) (*devicev1.LogResponse, error) {
 	return nil, c.unimplemented("Log")
 }
 
 func (c *testDeviceClient) ListLogs(
-	context.Context,
-	*connect.Request[devicev1.ListLogsRequest],
-) (*connect.ServerStreamForClient[devicev1.ListLogsResponse], error) {
-	return nil, c.unimplemented("ListLogs")
+	context.Context, *devicev1.ListLogsRequest,
+) (devicev1connect.DeviceServiceListLogsClientStream, error) {
+	return devicev1connect.DeviceServiceListLogsClientStream{}, c.unimplemented("ListLogs")
 }
 
 func (c *testDeviceClient) AddKey(
-	context.Context,
-	*connect.Request[devicev1.AddKeyRequest],
-) (*connect.Response[devicev1.AddKeyResponse], error) {
+	context.Context, *devicev1.AddKeyRequest,
+) (*devicev1.AddKeyResponse, error) {
 	return nil, c.unimplemented("AddKey")
 }
 
 func (c *testDeviceClient) RemoveKey(
-	context.Context,
-	*connect.Request[devicev1.RemoveKeyRequest],
-) (*connect.Response[devicev1.RemoveKeyResponse], error) {
+	context.Context, *devicev1.RemoveKeyRequest,
+) (*devicev1.RemoveKeyResponse, error) {
 	return nil, c.unimplemented("RemoveKey")
 }
 
 func (c *testDeviceClient) SearchKey(
-	context.Context,
-	*connect.Request[devicev1.SearchKeyRequest],
-) (*connect.Response[devicev1.SearchKeyResponse], error) {
+	context.Context, *devicev1.SearchKeyRequest,
+) (*devicev1.SearchKeyResponse, error) {
 	return nil, c.unimplemented("SearchKey")
 }
 
 func (c *testDeviceClient) RegisterKey(
-	context.Context,
-	*connect.Request[devicev1.RegisterKeyRequest],
-) (*connect.Response[devicev1.RegisterKeyResponse], error) {
+	context.Context, *devicev1.RegisterKeyRequest,
+) (*devicev1.RegisterKeyResponse, error) {
 	return nil, c.unimplemented("RegisterKey")
 }
 
 func (c *testDeviceClient) DeRegisterKey(
-	context.Context,
-	*connect.Request[devicev1.DeRegisterKeyRequest],
-) (*connect.Response[devicev1.DeRegisterKeyResponse], error) {
+	context.Context, *devicev1.DeRegisterKeyRequest,
+) (*devicev1.DeRegisterKeyResponse, error) {
 	return nil, c.unimplemented("DeRegisterKey")
 }
 
 func (c *testDeviceClient) GetTurnCredentials(
-	context.Context,
-	*connect.Request[devicev1.GetTurnCredentialsRequest],
-) (*connect.Response[devicev1.GetTurnCredentialsResponse], error) {
+	context.Context, *devicev1.GetTurnCredentialsRequest,
+) (*devicev1.GetTurnCredentialsResponse, error) {
 	return nil, c.unimplemented("GetTurnCredentials")
 }
 
 func (c *testDeviceClient) Notify(
 	ctx context.Context,
-	req *connect.Request[devicev1.NotifyRequest],
-) (*connect.Response[devicev1.NotifyResponse], error) {
+	req *devicev1.NotifyRequest,
+) (*devicev1.NotifyResponse, error) {
 	c.notifyCounter.Add(1)
 	if c.NotifyFunc != nil {
 		return c.NotifyFunc(ctx, req)
@@ -149,9 +136,8 @@ func (c *testDeviceClient) Notify(
 }
 
 func (c *testDeviceClient) UpdatePresence(
-	context.Context,
-	*connect.Request[devicev1.UpdatePresenceRequest],
-) (*connect.Response[devicev1.UpdatePresenceResponse], error) {
+	context.Context, *devicev1.UpdatePresenceRequest,
+) (*devicev1.UpdatePresenceResponse, error) {
 	return nil, c.unimplemented("UpdatePresence")
 }
 
@@ -203,12 +189,12 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_TextMessage() {
 
 	// Create stub device client
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
 			// Verify notification content
-			require.Equal(t, deviceID, req.Msg.GetDeviceId())
-			require.Len(t, req.Msg.GetNotifications(), 1)
-			require.Equal(t, "Hello, World!", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+			require.Equal(t, deviceID, req.GetDeviceId())
+			require.Len(t, req.GetNotifications(), 1)
+			require.Equal(t, "Hello, World!", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -235,10 +221,10 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_AttachmentMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
 			// Attachment with caption should use caption text
-			require.Equal(t, "Check out this photo", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+			require.Equal(t, "Check out this photo", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -270,10 +256,10 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_AttachmentWithoutCapti
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
 			// Attachment without caption should have generic message
-			require.Equal(t, "Sent an attachment", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+			require.Equal(t, "Sent an attachment", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -304,9 +290,9 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_ReactionMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
-			require.Equal(t, "Reacted with 👍", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
+			require.Equal(t, "Reacted with 👍", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -337,9 +323,9 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_CallMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
-			require.Equal(t, "Started a call", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
+			require.Equal(t, "Started a call", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -369,9 +355,9 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_EncryptedMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
-			require.Equal(t, "Sent an encrypted message", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
+			require.Equal(t, "Sent an encrypted message", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -401,11 +387,11 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_ModerationMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
 			require.Equal(t,
 				"This message was removed for violating community guidelines",
-				req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+				req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -434,9 +420,9 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_MotionMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
-			require.Equal(t, "Created a motion", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
+			require.Equal(t, "Created a motion", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -466,9 +452,9 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_VoteMessage() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
-			require.Equal(t, "Voted", req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
+			require.Equal(t, "Voted", req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -564,10 +550,10 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_NilPayload() {
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
 			// With nil payload, body should be empty
-			require.Empty(t, req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+			require.Empty(t, req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 
@@ -605,10 +591,10 @@ func (s *OfflineDeliveryQueueHandlerTestSuite) TestHandle_UnspecifiedPayloadType
 	deviceID := util.IDString()
 
 	deviceCli := &testDeviceClient{
-		NotifyFunc: func(_ context.Context, req *connect.Request[devicev1.NotifyRequest]) (*connect.Response[devicev1.NotifyResponse], error) {
+		NotifyFunc: func(_ context.Context, req *devicev1.NotifyRequest) (*devicev1.NotifyResponse, error) {
 			// Unspecified type should have empty body
-			require.Empty(t, req.Msg.GetNotifications()[0].GetBody())
-			return connect.NewResponse(&devicev1.NotifyResponse{}), nil
+			require.Empty(t, req.GetNotifications()[0].GetBody())
+			return &devicev1.NotifyResponse{}, nil
 		},
 	}
 

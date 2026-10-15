@@ -1,0 +1,79 @@
+{
+  "description": "Go-produced vectors (pkg/evm/stawi GenesisHash) of RoomFactory.genesisHash: keccak256(abi.encode(\"STAWI_ROOM_GENESIS_V3\", chainid, factory, constitutionHash, financePolicyHash, securityPolicyHash, asset, initialMembers, manifestVersion, RoomTypes.paramsHash(params), roomBinding, uint8(joinPolicy), agent)). params are security_params.json's (params_hash); agent zero means none.",
+  "cases": [
+    {
+      "name": "no_agent",
+      "chain_id": 146,
+      "factory": "0x0000000000000000000000000000000000fac701",
+      "constitution_hash": "0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "finance_policy_hash": "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+      "security_policy_hash": "0x4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+      "asset": "0x00000000000000000000000000000000000a55e7",
+      "initial_members": [
+        "0x00000000000000000000000000000000000f0001"
+      ],
+      "manifest_version": 1,
+      "params_hash": "0xd1c06c01bc73d7e28751795d45635caa18882de12faca75dc75820565f9f9cf9",
+      "room_binding": "0x726f6f6d2d303030310000000000000000000000000000000000000000000000",
+      "join_policy": 0,
+      "agent": "0x0000000000000000000000000000000000000000",
+      "genesis_hash": "0x3bf645cc02eaa8303790fac9812e805c924d8d776aef3cddb9c7948ee9d5f69e"
+    },
+    {
+      "name": "agent",
+      "chain_id": 146,
+      "factory": "0x0000000000000000000000000000000000fac701",
+      "constitution_hash": "0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "finance_policy_hash": "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+      "security_policy_hash": "0x4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+      "asset": "0x00000000000000000000000000000000000a55e7",
+      "initial_members": [
+        "0x00000000000000000000000000000000000f0001"
+      ],
+      "manifest_version": 1,
+      "params_hash": "0xd1c06c01bc73d7e28751795d45635caa18882de12faca75dc75820565f9f9cf9",
+      "room_binding": "0x726f6f6d2d303030310000000000000000000000000000000000000000000000",
+      "join_policy": 0,
+      "agent": "0x00000000000000000000000000000000000a6e47",
+      "genesis_hash": "0x7e8a1df1ff79d47e62dab130d704628507534eec6880b59f3bb4108ce0c54c0c"
+    },
+    {
+      "name": "public_with_agent",
+      "chain_id": 14601,
+      "factory": "0x0000000000000000000000000000000000fac702",
+      "constitution_hash": "0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "finance_policy_hash": "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+      "security_policy_hash": "0x4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+      "asset": "0x00000000000000000000000000000000000a55e7",
+      "initial_members": [
+        "0x00000000000000000000000000000000000f0001"
+      ],
+      "manifest_version": 1,
+      "params_hash": "0xd1c06c01bc73d7e28751795d45635caa18882de12faca75dc75820565f9f9cf9",
+      "room_binding": "0x606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+      "join_policy": 1,
+      "agent": "0x00000000000000000000000000000000000a6e47",
+      "genesis_hash": "0xd38f5cd8036c18746aa2c66d5f04d5a9a8d620680adc8a32317ebceb4fd42067"
+    },
+    {
+      "name": "three_founders_with_agent",
+      "chain_id": 31337,
+      "factory": "0x0000000000000000000000000000000000fac703",
+      "constitution_hash": "0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "finance_policy_hash": "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+      "security_policy_hash": "0x4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+      "asset": "0x00000000000000000000000000000000000a55e7",
+      "initial_members": [
+        "0x00000000000000000000000000000000000f0001",
+        "0x00000000000000000000000000000000000f0002",
+        "0x00000000000000000000000000000000000f0003"
+      ],
+      "manifest_version": 1,
+      "params_hash": "0xd1c06c01bc73d7e28751795d45635caa18882de12faca75dc75820565f9f9cf9",
+      "room_binding": "0x726f6f6d2d303030310000000000000000000000000000000000000000000000",
+      "join_policy": 0,
+      "agent": "0xffffffffffffffffffffffffffffffffffffffff",
+      "genesis_hash": "0x1e57b3a5d34d647130e02c2853bb796a4dff22de5eefcc5d4fba19745f655aa4"
+    }
+  ]
+}

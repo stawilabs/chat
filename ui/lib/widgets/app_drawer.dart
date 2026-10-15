@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/navigation/navigation_helper.dart';
 import '../features/auth/data/auth_state_provider.dart';
 import '../features/auth/data/user_info_provider.dart';
 
@@ -27,6 +28,15 @@ class AppDrawer extends ConsumerWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                ListTile(
+                  key: const Key('drawer-my-money'),
+                  leading: const Icon(Icons.account_balance_wallet_outlined),
+                  title: const Text('My money'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    NavigationHelper.navigateToMyMoney(context);
+                  },
+                ),
                 ListTile(
                   leading: const Icon(Icons.settings_outlined),
                   title: const Text('Settings'),

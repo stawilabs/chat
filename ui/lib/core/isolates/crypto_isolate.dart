@@ -401,13 +401,16 @@ class CryptoIsolateService {
   }) async {
     await _ensureInitialized();
 
-    final result = await _isolateManager
-        .execute<Map<String, dynamic>>(_isolateName, CryptoTasks.deriveKey, {
-          'password': password,
-          'salt': ?salt,
-          'iterations': iterations,
-          'keyLength': keyLength,
-        });
+    final result = await _isolateManager.execute<Map<String, dynamic>>(
+      _isolateName,
+      CryptoTasks.deriveKey,
+      {
+        'password': password,
+        'salt': ?salt,
+        'iterations': iterations,
+        'keyLength': keyLength,
+      },
+    );
 
     return KeyDerivationResult.fromJson(result);
   }

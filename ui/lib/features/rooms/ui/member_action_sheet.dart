@@ -102,9 +102,8 @@ class MemberActionSheet extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: _getColorForName(
-                    member.name,
-                  ).withValues(alpha: 0.2),
+                  backgroundColor: _getColorForName(member.name)
+                      .withValues(alpha: 0.2),
                   backgroundImage: member.avatarUrl != null
                       ? NetworkImage(member.avatarUrl!)
                       : null,

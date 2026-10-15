@@ -7,7 +7,7 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"github.com/pitabwire/frame/v2/data"
+	"github.com/pitabwire/frame/v3/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -498,4 +498,28 @@ func TestProposal_IsExpired(t *testing.T) {
 		p := &Proposal{}
 		assert.True(t, p.IsExpired())
 	})
+}
+
+// ---------------------------------------------------------------------------
+// DirectKey / BotKey
+// ---------------------------------------------------------------------------
+
+func TestDirectKey(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		want string
+	}{
+		{"a DM in order", DirectKey("aaa", "bbb"), "direct:aaa:bbb"},
+		{"a DM in either order", DirectKey("bbb", "aaa"), "direct:aaa:bbb"},
+		{"a DM keyed by profile id bytes", DirectKey("d1", "c9"), "direct:c9:d1"},
+		{"a bot room is the service's then the person's", BotKey("finance", "aaa"), "bot:finance:aaa"},
+		{"a bot room is not reordered", BotKey("zzz", "aaa"), "bot:zzz:aaa"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.key)
+		})
+	}
+	assert.NotEqual(t, DirectKey("aaa", "bbb"), BotKey("aaa", "bbb"), "a DM and a bot room never share a key")
 }

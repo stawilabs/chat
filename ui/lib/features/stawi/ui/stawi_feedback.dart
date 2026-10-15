@@ -1,13 +1,34 @@
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderBase;
 
+import '../data/stawi_counterparty.dart';
 import '../data/stawi_identity.dart';
 import '../domain/signing_checks.dart';
 
+/// What to tell the member when settlement asks them to retry a member
+/// action because their account is still being settled (an engine's
+/// SettleAgain): nothing failed; the same action goes through shortly.
+const String accountCatchingUpMessage =
+    'Your account is being brought up to date; try again shortly';
+
+/// Whether [error] is settlement's retryable answer to a member action whose
+/// account is being brought up to date (Unavailable, from SettleAgain).
+bool isAccountCatchingUp(Object error) =>
+    error is connect.ConnectException &&
+    error.code == connect.Code.unavailable &&
+    error.message.contains('being brought up to date');
+
 /// What to tell the member when a Stawi action fails.
 String stawiErrorMessage(Object error) => switch (error) {
+  _ when isAccountCatchingUp(error) => accountCatchingUpMessage,
   SigningRefused(:final reason) => 'Not signed: $reason',
   StawiUnavailable(:final message) => message,
+  DirectPartnerRefused() => DirectPartnerRefused.messageFor('They'),
+  // Too many partner lookups for now: unknown, shown as "—" until they are
+  // asked again.
+  PartnerLookupsExhausted() => '—',
   connect.ConnectException(:final code, :final message) => switch (code) {
     connect.Code.unauthenticated => 'Sign in again to continue',
     connect.Code.permissionDenied => 'Not allowed: $message',
@@ -44,3 +65,20 @@ Future<T?> runStawiAction<T>(
 String shortHex(String hex) => hex.length <= 14
     ? hex
     : '${hex.substring(0, 6)}…${hex.substring(hex.length - 4)}';
+
+/// The provider container [context] is under, resolved now: money actions
+/// take it before their first await, so what they refresh at the end is
+/// refreshed even when the person has left the screen by then.
+ProviderContainer moneyContainer(BuildContext context) =>
+    ProviderScope.containerOf(context, listen: false);
+
+/// Reads [providers] again through [container], which outlives any widget
+/// (see [moneyContainer]), so this works after the screen is gone.
+void invalidateAll(
+  ProviderContainer container,
+  Iterable<ProviderBase<Object?>> providers,
+) {
+  for (final p in providers) {
+    container.invalidate(p);
+  }
+}

@@ -55,3 +55,4 @@ ios/Flutter/ephemeral/
 ios/Flutter/flutter_export_environment.sh
 ios/Runner/GeneratedPluginRegistrant.*
 /credentials/
+pubspec_overrides.yaml

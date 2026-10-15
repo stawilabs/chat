@@ -37,6 +37,19 @@ subprojects {
     }
 }
 
+// Plugins still pinned to an older compileSdk (video_thumbnail: 33) cannot
+// consume the AndroidX libraries the app resolves, which require 34 or later.
+// Compile every library against at least the app's SDK; targetSdk is untouched.
+subprojects {
+    plugins.withId("com.android.library") {
+        extensions.findByType<com.android.build.api.variant.LibraryAndroidComponentsExtension>()
+            ?.finalizeDsl { android ->
+                val minimum = 36
+                if ((android.compileSdk ?: 0) < minimum) android.compileSdk = minimum
+            }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

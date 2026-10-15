@@ -11,26 +11,28 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
+	"buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
 	profilev1 "buf.build/gen/go/antinvestor/profile/protocolbuffers/go/profile/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/data"
-	frevents "github.com/pitabwire/frame/v2/events"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/data"
+	frevents "github.com/pitabwire/frame/v3/events"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/stawilabs/chat/apps/default/service"
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
 )
 
 // proposalExpiryHours is the number of hours before a proposal expires.
 const proposalExpiryHours = 72
-const defaultGroupType = models.RoomTypeGroup
 const defaultSearchLimit = 50
 const maxSearchLimit = 100
 
@@ -46,6 +48,14 @@ type roomBusiness struct {
 	profileCli       profilev1connect.ProfileServiceClient
 	authzMiddleware  authz.Middleware
 	stawiBindings    repository.StawiRoomRepository
+	// roomResolveChecker gates ResolvePersonalRoom (stawi_room_resolve);
+	// nil refuses every service resolution.
+	roomResolveChecker FunctionPermissionChecker
+	// profileAccounts answers GetDirectPartnerAccount's settlement lookup;
+	// nil answers every entitled lookup Unavailable.
+	profileAccounts stawi.ProfileAccounts
+	// partnerLookups limits each person's GetDirectPartnerAccount calls.
+	partnerLookups *callerLimiter
 }
 
 // RoomBusinessOption configures optional room business behaviour.
@@ -82,6 +92,7 @@ func NewRoomBusiness(
 		messageBusiness:  messageBusiness,
 		profileCli:       profileCli,
 		authzMiddleware:  authzMiddleware,
+		partnerLookups:   newCallerLimiter(defaultPartnerLookupsPerWindow, defaultPartnerLookupWindow),
 	}
 	for _, opt := range opts {
 		if opt != nil {
@@ -172,10 +183,28 @@ func (rb *roomBusiness) CreateRoom(
 	if suppliedID != "" && !chatutil.IsValidRoomID(suppliedID) {
 		return nil, service.ErrRoomIDInvalid
 	}
+	// A personal room is found by its people, never by a supplied id: naming
+	// an existing room's id must not answer with that room.
+	if suppliedID != "" && isPersonalRoomType(req.GetType()) {
+		return nil, service.ErrPersonalRoomID
+	}
+
+	roomType, members, directKey, err := rb.roomTypeOf(ctx, req, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	if roomType == models.RoomTypeDirect {
+		var dm *models.Room
+		dm, err = rb.resolvePersonsDM(ctx, req, createdBy, members[0], directKey)
+		if err != nil {
+			return nil, err
+		}
+		return dm.ToAPI(), nil
+	}
 
 	// Create the room
 	createdRoom := &models.Room{
-		RoomType:         defaultGroupType,
+		RoomType:         roomType,
 		Name:             req.GetName(),
 		Description:      req.GetDescription(),
 		IsPublic:         !req.GetIsPrivate(),
@@ -202,53 +231,17 @@ func (rb *roomBusiness) CreateRoom(
 		return rb.withStawiBinding(ctx, existingRoom.ToAPI())
 	}
 
-	// Owner subscription
-	ownerSubscription := &chatv1.RoomSubscription{
-		Id:     util.IDString(),
-		RoomId: createdRoom.GetID(),
-		Member: &commonv1.ContactLink{
-			ProfileId: createdBy.GetProfileId(),
-			ContactId: createdBy.GetContactId(),
-		},
-		Roles: []string{roleOwner},
-	}
-
-	subscriptionList := []*chatv1.RoomSubscription{ownerSubscription}
-	for _, member := range req.GetMembers() {
-		if member != nil {
-			subscriptionList = append(subscriptionList, &chatv1.RoomSubscription{
-				Id:     util.IDString(),
-				RoomId: createdRoom.GetID(),
-				Member: member,
-			})
-		}
-	}
+	subscriptionList := createdRoomSubscriptions(createdRoom.GetID(), createdBy, members)
 
 	// Add creator as owner
 	err = rb.addRoomMembersWithRoles(
 		ctx,
 		createdRoom.GetID(),
-		subscriptionList, ownerSubscription.GetId(),
+		subscriptionList, subscriptionList[0].GetId(),
 		createdBy,
 	)
-	if err != nil {
-		partErr, ok := service.IsPartialBatchError(err)
-		if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) {
-			// Full failure — and a room whose creator could not be made its
-			// owner is one: it would exist with members and nobody able to
-			// administer it, and the creator could not even see it. Delete
-			// the room and refuse.
-			_ = rb.roomRepo.Delete(ctx, createdRoom.GetID())
-			return nil, fmt.Errorf("failed to create room: %w", err)
-		}
-
-		// Partial failure: some members succeeded (including at least the owner).
-		// Return the room with a warning about the failed members.
-		util.Log(ctx).WithFields(map[string]any{
-			chatutil.KeyRoomID: createdRoom.GetID(),
-			"failed":           partErr.Failed,
-			"succeeded":        partErr.Succeeded,
-		}).Warn("partial failure adding members during room creation")
+	if err = rb.settleCreatedMembers(ctx, createdRoom, err); err != nil {
+		return nil, err
 	}
 
 	util.Log(ctx).WithField(chatutil.KeyRoomID, createdRoom.GetID()).
@@ -258,6 +251,179 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
+}
+
+// resolvePersonsDM answers a person's DM with other, WhatsApp-like: the
+// pair's oldest DM in the person's tenancy whose active members are exactly
+// the two, unchanged (the request's name and description do not alter it);
+// else a new one, the person its owner. Resolved under the pair's key lock,
+// so concurrent calls of either person answer one room.
+func (rb *roomBusiness) resolvePersonsDM(ctx context.Context, req *chatv1.CreateRoomRequest,
+	createdBy, other *commonv1.ContactLink, key string) (*models.Room, error) {
+	spec := &keyedRoom{
+		roomType: models.RoomTypeDirect,
+		key:      key,
+		want: []personalMember{
+			{profileID: createdBy.GetProfileId(), contactID: createdBy.GetContactId(), role: roleOwner},
+			{profileID: other.GetProfileId(), contactID: other.GetContactId(), role: roleMember},
+		},
+		actorFirst:  true,
+		name:        req.GetName(),
+		description: req.GetDescription(),
+		partitions:  []string{""},
+	}
+	if metadata := req.GetMetadata(); metadata != nil {
+		spec.properties = data.JSONMap(metadata.AsMap())
+	}
+	if claims := security.ClaimsFromContext(ctx); claims != nil {
+		spec.tenantID, spec.partitionID, spec.accessID = claims.GetTenantID(), claims.GetPartitionID(),
+			claims.GetAccessID()
+		spec.partitions = []string{claims.GetPartitionID()}
+	}
+	return rb.resolveKeyedRoom(ctx, spec)
+}
+
+// settleCreatedMembers decides a new room's fate after its members were
+// added (addErr). A room whose creator could not be made its owner is deleted
+// and refused: it would exist with members and nobody able to administer it.
+// Otherwise a partial failure keeps the room with the members that succeeded.
+// (A DM never comes here: it is made whole in one transaction.)
+func (rb *roomBusiness) settleCreatedMembers(ctx context.Context, room *models.Room, addErr error) error {
+	if addErr == nil {
+		return nil
+	}
+	partErr, ok := service.IsPartialBatchError(addErr)
+	if !ok || partErr.Succeeded == 0 || ownerFailed(partErr) {
+		_ = rb.roomRepo.Delete(ctx, room.GetID())
+		return fmt.Errorf("failed to create room: %w", addErr)
+	}
+
+	util.Log(ctx).WithFields(map[string]any{
+		chatutil.KeyRoomID: room.GetID(),
+		"failed":           partErr.Failed,
+		"succeeded":        partErr.Succeeded,
+	}).Warn("partial failure adding members during room creation")
+	return nil
+}
+
+// isPersonalRoomType reports whether t is a DM or a bot room.
+func isPersonalRoomType(t chatv1.RoomType) bool {
+	return t == chatv1.RoomType_ROOM_TYPE_DIRECT || t == chatv1.RoomType_ROOM_TYPE_BOT
+}
+
+// maxPersonalKeyIDLength is the longest profile id a personal room's key
+// takes: "direct:" + two ids + ":" fits the 100-character direct_key column.
+const maxPersonalKeyIDLength = 46
+
+// validPersonalKeyID reports whether id can name a person in a personal
+// room's key: non-empty, short enough, and free of the key's separator.
+func validPersonalKeyID(id string) bool {
+	return id != "" && len(id) <= maxPersonalKeyIDLength && !strings.Contains(id, ":")
+}
+
+// checkProfileExists refuses a DM partner named only by a profile id that the
+// profile service does not know. Without a profile client (development and
+// tests) the id is taken as given.
+func (rb *roomBusiness) checkProfileExists(ctx context.Context, profileID string) error {
+	if rb.profileCli == nil {
+		return nil
+	}
+	resp, err := rb.profileCli.GetById(ctx, &profilev1.GetByIdRequest{Id: profileID})
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return fmt.Errorf("%w: no profile %s", service.ErrDirectRoomMembers, profileID)
+		}
+		return fmt.Errorf("failed to check profile %s: %w", profileID, err)
+	}
+	if resp.GetData().GetId() != profileID {
+		return fmt.Errorf("%w: no profile %s", service.ErrDirectRoomMembers, profileID)
+	}
+	return nil
+}
+
+// createdRoomSubscriptions is a new room's subscriptions: its creator as
+// owner first, then each member.
+func createdRoomSubscriptions(
+	roomID string, createdBy *commonv1.ContactLink, members []*commonv1.ContactLink,
+) []*chatv1.RoomSubscription {
+	subscriptions := []*chatv1.RoomSubscription{{
+		Id:     util.IDString(),
+		RoomId: roomID,
+		Member: &commonv1.ContactLink{
+			ProfileId: createdBy.GetProfileId(),
+			ContactId: createdBy.GetContactId(),
+		},
+		Roles: []string{roleOwner},
+	}}
+	for _, member := range members {
+		if member != nil {
+			subscriptions = append(subscriptions, &chatv1.RoomSubscription{
+				Id:     util.IDString(),
+				RoomId: roomID,
+				Member: member,
+			})
+		}
+	}
+	return subscriptions
+}
+
+// roomTypeOf is the room a person asked for: a group (also for UNSPECIFIED),
+// a channel, or a DM with exactly one other person on Stawi. The DM's member
+// is resolved to their profile (validateContactProfile), so its key names two
+// profiles. A bot room is a service's (ResolvePersonalRoom).
+func (rb *roomBusiness) roomTypeOf(ctx context.Context, req *chatv1.CreateRoomRequest,
+	createdBy *commonv1.ContactLink) (string, []*commonv1.ContactLink, string, error) {
+	switch req.GetType() {
+	case chatv1.RoomType_ROOM_TYPE_UNSPECIFIED, chatv1.RoomType_ROOM_TYPE_GROUP:
+		return models.RoomTypeGroup, req.GetMembers(), "", nil
+	case chatv1.RoomType_ROOM_TYPE_CHANNEL:
+		return models.RoomTypeChannel, req.GetMembers(), "", nil
+	case chatv1.RoomType_ROOM_TYPE_BOT:
+		return "", nil, "", service.ErrBotRoomByPerson
+	case chatv1.RoomType_ROOM_TYPE_DIRECT:
+		var others []*commonv1.ContactLink
+		for _, m := range req.GetMembers() {
+			if m != nil {
+				others = append(others, m)
+			}
+		}
+		if len(others) != 1 {
+			return "", nil, "", service.ErrDirectRoomMembers
+		}
+		other := proto.CloneOf(others[0])
+		hadContact := other.GetContactId() != ""
+		if err := rb.validateContactProfile(ctx, other); err != nil {
+			return "", nil, "", fmt.Errorf("%w: %w", service.ErrDirectRoomMembers, err)
+		}
+		if !validPersonalKeyID(other.GetProfileId()) || !validPersonalKeyID(createdBy.GetProfileId()) ||
+			other.GetProfileId() == createdBy.GetProfileId() {
+			return "", nil, "", service.ErrDirectRoomMembers
+		}
+		if !hadContact {
+			if err := rb.checkProfileExists(ctx, other.GetProfileId()); err != nil {
+				return "", nil, "", err
+			}
+		}
+		return models.RoomTypeDirect, []*commonv1.ContactLink{other},
+			models.DirectKey(createdBy.GetProfileId(), other.GetProfileId()), nil
+	}
+	return "", nil, "", connect.Errorf(connect.CodeInvalidArgument, "unknown room type %s", req.GetType())
+}
+
+// refuseIfDirect refuses a membership or role change in a DM or a bot room:
+// their members are fixed (leaving stays allowed).
+func (rb *roomBusiness) refuseIfDirect(ctx context.Context, roomID string) error {
+	room, err := rb.roomRepo.GetByID(ctx, roomID)
+	if err != nil {
+		if data.ErrorIsNoRows(err) {
+			return service.ErrRoomNotFound
+		}
+		return fmt.Errorf("failed to load the room: %w", err)
+	}
+	if room.RoomType == models.RoomTypeDirect || room.RoomType == models.RoomTypeBot {
+		return service.ErrDirectRoomMembership
+	}
+	return nil
 }
 
 // persistRoom inserts room and reports the room that already holds its id, if
@@ -589,6 +755,12 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 		return service.ErrRoomAddMembersDenied
 	}
 
+	// A DM's two members are fixed; this is said only to a member who could
+	// otherwise manage the room.
+	if dmErr := rb.refuseIfDirect(ctx, req.GetRoomId()); dmErr != nil {
+		return dmErr
+	}
+
 	// Check if room requires approval for changes
 	if needsApproval, approvalErr := rb.requiresApproval(ctx, req.GetRoomId()); approvalErr == nil && needsApproval {
 		if crErr := rb.createProposal(ctx, req.GetRoomId(), models.ProposalTypeAddSubscriptions,
@@ -699,6 +871,12 @@ func (rb *roomBusiness) UpdateSubscriptionRole(
 
 	if admin == nil {
 		return service.ErrRoomUpdateRoleDenied
+	}
+
+	// A DM's two members are fixed; this is said only to a member who could
+	// otherwise manage the room.
+	if dmErr := rb.refuseIfDirect(ctx, req.GetRoomId()); dmErr != nil {
+		return dmErr
 	}
 
 	// Check if room requires approval for changes
@@ -1168,15 +1346,15 @@ func (rb *roomBusiness) validateContactProfile(ctx context.Context, link *common
 		return nil
 	}
 
-	resp, profileErr := rb.profileCli.GetByContact(ctx, connect.NewRequest(&profilev1.GetByContactRequest{
+	resp, profileErr := rb.profileCli.GetByContact(ctx, &profilev1.GetByContactRequest{
 		Contact: link.GetContactId(),
-	}))
+	})
 	if profileErr != nil {
 		return fmt.Errorf("contact validation failed for %s: %w", link.GetContactId(), profileErr)
 	}
 
 	// The profile as source of truth
-	foundProfileID := resp.Msg.GetData().GetId()
+	foundProfileID := resp.GetData().GetId()
 
 	if link.GetProfileId() != "" {
 		if link.GetProfileId() != foundProfileID {

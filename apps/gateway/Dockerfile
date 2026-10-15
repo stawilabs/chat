@@ -5,7 +5,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 # ---------- Builder ----------
-FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.9 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -31,10 +31,10 @@ COPY ./apps/gateway ./apps/gateway
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath \
      -ldflags="-s -w \
-         -X github.com/pitabwire/frame/v2/version.Repository=${REPOSITORY} \
-         -X github.com/pitabwire/frame/v2/version.Version=${VERSION} \
-         -X github.com/pitabwire/frame/v2/version.Commit=${REVISION} \
-         -X github.com/pitabwire/frame/v2/version.Date=${BUILDTIME}" \
+         -X github.com/pitabwire/frame/v3/version.Repository=${REPOSITORY} \
+         -X github.com/pitabwire/frame/v3/version.Version=${VERSION} \
+         -X github.com/pitabwire/frame/v3/version.Commit=${REVISION} \
+         -X github.com/pitabwire/frame/v3/version.Date=${BUILDTIME}" \
     -o /gateway ./apps/gateway/cmd/main.go
 
 # ---------- Final ----------

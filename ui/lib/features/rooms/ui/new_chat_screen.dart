@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../../core/networking/connectivity_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../contacts/data/roster_repository.dart';
 import '../../contacts/services/contact_service.dart';
@@ -492,9 +493,12 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
         data: {'name': roomName, 'type': 'direct'},
       );
 
-      final room = await roomService.createRoom(
+      final online = await ref
+          .read(isConnectedProvider.future)
+          .catchError((_) => false);
+      final room = await roomService.openDirectRoom(
+        online: online,
         name: roomName,
-        type: 'direct',
         contactIds: contactIds,
       );
 

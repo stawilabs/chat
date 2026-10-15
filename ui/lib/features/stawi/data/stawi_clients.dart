@@ -90,9 +90,19 @@ final financeSavingsProvider = Provider<finance.SavingsServiceClient>((ref) {
   );
 });
 
-final financeCreditProvider = Provider<finance.CreditServiceClient>((ref) {
+final financeLoansProvider = Provider<finance.LoanServiceClient>((ref) {
   final runtime = ref.watch(authRuntimeProvider);
-  return finance.CreditServiceClient(
+  return finance.LoanServiceClient(
+    createRuntimeTransportFactory(runtime)(
+      Uri.parse(ApiConfig.financeBaseUrl),
+      const [],
+    ),
+  );
+});
+
+final financeVaultProvider = Provider<finance.VaultServiceClient>((ref) {
+  final runtime = ref.watch(authRuntimeProvider);
+  return finance.VaultServiceClient(
     createRuntimeTransportFactory(runtime)(
       Uri.parse(ApiConfig.financeBaseUrl),
       const [],

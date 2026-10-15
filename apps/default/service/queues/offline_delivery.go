@@ -3,13 +3,12 @@ package queues
 import (
 	"context"
 
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
 	devicev1 "buf.build/gen/go/antinvestor/device/protocolbuffers/go/device/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	eventsv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/events/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
-	"github.com/pitabwire/frame/v2/queue"
+	"github.com/pitabwire/frame/v3/data"
+	"github.com/pitabwire/frame/v3/queue"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -124,7 +123,7 @@ func (dq *offlineDeliveryQueueHandler) Handle(
 		KeyType:       devicev1.KeyType_FCM_TOKEN,
 		Notifications: messages,
 	}
-	resp, err := dq.deviceCli.Notify(ctx, connect.NewRequest(notification))
+	resp, err := dq.deviceCli.Notify(ctx, notification)
 	if err != nil {
 		chattel.NotificationsFailedCounter.Add(ctx, 1)
 		// Retryable: increment retry count and republish
@@ -178,6 +177,10 @@ func stawiBody(eventPayload *chatv1.Payload) string {
 		return "Signed a room action"
 	case eventPayload.GetStawiCallOutcome() != nil:
 		return stawiOutcomeBody(eventPayload.GetStawiCallOutcome())
+	case eventPayload.GetStawiAgentInvitation() != nil:
+		return "Invited you to be a Stawi room's agent"
+	case eventPayload.GetStawiAgentAcceptance() != nil:
+		return "Accepted being a Stawi room's agent"
 	default:
 		return ""
 	}
@@ -264,7 +267,9 @@ func (dq *offlineDeliveryQueueHandler) bodyFromPayload(eventPayload *chatv1.Payl
 	case chatv1.PayloadType_PAYLOAD_TYPE_STAWI_ROOM_CONVERSION,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE,
 		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_SIGNED_CALL,
-		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME:
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_INVITATION,
+		chatv1.PayloadType_PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE:
 		return stawiBody(eventPayload)
 	case chatv1.PayloadType_PAYLOAD_TYPE_UNSPECIFIED:
 		// No body for unspecified type

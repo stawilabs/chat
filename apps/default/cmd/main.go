@@ -9,27 +9,27 @@ import (
 	"path/filepath"
 	"time"
 
-	"buf.build/gen/go/antinvestor/device/connectrpc/go/device/v1/devicev1connect"
-	"buf.build/gen/go/antinvestor/notification/connectrpc/go/notification/v1/notificationv1connect"
-	"buf.build/gen/go/antinvestor/profile/connectrpc/go/profile/v1/profilev1connect"
-	"buf.build/gen/go/stawi/chat/connectrpc/go/chat/v1/chatv1connect"
+	"buf.build/gen/go/antinvestor/device/connectrpc/go/v2/device/v1/devicev1connect"
+	"buf.build/gen/go/antinvestor/notification/connectrpc/go/v2/notification/v1/notificationv1connect"
+	"buf.build/gen/go/antinvestor/profile/connectrpc/go/v2/profile/v1/profilev1connect"
+	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"buf.build/gen/go/stawi/finance/connectrpc/go/settlement/v1/settlementv1connect"
-	"connectrpc.com/connect"
-	"github.com/antinvestor/common/v2"
-	"github.com/antinvestor/common/v2/connection"
-	"github.com/antinvestor/common/v2/permissions"
-	"github.com/antinvestor/common/v2/servicecatalog"
+	"buf.build/gen/go/stawi/finance/connectrpc/go/v2/settlement/v1/settlementv1connect"
+	"connectrpc.com/connect/v2"
+	"github.com/antinvestor/common/v3"
+	"github.com/antinvestor/common/v3/connection"
+	"github.com/antinvestor/common/v3/permissions"
+	"github.com/antinvestor/common/v3/servicecatalog"
 	"github.com/antinvestor/service-profile/client/accounts"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/config"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	frevents "github.com/pitabwire/frame/v2/events"
-	"github.com/pitabwire/frame/v2/queue"
-	"github.com/pitabwire/frame/v2/security/authorizer"
-	connectInterceptors "github.com/pitabwire/frame/v2/security/interceptors/connect"
-	"github.com/pitabwire/frame/v2/workerpool"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/config"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	frevents "github.com/pitabwire/frame/v3/events"
+	"github.com/pitabwire/frame/v3/queue"
+	"github.com/pitabwire/frame/v3/security/authorizer"
+	connectInterceptors "github.com/pitabwire/frame/v3/security/interceptors/connect"
+	"github.com/pitabwire/frame/v3/workerpool"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -43,6 +43,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/apps/default/service/stawi/settlement"
+	"github.com/stawilabs/chat/pkg/connectserver"
 )
 
 //go:embed spec/chat.openapi.yaml
@@ -123,8 +124,8 @@ func runService(ctx context.Context) error {
 	auth := sm.GetAuthorizer(ctx)
 	authzMiddleware := authz.NewMiddleware(auth)
 
-	stawiChain, stawiServer := setupStawi(ctx, &cfg, dbPool, workMan, queueMan, profileCli, authzMiddleware)
-	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware, stawiServer)
+	stawiChain, stawiServerOpts := setupStawi(ctx, &cfg, dbPool, workMan, queueMan, profileCli, authzMiddleware)
+	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware, stawiServerOpts...)
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 	deadLetterRepo := repository.NewDeadLetterRepository(ctx, dbPool, workMan)
 
@@ -281,29 +282,35 @@ func stawiOptions(cfg aconfig.ChatConfig, chain *business.StawiChain) []frame.Op
 	return opts
 }
 
-// setupSettlementRooms connects to settlement's RoomService as chat's
-// service principal (workload identity, OAuth2 and retries from cfg). An empty
-// endpoint is a development posture: Stawi room acts are then refused as
-// unavailable, while bound rooms stay guarded and facts are applied.
-func setupSettlementRooms(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, error) {
+// setupSettlement connects to settlement's RoomService and AccountService as
+// chat's service principal (workload identity, OAuth2 and retries from cfg).
+// An empty endpoint is a development posture: Stawi room acts and DM partner
+// account lookups are then refused as unavailable, while bound rooms stay
+// guarded and facts are applied.
+func setupSettlement(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, stawi.ProfileAccounts, error) {
 	if cfg.SettlementServiceURI == "" {
 		util.Log(ctx).Warn("main -- no settlement endpoint; Stawi room acts are refused")
-		return nil, nil //nolint:nilnil // no endpoint is a development posture, not an error
+		return nil, nil, nil
 	}
-	cli, err := connection.NewServiceClient(ctx, &cfg, common.ServiceTarget{
+	target := common.ServiceTarget{
 		Endpoint:              cfg.SettlementServiceURI,
 		WorkloadAPITargetPath: cfg.SettlementServiceWorkloadAPITargetPath,
 		ServiceID:             servicecatalog.ServiceStawiSettlement,
-	}, settlementv1connect.NewRoomServiceClient)
-	if err != nil {
-		return nil, err
 	}
-	return settlement.NewRooms(cli), nil
+	roomsCli, err := connection.NewServiceClient(ctx, &cfg, target, settlementv1connect.NewRoomServiceClient)
+	if err != nil {
+		return nil, nil, err
+	}
+	accountsCli, err := connection.NewServiceClient(ctx, &cfg, target, settlementv1connect.NewAccountServiceClient)
+	if err != nil {
+		return nil, nil, err
+	}
+	return settlement.NewRooms(roomsCli), settlement.NewProfileAccounts(accountsCli), nil
 }
 
-// setupStawi wires Stawi rooms: settlement relays room acts, profile maps
-// chain addresses to profiles (client/accounts over the profile client), and
-// the chain consumer applies settlement's facts.
+// setupStawi wires Stawi rooms: settlement relays room acts and answers DM
+// partner accounts, profile maps chain addresses to profiles (client/accounts
+// over the profile client), and the chain consumer applies settlement's facts.
 func setupStawi(
 	ctx context.Context,
 	cfg *aconfig.ChatConfig,
@@ -312,14 +319,17 @@ func setupStawi(
 	queueMan queue.Manager,
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
-) (*business.StawiChain, handlers.ServerOption) {
-	rooms, err := setupSettlementRooms(ctx, *cfg)
+) (*business.StawiChain, []handlers.ServerOption) {
+	rooms, profileAccounts, err := setupSettlement(ctx, *cfg)
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- could not set up the settlement client")
 	}
 	accountResolver := accounts.New(profileCli)
 	chain := newStawiChain(ctx, dbPool, workMan, queueMan, cfg, rooms, accountResolver, authzMiddleware)
-	return chain, handlers.WithStawi(rooms, accountResolver)
+	return chain, []handlers.ServerOption{
+		handlers.WithStawi(rooms, accountResolver),
+		handlers.WithProfileAccounts(profileAccounts),
+	}
 }
 
 // newStawiChain builds the chain consumer that applies settlement's facts.
@@ -403,19 +413,23 @@ func setupConnectServer(ctx context.Context, svc *frame.Service,
 	functionChecker := authorizer.NewFunctionChecker(auth, svcPerms.Namespace)
 	functionAccessInterceptor := connectInterceptors.NewFunctionAccessInterceptor(functionChecker, procMap)
 
+	// frame's DefaultList is the only tracer (otelconnect first); the error
+	// interceptor is last, closest to the handler, so everything outside it
+	// sees the error the client receives.
 	defaultInterceptorList, err := connectInterceptors.DefaultList(
-		ctx, securityMan.GetAuthenticator(ctx), tenancyAccessInterceptor, functionAccessInterceptor)
+		ctx, securityMan.GetAuthenticator(ctx),
+		tenancyAccessInterceptor, functionAccessInterceptor, connectserver.ErrorInterceptor())
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("could not configure interceptors")
 	}
 
 	implementation := handlers.NewChatServer(ctx, svc, notificationCli, profileCli, authzMiddleware, opts...)
 
-	_, serverHandler := chatv1connect.NewChatServiceHandler(
-		implementation, connect.WithInterceptors(defaultInterceptorList...))
+	server := connect.NewServer(defaultInterceptorList...)
+	chatv1connect.RegisterChatServiceHandler(server, implementation)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", serverHandler)
+	connectserver.Mount(mux, server, connectserver.Chat())
 	mux.Handle("/openapi.yaml", common.NewOpenAPIHandler(chatAPISpecFile, nil))
 
 	return mux

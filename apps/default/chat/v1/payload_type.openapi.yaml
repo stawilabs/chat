@@ -1134,6 +1134,22 @@ components:
           title: room_change
         - type: object
           properties:
+            stawiAgentAcceptance:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiAgentAcceptanceContent'
+              title: stawi_agent_acceptance
+              description: type = PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+          title: stawi_agent_acceptance
+        - type: object
+          properties:
+            stawiAgentInvitation:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiAgentInvitationContent'
+              title: stawi_agent_invitation
+              description: type = PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+          title: stawi_agent_invitation
+        - type: object
+          properties:
             stawiCallOutcome:
               allOf:
                 - $ref: '#/components/schemas/chat.v1.StawiCallOutcomeContent'
@@ -1217,6 +1233,10 @@ components:
               - required:
                   - roomChange
               - required:
+                  - stawiAgentAcceptance
+              - required:
+                  - stawiAgentInvitation
+              - required:
                   - stawiCallOutcome
               - required:
                   - stawiGenesisSignature
@@ -1256,6 +1276,10 @@ components:
                     - reaction
                 - required:
                     - roomChange
+                - required:
+                    - stawiAgentAcceptance
+                - required:
+                    - stawiAgentInvitation
                 - required:
                     - stawiCallOutcome
                 - required:
@@ -1302,6 +1326,8 @@ components:
         - PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
         - PAYLOAD_TYPE_STAWI_SIGNED_CALL
         - PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+        - PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+        - PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
     chat.v1.ReactionContent:
       type: object
@@ -1362,6 +1388,76 @@ components:
           description: Optional structured detail (depends on action)
       title: RoomChangeContent
       additionalProperties: false
+    chat.v1.StawiAgentAcceptanceContent:
+      type: object
+      properties:
+        invitationEventId:
+          type: string
+          title: invitation_event_id
+          maxLength: 40
+          minLength: 3
+          pattern: ^[0-9a-z_-]{3,40}$
+          description: |-
+            The event id of the StawiAgentInvitationContent being accepted, in this
+             DM.
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          description: 'Output only: the room the accepted invitation names. Set by the server.'
+        roomName:
+          type: string
+          title: room_name
+          maxLength: 256
+          description: 'Output only: that room''s name. Set by the server.'
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expires_at
+          description: |-
+            Output only: until when the inviter may name the acceptor the room's
+             agent. Set by the server.
+      title: StawiAgentAcceptanceContent
+      additionalProperties: false
+      description: |-
+        StawiAgentAcceptanceContent is sent in the same DM by the invited person:
+         they accept an agent invitation. Only the person the invitation was sent to
+         may accept it, before it expires. The acceptance lets the inviter name them
+         the room's agent until the acceptance itself expires.
+    chat.v1.StawiAgentInvitationContent:
+      type: object
+      properties:
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          minLength: 3
+          pattern: ^[0-9a-z_-]{3,40}$
+          description: |-
+            The room the sender is converting to a Stawi room. The sender must be its
+             owner or an admin.
+        roomName:
+          type: string
+          title: room_name
+          maxLength: 256
+          description: |-
+            Output only: the room's name, as chat holds it. Set by the server on the
+             stored event; whatever the client sends is replaced.
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expires_at
+          description: |-
+            Output only: until when the invitation may be accepted. Set by the
+             server.
+      title: StawiAgentInvitationContent
+      additionalProperties: false
+      description: |-
+        StawiAgentInvitationContent is sent in a DM: the sender, an owner or admin
+         of a group room, invites the other person in the DM to be that room's Stawi
+         agent. A converting member may name a DM partner who is not a room member
+         as the agent only once the partner has accepted an invitation for exactly
+         that room (StawiAgentAcceptanceContent) in the same DM.
     chat.v1.StawiCallOutcomeContent:
       type: object
       properties:
@@ -1563,6 +1659,18 @@ components:
           description: |-
             Output only: the genesis settlement prepared. Set by the server on the
              stored event; a client that sets it is refused.
+        agentProfileId:
+          type: string
+          title: agent_profile_id
+          pattern: ^([0-9a-v]{20})?$
+          description: |-
+            Optional: the profile of the room's Stawi agent (protocol fee spec), paid
+             a share of the Stawi fee for the life of the room; empty for none. Chat
+             accepts an active member of this room, or a DM partner of the converting
+             member who has accepted, in that DM, the converter's agent invitation for
+             this room (StawiAgentInvitationContent, StawiAgentAcceptanceContent) and
+             whose acceptance has not expired. Settlement resolves the profile to
+             its account; the founders sign it in the genesis.
       title: StawiRoomConversionContent
       additionalProperties: false
       description: |-

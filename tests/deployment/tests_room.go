@@ -2,13 +2,14 @@ package deployment
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 )
 
 // RoomTestSuite returns all room-related tests.
@@ -267,26 +268,31 @@ func (t *SearchRoomsTest) Run(ctx context.Context, client *Client) error {
 	}
 
 	// Search for the room using the name as query
-	stream, err := client.Chat().SearchRooms(ctx, connect.NewRequest(&chatv1.SearchRoomsRequest{
+	stream, err := client.Chat().SearchRooms(ctx, &chatv1.SearchRoomsRequest{
 		Query: uniqueName,
 		Cursor: &commonv1.PageCursor{
 			Limit: 10,
 		},
-	}))
+	})
 	if err := a.NoError(err, "SearchRooms should succeed"); err != nil {
 		return err
 	}
 
-	var foundRooms []*chatv1.Room
-	for stream.Receive() {
-		foundRooms = append(foundRooms, stream.Msg().GetData()...)
-	}
+	defer func() { _ = stream.Close() }()
 
-	// Note: SearchRooms may have underlying issues (e.g., missing columns)
-	// This test verifies the API is callable; search functionality depends on service implementation
-	if streamErr := stream.Err(); streamErr != nil {
-		// Log but don't fail - search may not be fully implemented
-		return nil
+	var foundRooms []*chatv1.Room
+	for {
+		msg, streamErr := stream.Receive()
+		if errors.Is(streamErr, io.EOF) {
+			break
+		}
+		if streamErr != nil {
+			// Note: SearchRooms may have underlying issues (e.g., missing columns).
+			// This test verifies the API is callable; search functionality depends
+			// on the service implementation, so a stream error does not fail it.
+			return nil
+		}
+		foundRooms = append(foundRooms, msg.GetData()...)
 	}
 
 	// If search works, verify we found rooms
@@ -317,9 +323,9 @@ func (t *DeleteRoomTest) Run(ctx context.Context, client *Client) error {
 	roomID := room.GetId()
 
 	// Delete the room
-	_, err = client.Chat().DeleteRoom(ctx, connect.NewRequest(&chatv1.DeleteRoomRequest{
+	_, err = client.Chat().DeleteRoom(ctx, &chatv1.DeleteRoomRequest{
 		RoomId: roomID,
-	}))
+	})
 	if err := a.NoError(err, "DeleteRoom should succeed"); err != nil {
 		return err
 	}
@@ -351,17 +357,17 @@ func (t *CreateRoomValidationTest) Run(ctx context.Context, client *Client) erro
 	var a Assert
 
 	// Test empty name (should fail)
-	_, err := client.Chat().CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	_, err := client.Chat().CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Name: "",
-	}))
+	})
 	if err := a.Error(err, "CreateRoom with empty name should fail"); err != nil {
 		return err
 	}
 
 	// Test name that's too short (should fail)
-	_, err = client.Chat().CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	_, err = client.Chat().CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Name: "a",
-	}))
+	})
 	if err := a.Error(err, "CreateRoom with single char name should fail"); err != nil {
 		return err
 	}
@@ -383,21 +389,21 @@ func (t *RoomIdempotencyTest) Run(ctx context.Context, client *Client) error {
 	roomID := fmt.Sprintf("idem-test-%d", time.Now().UnixNano())
 	roomName := client.Config().TestDataPrefix + "idempotent-room"
 
-	resp1, err := client.Chat().CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	resp1, err := client.Chat().CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Id:   roomID,
 		Name: roomName,
-	}))
+	})
 	if err := a.NoError(err, "First CreateRoom should succeed"); err != nil {
 		return err
 	}
-	client.TrackRoom(resp1.Msg.GetRoom().GetId())
+	client.TrackRoom(resp1.GetRoom().GetId())
 
 	// Try creating again with same ID - this behavior depends on implementation
 	// Could succeed (idempotent) or fail (duplicate)
-	_, err = client.Chat().CreateRoom(ctx, connect.NewRequest(&chatv1.CreateRoomRequest{
+	_, err = client.Chat().CreateRoom(ctx, &chatv1.CreateRoomRequest{
 		Id:   roomID,
 		Name: roomName,
-	}))
+	})
 
 	// Either outcome is acceptable depending on implementation
 	// The test just verifies the service handles it gracefully

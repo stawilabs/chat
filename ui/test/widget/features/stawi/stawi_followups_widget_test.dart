@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/auth/data/current_user_provider.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
@@ -14,6 +14,7 @@ import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
+import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/ui/governance_sheet.dart';
 import 'package:stawi/features/stawi/ui/pending_reveals_card.dart';
 import 'package:stawi/features/stawi/ui/room_money_screen.dart';
@@ -94,20 +95,18 @@ void main() {
         choice: finance.VoteChoice.VOTE_CHOICE_REJECT,
         member: account,
       );
+      final room = RoomContracts(
+        governance: Uint8List(20)..[0] = 0x40,
+        chainId: BigInt.from(146),
+      );
       final transport = FakeConnectTransport()
         ..on(
           settlement.RoomService.prepareRoomCall,
-          (req) => settlement.PrepareRoomCallResponse(
-            callId: 'call0000000000000001',
-            digest: hexToBytes(wrapped['wrapped'] as String),
+          (req) => honestRoomCall(
+            req,
+            room: room,
             signer: account,
-            call: settlement.RoomCall(
-              chainId: Int64(146),
-              chatRoomId: roomId,
-              kind: req.kind,
-              typedHash: hexToBytes(wrapped['hash'] as String),
-              requiresSignature: true,
-            ),
+            chatRoomId: roomId,
           ),
         );
       final sender = RecordingActSender();
@@ -116,14 +115,25 @@ void main() {
         [(proposalId: 3, vote: vote(DateTime.utc(2026, 10, 20)))],
         service: StawiRoomService(
           rooms: settlement.RoomServiceClient(transport),
-          keys: DeviceKeyStore(vaultWith('p1', anvilKey)),
+          keys: DeviceKeyStore(
+            vaultWith('p1', anvilKey),
+            gate: SigningGate.open,
+          ),
           identity: () async => identityWith('p1', account),
           send: sender.call,
           ballots: SecretBallotStore(ballots),
+          contracts: (id) async => room,
         ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('reveal-3')));
+      await tester.pumpAndSettle();
+      // What was checked is reviewed before the device lock.
+      expect(find.byKey(const Key('money-review')), findsOneWidget);
+      expect(find.text('Reveal my vote on proposal #3'), findsOneWidget);
+      expect(find.text(checkedRoomActNote), findsOneWidget);
+      expect(sender.sent, isEmpty);
+      await tester.tap(find.byKey(const Key('money-review-sign')));
       await tester.pumpAndSettle();
       expect(sender.sent.single.content['kind'], 'REVEAL_VOTE');
       expect(
@@ -178,6 +188,7 @@ void main() {
           settlement.AccountService.prepareAccountCall,
           (req) => request.prepared(req.kind),
         );
+      await serveDeployedAccount(transport, request.devicePrivateKey);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -191,8 +202,12 @@ void main() {
             stawiRoomAssetsProvider.overrideWith((ref, id) async => usdcAssets),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
+                roomAssets: testRoomAssets,
                 accounts: settlement.AccountServiceClient(transport),
-                keys: DeviceKeyStore(vaultWith('p1', request.devicePrivateKey)),
+                keys: DeviceKeyStore(
+                  vaultWith('p1', request.devicePrivateKey),
+                  gate: SigningGate.open,
+                ),
                 proofs: refusingSessionProofs,
                 identity: () async => identityWith('p1', request.account),
               ),
@@ -256,7 +271,10 @@ void main() {
       final transport = await pump(tester, products);
       expect(find.text('Emergency loan'), findsOneWidget);
       expect(
-        find.text('up to 900.00 USDC · 3% per period · 1–6 instalments'),
+        find.text(
+          'Emergency loan — borrow up to 900.00 USDC; repay over 1 to 6 '
+          'periods; 3% interest a period; decided by a room vote.',
+        ),
         findsOneWidget,
       );
       expect(find.text('Product 0xabcdef01'), findsOneWidget);
@@ -273,8 +291,8 @@ void main() {
           .requestsTo(settlement.AccountService.prepareAccountCall)
           .single;
       expect(prepare.params.productId, productId);
-      expect(find.textContaining('on the room’s own engine'), findsOneWidget);
-      expect(find.byKey(const Key('engine-sign')), findsOneWidget);
+      expect(find.byKey(const Key('money-review')), findsOneWidget);
+      expect(find.byKey(const Key('money-review-sign')), findsOneWidget);
     });
 
     testWidgets('offers only the dues a member may choose', (tester) async {
@@ -308,7 +326,7 @@ void main() {
       await tester.tap(find.byKey(const Key('engine-review')));
       await tester.pumpAndSettle();
       expect(find.textContaining('engines could not be read'), findsOneWidget);
-      expect(find.byKey(const Key('engine-sign')), findsNothing);
+      expect(find.byKey(const Key('money-review')), findsNothing);
       expect(transport.calls, isEmpty);
     });
   });

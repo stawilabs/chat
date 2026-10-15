@@ -2,12 +2,11 @@ package business
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/pitabwire/util"
 )
 
@@ -68,7 +67,7 @@ func (cm *connectionManager) resolveResumeCursor(
 	}
 
 	if cm.replayCli == nil {
-		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("resume replay unavailable"))
+		return "", connect.NewError(connect.CodeFailedPrecondition, "resume replay unavailable")
 	}
 
 	cursor, found, err := cm.replayCli.ResolveCursor(lookupCtx, profileID, deviceID, token)
@@ -86,7 +85,7 @@ func (cm *connectionManager) resolveResumeCursor(
 	}).Warn("resume token could not be resolved; client must resync")
 	return "", connect.NewError(
 		connect.CodeFailedPrecondition,
-		errors.New("resume token is invalid or expired; perform a full sync and reconnect"),
+		"resume token is invalid or expired; perform a full sync and reconnect",
 	)
 }
 
@@ -120,7 +119,7 @@ func (cm *connectionManager) replayMissedEvents(
 		if replayedCount >= cm.resumeMaxEvents {
 			return "", 0, connect.NewError(
 				connect.CodeFailedPrecondition,
-				errors.New("resume replay window exceeded; perform a full sync and reconnect"),
+				"resume replay window exceeded; perform a full sync and reconnect",
 			)
 		}
 
@@ -156,7 +155,7 @@ func (cm *connectionManager) replayMissedEvents(
 			if replayedCount >= cm.resumeMaxEvents && nextCursor < boundary {
 				return "", 0, connect.NewError(
 					connect.CodeFailedPrecondition,
-					errors.New("resume replay window exceeded; perform a full sync and reconnect"),
+					"resume replay window exceeded; perform a full sync and reconnect",
 				)
 			}
 		}

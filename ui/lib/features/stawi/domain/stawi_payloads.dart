@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
+import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show hexToBytes;
 
 import '../../messages/domain/room_event.dart';
+import 'personal_calls.dart' show LoanRef;
 
 /// Converts the chat.v1 Stawi payloads to and from the content map a
 /// [RoomEvent] stores. The map is the payload's proto3 JSON, so it round-trips
@@ -46,6 +48,18 @@ class StawiPayloadCodec {
         content: _json(payload.financeCard),
       );
     }
+    if (payload.hasStawiAgentInvitation()) {
+      return (
+        type: RoomEventType.stawiAgentInvitation,
+        content: _json(payload.stawiAgentInvitation),
+      );
+    }
+    if (payload.hasStawiAgentAcceptance()) {
+      return (
+        type: RoomEventType.stawiAgentAcceptance,
+        content: _json(payload.stawiAgentAcceptance),
+      );
+    }
     return null;
   }
 
@@ -78,6 +92,26 @@ class StawiPayloadCodec {
           ..type = pb.PayloadType.PAYLOAD_TYPE_STAWI_SIGNED_CALL
           ..stawiSignedCall = (pb.StawiSignedCallContent()
             ..mergeFromProto3Json(content, ignoreUnknownFields: true));
+        return true;
+      case RoomEventType.stawiAgentInvitation:
+        final invitation = pb.StawiAgentInvitationContent()
+          ..mergeFromProto3Json(content, ignoreUnknownFields: true)
+          // Stamped by the server; whatever a client sends is replaced.
+          ..clearRoomName()
+          ..clearExpiresAt();
+        payload
+          ..type = pb.PayloadType.PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+          ..stawiAgentInvitation = invitation;
+        return true;
+      case RoomEventType.stawiAgentAcceptance:
+        final acceptance = pb.StawiAgentAcceptanceContent()
+          ..mergeFromProto3Json(content, ignoreUnknownFields: true)
+          ..clearRoomId()
+          ..clearRoomName()
+          ..clearExpiresAt();
+        payload
+          ..type = pb.PayloadType.PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+          ..stawiAgentAcceptance = acceptance;
         return true;
       default:
         return false;
@@ -149,6 +183,7 @@ class StawiConversionView {
     required this.ruleValues,
     required this.founderSubscriptionIds,
     required this.joinPolicy,
+    this.agentProfileId = '',
     this.genesis,
   });
 
@@ -162,6 +197,7 @@ class StawiConversionView {
       },
       founderSubscriptionIds: _strings(content['founderSubscriptionIds']),
       joinPolicy: StawiJoinPolicy.fromName(content['joinPolicy'] as String?),
+      agentProfileId: content['agentProfileId'] as String? ?? '',
       genesis: genesis is Map
           ? StawiGenesisView.fromJson(genesis.cast<String, dynamic>())
           : null,
@@ -172,20 +208,27 @@ class StawiConversionView {
   final Map<String, String> ruleValues;
   final List<String> founderSubscriptionIds;
   final StawiJoinPolicy? joinPolicy;
+
+  /// The profile named as the room's Stawi agent; empty for none.
+  final String agentProfileId;
   final StawiGenesisView? genesis;
 
-  /// The content map to send: the proto3 JSON of the payload.
+  /// The content map to send: the proto3 JSON of the payload. [agentProfileId]
+  /// names the room's Stawi agent (a member of the room, or a DM partner who
+  /// has written to the sender); null or empty for none.
   static Map<String, dynamic> content({
     required String templateId,
     required Map<String, String> ruleValues,
     required List<String> founderSubscriptionIds,
     required StawiJoinPolicy joinPolicy,
+    String? agentProfileId,
   }) => StawiPayloadCodec._json(
     pb.StawiRoomConversionContent(
       templateId: templateId,
-      ruleValues: ruleValues,
+      ruleValues: ruleValues.entries,
       founderSubscriptionIds: founderSubscriptionIds,
       joinPolicy: joinPolicy.proto,
+      agentProfileId: (agentProfileId?.isEmpty ?? true) ? null : agentProfileId,
     ),
   );
 }
@@ -348,7 +391,38 @@ class FinanceCardView {
   final String title;
   final String body;
   final Map<String, String> data;
+
+  /// The loan the card is about (data `loan_book`, `pool`, `loan_id`): null
+  /// unless all three are there and well formed (two 20-byte addresses in
+  /// 0x hex and a uint64 loan number above zero).
+  LoanRef? get loanRef {
+    final book = data['loan_book'] ?? '';
+    final pool = data['pool'] ?? '';
+    final id = data['loan_id'] ?? '';
+    if (!_address.hasMatch(book) ||
+        !_address.hasMatch(pool) ||
+        !_loanId.hasMatch(id)) {
+      return null;
+    }
+    final loanId = BigInt.parse(id);
+    // A loan number is a uint64 (finance's onchain_loan_id).
+    if (loanId.bitLength > 64) return null;
+    return LoanRef(
+      loanBook: hexToBytes(book),
+      pool: hexToBytes(pool),
+      loanId: loanId,
+    );
+  }
+
+  /// Whether the card names a loan it can open.
+  bool get isLoan => loanRef != null;
+
+  /// Whether the card offers to open its loan (data `action: open_loan`).
+  bool get opensLoan => data['action'] == 'open_loan' && isLoan;
 }
+
+final RegExp _address = RegExp(r'^0x[0-9a-fA-F]{40}$');
+final RegExp _loanId = RegExp(r'^[1-9][0-9]{0,19}$');
 
 /// Where a member's Stawi act stands, as the room shows it.
 enum StawiActState {
@@ -461,3 +535,71 @@ List<String> _strings(Object? value) =>
 
 DateTime? _time(Object? value) =>
     value is String ? DateTime.tryParse(value)?.toUtc() : null;
+
+/// A STAWI_AGENT_INVITATION, sent in a DM by the person converting a room to
+/// the partner they want as its agent. The server stamps the room's name and
+/// how long it can be accepted.
+class StawiAgentInvitationView {
+  const StawiAgentInvitationView({
+    required this.roomId,
+    required this.roomName,
+    this.expiresAt,
+  });
+
+  factory StawiAgentInvitationView.fromContent(Map<String, dynamic> c) =>
+      StawiAgentInvitationView(
+        roomId: c['roomId'] as String? ?? '',
+        roomName: c['roomName'] as String? ?? '',
+        expiresAt: _time(c['expiresAt']),
+      );
+
+  /// The group room being converted.
+  final String roomId;
+
+  /// The room's name as chat holds it; empty until the server stamped it.
+  final String roomName;
+
+  /// Until when it can be accepted; null until the server stamped it.
+  final DateTime? expiresAt;
+
+  /// Whether it can still be accepted at [now].
+  bool liveAt(DateTime now) => expiresAt != null && now.isBefore(expiresAt!);
+
+  /// What the converter sends: the room only; chat fills in the rest.
+  static Map<String, dynamic> content({required String roomId}) =>
+      StawiPayloadCodec._json(pb.StawiAgentInvitationContent(roomId: roomId));
+}
+
+/// A STAWI_AGENT_ACCEPTANCE, sent in a DM by the invited partner. The server
+/// stamps the room it names and how long the inviter may name them agent.
+class StawiAgentAcceptanceView {
+  const StawiAgentAcceptanceView({
+    required this.invitationEventId,
+    required this.roomId,
+    required this.roomName,
+    this.expiresAt,
+  });
+
+  factory StawiAgentAcceptanceView.fromContent(Map<String, dynamic> c) =>
+      StawiAgentAcceptanceView(
+        invitationEventId: c['invitationEventId'] as String? ?? '',
+        roomId: c['roomId'] as String? ?? '',
+        roomName: c['roomName'] as String? ?? '',
+        expiresAt: _time(c['expiresAt']),
+      );
+
+  final String invitationEventId;
+  final String roomId;
+  final String roomName;
+
+  /// Until when the inviter may name the acceptor agent.
+  final DateTime? expiresAt;
+
+  bool liveAt(DateTime now) => expiresAt != null && now.isBefore(expiresAt!);
+
+  /// What the invited partner sends: the invitation accepted.
+  static Map<String, dynamic> content({required String invitationEventId}) =>
+      StawiPayloadCodec._json(
+        pb.StawiAgentAcceptanceContent(invitationEventId: invitationEventId),
+      );
+}

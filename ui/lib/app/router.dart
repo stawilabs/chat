@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../core/navigation/navigation_helper.dart';
 import '../features/auth/data/auth_state_provider.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/calls/ui/call_history_screen.dart';
@@ -29,6 +30,8 @@ import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/storage_settings_screen.dart';
 import '../features/settings/ui/theme_settings_screen.dart';
 import '../features/settings/ui/two_factor_setup_screen.dart';
+import '../features/stawi/ui/loan_detail_screen.dart';
+import '../features/stawi/ui/my_money_screen.dart';
 import '../features/stawi/ui/stawi_account_screen.dart';
 import '../features/stawi/ui/stawi_room_screen.dart';
 
@@ -199,6 +202,18 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/settings/stawi',
         builder: (context, state) => StawiAccountScreen(),
+      ),
+      GoRoute(path: '/money', builder: (context, state) => MyMoneyScreen()),
+      GoRoute(
+        path: '/loan',
+        builder: (context, state) {
+          final q = state.uri.queryParameters;
+          final loanRef = NavigationHelper.loanRefFrom(q);
+          if (loanRef == null) return const InvalidLoanLinkScreen();
+          // The page names the other person from the loan itself; a link
+          // carries no name.
+          return LoanDetailScreen(ref: loanRef, roomId: q['room']);
+        },
       ),
       GoRoute(
         path: '/chat/:roomId',

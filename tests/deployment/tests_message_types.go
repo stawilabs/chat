@@ -7,7 +7,6 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
 	"github.com/pitabwire/util"
 )
 
@@ -55,7 +54,7 @@ func (t *SendAttachmentMessageTest) Run(ctx context.Context, client *Client) err
 	}
 
 	// Send an attachment message
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -74,7 +73,7 @@ func (t *SendAttachmentMessageTest) Run(ctx context.Context, client *Client) err
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent attachment should succeed"); err != nil {
 		return err
 	}
@@ -123,7 +122,7 @@ func (t *SendAttachmentWithCaptionTest) Run(ctx context.Context, client *Client)
 	}
 
 	captionText := "Check out this image!"
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -153,7 +152,7 @@ func (t *SendAttachmentWithCaptionTest) Run(ctx context.Context, client *Client)
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent attachment with caption should succeed"); err != nil {
 		return err
 	}
@@ -205,7 +204,7 @@ func (t *SendEncryptedMessageTest) Run(ctx context.Context, client *Client) erro
 	ciphertext := base64.StdEncoding.EncodeToString([]byte(plaintext))
 	nonce := []byte("random-nonce-12b")
 
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -222,7 +221,7 @@ func (t *SendEncryptedMessageTest) Run(ctx context.Context, client *Client) erro
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent encrypted should succeed"); err != nil {
 		return err
 	}
@@ -270,7 +269,7 @@ func (t *SendCallOfferTest) Run(ctx context.Context, client *Client) error {
 	callID := util.IDString()
 	sdpOffer := "v=0\r\no=- 1234567890 1 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE audio\r\n"
 
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -287,7 +286,7 @@ func (t *SendCallOfferTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent call offer should succeed"); err != nil {
 		return err
 	}
@@ -336,7 +335,7 @@ func (t *SendCallEndTest) Run(ctx context.Context, client *Client) error {
 
 	// First send an offer to start the call
 	sdpOffer := "v=0\r\no=- 1234567890 1 IN IP4 127.0.0.1\r\n"
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -352,13 +351,13 @@ func (t *SendCallEndTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent call offer should succeed"); err != nil {
 		return err
 	}
 
 	// Now end the call
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -373,7 +372,7 @@ func (t *SendCallEndTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent call end should succeed"); err != nil {
 		return err
 	}
@@ -429,7 +428,7 @@ func (t *CreateMotionTest) Run(ctx context.Context, client *Client) error {
 	motionID := util.IDString()
 	targetVotes := uint32(2)
 
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -454,7 +453,7 @@ func (t *CreateMotionTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent motion should succeed"); err != nil {
 		return err
 	}
@@ -506,7 +505,7 @@ func (t *CastVoteTest) Run(ctx context.Context, client *Client) error {
 	motionID := util.IDString()
 
 	// First create a motion
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -529,13 +528,13 @@ func (t *CastVoteTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent motion should succeed"); err != nil {
 		return err
 	}
 
 	// Cast a vote
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -549,7 +548,7 @@ func (t *CastVoteTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent vote should succeed"); err != nil {
 		return err
 	}
@@ -601,7 +600,7 @@ func (t *MotionApprovalWorkflowTest) Run(ctx context.Context, client *Client) er
 	motionID := util.IDString()
 
 	// Step 1: Create a motion that requires 2 yes votes to pass
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -625,13 +624,13 @@ func (t *MotionApprovalWorkflowTest) Run(ctx context.Context, client *Client) er
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent motion should succeed"); err != nil {
 		return err
 	}
 
 	// Step 2: First approver votes yes
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -645,13 +644,13 @@ func (t *MotionApprovalWorkflowTest) Run(ctx context.Context, client *Client) er
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "First vote should succeed"); err != nil {
 		return err
 	}
 
 	// Step 3: Second approver votes yes
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -665,13 +664,13 @@ func (t *MotionApprovalWorkflowTest) Run(ctx context.Context, client *Client) er
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Second vote should succeed"); err != nil {
 		return err
 	}
 
 	// Step 4: Send tally update (simulating what the server might compute)
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -693,7 +692,7 @@ func (t *MotionApprovalWorkflowTest) Run(ctx context.Context, client *Client) er
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "Motion tally should succeed"); err != nil {
 		return err
 	}
@@ -767,7 +766,7 @@ func (t *RoomChangeEventTest) Run(ctx context.Context, client *Client) error {
 	actorSubID := subs[0].GetId()
 
 	// Send a room change event for an update
-	_, err = client.Chat().SendEvent(ctx, connect.NewRequest(&chatv1.SendEventRequest{
+	_, err = client.Chat().SendEvent(ctx, &chatv1.SendEventRequest{
 		Event: []*chatv1.RoomEvent{{
 			Id:     util.IDString(),
 			RoomId: room.GetId(),
@@ -783,7 +782,7 @@ func (t *RoomChangeEventTest) Run(ctx context.Context, client *Client) error {
 				},
 			},
 		}},
-	}))
+	})
 	if err := a.NoError(err, "SendEvent room change should succeed"); err != nil {
 		return err
 	}

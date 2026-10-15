@@ -215,15 +215,13 @@ class _CacheSettingsScreenState extends ConsumerState<CacheSettingsScreen> {
         ),
         title: Text(
           'Maximum Cache Size',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
           _formatCacheSize(currentSizeMB),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         trailing: Icon(
           Icons.chevron_right,
@@ -264,15 +262,13 @@ class _CacheSettingsScreenState extends ConsumerState<CacheSettingsScreen> {
         ),
         title: Text(
           'Per-Room Cache',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
           'Organize cache by room for selective clearing',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         value: isEnabled,
         onChanged: (value) async {
@@ -355,16 +351,13 @@ class _CacheSettingsScreenState extends ConsumerState<CacheSettingsScreen> {
         ),
         title: Text(
           'Clear All Cache',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            color: Colors.red,
-          ),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w500, color: Colors.red),
         ),
         subtitle: Text(
           'Free up ${stats.usedSizeFormatted} by clearing all cached media',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         enabled: !_isClearing && stats.usedSizeBytes > 0,
         onTap: () => _confirmClearCache(stats),
@@ -437,9 +430,8 @@ class _CacheSettingsScreenState extends ConsumerState<CacheSettingsScreen> {
           children: [
             Text(
               roomStats.sizeFormatted,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 8),
             IconButton(
@@ -576,9 +568,8 @@ class _CacheSettingsScreenState extends ConsumerState<CacheSettingsScreen> {
       ref.invalidate(mediaCacheStatsProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Room cache cleared')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Room cache cleared')));
       }
     }
   }
@@ -598,9 +589,8 @@ class _CacheSettingsScreenState extends ConsumerState<CacheSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to clear cache: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to clear cache: $e')));
       }
     } finally {
       if (mounted) {

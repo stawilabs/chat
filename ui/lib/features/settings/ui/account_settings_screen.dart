@@ -349,10 +349,8 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
       ),
       title: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-          color: textColor,
-        ),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w500, color: textColor),
       ),
       subtitle: Text(
         subtitle,

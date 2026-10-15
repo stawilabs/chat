@@ -124,6 +124,16 @@ enum RoomEventType {
   /// Stawi: a display-only finance card posted by the finance service.
   @JsonValue('financeCard')
   financeCard,
+
+  /// Stawi: in a DM, an invitation to be the Stawi agent of a room the
+  /// sender is converting.
+  @JsonValue('stawiAgentInvitation')
+  stawiAgentInvitation,
+
+  /// Stawi: in a DM, the invited partner's acceptance of an agent
+  /// invitation.
+  @JsonValue('stawiAgentAcceptance')
+  stawiAgentAcceptance,
 }
 
 /// Event types that carry a Stawi payload.
@@ -133,6 +143,8 @@ const Set<RoomEventType> stawiEventTypes = {
   RoomEventType.stawiSignedCall,
   RoomEventType.stawiCallOutcome,
   RoomEventType.financeCard,
+  RoomEventType.stawiAgentInvitation,
+  RoomEventType.stawiAgentAcceptance,
 };
 
 extension RoomEventTypeStorage on RoomEventType {
@@ -204,6 +216,10 @@ extension RoomEventTypeStorage on RoomEventType {
         return 'stawiCallOutcome';
       case RoomEventType.financeCard:
         return 'financeCard';
+      case RoomEventType.stawiAgentInvitation:
+        return 'stawiAgentInvitation';
+      case RoomEventType.stawiAgentAcceptance:
+        return 'stawiAgentAcceptance';
     }
   }
 
@@ -275,6 +291,10 @@ extension RoomEventTypeStorage on RoomEventType {
         return 266;
       case RoomEventType.financeCard:
         return 268;
+      case RoomEventType.stawiAgentInvitation:
+        return 270;
+      case RoomEventType.stawiAgentAcceptance:
+        return 272;
     }
   }
 }
@@ -347,6 +367,10 @@ RoomEventType roomEventTypeFromStorageCode(int code) {
       return RoomEventType.stawiCallOutcome;
     case 268:
       return RoomEventType.financeCard;
+    case 270:
+      return RoomEventType.stawiAgentInvitation;
+    case 272:
+      return RoomEventType.stawiAgentAcceptance;
     default:
       return RoomEventType.unknown;
   }
@@ -457,6 +481,12 @@ RoomEventType? tryRoomEventTypeFromWireName(String? raw) {
     case 'financeCard':
     case 'RoomEventType.financeCard':
       return RoomEventType.financeCard;
+    case 'stawiAgentInvitation':
+    case 'RoomEventType.stawiAgentInvitation':
+      return RoomEventType.stawiAgentInvitation;
+    case 'stawiAgentAcceptance':
+    case 'RoomEventType.stawiAgentAcceptance':
+      return RoomEventType.stawiAgentAcceptance;
     default:
       return null;
   }

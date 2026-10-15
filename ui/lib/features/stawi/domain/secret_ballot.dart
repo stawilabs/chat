@@ -102,18 +102,35 @@ class SecretBallotStore {
     required Uint8List member,
     DateTime? revealClosesAt,
   }) async {
-    final vote = SealedVote(
+    final vote = fresh(
       choice: choice,
-      salt: newVoteSalt(random: _random),
       member: member,
       revealClosesAt: revealClosesAt,
     );
+    await keep(roomId, proposalId, vote);
+    return vote;
+  }
+
+  /// [choice] sealed with a fresh salt for [member], not stored yet: [keep]
+  /// stores it once the person confirms the vote, before it is sent.
+  SealedVote fresh({
+    required finance.VoteChoice choice,
+    required Uint8List member,
+    DateTime? revealClosesAt,
+  }) => SealedVote(
+    choice: choice,
+    salt: newVoteSalt(random: _random),
+    member: member,
+    revealClosesAt: revealClosesAt,
+  );
+
+  /// Stores [vote] for its reveal.
+  Future<void> keep(String roomId, int proposalId, SealedVote vote) async {
     await _vault.write(_slot(roomId, proposalId), jsonEncode(vote.toJson()));
     final ids = await _ids(roomId);
     if (!ids.contains(proposalId)) {
       await _vault.write(_index(roomId), jsonEncode([...ids, proposalId]));
     }
-    return vote;
   }
 
   Future<SealedVote?> load(String roomId, int proposalId) async {

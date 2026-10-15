@@ -8,7 +8,7 @@ import (
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"github.com/pitabwire/frame/v2/data"
+	"github.com/pitabwire/frame/v3/data"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,7 +23,24 @@ type Room struct {
 	Properties       data.JSONMap
 	IsPublic         bool
 	RequiresApproval bool
+	// DirectKey names a personal room's people: DirectKey(a, b) for a DM,
+	// BotKey(service, person) for a service's room with one person; empty for
+	// every other room. Several rooms may share a key (a DM recreated after
+	// someone left); the oldest whose active members are exactly its people
+	// is the one services resolve.
+	DirectKey string `gorm:"type:varchar(100);not null;default:''"`
 }
+
+// DirectKey is the key of the DM between two profiles, in either order.
+func DirectKey(a, b string) string {
+	if b < a {
+		a, b = b, a
+	}
+	return "direct:" + a + ":" + b
+}
+
+// BotKey is the key of a service's room with one person.
+func BotKey(service, person string) string { return "bot:" + service + ":" + person }
 
 // ToAPI converts Room model to API representation.
 func (r *Room) ToAPI() *chatv1.Room {

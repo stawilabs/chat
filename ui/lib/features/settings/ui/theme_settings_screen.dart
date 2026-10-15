@@ -108,9 +108,8 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
       children: [
         Text(
           'Theme Mode',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 12),
         Row(
@@ -203,9 +202,8 @@ class _ThemeSettingsScreenState extends ConsumerState<ThemeSettingsScreen> {
       children: [
         Text(
           'Font Size',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 12),
         SegmentedButton<AppFontSize>(

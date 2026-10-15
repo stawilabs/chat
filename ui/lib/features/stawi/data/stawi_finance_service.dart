@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
@@ -9,26 +10,21 @@ import 'stawi_identity.dart';
 /// chat room id.
 class StawiFinanceService {
   StawiFinanceService({
-    required finance.RoomServiceClient rooms,
-    required finance.TreasuryServiceClient treasury,
-    required finance.GovernanceServiceClient governance,
-    required Future<StawiIdentity> Function() identity,
-    finance.SavingsServiceClient? savings,
-    finance.CreditServiceClient? credit,
-  }) : _rooms = rooms,
-       _treasury = treasury,
-       _governance = governance,
-       _identity = identity,
-       _savings = savings,
-       _credit = credit;
+    required this._rooms,
+    required this._treasury,
+    required this._governance,
+    required this._identity,
+    this._savings,
+    this._loans,
+  });
 
   final finance.SavingsServiceClient? _savings;
-  final finance.CreditServiceClient? _credit;
+  final finance.LoanServiceClient? _loans;
 
   finance.SavingsServiceClient get _savingsClient =>
       _savings ?? (throw StateError('no savings client'));
-  finance.CreditServiceClient get _creditClient =>
-      _credit ?? (throw StateError('no credit client'));
+  finance.LoanServiceClient get _loansClient =>
+      _loans ?? (throw StateError('no loans client'));
 
   final finance.RoomServiceClient _rooms;
   final finance.TreasuryServiceClient _treasury;
@@ -37,9 +33,8 @@ class StawiFinanceService {
 
   /// The seeded constitution templates a room can be converted with.
   Future<List<finance.PolicyTemplate>> templates() async =>
-      (await _rooms.listPolicyTemplates(
-        finance.ListPolicyTemplatesRequest(),
-      )).templates;
+      (await _rooms.listPolicyTemplates(finance.ListPolicyTemplatesRequest()))
+          .templates;
 
   /// The signed-in member's membership of [roomId], or null when finance has
   /// no member for them there.
@@ -52,6 +47,35 @@ class StawiFinanceService {
         .where((m) => m.profileId == me.profileId)
         .firstOrNull;
   }
+
+  /// The signed-in member's own dues in [roomId], read off the chain at one
+  /// block (finance GetMemberDues); null when they are not a member there.
+  /// Unavailable when the chain could not be read: never zero.
+  Future<finance.GetMemberDuesResponse?> myDues(String roomId) async {
+    final member = await myMembership(roomId);
+    if (member == null) return null;
+    return _savingsClient.getMemberDues(
+      finance.GetMemberDuesRequest(roomId: roomId, memberId: member.memberId),
+    );
+  }
+
+  /// The room's vote on the loan ([loanBook], [pool], [loanId]) still to be
+  /// decided: indexed (CREATED) or open; null when none is.
+  Future<finance.Proposal?> loanVote(
+    String roomId, {
+    required List<int> loanBook,
+    required List<int> pool,
+    required Int64 loanId,
+  }) async => (await _governance.listProposals(
+    finance.ListProposalsRequest(
+      roomId: roomId,
+      loan: finance.LoanRef(loanBook: loanBook, pool: pool, loanId: loanId),
+      states: const [
+        finance.ProposalState.PROPOSAL_STATE_CREATED,
+        finance.ProposalState.PROPOSAL_STATE_OPEN,
+      ],
+    ),
+  )).proposals.firstOrNull;
 
   /// The signed-in member's statement in [roomId].
   Future<finance.Statement> myStatement(String roomId) async {
@@ -66,9 +90,8 @@ class StawiFinanceService {
 
   /// The room's members, as finance indexes them from the chain.
   Future<List<finance.Member>> members(String roomId) async =>
-      (await _rooms.listMembers(
-        finance.ListMembersRequest(roomId: roomId),
-      )).members;
+      (await _rooms.listMembers(finance.ListMembersRequest(roomId: roomId)))
+          .members;
 
   /// Every member's money in [roomId]: indexed totals, the live book (when
   /// settlement could read it: books_available) and their loans.
@@ -76,21 +99,6 @@ class StawiFinanceService {
       _savingsClient.listMemberBalances(
         finance.ListMemberBalancesRequest(roomId: roomId),
       );
-
-  /// The room's contribution periods, newest first as finance lists them.
-  Future<List<finance.Period>> periods(String roomId) async =>
-      (await _savingsClient.listPeriods(
-        finance.ListPeriodsRequest(roomId: roomId),
-      )).periods;
-
-  /// What the signed-in member owes, per period.
-  Future<List<finance.Obligation>> myObligations(String roomId) async {
-    final member = await myMembership(roomId);
-    if (member == null) return const [];
-    return (await _savingsClient.listObligations(
-      finance.ListObligationsRequest(roomId: roomId, memberId: member.memberId),
-    )).obligations;
-  }
 
   /// The room's share-outs.
   Future<List<finance.DistributionRecord>> distributions(String roomId) async =>
@@ -109,9 +117,8 @@ class StawiFinanceService {
 
   /// The room's loans.
   Future<List<finance.Loan>> loans(String roomId) async =>
-      (await _creditClient.listLoans(
-        finance.ListLoansRequest(roomId: roomId),
-      )).loans;
+      (await _loansClient.listLoans(finance.ListLoansRequest(roomId: roomId)))
+          .loans;
 
   /// The assets the room's amounts name (Room.assets).
   Future<StawiAssets> roomAssets(String roomId) async => StawiAssets(
@@ -136,9 +143,11 @@ class StawiFinanceService {
 
   /// The constitution's roles.
   Future<List<finance.RoleCapabilities>> roles(String roomId) async =>
-      (await _rooms.getPolicy(
-        finance.GetPolicyRequest(roomId: roomId),
-      )).policyVersion.constitution.governance.roles;
+      (await _rooms.getPolicy(finance.GetPolicyRequest(roomId: roomId)))
+          .policyVersion
+          .constitution
+          .governance
+          .roles;
 
   /// The room's proposal with on-chain number [onchainProposalId], if
   /// finance has indexed it.
@@ -167,7 +176,7 @@ final stawiFinanceServiceProvider = Provider<StawiFinanceService>((ref) {
     governance: ref.watch(financeGovernanceProvider),
     identity: () => ref.read(stawiIdentityProvider.future),
     savings: ref.watch(financeSavingsProvider),
-    credit: ref.watch(financeCreditProvider),
+    loans: ref.watch(financeLoansProvider),
   );
 });
 
@@ -183,17 +192,6 @@ final stawiStatementProvider = FutureProvider.autoDispose
     );
 
 /// Room-scoped finance reads for the money screens.
-final stawiPeriodsProvider = FutureProvider.autoDispose
-    .family<List<finance.Period>, String>(
-      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).periods(roomId),
-    );
-
-final stawiObligationsProvider = FutureProvider.autoDispose
-    .family<List<finance.Obligation>, String>(
-      (ref, roomId) =>
-          ref.watch(stawiFinanceServiceProvider).myObligations(roomId),
-    );
-
 final stawiDistributionsProvider = FutureProvider.autoDispose
     .family<List<finance.DistributionRecord>, String>(
       (ref, roomId) =>
@@ -250,8 +248,31 @@ final stawiRoomAssetsProvider = FutureProvider.autoDispose
           ref.watch(stawiFinanceServiceProvider).roomAssets(roomId),
     );
 
-/// The room's assets as far as they are known now: none while they load or
-/// when finance cannot describe them, and amounts then show in minor units.
+/// The room's assets as far as they are known now: unknown while they load
+/// or when finance cannot describe them, and amounts then show as "—".
 StawiAssets watchRoomAssets(WidgetRef ref, String roomId) =>
     ref.watch(stawiRoomAssetsProvider(roomId)).asData?.value ??
-    StawiAssets.empty;
+    StawiAssets.loading;
+
+/// The signed-in member's own dues in a room; null when not a member.
+final stawiMyDuesProvider = FutureProvider.autoDispose
+    .family<finance.GetMemberDuesResponse?, String>(
+      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).myDues(roomId),
+      // An unreadable chain is said so at once, with a way to read it again.
+      retry: (_, _) => null,
+    );
+
+/// A group loan's vote still to be decided, keyed by (room, loan); null when
+/// the vote has not opened (or the loan has none).
+final stawiLoanVoteProvider = FutureProvider.autoDispose
+    .family<finance.Proposal?, ({String roomId, finance.Loan loan})>(
+      (ref, key) => ref
+          .watch(stawiFinanceServiceProvider)
+          .loanVote(
+            key.roomId,
+            loanBook: key.loan.loanBook,
+            pool: key.loan.pool,
+            loanId: key.loan.onchainLoanId,
+          ),
+      retry: (_, _) => null,
+    );

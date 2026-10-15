@@ -5,7 +5,8 @@ import (
 	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
-	"github.com/pitabwire/frame/v2/datastore"
+	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
+	"github.com/pitabwire/frame/v3/datastore"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 )
@@ -15,6 +16,31 @@ type RoomRepository interface {
 	datastore.BaseRepository[*models.Room]
 	GetByTenantAndType(ctx context.Context, tenantID, roomType string) ([]*models.Room, error)
 	GetRoomsByProfileID(ctx context.Context, profileID string) ([]*models.Room, error)
+	// DirectRooms lists the personal rooms (DIRECT, BOT) keyed by key within
+	// the tenant and partitions given, oldest first, deleted rooms excluded,
+	// uncapped, from the primary (KeyedRoomStore.Rooms outside the lock).
+	DirectRooms(ctx context.Context, key, tenantID string, partitions []string) ([]*models.Room, error)
+	// WithDirectKeyLock runs fn in one primary transaction holding an
+	// advisory lock on key: resolutions of one key are serialised, and fn
+	// reads and writes the key's rooms through the store it is given.
+	WithDirectKeyLock(ctx context.Context, key, tenantID string, partitions []string,
+		fn func(KeyedRoomStore) error) error
+}
+
+// KeyedRoomStore is what a personal room's resolution reads and writes while
+// it holds its key's lock: the primary database, inside the lock's
+// transaction, scoped to the key and the tenancy the lock was taken for.
+type KeyedRoomStore interface {
+	// Rooms lists the key's rooms in the tenancy, oldest first, deleted rooms
+	// excluded.
+	Rooms() ([]*models.Room, error)
+	// ActiveSubscriptions lists a room's active subscriptions.
+	ActiveSubscriptions(roomID string) ([]*models.RoomSubscription, error)
+	// Insert writes a new room of the key and its subscriptions.
+	Insert(room *models.Room, subscriptions []*models.RoomSubscription) error
+	// InsertServerEvent writes an event the server posts and its outbox row,
+	// so it is delivered only if the transaction commits.
+	InsertServerEvent(event *models.RoomEvent, outbox *models.RoomOutbox) error
 }
 
 // RoomEventRepository defines the interface for room event data access operations.
@@ -29,6 +55,16 @@ type RoomEventRepository interface {
 	) ([]*models.RoomEvent, error)
 	GetByEventID(ctx context.Context, roomID, eventID string) (*models.RoomEvent, error)
 	CountByRoomID(ctx context.Context, roomID string) (int64, error)
+	// HasAuthoredInRoom reports whether the subscription has authored any
+	// message or event (not a system event) in the room, deleted ones
+	// included: whether that member has taken part.
+	HasAuthoredInRoom(ctx context.Context, roomID, subscriptionID string) (bool, error)
+	// AuthoredOfPayloadType lists the room's events of one payload type the
+	// subscription sent at or after since, newest first, deleted ones
+	// excluded, at most limit.
+	AuthoredOfPayloadType(
+		ctx context.Context, roomID, subscriptionID string, payloadType chatv1.PayloadType, since time.Time, limit int,
+	) ([]*models.RoomEvent, error)
 	// ExistsByIDs checks if any of the given event IDs already exist.
 	// Returns a map of eventID -> exists for deduplication.
 	ExistsByIDs(ctx context.Context, eventIDs []string) (map[string]bool, error)

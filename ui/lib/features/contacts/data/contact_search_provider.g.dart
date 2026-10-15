@@ -52,7 +52,7 @@ abstract class _$ContactSearch extends $Notifier<ContactSearchState> {
   ContactSearchState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ContactSearchState, ContactSearchState>;
     final element =
         ref.element
@@ -62,7 +62,7 @@ abstract class _$ContactSearch extends $Notifier<ContactSearchState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -111,7 +111,7 @@ abstract class _$ContactSortOptionState extends $Notifier<ContactSortOption> {
   ContactSortOption build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ContactSortOption, ContactSortOption>;
     final element =
         ref.element
@@ -121,6 +121,6 @@ abstract class _$ContactSortOptionState extends $Notifier<ContactSortOption> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

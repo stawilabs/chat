@@ -84,6 +84,14 @@ class ApiConfig {
     defaultValue: 'https://finance.stawi.org',
   );
 
+  /// The chain the Stawi deployment is on (Sonic testnet by default). A key
+  /// change the device signs is checked against it, never against the chain
+  /// a prepared intent names.
+  static const int stawiChainId = int.fromEnvironment(
+    'STAWI_CHAIN_ID',
+    defaultValue: 14601,
+  );
+
   // OAuth2 configuration (configurable via --dart-define)
   static const String oauth2IssuerUrl = String.fromEnvironment(
     'OAUTH2_ISSUER_URL',
@@ -110,8 +118,7 @@ class ApiConfig {
 
   static const String googleServerClientId = String.fromEnvironment(
     'GOOGLE_SERVER_CLIENT_ID',
-    defaultValue:
-        '265397001887-hjrrjml6ekekmrjlg4ku4bsgtobgid85.apps.googleusercontent.com',
+    defaultValue: '265397001887-hjrrjml6ekekmrjlg4ku4bsgtobgid85.apps.googleusercontent.com',
   );
 
   // Connection settings optimized for low-resource devices

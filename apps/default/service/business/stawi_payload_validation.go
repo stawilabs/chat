@@ -6,7 +6,7 @@ import (
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"buf.build/go/protovalidate"
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 
 	"github.com/stawilabs/chat/apps/default/service/models"
 )
@@ -68,5 +68,5 @@ func validateStawiPayload(reqEvt *chatv1.RoomEvent) error {
 }
 
 func invalidStawiPayload(err error) error {
-	return connect.NewError(connect.CodeInvalidArgument, err)
+	return connect.NewError(connect.CodeInvalidArgument, err.Error()).WithCause(err)
 }

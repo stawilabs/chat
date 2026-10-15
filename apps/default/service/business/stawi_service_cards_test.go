@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
+	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/frametests/definition"
-	"github.com/pitabwire/frame/v2/security"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/frametests/definition"
+	"github.com/pitabwire/frame/v3/security"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
@@ -297,5 +298,64 @@ func (s *MessageBusinessTestSuite) TestServiceCardBatchIsCheckedPerEvent() {
 				require.Nil(t, evt.GetPayload().GetFinanceCard(), "nothing written to %s", roomID)
 			}
 		}
+	})
+}
+
+// TestServiceCardsPostIntoAPersonalRoom: a resolved DM takes a service's card
+// (stored, from no subscription); a service's bot room takes cards from that
+// service only; a plain group room the chain does not have is still refused.
+func (s *MessageBusinessTestSuite) TestServiceCardsPostIntoAPersonalRoom() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		finance, other := util.IDString(), util.IDString()
+		for _, svc := range []string{finance, other} {
+			f.grantRoomResolve(t, svc)
+			f.grantCardPost(t, svc)
+		}
+		svcCtx := serviceCtx(f.ctx, finance, true)
+		alice, bob := util.IDString(), util.IDString()
+
+		dm, err := f.rb.ResolvePersonalRoom(svcCtx, directRequest(alice, bob))
+		require.NoError(t, err)
+		acks, err := f.mb.SendServiceEvents(svcCtx, financeCard(dm.GetId()))
+		require.NoError(t, err)
+		cardID := requireAckOK(t, acks[0])
+		events, err := f.mb.GetHistory(f.ctx, &chatv1.GetHistoryRequest{RoomId: dm.GetId()},
+			&commonv1.ContactLink{ProfileId: alice, ContactId: util.IDString()})
+		require.NoError(t, err)
+		var stored *chatv1.RoomEvent
+		for _, evt := range events {
+			if evt.GetId() == cardID {
+				stored = evt
+			}
+		}
+		require.NotNil(t, stored, "the people see the card")
+		require.Equal(t, "Contribution received", stored.GetPayload().GetFinanceCard().GetTitle())
+		require.Empty(t, stored.GetSubscriptionId(), "the service is not a member")
+		acks, err = f.mb.SendServiceEvents(serviceCtx(f.ctx, other, true), financeCard(dm.GetId()))
+		require.NoError(t, err)
+		requireAckOK(t, acks[0])
+
+		notices, err := f.rb.ResolvePersonalRoom(svcCtx, botRequest(alice))
+		require.NoError(t, err)
+		acks, err = f.mb.SendServiceEvents(svcCtx, financeCard(notices.GetId()))
+		require.NoError(t, err)
+		requireAckOK(t, acks[0])
+		acks, err = f.mb.SendServiceEvents(serviceCtx(f.ctx, other, true), financeCard(notices.GetId()))
+		require.NoError(t, err)
+		requireAckRefused(t, acks[0], connect.CodePermissionDenied)
+
+		group, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Name: "Plain group"}, f.alice)
+		require.NoError(t, err)
+		f.placeRoom(t, group.GetId(), cardTenant, cardPartition)
+		acks, err = f.mb.SendServiceEvents(svcCtx, financeCard(group.GetId()))
+		require.NoError(t, err)
+		requireAckRefused(t, acks[0], connect.CodeFailedPrecondition)
+
+		// A DM in another tenancy stays out of reach.
+		f.placeRoom(t, dm.GetId(), "tenant-other", cardPartition)
+		acks, err = f.mb.SendServiceEvents(svcCtx, financeCard(dm.GetId()))
+		require.NoError(t, err)
+		requireAckRefused(t, acks[0], connect.CodePermissionDenied)
 	})
 }

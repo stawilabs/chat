@@ -23,12 +23,8 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     defaultConfig {
@@ -103,15 +99,27 @@ gradle.taskGraph.whenReady {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
 flutter {
     source = "../.."
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
-    // Import the Firebase BoM
-      implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    // MainActivity is a FlutterFragmentActivity and every window theme is
+    // AppCompat, so local_auth can show the device-lock prompt Stawi signs
+    // behind.
+    implementation("androidx.appcompat:appcompat:1.8.0")
+
+    // Import the Firebase BoM, kept at the one firebase_core builds against
+    // (its android/gradle.properties FirebaseSDKVersion).
+      implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
 
       // When using the BoM, don't specify versions in Firebase dependencies
       implementation("com.google.firebase:firebase-analytics")

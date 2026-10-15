@@ -96,6 +96,20 @@ abstract final class ChatService {
     chatv1chat.UpdateSubscriptionRoleResponse.new,
   );
 
+  /// The Stawi account of the other person in the caller's DM. The caller
+  /// must be a person and an active member of the DIRECT room, the room must
+  /// hold exactly two active members, and the partner must have taken part
+  /// (started the DM or written in it); anything else is refused without
+  /// saying anything about the room. An empty account means the partner has
+  /// no Stawi account yet.
+  static const getDirectPartnerAccount = connect.Spec(
+    '/$name/GetDirectPartnerAccount',
+    connect.StreamType.unary,
+    chatv1chat.GetDirectPartnerAccountRequest.new,
+    chatv1chat.GetDirectPartnerAccountResponse.new,
+    idempotency: connect.Idempotency.noSideEffects,
+  );
+
   static const searchRoomSubscriptions = connect.Spec(
     '/$name/SearchRoomSubscriptions',
     connect.StreamType.unary,

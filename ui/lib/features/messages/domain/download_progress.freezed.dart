@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'download_progress.dart';
@@ -9,6 +9,7 @@ part of 'download_progress.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -46,16 +47,21 @@ $DownloadProgressCopyWith<DownloadProgress> get copyWith => _$DownloadProgressCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DownloadProgress&&(identical(other.downloadId, downloadId) || other.downloadId == downloadId)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.state, state) || other.state == state)&&(identical(other.error, error) || other.error == error)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.fileUrl, fileUrl) || other.fileUrl == fileUrl)&&(identical(other.localPath, localPath) || other.localPath == localPath)&&(identical(other.totalBytes, totalBytes) || other.totalBytes == totalBytes)&&(identical(other.downloadedBytes, downloadedBytes) || other.downloadedBytes == downloadedBytes)&&(identical(other.currentChunk, currentChunk) || other.currentChunk == currentChunk)&&(identical(other.totalChunks, totalChunks) || other.totalChunks == totalChunks)&&(identical(other.etag, etag) || other.etag == etag)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.retryCount, retryCount) || other.retryCount == retryCount)&&(identical(other.isChunked, isChunked) || other.isChunked == isChunked)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
+  final _this = this as DownloadProgress;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DownloadProgress&&(identical(other.downloadId, _this.downloadId) || other.downloadId == _this.downloadId)&&(identical(other.progress, _this.progress) || other.progress == _this.progress)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.error, _this.error) || other.error == _this.error)&&(identical(other.fileName, _this.fileName) || other.fileName == _this.fileName)&&(identical(other.fileUrl, _this.fileUrl) || other.fileUrl == _this.fileUrl)&&(identical(other.localPath, _this.localPath) || other.localPath == _this.localPath)&&(identical(other.totalBytes, _this.totalBytes) || other.totalBytes == _this.totalBytes)&&(identical(other.downloadedBytes, _this.downloadedBytes) || other.downloadedBytes == _this.downloadedBytes)&&(identical(other.currentChunk, _this.currentChunk) || other.currentChunk == _this.currentChunk)&&(identical(other.totalChunks, _this.totalChunks) || other.totalChunks == _this.totalChunks)&&(identical(other.etag, _this.etag) || other.etag == _this.etag)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&(identical(other.completedAt, _this.completedAt) || other.completedAt == _this.completedAt)&&(identical(other.retryCount, _this.retryCount) || other.retryCount == _this.retryCount)&&(identical(other.isChunked, _this.isChunked) || other.isChunked == _this.isChunked)&&(identical(other.roomId, _this.roomId) || other.roomId == _this.roomId)&&(identical(other.mimeType, _this.mimeType) || other.mimeType == _this.mimeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,downloadId,progress,state,error,fileName,fileUrl,localPath,totalBytes,downloadedBytes,currentChunk,totalChunks,etag,startedAt,completedAt,retryCount,isChunked,roomId,mimeType);
+int get hashCode {
+  final _this = this as DownloadProgress;
+  return Object.hash(runtimeType,_this.downloadId,_this.progress,_this.state,_this.error,_this.fileName,_this.fileUrl,_this.localPath,_this.totalBytes,_this.downloadedBytes,_this.currentChunk,_this.totalChunks,_this.etag,_this.startedAt,_this.completedAt,_this.retryCount,_this.isChunked,_this.roomId,_this.mimeType);
+}
 
 @override
 String toString() {
-  return 'DownloadProgress(downloadId: $downloadId, progress: $progress, state: $state, error: $error, fileName: $fileName, fileUrl: $fileUrl, localPath: $localPath, totalBytes: $totalBytes, downloadedBytes: $downloadedBytes, currentChunk: $currentChunk, totalChunks: $totalChunks, etag: $etag, startedAt: $startedAt, completedAt: $completedAt, retryCount: $retryCount, isChunked: $isChunked, roomId: $roomId, mimeType: $mimeType)';
+  final _this = this as DownloadProgress;
+  return 'DownloadProgress(downloadId: ${_this.downloadId}, progress: ${_this.progress}, state: ${_this.state}, error: ${_this.error}, fileName: ${_this.fileName}, fileUrl: ${_this.fileUrl}, localPath: ${_this.localPath}, totalBytes: ${_this.totalBytes}, downloadedBytes: ${_this.downloadedBytes}, currentChunk: ${_this.currentChunk}, totalChunks: ${_this.totalChunks}, etag: ${_this.etag}, startedAt: ${_this.startedAt}, completedAt: ${_this.completedAt}, retryCount: ${_this.retryCount}, isChunked: ${_this.isChunked}, roomId: ${_this.roomId}, mimeType: ${_this.mimeType})';
 }
 
 
@@ -84,7 +90,7 @@ class _$DownloadProgressCopyWithImpl<$Res>
 /// Create a copy of DownloadProgress
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? downloadId = null,Object? progress = null,Object? state = null,Object? error = freezed,Object? fileName = freezed,Object? fileUrl = freezed,Object? localPath = freezed,Object? totalBytes = freezed,Object? downloadedBytes = null,Object? currentChunk = null,Object? totalChunks = null,Object? etag = freezed,Object? startedAt = freezed,Object? completedAt = freezed,Object? retryCount = null,Object? isChunked = null,Object? roomId = freezed,Object? mimeType = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(DownloadProgress(
 downloadId: null == downloadId ? _self.downloadId : downloadId // ignore: cast_nullable_to_non_nullable
 as String,progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
 as double,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
@@ -297,16 +303,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DownloadProgress&&(identical(other.downloadId, downloadId) || other.downloadId == downloadId)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.state, state) || other.state == state)&&(identical(other.error, error) || other.error == error)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.fileUrl, fileUrl) || other.fileUrl == fileUrl)&&(identical(other.localPath, localPath) || other.localPath == localPath)&&(identical(other.totalBytes, totalBytes) || other.totalBytes == totalBytes)&&(identical(other.downloadedBytes, downloadedBytes) || other.downloadedBytes == downloadedBytes)&&(identical(other.currentChunk, currentChunk) || other.currentChunk == currentChunk)&&(identical(other.totalChunks, totalChunks) || other.totalChunks == totalChunks)&&(identical(other.etag, etag) || other.etag == etag)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.retryCount, retryCount) || other.retryCount == retryCount)&&(identical(other.isChunked, isChunked) || other.isChunked == isChunked)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DownloadProgress&&(identical(other.downloadId, downloadId) || other.downloadId == downloadId)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.state, state) || other.state == state)&&(identical(other.error, error) || other.error == error)&&(identical(other.fileName, fileName) || other.fileName == fileName)&&(identical(other.fileUrl, fileUrl) || other.fileUrl == fileUrl)&&(identical(other.localPath, localPath) || other.localPath == localPath)&&(identical(other.totalBytes, totalBytes) || other.totalBytes == totalBytes)&&(identical(other.downloadedBytes, downloadedBytes) || other.downloadedBytes == downloadedBytes)&&(identical(other.currentChunk, currentChunk) || other.currentChunk == currentChunk)&&(identical(other.totalChunks, totalChunks) || other.totalChunks == totalChunks)&&(identical(other.etag, etag) || other.etag == etag)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.retryCount, retryCount) || other.retryCount == retryCount)&&(identical(other.isChunked, isChunked) || other.isChunked == isChunked)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,downloadId,progress,state,error,fileName,fileUrl,localPath,totalBytes,downloadedBytes,currentChunk,totalChunks,etag,startedAt,completedAt,retryCount,isChunked,roomId,mimeType);
+int get hashCode {
+    return Object.hash(runtimeType,downloadId,progress,state,error,fileName,fileUrl,localPath,totalBytes,downloadedBytes,currentChunk,totalChunks,etag,startedAt,completedAt,retryCount,isChunked,roomId,mimeType);
+}
 
 @override
 String toString() {
-  return 'DownloadProgress(downloadId: $downloadId, progress: $progress, state: $state, error: $error, fileName: $fileName, fileUrl: $fileUrl, localPath: $localPath, totalBytes: $totalBytes, downloadedBytes: $downloadedBytes, currentChunk: $currentChunk, totalChunks: $totalChunks, etag: $etag, startedAt: $startedAt, completedAt: $completedAt, retryCount: $retryCount, isChunked: $isChunked, roomId: $roomId, mimeType: $mimeType)';
+    return 'DownloadProgress(downloadId: $downloadId, progress: $progress, state: $state, error: $error, fileName: $fileName, fileUrl: $fileUrl, localPath: $localPath, totalBytes: $totalBytes, downloadedBytes: $downloadedBytes, currentChunk: $currentChunk, totalChunks: $totalChunks, etag: $etag, startedAt: $startedAt, completedAt: $completedAt, retryCount: $retryCount, isChunked: $isChunked, roomId: $roomId, mimeType: $mimeType)';
 }
 
 

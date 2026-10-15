@@ -43,13 +43,23 @@ class StawiAssets {
     : _byId = {
         for (final info in infos)
           if (info.assetId.isNotEmpty) info.assetId: StawiAsset.fromInfo(info),
-      };
+      },
+      loaded = true;
 
-  StawiAssets._(this._byId);
+  StawiAssets._(this._byId, {this.loaded = true});
 
+  /// Read, and describing nothing: amounts show as whole minor units under
+  /// their asset id.
   static final StawiAssets empty = StawiAssets();
 
+  /// Not read yet (or not readable): every amount is unknown ("—"), never
+  /// minor units.
+  static final StawiAssets loading = StawiAssets._(const {}, loaded: false);
+
   final Map<String, StawiAsset> _byId;
+
+  /// Whether the assets were read. While they load, nothing can be shown.
+  final bool loaded;
 
   /// The asset [id] names; unknown (raw minor units under the id) when none
   /// of the lists describes it.
@@ -57,7 +67,7 @@ class StawiAssets {
 
   /// These assets and [infos], [infos] taking precedence.
   StawiAssets withAll(Iterable<finance.AssetInfo> infos) =>
-      StawiAssets._({..._byId, ...StawiAssets(infos)._byId});
+      StawiAssets._({..._byId, ...StawiAssets(infos)._byId}, loaded: loaded);
 }
 
 /// [units] minor units of [asset], localized: "900.00 USDC",
@@ -90,10 +100,15 @@ String formatUnits(BigInt units, StawiAsset asset, {String? locale}) {
   return '$number ${asset.symbol}';
 }
 
-/// A finance.v1 Money, formatted from its minor units ("0" when empty) in the
-/// asset [assets] describes for its asset id.
+/// What an amount that is not known shows: never 0.
+const String unknownAmount = '—';
+
+/// A finance.v1 Money, formatted from its minor units in the asset [assets]
+/// describes for its asset id. An empty amount is unknown ("—"), never 0, and
+/// so is every amount while the assets load: never raw minor units.
 String formatMoney(finance.Money money, StawiAssets assets, {String? locale}) {
-  final units = BigInt.tryParse(money.amount.isEmpty ? '0' : money.amount);
+  if (money.amount.isEmpty || !assets.loaded) return unknownAmount;
+  final units = BigInt.tryParse(money.amount);
   if (units == null) return money.amount;
   if (money.assetId.isEmpty) return units.toString();
   return formatUnits(units, assets.of(money.assetId), locale: locale);

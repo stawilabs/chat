@@ -52,7 +52,7 @@ abstract class _$StartupService extends $Notifier<StartupProgress> {
   StartupProgress build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<StartupProgress, StartupProgress>;
     final element =
         ref.element
@@ -62,6 +62,6 @@ abstract class _$StartupService extends $Notifier<StartupProgress> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

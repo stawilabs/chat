@@ -62,36 +62,31 @@ void main() {
 
     test('isVideoQualityAcceptable returns true for good qualities', () {
       expect(
-        const CallStats(
-          quality: ConnectionQuality.excellent,
-        ).isVideoQualityAcceptable,
+        const CallStats(quality: ConnectionQuality.excellent)
+            .isVideoQualityAcceptable,
         isTrue,
       );
       expect(
-        const CallStats(
-          quality: ConnectionQuality.good,
-        ).isVideoQualityAcceptable,
+        const CallStats(quality: ConnectionQuality.good)
+            .isVideoQualityAcceptable,
         isTrue,
       );
       expect(
-        const CallStats(
-          quality: ConnectionQuality.fair,
-        ).isVideoQualityAcceptable,
+        const CallStats(quality: ConnectionQuality.fair)
+            .isVideoQualityAcceptable,
         isTrue,
       );
     });
 
     test('isVideoQualityAcceptable returns false for poor qualities', () {
       expect(
-        const CallStats(
-          quality: ConnectionQuality.poor,
-        ).isVideoQualityAcceptable,
+        const CallStats(quality: ConnectionQuality.poor)
+            .isVideoQualityAcceptable,
         isFalse,
       );
       expect(
-        const CallStats(
-          quality: ConnectionQuality.veryPoor,
-        ).isVideoQualityAcceptable,
+        const CallStats(quality: ConnectionQuality.veryPoor)
+            .isVideoQualityAcceptable,
         isFalse,
       );
     });
@@ -121,9 +116,8 @@ void main() {
       'shouldShowWarning returns false for good quality and not reconnecting',
       () {
         expect(
-          const CallStats(
-            quality: ConnectionQuality.excellent,
-          ).shouldShowWarning,
+          const CallStats(quality: ConnectionQuality.excellent)
+              .shouldShowWarning,
           isFalse,
         );
         expect(
@@ -135,9 +129,8 @@ void main() {
 
     test('qualityDescription returns correct strings', () {
       expect(
-        const CallStats(
-          quality: ConnectionQuality.excellent,
-        ).qualityDescription,
+        const CallStats(quality: ConnectionQuality.excellent)
+            .qualityDescription,
         equals('Excellent'),
       );
       expect(

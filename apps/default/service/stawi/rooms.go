@@ -15,7 +15,7 @@ import (
 	"errors"
 	"time"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 )
 
 // JoinPolicy is how someone may enter a Stawi room once it is on chain.
@@ -39,6 +39,9 @@ type PrepareGenesisRequest struct {
 	JoinPolicy        JoinPolicy
 	// RequestedBy is the profile that sent the conversion.
 	RequestedBy string
+	// AgentProfileID is the room's Stawi agent, empty for none. Settlement
+	// resolves it to the account the founders sign into the genesis.
+	AgentProfileID string
 }
 
 // Genesis is a prepared room genesis awaiting founder signatures.
@@ -138,7 +141,7 @@ type AccountResolver interface {
 
 // ErrNotConfigured is returned when chat runs without a settlement client.
 var ErrNotConfigured = connect.NewError(connect.CodeUnavailable,
-	errors.New("stawi rooms are not available: settlement is not configured"))
+	"stawi rooms are not available: settlement is not configured")
 
 // IsTransient reports whether a settlement error is worth retrying as is:
 // settlement could not be reached or did not answer, as opposed to refusing
@@ -181,4 +184,19 @@ func HexAddress(b []byte) string {
 		return ""
 	}
 	return "0x" + hex.EncodeToString(b)
+}
+
+// ProfileAccount is a profile's primary Stawi account as settlement reports
+// it. An empty Account means the profile has none.
+type ProfileAccount struct {
+	Account []byte
+	// Deployed is whether the account has code at the head.
+	Deployed bool
+}
+
+// ProfileAccounts is settlement's AccountService.GetProfileAccount as chat
+// uses it: chat calls it as its own service principal, and only after it has
+// itself checked the relationship that entitles a person to the address.
+type ProfileAccounts interface {
+	GetProfileAccount(ctx context.Context, profileID string) (*ProfileAccount, error)
 }

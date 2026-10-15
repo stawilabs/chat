@@ -7,7 +7,10 @@ import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/domain/intent_bridge.dart';
+import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -82,6 +85,21 @@ class MemoryDeviceKeyVault implements DeviceKeyVault {
   }
 }
 
+/// A [SigningGate] that records what it was asked to confirm, and confirms
+/// unless [refuse] is set.
+class RecordingSigningGate implements SigningGate {
+  RecordingSigningGate({this.refuse = false});
+
+  bool refuse;
+  final List<String> reasons = [];
+
+  @override
+  Future<void> confirm(String reason) async {
+    reasons.add(reason);
+    if (refuse) throw const SigningRefused(notConfirmedReason);
+  }
+}
+
 /// A sent Stawi act, as the fake sender records it.
 class SentAct {
   SentAct(this.roomId, this.type, this.content, this.parentId);
@@ -122,9 +140,8 @@ class GoSignedCallVectors {
 
   factory GoSignedCallVectors.load() => GoSignedCallVectors._(
     jsonDecode(
-          File('test/fixtures/stawi/go_signed_calls.json').readAsStringSync(),
-        )
-        as Map<String, dynamic>,
+      File('test/fixtures/stawi/go_signed_calls.json').readAsStringSync(),
+    ) as Map<String, dynamic>,
   );
 
   final Map<String, dynamic> _json;
@@ -152,6 +169,40 @@ MemoryDeviceKeyVault vaultWith(String profileId, String privateKeyHex) {
   return vault;
 }
 
+/// The EVM address of the device key [privateKeyHex].
+Future<Uint8List> deviceAddressOf(String privateKeyHex) async =>
+    (await DeviceKeyStore(
+      vaultWith('p', privateKeyHex),
+      gate: SigningGate.open,
+    ).load('p'))!.address;
+
+/// Answers GetAccount with a deployed account whose active key is the device
+/// key [privateKeyHex] (what ensureReady looks for),
+/// with the given wallet [balance] ("" unknown), [policyAsset] and
+/// [authorizationIds].
+Future<void> serveDeployedAccount(
+  FakeConnectTransport transport,
+  String privateKeyHex, {
+  String balance = '',
+  List<int>? policyAsset,
+  List<List<int>> authorizationIds = const [],
+}) async {
+  final device = await deviceAddressOf(privateKeyHex);
+  transport.on(
+    settlement.AccountService.getAccount,
+    (req) => settlement.GetAccountResponse(
+      account: settlement.AccountState(
+        address: req.address,
+        deployed: true,
+        keys: [settlement.AccountKey(key: device, active: true)],
+        balance: balance,
+        policy: settlement.AccountPolicy(asset: policyAsset),
+        authorizationIds: authorizationIds,
+      ),
+    ),
+  );
+}
+
 /// A signed-in member owning [account].
 StawiIdentity identityWith(String profileId, Uint8List account) =>
     StawiIdentity(
@@ -168,11 +219,8 @@ class GoGenesisVector {
 
   static List<GoGenesisVector> load() =>
       ((jsonDecode(
-                    File(
-                      'test/fixtures/stawi/go_genesis.json',
-                    ).readAsStringSync(),
-                  )
-                  as Map<String, dynamic>)['genesis_device_digest']
+                File('test/fixtures/stawi/go_genesis.json').readAsStringSync(),
+              ) as Map<String, dynamic>)['genesis_device_digest']
               as List)
           .map((v) => GoGenesisVector(v as Map<String, dynamic>))
           .toList();
@@ -232,6 +280,439 @@ class GoGenesisVector {
   );
 }
 
+/// Go-produced PersonalVault vectors (stawi_finance_sdk 0.6.0
+/// test/vectors/go_vault.json): deposits, standing-order grants and standing
+/// order ids.
+class GoVaultVectors {
+  GoVaultVectors(this.json);
+
+  factory GoVaultVectors.load() => GoVaultVectors(
+    jsonDecode(File('test/fixtures/stawi/go_vault.json').readAsStringSync())
+        as Map<String, dynamic>,
+  );
+
+  final Map<String, dynamic> json;
+
+  List<Map<String, dynamic>> _section(String name) => [
+    for (final v in json[name] as List) v as Map<String, dynamic>,
+  ];
+
+  List<GoDepositVector> get deposits => [
+    for (final d in _section('deposits')) GoDepositVector(d),
+  ];
+  List<GoStandingGrantVector> get standingGrants => [
+    for (final g in _section('standing_grants')) GoStandingGrantVector(g),
+  ];
+  List<GoStandingRevokeVector> get standingRevokes => [
+    for (final r in _section('standing_revokes')) GoStandingRevokeVector(r),
+  ];
+  List<Map<String, dynamic>> get standingOrders => _section('standing_orders');
+  List<GoAddKeyVector> get addKeys => [
+    for (final k in _section('add_keys')) GoAddKeyVector(k),
+  ];
+}
+
+/// What settlement's PrepareAccountCall returns for a CONTRIBUTE from
+/// [account] of [amount] into [custody]: a whole intent (the Go deposit
+/// vector's, retyped) whose digest is its own, as the device checks it.
+settlement.PrepareAccountCallResponse preparedContribution({
+  required List<int> account,
+  required List<int> custody,
+  required String amount,
+  String callId = 'acct000000000000000c',
+}) {
+  final intent = GoVaultVectors.load().deposits.first.intent
+    ..type = finance.IntentType.INTENT_TYPE_CONTRIBUTION
+    ..account = account
+    ..destination = finance.ValueLocation(
+      kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+      address: custody,
+      bucket: 'SAVINGS',
+    )
+    ..amount = amount;
+  final digest = sdkIntentOf(intent).digest();
+  return settlement.PrepareAccountCallResponse(
+    callId: callId,
+    intentDigest: digest,
+    financialIntent: intent,
+    call: settlement.AccountCall(
+      callId: callId,
+      address: account,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+      intentDigest: digest,
+    ),
+  );
+}
+
+/// One Go-produced ADD_KEY: the op adding [key] to [account] and the
+/// KEY_CHANGE intent binding it (pkg/evm/stawi ManagementOpHash).
+class GoAddKeyVector {
+  GoAddKeyVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  int get kind => json['kind'] as int;
+  bool get p256 => json['p256'] as bool;
+  Uint8List get key => hexToBytes(json['key'] as String);
+  Uint8List get account => hexToBytes(json['account'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+
+  /// What settlement's PrepareAccountCall returns for this add; [opKey] and
+  /// [opKind] replace the op's, [intent] the intent (its digest recomputed
+  /// unless [digestOverride] is given).
+  settlement.PrepareAccountCallResponse prepared({
+    List<int>? opKey,
+    int? opKind,
+    finance.FinancialIntent? intent,
+    List<int>? digestOverride,
+    bool withOp = true,
+  }) {
+    final i = intent ?? this.intent;
+    final d = digestOverride ?? sdkIntentOf(i).digest();
+    return settlement.PrepareAccountCallResponse(
+      callId: 'acct000000000000000a',
+      intentDigest: d,
+      financialIntent: i,
+      managementOp: withOp
+          ? finance.AccountManagementOp(kind: opKind ?? kind, key: opKey ?? key)
+          : null,
+      call: settlement.AccountCall(
+        callId: 'acct000000000000000a',
+        address: account,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY,
+        intentDigest: d,
+      ),
+    );
+  }
+}
+
+/// One Go-produced REVOKE_STANDING of a personal loan's standing order.
+class GoStandingRevokeVector {
+  GoStandingRevokeVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get book => hexToBytes(json['book'] as String);
+  Uint8List get pool => hexToBytes(json['pool'] as String);
+  BigInt get loanId => BigInt.parse(json['loan_id'] as String);
+  Uint8List get asset => hexToBytes(json['asset'] as String);
+  Uint8List get authorizationId =>
+      hexToBytes(json['authorization_id'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+
+  /// The active loan whose order is revoked, as its borrower sees it.
+  finance.Loan get loan => finance.Loan(
+    loanBook: book,
+    pool: pool,
+    lender: pool,
+    borrowerAccount: account,
+    onchainLoanId: _u64(loanId.toString()),
+    kind: bytesEqual(pool, account)
+        ? finance.LoanKind.LOAN_KIND_SELF
+        : finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+    state: finance.LoanState.LOAN_STATE_FUNDED,
+  );
+
+  /// What settlement's PrepareAccountCall returns for this revoke; [opId]
+  /// replaces the op's authorization id, and [intentAuthorizationId] the
+  /// intent's (its digest recomputed, so only the revoke check can refuse).
+  settlement.PrepareAccountCallResponse prepared({
+    List<int>? opId,
+    List<int>? intentAuthorizationId,
+  }) {
+    final i = intent;
+    var d = digest;
+    if (intentAuthorizationId != null) {
+      i.authorizationId = intentAuthorizationId;
+      d = sdkIntentOf(i).digest();
+    }
+    return settlement.PrepareAccountCallResponse(
+      callId: 'acct00000000000000r1',
+      intentDigest: d,
+      financialIntent: i,
+      call: settlement.AccountCall(
+        callId: 'acct00000000000000r1',
+        address: account,
+        kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_REVOKE_STANDING,
+        intentDigest: d,
+      ),
+      managementOp: finance.AccountManagementOp(
+        kind: opRevokeStanding,
+        authorizationId: opId ?? authorizationId,
+      ),
+    );
+  }
+}
+
+/// One Go-produced deposit into a vault pocket.
+class GoDepositVector {
+  GoDepositVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get vault => hexToBytes(json['vault'] as String);
+  Uint8List get pocket {
+    final p = json['pocket'] as String;
+    return p.isEmpty ? Uint8List(32) : hexToBytes(p);
+  }
+
+  BigInt get amount => BigInt.parse(json['amount'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+
+  /// The vault and, as its one loan book, an address that is not it.
+  PersonalTargets get targets => PersonalTargets.fromResponse(
+    vault: vault,
+    loanBooks: [Uint8List.fromList(List.filled(20, 0x10))],
+  );
+
+  /// What settlement's PrepareAccountCall returns for this deposit.
+  settlement.PrepareAccountCallResponse get prepared =>
+      settlement.PrepareAccountCallResponse(
+        callId: 'acct00000000000000d1',
+        intentDigest: digest,
+        financialIntent: intent,
+        call: settlement.AccountCall(
+          callId: 'acct00000000000000d1',
+          address: account,
+          kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
+          intentDigest: digest,
+        ),
+      );
+}
+
+/// One Go-produced standing order for a personal loan: the loan, the grant
+/// settlement chooses for it and the GRANT_STANDING intent that binds it.
+class GoStandingGrantVector {
+  GoStandingGrantVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get book => hexToBytes(json['book'] as String);
+  Uint8List get pool => hexToBytes(json['pool'] as String);
+  BigInt get loanId => BigInt.parse(json['loan_id'] as String);
+  Uint8List get vault => hexToBytes(json['vault'] as String);
+  Uint8List get asset => hexToBytes(json['asset'] as String);
+  BigInt get amount => BigInt.parse(json['amount'] as String);
+  BigInt get largestInstalment =>
+      BigInt.parse(json['largest_instalment'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+
+  PersonalTerms get terms {
+    final t = json['terms'] as Map<String, dynamic>;
+    return PersonalTerms(
+      n: t['n'] as int,
+      everyDays: t['every_days'] as int,
+      method: t['method'] as int,
+      rateBps: t['rate_bps'] as int,
+      lateMethod: t['late_method'] as int,
+      lateBps: t['late_bps'] as int,
+      lateFlat: BigInt.parse(t['late_flat'] as String),
+      defaultAfterDays: t['default_after_days'] as int,
+    );
+  }
+
+  /// The grant as finance.v1 AccountStandingParams carries it.
+  finance.AccountStandingParams get standing {
+    final g = json['grant'] as Map<String, dynamic>;
+    return finance.AccountStandingParams(
+      authorizationId: hexToBytes(g['authorization_id'] as String),
+      target: hexToBytes(g['target'] as String),
+      selector: hexToBytes(g['selector'] as String),
+      asset: hexToBytes(g['asset'] as String),
+      maxPerPeriod: g['max_per_period'] as String,
+      periodSeconds: _u64('${g['period_seconds']}'),
+      epochStart: _u64('${g['epoch_start']}'),
+      validAfter: _u64('${g['valid_after']}'),
+      validUntil: _u64('${g['valid_until']}'),
+    );
+  }
+
+  /// The loan as finance shows it to its borrower: active.
+  finance.Loan get loan => finance.Loan(
+    loanBook: book,
+    pool: pool,
+    lender: pool,
+    borrowerAccount: account,
+    onchainLoanId: _u64(loanId.toString()),
+    requested: finance.Money(amount: amount.toString()),
+    terms: finance.PersonalLoanTerms()
+      ..mergeFromProto3Json(terms.toProtoJson()),
+    kind: bytesEqual(pool, account)
+        ? finance.LoanKind.LOAN_KIND_SELF
+        : finance.LoanKind.LOAN_KIND_PERSON_TO_PERSON,
+    state: finance.LoanState.LOAN_STATE_FUNDED,
+  );
+
+  PersonalTargets get targets =>
+      PersonalTargets.fromResponse(vault: vault, loanBooks: [book]);
+
+  /// What settlement's PrepareAccountCall returns for this grant.
+  settlement.PrepareAccountCallResponse get prepared =>
+      _prepare(intent, digest, standing);
+
+  /// The grant with fields changed, as a self-consistent prepared call: the
+  /// intent's authorization_id is the changed op's hash and the digest that
+  /// intent's, so only the grant's own check can refuse it.
+  settlement.PrepareAccountCallResponse preparedWith({
+    BigInt? maxPerPeriod,
+    BigInt? periodSeconds,
+    List<int>? target,
+    List<int>? authorizationId,
+  }) {
+    final s = standing;
+    if (maxPerPeriod != null) s.maxPerPeriod = maxPerPeriod.toString();
+    if (periodSeconds != null) s.periodSeconds = _u64('$periodSeconds');
+    if (target != null) s.target = target;
+    if (authorizationId != null) s.authorizationId = authorizationId;
+    final grant = StandingGrant(
+      authorizationId: s.authorizationId,
+      target: s.target,
+      selector: s.selector,
+      asset: s.asset,
+      maxPerPeriod: BigInt.parse(s.maxPerPeriod),
+      periodSeconds: BigInt.parse(s.periodSeconds.toStringUnsigned()),
+      epochStart: BigInt.parse(s.epochStart.toStringUnsigned()),
+      validAfter: BigInt.parse(s.validAfter.toStringUnsigned()),
+      validUntil: BigInt.parse(s.validUntil.toStringUnsigned()),
+    );
+    final i = intent..authorizationId = grant.opHash;
+    return _prepare(i, sdkIntentOf(i).digest(), s);
+  }
+
+  settlement.PrepareAccountCallResponse _prepare(
+    finance.FinancialIntent i,
+    Uint8List digest,
+    finance.AccountStandingParams s,
+  ) => settlement.PrepareAccountCallResponse(
+    callId: 'acct00000000000000g1',
+    intentDigest: digest,
+    financialIntent: i,
+    call: settlement.AccountCall(
+      callId: 'acct00000000000000g1',
+      address: account,
+      kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_GRANT_STANDING,
+      intentDigest: digest,
+    ),
+    managementOp: finance.AccountManagementOp(kind: opGrantStanding, auth: s),
+  );
+}
+
+/// One Go-produced RoomFactory.genesisHash case (stawi_finance_sdk 0.6.0
+/// test/vectors/go_room_genesis.json).
+class GoRoomGenesisVectors {
+  GoRoomGenesisVectors(this.json);
+
+  static List<GoRoomGenesisVectors> load() =>
+      ((jsonDecode(
+                File('test/fixtures/stawi/go_room_genesis.json')
+                    .readAsStringSync(),
+              ) as Map<String, dynamic>)['cases']
+              as List)
+          .map((v) => GoRoomGenesisVectors(v as Map<String, dynamic>))
+          .toList();
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get genesisHash => hexToBytes(json['genesis_hash'] as String);
+
+  /// The case named [name].
+  static GoRoomGenesisVectors named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  Uint8List _hex(String key) => hexToBytes(json[key] as String);
+
+  /// Settlement's pending RoomGenesis for this case, founded by
+  /// [founderProfileIds] (p1, p2, … by default) holding the case's initial
+  /// members in order, each with their own account wrapping of the hash.
+  /// With [accounts], the founders hold those instead and the hash is
+  /// recomputed with stawi_finance_sdk roomGenesisHash, which the SDK checks
+  /// against these same Go vectors; likewise with [agentAccount] in place of
+  /// the case's agent. A non-zero agent is shown as [agentProfileId].
+  settlement.RoomGenesis roomGenesis({
+    String genesisId = 'gen00000000000000001',
+    List<String>? founderProfileIds,
+    List<Uint8List>? accounts,
+    Uint8List? agentAccount,
+    String agentProfileId = 'p-agent',
+  }) {
+    final members =
+        accounts ??
+        [
+          for (final m in (json['initial_members'] as List).cast<String>())
+            hexToBytes(m),
+        ];
+    final chainId = BigInt.from(json['chain_id'] as int);
+    final agent = agentAccount ?? _hex('agent');
+    final hasAgent = agent.any((b) => b != 0);
+    final joinPolicy = json['join_policy'] as int;
+    final hash = accounts == null && agentAccount == null
+        ? genesisHash
+        : roomGenesisHash(
+            chainId: chainId,
+            factory: _hex('factory'),
+            constitutionHash: _hex('constitution_hash'),
+            financePolicyHash: _hex('finance_policy_hash'),
+            securityPolicyHash: _hex('security_policy_hash'),
+            asset: _hex('asset'),
+            initialMembers: members,
+            manifestVersion: json['manifest_version'] as int,
+            paramsHash: _hex('params_hash'),
+            roomBinding: _hex('room_binding'),
+            joinPolicy: joinPolicy,
+            agent: hasAgent ? agent : null,
+          );
+    final profiles =
+        founderProfileIds ??
+        [for (var i = 0; i < members.length; i++) 'p${i + 1}'];
+    return settlement.RoomGenesis(
+      genesisId: genesisId,
+      state: settlement.RoomGenesisState.ROOM_GENESIS_STATE_PENDING,
+      chainId: Int64(json['chain_id'] as int),
+      factory: _hex('factory'),
+      genesisHash: hash,
+      constitutionHash: _hex('constitution_hash'),
+      financePolicyHash: _hex('finance_policy_hash'),
+      securityPolicyHash: _hex('security_policy_hash'),
+      compiledSecurityParamsHash: _hex('params_hash'),
+      joinPolicy: joinPolicy == 1
+          ? finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PUBLIC
+          : finance.RoomJoinPolicy.ROOM_JOIN_POLICY_PRIVATE,
+      founders: [
+        for (var i = 0; i < members.length; i++)
+          settlement.RoomFounder(
+            profileId: profiles[i],
+            account: members[i],
+            signingDigest: accountWrappedHash(members[i], chainId, hash),
+          ),
+      ],
+      agent: hasAgent ? agent : null,
+      agentProfileId: hasAgent ? agentProfileId : null,
+      asset: _hex('asset'),
+      manifestVersion: json['manifest_version'] as int,
+      roomBinding: _hex('room_binding'),
+    );
+  }
+}
+
 /// A uint64 decimal (possibly above Int64's signed range) as Int64 bits.
 Int64 _u64(String decimal) =>
     Int64.parseHex(BigInt.parse(decimal).toRadixString(16));
@@ -245,20 +726,16 @@ Future<Uint8List> refusingSessionProofs({
   'no live authenticated session for this profile on this device',
 );
 
-/// One Go-produced engine call (stawi_finance_sdk 0.3.0
+/// One Go-produced engine call (stawi_finance_sdk 0.6.0
 /// test/vectors/go_engine_calls.json): the call, its ENGINE_CALL intent, the
 /// intent digest and the device's signature over it.
 class GoEngineCallVector {
   GoEngineCallVector(this.json, this.devicePrivateKey);
 
   static List<GoEngineCallVector> load() {
-    final d =
-        jsonDecode(
-              File(
-                'test/fixtures/stawi/go_engine_calls.json',
-              ).readAsStringSync(),
-            )
-            as Map<String, dynamic>;
+    final d = jsonDecode(
+      File('test/fixtures/stawi/go_engine_calls.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
     return [
       for (final v in d['engine_calls'] as List)
         GoEngineCallVector(
@@ -273,6 +750,12 @@ class GoEngineCallVector {
 
   String get name => json['name'] as String;
   String get action => json['action'] as String;
+
+  /// Whether the call runs on the personal path (the vault), not a room's.
+  bool get personal => json['path'] == 'personal';
+
+  /// The contract the call goes to: rules_engine, loan_book or vault.
+  String get targetName => json['target_name'] as String;
   Uint8List get target => hexToBytes(json['target'] as String);
   Uint8List get room => hexToBytes(json['room'] as String);
   Uint8List get calldata => hexToBytes(json['calldata'] as String);
@@ -282,73 +765,38 @@ class GoEngineCallVector {
   Uint8List get account => hexToBytes(_intent['account'] as String);
 
   /// The vector's intent as finance.v1 carries it.
-  finance.FinancialIntent get intent {
-    final i = _intent;
-    final d = i['domain'] as Map<String, dynamic>;
-    finance.Principal principal(Object? p) {
-      final m = p! as Map<String, dynamic>;
-      return finance.Principal(
-        type: finance.PrincipalType.valueOf(m['type'] as int),
-        id: hexToBytes(m['id'] as String),
-      );
-    }
-
-    finance.ValueLocation location(Object? l) {
-      final m = l! as Map<String, dynamic>;
-      return finance.ValueLocation(
-        kind: finance.LocationKind.valueOf(m['kind'] as int),
-        address: hexToBytes(m['address'] as String),
-        bucket: m['bucket'] as String,
-      );
-    }
-
-    Int64 n(Object? v) => _u64('$v');
-    return finance.FinancialIntent(
-      intentId: hexToBytes(i['intent_id'] as String),
-      type: finance.IntentType.valueOf(i['type'] as int),
-      domain: finance.IntentDomain(
-        protocolVersion: d['protocol_version'] as int,
-        chainId: n(d['chain_id']),
-        verifyingContract: hexToBytes(d['verifying_contract'] as String),
-        accountVersion: d['account_version'] as int,
-        moduleVersion: d['module_version'] as int,
-        environment: d['environment'] as String,
-      ),
-      requestedBy: principal(i['requested_by']),
-      authorizedBy: principal(i['authorized_by']),
-      account: hexToBytes(i['account'] as String),
-      room: hexToBytes(i['room'] as String),
-      source: location(i['source']),
-      destination: location(i['destination']),
-      asset: hexToBytes(i['asset'] as String),
-      amount: i['amount'] as String,
-      mode: finance.AuthorizationMode.valueOf(i['mode'] as int),
-      authorizationId: hexToBytes(i['authorization_id'] as String),
-      capabilityId: hexToBytes(i['capability_id'] as String),
-      constitutionHash: hexToBytes(i['constitution_hash'] as String),
-      securityPolicyHash: hexToBytes(i['security_policy_hash'] as String),
-      policyEpoch: n(i['policy_epoch']),
-      nonce: n(i['nonce']),
-      credentialEpoch: n(i['credential_epoch']),
-      recoveryEpoch: n(i['recovery_epoch']),
-      validAfter: n(i['valid_after']),
-      validUntil: n(i['valid_until']),
-      countryPolicyVersion: hexToBytes(i['country_policy_version'] as String),
-      complianceRequired: i['compliance_required'] as bool,
-    );
-  }
+  finance.FinancialIntent get intent => financeIntentOf(_intent);
 
   /// The room's engines with this call's target as the engine its action runs
   /// on (the other engine elsewhere).
   RoomEngineTargets engines({bool callable = true}) {
-    final onLoan = json['on_loan_engine'] as bool;
+    final onLoan = targetName == 'loan_book';
     final other = Uint8List.fromList(List.filled(20, 0xee));
     return RoomEngineTargets(
       rulesEngine: onLoan ? other : target,
       rulesCallable: callable,
-      loanEngine: onLoan ? target : other,
+      loanBook: onLoan ? target : other,
       loanCallable: callable,
     );
+  }
+
+  /// This vector's prepared call with [call] in place of its own: the
+  /// calldata, the intent's amount and authorization id, and the digest made
+  /// to match, so only the device's own checks can refuse it.
+  settlement.PrepareAccountCallResponse preparedFor(
+    EngineCall call,
+    settlement.AccountCallKind kind,
+  ) {
+    final calldata = call.calldata;
+    final i = intent
+      ..amount = call.committed.toString()
+      ..authorizationId = engineCallHash(target, calldata);
+    final d = sdkIntentOf(i).digest();
+    return prepared(kind)
+      ..intentDigest = d
+      ..financialIntent = i
+      ..call.intentDigest = d
+      ..call.engineCalldata = calldata;
   }
 
   /// What settlement's PrepareAccountCall returns for this call.
@@ -369,6 +817,12 @@ class GoEngineCallVector {
   );
 }
 
+/// The token the Go vectors' money intents move (the deposit vector's
+/// asset): the deployment's and every room's asset in tests.
+final Uint8List testAssetToken = hexToBytes(
+  '0x707172737475767778797a7b7c7d7e7f80818283',
+);
+
 /// The rooms' savings asset in tests, as finance describes it: USDC with 6
 /// decimals.
 final finance.AssetInfo usdcInfo = finance.AssetInfo(
@@ -376,9 +830,351 @@ final finance.AssetInfo usdcInfo = finance.AssetInfo(
   symbol: 'USDC',
   decimals: 6,
   chainId: Int64(146),
+  tokenAddress: testAssetToken,
 );
+
+/// Finance's Room.assets token addresses for any room in tests.
+Future<List<Uint8List>> testRoomAssets(String roomId) async => [testAssetToken];
 
 final StawiAsset usdc = StawiAsset.fromInfo(usdcInfo);
 
 /// A room's assets in tests: its USDC.
 final StawiAssets usdcAssets = StawiAssets([usdcInfo]);
+
+/// A Go vector's intent (snake_case JSON) as finance.v1 carries it.
+finance.FinancialIntent financeIntentOf(Map<String, dynamic> i) {
+  final d = i['domain'] as Map<String, dynamic>;
+  finance.Principal principal(Object? p) {
+    final m = p! as Map<String, dynamic>;
+    return finance.Principal(
+      type: finance.PrincipalType.valueOf(m['type'] as int),
+      id: hexToBytes(m['id'] as String),
+    );
+  }
+
+  finance.ValueLocation location(Object? l) {
+    final m = l! as Map<String, dynamic>;
+    return finance.ValueLocation(
+      kind: finance.LocationKind.valueOf(m['kind'] as int),
+      address: hexToBytes(m['address'] as String),
+      bucket: m['bucket'] as String,
+    );
+  }
+
+  Int64 n(Object? v) => _u64('$v');
+  return finance.FinancialIntent(
+    intentId: hexToBytes(i['intent_id'] as String),
+    type: finance.IntentType.valueOf(i['type'] as int),
+    domain: finance.IntentDomain(
+      protocolVersion: d['protocol_version'] as int,
+      chainId: n(d['chain_id']),
+      verifyingContract: hexToBytes(d['verifying_contract'] as String),
+      accountVersion: d['account_version'] as int,
+      moduleVersion: d['module_version'] as int,
+      environment: d['environment'] as String,
+    ),
+    requestedBy: principal(i['requested_by']),
+    authorizedBy: principal(i['authorized_by']),
+    account: hexToBytes(i['account'] as String),
+    room: hexToBytes(i['room'] as String),
+    source: location(i['source']),
+    destination: location(i['destination']),
+    asset: hexToBytes(i['asset'] as String),
+    amount: i['amount'] as String,
+    mode: finance.AuthorizationMode.valueOf(i['mode'] as int),
+    authorizationId: hexToBytes(i['authorization_id'] as String),
+    capabilityId: hexToBytes(i['capability_id'] as String),
+    constitutionHash: hexToBytes(i['constitution_hash'] as String),
+    securityPolicyHash: hexToBytes(i['security_policy_hash'] as String),
+    policyEpoch: n(i['policy_epoch']),
+    nonce: n(i['nonce']),
+    credentialEpoch: n(i['credential_epoch']),
+    recoveryEpoch: n(i['recovery_epoch']),
+    validAfter: n(i['valid_after']),
+    validUntil: n(i['valid_until']),
+    countryPolicyVersion: hexToBytes(i['country_policy_version'] as String),
+    complianceRequired: i['compliance_required'] as bool,
+  );
+}
+
+// ---- room calls ----------------------------------------------------------
+
+Uint8List _w(BigInt v) => bigIntToBytes(v, 32);
+Uint8List _wi(int v) => _w(BigInt.from(v));
+Uint8List _wa(List<int> a) => Uint8List(32)..setRange(12, 32, a);
+Uint8List _wb(bool b) => _wi(b ? 1 : 0);
+
+/// The room's contracts as finance names them, for tests.
+RoomContracts roomContractsOf({
+  required List<int> governance,
+  required List<int> custody,
+  required BigInt chainId,
+}) => RoomContracts(
+  governance: Uint8List.fromList(governance),
+  custody: Uint8List.fromList(custody),
+  chainId: chainId,
+);
+
+/// Settlement as it should behave (apps/settlement room_calls.go): the call
+/// for [req], signed by [signer] on [room], with its params encoded from the
+/// request, its SignedCalls typed hash and the account-wrapped digest.
+/// [exitIntent] is the exit a PROPOSE_PRINCIPAL_EXIT spend builds;
+/// [inviteHash] what an ACCEPT_INVITATION reads off the chain.
+settlement.PrepareRoomCallResponse honestRoomCall(
+  settlement.PrepareRoomCallRequest req, {
+  required RoomContracts room,
+  required Uint8List signer,
+  required String chatRoomId,
+  DateTime? now,
+  int nonce = 3,
+  int deadline = 4102444800, // 2100-01-01
+  finance.FinancialIntent? exitIntent,
+  List<int>? inviteHash,
+}) {
+  final p = req.params;
+  final at = BigInt.from(
+    (now ?? DateTime.now()).toUtc().millisecondsSinceEpoch ~/ 1000,
+  );
+  Uint8List acct(settlement.RoomMemberRef r) => Uint8List.fromList(r.account);
+  Uint8List propose(int kind, List<int> payload) =>
+      Uint8List.fromList([..._wi(kind), ...payload]);
+  final (SignedCallKind kind, Uint8List params) = switch (req.kind) {
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE => (
+      SignedCallKind.propose,
+      propose(
+        p.propose.memberAction.action ==
+                finance.RoomMemberAction.ROOM_MEMBER_ACTION_REMOVE
+            ? ProposalKinds.memberRemove
+            : ProposalKinds.memberAdd,
+        memberActionPayloadHash(
+          custody: room.custody!,
+          action: p.propose.memberAction.action.value,
+          subject: acct(p.propose.memberAction.subject),
+          arg: BigInt.parse(p.propose.memberAction.arg.toStringUnsigned()),
+        ),
+      ),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE ||
+    settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_ROLE => (
+      SignedCallKind.propose,
+      propose(
+        ProposalKinds.role,
+        rolePayloadHash(
+          custody: room.custody!,
+          assign:
+              req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE,
+          member: acct(p.role.member),
+          roleId: roomRoleId(p.role.roleId),
+          capabilities:
+              req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE
+              ? p.role.capabilities
+              : 0,
+          validUntil:
+              req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_ASSIGN_ROLE
+              ? BigInt.parse(p.role.validUntil.toStringUnsigned())
+              : BigInt.zero,
+        ),
+      ),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_CAST_VOTE => (
+      SignedCallKind.castVote,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.vote.onchainProposalId.toStringUnsigned())),
+        ..._wi(p.vote.choice.value),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_COMMIT_VOTE => (
+      SignedCallKind.commitVote,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.vote.onchainProposalId.toStringUnsigned())),
+        ...p.vote.commitment,
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_REVEAL_VOTE => (
+      SignedCallKind.revealVote,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.vote.onchainProposalId.toStringUnsigned())),
+        ..._wi(p.vote.choice.value),
+        ...p.vote.salt,
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_DELEGATE => (
+      SignedCallKind.delegate,
+      Uint8List.fromList([
+        ..._wa(p.delegate.to.account),
+        ..._w(BigInt.parse(p.delegate.scope.toStringUnsigned())),
+        ..._w(BigInt.parse(p.delegate.until.toStringUnsigned())),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_REVOKE_DELEGATION => (
+      SignedCallKind.revokeDelegation,
+      Uint8List(0),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE_PRINCIPAL_EXIT => (
+      SignedCallKind.proposePrincipalExit,
+      p.principalExit.hasSpend()
+          ? Uint8List.fromList([
+              ...intentDigestOf(sdkIntentOf(exitIntent!)),
+              ...Uint8List(32),
+            ])
+          : Uint8List.fromList([
+              ...cancelPrincipalExitPayloadHash(
+                chainId: room.chainId,
+                custody: room.custody!,
+                target: BigInt.parse(
+                  p.principalExit.cancelTarget.toStringUnsigned(),
+                ),
+              ),
+              ..._w(
+                BigInt.parse(p.principalExit.cancelTarget.toStringUnsigned()),
+              ),
+            ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_VOTE_PRINCIPAL_EXIT => (
+      SignedCallKind.votePrincipalExit,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.principalExit.ballotId.toStringUnsigned())),
+        ..._wb(p.principalExit.approve),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_ACCEPT_INVITATION => (
+      SignedCallKind.acceptInvitation,
+      Uint8List.fromList([
+        ..._w(BigInt.parse(p.inviteId.toStringUnsigned())),
+        ...(inviteHash ?? List<int>.filled(32, 0xc1)),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_LEAVE => (
+      SignedCallKind.leave,
+      Uint8List(0),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_JOIN => (
+      SignedCallKind.join,
+      Uint8List(0),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_FREEZE => (
+      SignedCallKind.freeze,
+      freezeReasonHash(p.freeze_7.reason),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_INVITE => (
+      SignedCallKind.officerAction,
+      Uint8List.fromList([
+        ..._wi(MemberActions.invite),
+        ..._wa(p.officer.subject.account),
+        ..._w(at + BigInt.from(p.officer.inviteValidSeconds)),
+      ]),
+    ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_ADMIT => (
+      SignedCallKind.officerAction,
+      Uint8List.fromList([
+        ..._wi(MemberActions.admit),
+        ..._wa(p.officer.subject.account),
+        ..._wi(0),
+      ]),
+    ),
+    final k => throw StateError('honestRoomCall: no $k'),
+  };
+  final verifier = room.of(kind.contract)!;
+  final typed = roomCallTypedHash(
+    kind,
+    verifier: verifier,
+    chainId: room.chainId,
+    member: signer,
+    nonce: BigInt.from(nonce),
+    deadline: BigInt.from(deadline),
+    params: params,
+  );
+  final digest = accountWrappedHash(signer, room.chainId, typed);
+  return settlement.PrepareRoomCallResponse(
+    callId: 'call0000000000000001',
+    digest: digest,
+    signer: signer,
+    call: settlement.RoomCall(
+      callId: 'call0000000000000001',
+      chainId: Int64.parseInt(room.chainId.toString()),
+      chatRoomId: chatRoomId,
+      kind: req.kind,
+      verifier: verifier,
+      signer: signer,
+      nonce: Int64(nonce),
+      deadline: Int64(deadline),
+      params: params,
+      typedHash: typed,
+      digest: digest,
+      requiresSignature: true,
+      exitIntent: exitIntent,
+      payloadHash: exitIntent == null
+          ? null
+          : intentDigestOf(sdkIntentOf(exitIntent)),
+    ),
+  );
+}
+
+/// One Go-produced room call (pkg/evm/stawi TestDartRoomCallVectors):
+/// test/fixtures/stawi/go_room_calls.json, a copy of the SDK's oracle.
+class GoRoomCallVector {
+  GoRoomCallVector(this.json);
+
+  static List<GoRoomCallVector> load() => [
+    for (final v
+        in (jsonDecode(
+              File('test/fixtures/stawi/go_room_calls.json').readAsStringSync(),
+            ) as Map<String, dynamic>)['room_calls']
+            as List)
+      GoRoomCallVector(v as Map<String, dynamic>),
+  ];
+
+  static GoRoomCallVector named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  String get builder => json['builder'] as String;
+  Map<String, dynamic> get inputs => json['inputs'] as Map<String, dynamic>;
+  String input(String k) => inputs[k] as String;
+  Uint8List inputBytes(String k) => hexToBytes(input(k));
+  BigInt get chainId => BigInt.parse(json['chain_id'] as String);
+  Uint8List get member => hexToBytes(json['member'] as String);
+  Uint8List get verifier => hexToBytes(json['verifier'] as String);
+  Uint8List get custody => hexToBytes(json['custody'] as String);
+  Uint8List get params => hexToBytes(json['params'] as String);
+  Uint8List get typedHash => hexToBytes(json['typed_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  BigInt get deadline => BigInt.parse(json['deadline'] as String);
+
+  /// The room as finance would name it: the vector's verifier for its own
+  /// contract, and the environment's other contract.
+  RoomContracts room(Uint8List governance) =>
+      RoomContracts(governance: governance, custody: custody, chainId: chainId);
+
+  /// Settlement's answer carrying this call; any field may be replaced.
+  settlement.PrepareRoomCallResponse prepared(
+    String chatRoomId, {
+    List<int>? params,
+    List<int>? typedHash,
+    List<int>? digest,
+    List<int>? verifier,
+    int? kind,
+  }) => settlement.PrepareRoomCallResponse(
+    callId: 'call0000000000000001',
+    digest: digest ?? this.digest,
+    signer: member,
+    call: settlement.RoomCall(
+      callId: 'call0000000000000001',
+      chainId: Int64.parseInt(chainId.toString()),
+      chatRoomId: chatRoomId,
+      kind: settlement.RoomCallKind.valueOf(
+        kind ?? json['room_call_kind'] as int,
+      ),
+      verifier: verifier ?? this.verifier,
+      signer: member,
+      nonce: Int64.parseInt(json['nonce'] as String),
+      deadline: Int64.parseInt(json['deadline'] as String),
+      params: params ?? this.params,
+      typedHash: typedHash ?? this.typedHash,
+      digest: digest ?? this.digest,
+      requiresSignature: true,
+    ),
+  );
+}

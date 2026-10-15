@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/error/app_error.dart';
+import '../../../core/navigation/navigation_helper.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/responsive/responsive_layout.dart';
 import '../../../core/responsive/three_panel_layout.dart';
@@ -169,9 +170,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to archive: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to archive: $e')));
       }
     }
   }
@@ -220,9 +220,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     ref.read(roomListWithMessagesProvider.notifier).refresh();
     _toggleMultiSelectMode();
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Marked as read')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Marked as read')));
     }
   }
 
@@ -234,9 +233,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     ref.invalidate(roomListWithMessagesProvider);
     _toggleMultiSelectMode();
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Muted selected chats')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Muted selected chats')));
     }
   }
 
@@ -245,9 +243,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   }
 
   void _navigateToNewChat() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const NewChatScreen()));
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const NewChatScreen()));
   }
 
   @override
@@ -339,6 +336,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   ),
                 ]
               : [
+                  IconButton(
+                    key: const Key('nav-my-money'),
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    tooltip: 'My money',
+                    onPressed: () =>
+                        NavigationHelper.navigateToMyMoney(context),
+                  ),
                   // More options menu
                   PopupMenuButton<String>(
                     icon: Icon(
@@ -590,6 +594,14 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
+      actions: [
+        IconButton(
+          key: const Key('nav-my-money'),
+          icon: const Icon(Icons.account_balance_wallet_outlined),
+          tooltip: 'My money',
+          onPressed: () => NavigationHelper.navigateToMyMoney(context),
+        ),
+      ],
     ),
     drawer: const AppDrawer(),
     floatingActionButton: FloatingActionButton(

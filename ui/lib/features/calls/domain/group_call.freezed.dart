@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'group_call.dart';
@@ -9,6 +9,7 @@ part of 'group_call.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -37,16 +38,21 @@ $GroupCallCopyWith<GroupCall> get copyWith => _$GroupCallCopyWithImpl<GroupCall>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.participants, participants)&&const DeepCollectionEquality().equals(other.activeVideoProfileIds, activeVideoProfileIds)&&(identical(other.maxVideoPublishers, maxVideoPublishers) || other.maxVideoPublishers == maxVideoPublishers)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
+  final _this = this as GroupCall;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupCall&&(identical(other.callId, _this.callId) || other.callId == _this.callId)&&(identical(other.roomId, _this.roomId) || other.roomId == _this.roomId)&&(identical(other.hostProfileId, _this.hostProfileId) || other.hostProfileId == _this.hostProfileId)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&const DeepCollectionEquality().equals(other.participants, _this.participants)&&const DeepCollectionEquality().equals(other.activeVideoProfileIds, _this.activeVideoProfileIds)&&(identical(other.maxVideoPublishers, _this.maxVideoPublishers) || other.maxVideoPublishers == _this.maxVideoPublishers)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.endedAt, _this.endedAt) || other.endedAt == _this.endedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(participants),const DeepCollectionEquality().hash(activeVideoProfileIds),maxVideoPublishers,state,endedAt);
+int get hashCode {
+  final _this = this as GroupCall;
+  return Object.hash(runtimeType,_this.callId,_this.roomId,_this.hostProfileId,_this.startedAt,const DeepCollectionEquality().hash(_this.participants),const DeepCollectionEquality().hash(_this.activeVideoProfileIds),_this.maxVideoPublishers,_this.state,_this.endedAt);
+}
 
 @override
 String toString() {
-  return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, activeVideoProfileIds: $activeVideoProfileIds, maxVideoPublishers: $maxVideoPublishers, state: $state, endedAt: $endedAt)';
+  final _this = this as GroupCall;
+  return 'GroupCall(callId: ${_this.callId}, roomId: ${_this.roomId}, hostProfileId: ${_this.hostProfileId}, startedAt: ${_this.startedAt}, participants: ${_this.participants}, activeVideoProfileIds: ${_this.activeVideoProfileIds}, maxVideoPublishers: ${_this.maxVideoPublishers}, state: ${_this.state}, endedAt: ${_this.endedAt})';
 }
 
 
@@ -75,7 +81,7 @@ class _$GroupCallCopyWithImpl<$Res>
 /// Create a copy of GroupCall
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? callId = null,Object? roomId = null,Object? hostProfileId = null,Object? startedAt = null,Object? participants = null,Object? activeVideoProfileIds = null,Object? maxVideoPublishers = null,Object? state = null,Object? endedAt = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(GroupCall(
 callId: null == callId ? _self.callId : callId // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
 as String,hostProfileId: null == hostProfileId ? _self.hostProfileId : hostProfileId // ignore: cast_nullable_to_non_nullable
@@ -226,7 +232,7 @@ return $default(_that.callId,_that.roomId,_that.hostProfileId,_that.startedAt,_t
 @JsonSerializable()
 
 class _GroupCall extends GroupCall {
-  const _GroupCall({required this.callId, required this.roomId, required this.hostProfileId, required this.startedAt, final  List<GroupCallParticipant> participants = const [], final  List<String> activeVideoProfileIds = const [], this.maxVideoPublishers = 5, this.state = GroupCallState.initiating, this.endedAt}): _participants = participants,_activeVideoProfileIds = activeVideoProfileIds,super._();
+  const _GroupCall({required this.callId, required this.roomId, required this.hostProfileId, required this.startedAt,  List<GroupCallParticipant> participants = const [],  List<String> activeVideoProfileIds = const [], this.maxVideoPublishers = 5, this.state = GroupCallState.initiating, this.endedAt}): _participants = participants,_activeVideoProfileIds = activeVideoProfileIds,super._();
   factory _GroupCall.fromJson(Map<String, dynamic> json) => _$GroupCallFromJson(json);
 
 /// Unique identifier for this call
@@ -275,16 +281,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other._participants, _participants)&&const DeepCollectionEquality().equals(other._activeVideoProfileIds, _activeVideoProfileIds)&&(identical(other.maxVideoPublishers, maxVideoPublishers) || other.maxVideoPublishers == maxVideoPublishers)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupCall&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.hostProfileId, hostProfileId) || other.hostProfileId == hostProfileId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.participants, _participants)&&const DeepCollectionEquality().equals(other.activeVideoProfileIds, _activeVideoProfileIds)&&(identical(other.maxVideoPublishers, maxVideoPublishers) || other.maxVideoPublishers == maxVideoPublishers)&&(identical(other.state, state) || other.state == state)&&(identical(other.endedAt, endedAt) || other.endedAt == endedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(_participants),const DeepCollectionEquality().hash(_activeVideoProfileIds),maxVideoPublishers,state,endedAt);
+int get hashCode {
+    return Object.hash(runtimeType,callId,roomId,hostProfileId,startedAt,const DeepCollectionEquality().hash(_participants),const DeepCollectionEquality().hash(_activeVideoProfileIds),maxVideoPublishers,state,endedAt);
+}
 
 @override
 String toString() {
-  return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, activeVideoProfileIds: $activeVideoProfileIds, maxVideoPublishers: $maxVideoPublishers, state: $state, endedAt: $endedAt)';
+    return 'GroupCall(callId: $callId, roomId: $roomId, hostProfileId: $hostProfileId, startedAt: $startedAt, participants: $participants, activeVideoProfileIds: $activeVideoProfileIds, maxVideoPublishers: $maxVideoPublishers, state: $state, endedAt: $endedAt)';
 }
 
 

@@ -8,6 +8,7 @@ import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/stawi_payloads.dart';
 import '../domain/template_rules.dart';
+import 'agent_picker.dart';
 import 'stawi_feedback.dart';
 
 /// Turns a chat room into a Stawi room: the founder picks a constitution
@@ -30,6 +31,11 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
   };
   final Set<String> _founders = {};
   StawiJoinPolicy _joinPolicy = StawiJoinPolicy.private;
+  StawiAgentChoice _agent = noStawiAgent;
+
+  /// Whether the agent was offered as a founder: no longer one, they are
+  /// chosen again (a DM partner who has written still can be).
+  bool _agentAsFounder = false;
   bool _sending = false;
 
   @override
@@ -52,6 +58,21 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
     super.dispose();
   }
 
+  /// The agent was chosen as the founder [member], who is not one any
+  /// more: the founders could not confirm them now, so they are chosen again.
+  void _agentFounderRemoved(RoomSubscriptionInfo member) {
+    if (!_agentAsFounder || _agent.profileId != member.profileId) return;
+    _agent = noStawiAgent;
+    _agentAsFounder = false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${member.name} is no longer a founder; choose the agent again',
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     final templateId = _templateId;
     if (templateId == null) return;
@@ -61,9 +82,8 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
         for (final e in _rules.entries) e.key: e.value.text,
       });
     } on FormatException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
       return;
     }
     setState(() => _sending = true);
@@ -77,6 +97,7 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
             ruleValues: ruleValues,
             founderSubscriptionIds: _founders.toList(),
             joinPolicy: _joinPolicy,
+            agentProfileId: _agent.profileId,
           ),
       success: 'Conversion sent; founders will see the genesis to sign',
     );
@@ -180,6 +201,7 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
                               _founders.add(member.id);
                             } else {
                               _founders.remove(member.id);
+                              _agentFounderRemoved(member);
                             }
                           }),
                   ),
@@ -212,6 +234,39 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
             ],
             selected: {_joinPolicy},
             onSelectionChanged: (s) => setState(() => _joinPolicy = s.first),
+          ),
+          const SizedBox(height: 16),
+          Text('Stawi agent', style: theme.textTheme.titleMedium),
+          ListTile(
+            key: const Key('stawi-agent'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(_agent.name),
+            subtitle: const Text(
+              'Stawi takes a fee from the group\'s interest, fees and '
+              'penalties; an agent receives part of it.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            enabled: members.hasValue,
+            onTap: () async {
+              final chosen = await showStawiAgentPicker(
+                context,
+                roomId: widget.roomId,
+                members: members.asData?.value ?? const [],
+                founders: Set.of(_founders),
+              );
+              if (chosen != null && mounted) {
+                setState(() {
+                  _agent = chosen;
+                  _agentAsFounder =
+                      members.asData?.value.any(
+                        (m) =>
+                            _founders.contains(m.id) &&
+                            m.profileId == chosen.profileId,
+                      ) ??
+                      false;
+                });
+              }
+            },
           ),
           const SizedBox(height: 24),
           FilledButton(

@@ -2,19 +2,18 @@ package business_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2"
-	"github.com/pitabwire/frame/v2/datastore"
-	"github.com/pitabwire/frame/v2/datastore/pool"
-	"github.com/pitabwire/frame/v2/frametests/definition"
-	"github.com/pitabwire/frame/v2/security"
-	"github.com/pitabwire/frame/v2/security/authorizer"
-	"github.com/pitabwire/frame/v2/workerpool"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3"
+	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
+	"github.com/pitabwire/frame/v3/frametests/definition"
+	"github.com/pitabwire/frame/v3/security"
+	"github.com/pitabwire/frame/v3/security/authorizer"
+	"github.com/pitabwire/frame/v3/workerpool"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
 
@@ -34,9 +33,11 @@ type stawiFixture struct {
 	rb       business.RoomBusiness
 	rooms    *stawitest.Rooms
 	accounts *stawitest.Accounts
+	partners *stawitest.ProfileAccounts
 	bindings repository.StawiRoomRepository
 	calls    repository.StawiRoomCallRepository
 	subRepo  repository.RoomSubscriptionRepository
+	roomRepo repository.RoomRepository
 	dbPool   pool.Pool
 	workMan  workerpool.Manager
 	authz    authz.Middleware
@@ -55,6 +56,7 @@ func (s *MessageBusinessTestSuite) newStawiFixture(t *testing.T, dep *definition
 		ctx:      ctx,
 		rooms:    stawitest.NewRooms(),
 		accounts: stawitest.NewAccounts(),
+		partners: stawitest.NewProfileAccounts(),
 		alice:    &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
 		bob:      &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
 	}
@@ -97,7 +99,10 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 		}),
 		business.WithServiceCards(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
-		s.AuthzMiddleware, business.WithStawiBindings(f.bindings))
+		s.AuthzMiddleware, business.WithStawiBindings(f.bindings),
+		business.WithPersonalRooms(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)),
+		business.WithProfileAccounts(f.partners))
+	f.roomRepo = roomRepo
 	return mb, rb
 }
 
@@ -254,8 +259,11 @@ func (s *MessageBusinessTestSuite) TestStawiConversionRefusals() {
 		require.Empty(t, f.rooms.Prepared)
 
 		// Settlement unreachable: the sender retries; nothing is stored.
-		f.rooms.Refuse(stawitest.MethodPrepareRoomGenesis,
-			connect.NewError(connect.CodeUnavailable, context.DeadlineExceeded))
+		f.rooms.Refuse(
+			stawitest.MethodPrepareRoomGenesis,
+			connect.NewError(connect.CodeUnavailable, context.DeadlineExceeded.Error()).
+				WithCause(context.DeadlineExceeded),
+		)
 		ack := f.send(t, f.alice, conversion(f.aliceSub))
 		requireAckRefused(t, ack, connect.CodeUnavailable)
 		require.Nil(t, f.stored(t, ack.GetEventId()[0]))
@@ -433,7 +441,7 @@ func (s *MessageBusinessTestSuite) TestStawiCallRetryAfterAnUnsavedRelayIsAccept
 		f.rooms.AddCall(stawi.RoomCall{CallID: "call-dup", RoomID: f.roomID, Kind: "LEAVE",
 			SignerAddress: "0xa11ce", Nonce: 2, ProfileID: f.alice.GetProfileId(), State: stawi.CallStateSubmitted})
 		f.rooms.Refuse(stawitest.MethodSubmitRoomCall,
-			connect.NewError(connect.CodeAlreadyExists, errors.New("call already submitted")))
+			connect.NewError(connect.CodeAlreadyExists, "call already submitted"))
 		eventID = requireAckOK(t, f.send(t, f.alice, signedCall("call-dup", "LEAVE")))
 		outcomes = f.outcomesFor(t, eventID)
 		require.Len(t, outcomes, 1)

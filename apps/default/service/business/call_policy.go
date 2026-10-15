@@ -10,8 +10,8 @@ import (
 	"time"
 
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
-	"connectrpc.com/connect"
-	"github.com/pitabwire/frame/v2/data"
+	"connectrpc.com/connect/v2"
+	"github.com/pitabwire/frame/v3/data"
 	"github.com/pitabwire/util"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -154,13 +154,13 @@ func (cp *callPolicy) validateCall(
 	call *chatv1.CallContent,
 ) error {
 	if call == nil {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("call events require call payload"))
+		return connect.NewError(connect.CodeInvalidArgument, "call events require call payload")
 	}
 	if roomID == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("call events require room id"))
+		return connect.NewError(connect.CodeInvalidArgument, "call events require room id")
 	}
 	if call.GetCallId() == "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("call events require call_id"))
+		return connect.NewError(connect.CodeInvalidArgument, "call events require call_id")
 	}
 
 	signalKind := cp.signalKind(call)
@@ -171,14 +171,14 @@ func (cp *callPolicy) validateCall(
 	}
 
 	if signalKind == "" && call.GetAction() == chatv1.CallContent_CALL_ACTION_UNSPECIFIED {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("call event missing action"))
+		return connect.NewError(connect.CodeInvalidArgument, "call event missing action")
 	}
 
 	if signalKind == callSignalKindGroupStageUpdate {
 		if senderSubscriptionID == "" {
 			return connect.NewError(
 				connect.CodePermissionDenied,
-				errors.New("group stage updates require a room subscription"),
+				"group stage updates require a room subscription",
 			)
 		}
 		return cp.validateStageUpdate(ctx, roomID, senderSubscriptionID, call)
@@ -209,7 +209,7 @@ func (cp *callPolicy) getOrCreateCall(
 		if callRecord.Status == repository.CallStatusEnded {
 			return connect.NewError(
 				connect.CodeFailedPrecondition,
-				errors.New("call already ended"),
+				"call already ended",
 			)
 		}
 		if err = cp.updateSFUNode(ctx, callRecord, call); err != nil {
@@ -225,7 +225,7 @@ func (cp *callPolicy) getOrCreateCall(
 	if activeCall != nil && activeCall.GetID() != "" && activeCall.CallID != call.GetCallId() {
 		return connect.NewError(
 			connect.CodeFailedPrecondition,
-			errors.New("room already has an active call"),
+			"room already has an active call",
 		)
 	}
 
@@ -268,10 +268,10 @@ func (cp *callPolicy) requireCall(
 		return nil, err
 	}
 	if callRecord == nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("call does not exist"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "call does not exist")
 	}
 	if callRecord.Status == repository.CallStatusEnded {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("call already ended"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "call already ended")
 	}
 	return callRecord, nil
 }
@@ -289,7 +289,7 @@ func (cp *callPolicy) findCall(
 		return nil, fmt.Errorf("failed to load call by id: %w", err)
 	}
 	if callRecord.RoomID != roomID {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("call does not belong to room"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "call does not belong to room")
 	}
 	return callRecord, nil
 }
@@ -325,12 +325,12 @@ func (cp *callPolicy) validateStageUpdate(
 		return fmt.Errorf("failed to load sender subscription for stage update: %w", err)
 	}
 	if senderSubscription == nil || senderSubscription.GetID() == "" {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("sender subscription not found"))
+		return connect.NewError(connect.CodePermissionDenied, "sender subscription not found")
 	}
 	if !cp.canManageVideoStage(callRecord, senderSubscription) {
 		return connect.NewError(
 			connect.CodePermissionDenied,
-			errors.New("only the call initiator or room admins can update the video stage"),
+			"only the call initiator or room admins can update the video stage",
 		)
 	}
 
@@ -338,17 +338,17 @@ func (cp *callPolicy) validateStageUpdate(
 		metadataStringSlice(call.GetMetadata(), callMetadataKeyActiveVideoProfileIDs),
 	)
 	if len(activeVideoProfileIDs) > cp.cfg.MaxVideoPublishers {
-		return connect.NewError(
+		return connect.Errorf(
 			connect.CodeFailedPrecondition,
-			fmt.Errorf("video stage exceeds supported publisher limit (%d)", cp.cfg.MaxVideoPublishers),
+			"video stage exceeds supported publisher limit (%d)", cp.cfg.MaxVideoPublishers,
 		)
 	}
 
 	requestedMax := metadataInt(call.GetMetadata(), callMetadataKeyMaxVideoPublishers)
 	if requestedMax > cp.cfg.MaxVideoPublishers {
-		return connect.NewError(
+		return connect.Errorf(
 			connect.CodeFailedPrecondition,
-			fmt.Errorf("video stage limit cannot exceed %d", cp.cfg.MaxVideoPublishers),
+			"video stage limit cannot exceed %d", cp.cfg.MaxVideoPublishers,
 		)
 	}
 
@@ -358,9 +358,9 @@ func (cp *callPolicy) validateStageUpdate(
 	}
 	for _, profileID := range activeVideoProfileIDs {
 		if !slices.Contains(activeParticipantProfileIDs, profileID) {
-			return connect.NewError(
+			return connect.Errorf(
 				connect.CodeFailedPrecondition,
-				fmt.Errorf("video stage profile %s is not an active call participant", profileID),
+				"video stage profile %s is not an active call participant", profileID,
 			)
 		}
 	}
@@ -719,11 +719,11 @@ func (cp *callPolicy) validateCallPayload(call *chatv1.CallContent) error {
 	switch call.GetAction() {
 	case chatv1.CallContent_CALL_ACTION_OFFER, chatv1.CallContent_CALL_ACTION_ANSWER:
 		if call.GetSdp() == "" {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("call offer/answer requires SDP"))
+			return connect.NewError(connect.CodeInvalidArgument, "call offer/answer requires SDP")
 		}
 	case chatv1.CallContent_CALL_ACTION_ICE_CANDIDATE:
 		if call.GetIceCandidate() == "" {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("call ICE candidate requires candidate"))
+			return connect.NewError(connect.CodeInvalidArgument, "call ICE candidate requires candidate")
 		}
 	case chatv1.CallContent_CALL_ACTION_UNSPECIFIED, chatv1.CallContent_CALL_ACTION_END:
 		return nil
@@ -736,7 +736,7 @@ func (cp *callPolicy) validateTopology(topology string, call *chatv1.CallContent
 	if topology == callTopologySFU && cp.sfuNodeID(call) == "" {
 		return connect.NewError(
 			connect.CodeFailedPrecondition,
-			errors.New("sfu topology requires sfuNodeId"),
+			"sfu topology requires sfuNodeId",
 		)
 	}
 
@@ -769,13 +769,12 @@ func (cp *callPolicy) validateParticipantCapacity(
 		return nil
 	}
 
-	return connect.NewError(
+	return connect.Errorf(
 		connect.CodeFailedPrecondition,
-		fmt.Errorf(
-			"%s call exceeds supported member limit (%d) without SFU assignment",
-			callMode,
-			memberLimit,
-		),
+
+		"%s call exceeds supported member limit (%d) without SFU assignment",
+		callMode,
+		memberLimit,
 	)
 }
 

@@ -89,16 +89,14 @@ class StarredMessagesScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             'No starred messages',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.outline,
-            ),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(color: Theme.of(context).colorScheme.outline),
           ),
           const SizedBox(height: 8),
           Text(
             'Star important messages to find them easily later',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.outline,
-            ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: Theme.of(context).colorScheme.outline),
             textAlign: TextAlign.center,
           ),
         ],
@@ -181,9 +179,8 @@ class StarredMessagesScreen extends ConsumerWidget {
       final count = await repo.clearAllStarredMessages();
 
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unstarred $count messages')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Unstarred $count messages')));
       }
     }
   }

@@ -556,8 +556,7 @@ class _GlobalSearchScreenState extends ConsumerState<GlobalSearchScreen>
                 Navigator.pop(context);
                 SharePlus.instance.share(
                   ShareParams(
-                    text:
-                        'Join me on Stawi! Download the app: https://stawi.org/invite',
+                    text: 'Join me on Stawi! Download the app: https://stawi.org/invite',
                   ),
                 );
               },

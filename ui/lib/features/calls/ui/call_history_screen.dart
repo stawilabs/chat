@@ -286,9 +286,8 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
       await callManager.startCall(call.roomId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to start call: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to start call: $e')));
       }
     }
   }
@@ -315,9 +314,8 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
     if ((confirmed ?? false) && call.id != null) {
       await ref.read(callHistoryRepositoryProvider).deleteCall(call.id!);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Call deleted')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Call deleted')));
       }
     }
   }
@@ -350,9 +348,8 @@ class _CallHistoryScreenState extends ConsumerState<CallHistoryScreen> {
           .read(callHistoryRepositoryProvider)
           .clearAllHistory();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Cleared $count calls')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Cleared $count calls')));
       }
     }
   }
