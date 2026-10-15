@@ -124,4 +124,105 @@ void main() {
       );
     });
   });
+
+  group('decrypted content is data, never presentation control', () {
+    test('a member cannot mark an encrypted message as a room change', () {
+      final content = ChatEventCodec.decryptedContent(
+        jsonEncode({
+          'isRoomChange': true,
+          'isModeration': true,
+          'type': 'roomChange',
+          'action': 'ROOM_CHANGE_ACTION_ROLE_CHANGED',
+          'actorSubscriptionId': 'sub-owner',
+          'targetSubscriptionIds': ['sub-x'],
+          'stawiType': 'financeCard',
+          'stawiCard': {'kind': 'loan'},
+          'text': 'Treasurer: loan approved, send 500 fee to 07xx',
+        }),
+      );
+
+      expect(content['text'], 'Treasurer: loan approved, send 500 fee to 07xx');
+      for (final key in [
+        'isRoomChange',
+        'isModeration',
+        'type',
+        'action',
+        'actorSubscriptionId',
+        'targetSubscriptionIds',
+        'stawiType',
+        'stawiCard',
+      ]) {
+        expect(content.containsKey(key), isFalse, reason: key);
+      }
+      expect(content['encrypted'], isTrue);
+      expect(content['decrypted'], isTrue);
+    });
+
+    test('a member cannot claim the decryption flags', () {
+      final content = ChatEventCodec.decryptedContent(
+        jsonEncode({'text': 'hi', 'encrypted': false, 'decrypted': false}),
+      );
+      expect(content['encrypted'], isTrue);
+      expect(content['decrypted'], isTrue);
+    });
+
+    test('structured media content survives decryption', () {
+      final content = ChatEventCodec.decryptedContent(
+        jsonEncode({
+          'mediaId': 'm-1',
+          'fileName': 'a.jpg',
+          'mimeType': 'image/jpeg',
+          'caption': 'look',
+        }),
+      );
+      expect(content['mediaId'], 'm-1');
+      expect(content['fileName'], 'a.jpg');
+      expect(content['mimeType'], 'image/jpeg');
+      expect(content['caption'], 'look');
+    });
+
+    test('plain text and non-object JSON decrypt to text', () {
+      expect(ChatEventCodec.decryptedContent('hello')['text'], 'hello');
+      expect(ChatEventCodec.decryptedContent('[1,2]')['text'], '[1,2]');
+      expect(ChatEventCodec.decryptedContent('42')['text'], '42');
+    });
+  });
+
+  group('only a server-authored payload renders as a system line', () {
+    test('a room change payload is a system line', () {
+      expect(
+        ChatEventCodec.isSystemPayload(
+          pb.Payload(roomChange: pb.RoomChangeContent(body: 'x joined')),
+        ),
+        isTrue,
+      );
+    });
+
+    test('a moderation payload is the sender\'s own message', () {
+      // Chat lets a member send a moderation naming themselves as actor, so
+      // it reads as theirs, not as the room's.
+      expect(
+        ChatEventCodec.isSystemPayload(
+          pb.Payload(moderation: pb.ModerationContent(body: 'x removed')),
+        ),
+        isFalse,
+      );
+    });
+
+    test('an encrypted or text payload is never a system line', () {
+      expect(
+        ChatEventCodec.isSystemPayload(
+          pb.Payload(encrypted: pb.EncryptedContent(sessionId: 's')),
+        ),
+        isFalse,
+      );
+      expect(
+        ChatEventCodec.isSystemPayload(
+          pb.Payload(text: pb.TextContent(body: '{"isRoomChange":true}')),
+        ),
+        isFalse,
+      );
+      expect(ChatEventCodec.isSystemPayload(null), isFalse);
+    });
+  });
 }

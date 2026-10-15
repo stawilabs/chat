@@ -320,4 +320,48 @@ class ChatEventCodec {
 
     return event;
   }
+
+  /// Keys a decrypted message may not carry: they steer how an event renders
+  /// (a system line, a Stawi card) and only a server-authored payload sets
+  /// them.
+  static const _reservedContentKeys = {
+    'isRoomChange',
+    'isModeration',
+    'type',
+    'action',
+    'actorSubscriptionId',
+    'targetSubscriptionIds',
+    'details',
+  };
+
+  /// The content of a decrypted message. Its plaintext is whatever the sender
+  /// wrote, so a JSON object is kept as data with the presentation keys
+  /// stripped; anything else is text. The encryption flags are ours.
+  static Map<String, dynamic> decryptedContent(String plaintext) {
+    Object? decoded;
+    try {
+      decoded = jsonDecode(plaintext);
+    } on FormatException {
+      decoded = null;
+    }
+    final Map<String, dynamic> content;
+    if (decoded is Map<String, dynamic>) {
+      content = {
+        for (final entry in decoded.entries)
+          if (!_reservedContentKeys.contains(entry.key) &&
+              !entry.key.startsWith('stawi'))
+            entry.key: entry.value,
+      };
+    } else {
+      content = {'text': plaintext};
+    }
+    return {...content, 'encrypted': true, 'decrypted': true};
+  }
+
+  /// Whether an event renders as a system line. Only a room change does: the
+  /// server writes it itself and refuses it from a member. A member may send
+  /// a moderation (naming themselves as actor), so it renders as theirs; and
+  /// a member's message, encrypted or not, never renders as a system line.
+  static bool isSystemPayload(pb.Payload? payload) =>
+      payload != null && payload.hasRoomChange();
 }
