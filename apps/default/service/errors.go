@@ -95,6 +95,12 @@ var (
 		connect.CodePermissionDenied,
 		"you don't have permission to update member roles",
 	)
+	// ErrRoleGrantDenied is returned when adding members would grant a role
+	// above the adder's own (an admin cannot make anyone an owner).
+	ErrRoleGrantDenied = connect.NewError(
+		connect.CodePermissionDenied,
+		"you cannot grant a role above your own",
+	)
 	ErrRoomMemberNotFound = connect.NewError(connect.CodeNotFound, "member not found in room")
 
 	// ErrCannotRemoveLastOwner is returned when an operation would leave a room
