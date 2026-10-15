@@ -124,7 +124,10 @@ Future<settlement.AccountCall?> reviewAndSubmit(
   if (!await showMoneyReview(context, prepared.review) || !context.mounted) {
     return null;
   }
-  final signed = await runStawiAction(context, () => service.sign(prepared));
+  final signed = await runStawiAction(
+    context,
+    () => service.signCall(prepared),
+  );
   if (signed == null) return null;
 
   settlement.AccountCall? call;

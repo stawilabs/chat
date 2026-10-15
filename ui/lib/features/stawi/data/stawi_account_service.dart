@@ -616,11 +616,11 @@ class StawiAccountService {
   /// Signs a prepared, checked call on this device and submits it. The
   /// device lock shows the review's plain title.
   Future<settlement.AccountCall> submit(PreparedMoneyCall prepared) async =>
-      submitSigned(await sign(prepared));
+      submitSigned(await signCall(prepared));
 
   /// Signs a prepared, checked call on this device, behind the device lock
   /// (which shows the review's plain title). Nothing is sent.
-  Future<SignedMoneyCall> sign(PreparedMoneyCall prepared) async {
+  Future<SignedMoneyCall> signCall(PreparedMoneyCall prepared) async {
     final me = await _identity();
     final key = await _keys.unlock(me.profileId, reason: prepared.review.title);
     return SignedMoneyCall._(
