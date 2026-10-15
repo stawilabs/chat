@@ -68,7 +68,20 @@ void main() {
     Future<StawiAccountService> serve({
       required SigningGate gate,
       bool catchingUp = false,
+      settlement.SubmitAccountCallResponse Function(
+        settlement.SubmitAccountCallRequest req,
+        int n,
+      )?
+      onSubmit,
+      settlement.GetAccountCallResponse Function(
+        settlement.GetAccountCallRequest req,
+        int n,
+      )?
+      onGetCall,
     }) async {
+      var prepares = 0;
+      var submitted = 0;
+      var reads = 0;
       transport = FakeConnectTransport()
         ..on(settlement.AccountService.prepareAccountCall, (req) {
           if (catchingUp) {
@@ -77,26 +90,33 @@ void main() {
               'your account is being brought up to date',
             );
           }
+          // Each prepare is a new call, as settlement's are.
+          prepares++;
           return preparedContribution(
             account: req.address,
             custody: req.params.room,
             amount: req.params.amount,
+            callId: 'acct${'$prepares'.padLeft(16, '0')}',
           );
         })
         ..on(
           settlement.AccountService.submitAccountCall,
-          (req) => settlement.SubmitAccountCallResponse(
-            call: settlement.AccountCall(callId: req.callId),
-          ),
+          (req) =>
+              onSubmit?.call(req, submitted++) ??
+              settlement.SubmitAccountCallResponse(
+                call: settlement.AccountCall(callId: req.callId),
+              ),
         )
         ..on(
           settlement.AccountService.getAccountCall,
-          (req) => settlement.GetAccountCallResponse(
-            call: settlement.AccountCall(
-              callId: req.callId,
-              state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
-            ),
-          ),
+          (req) =>
+              onGetCall?.call(req, reads++) ??
+              settlement.GetAccountCallResponse(
+                call: settlement.AccountCall(
+                  callId: req.callId,
+                  state: settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+                ),
+              ),
         )
         ..on(
           settlement.AccountService.getAsset,
@@ -109,6 +129,7 @@ void main() {
         keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate),
         proofs: refusingSessionProofs,
         identity: () async => identityWith('p1', account),
+        followEvery: Duration.zero,
       );
     }
 
@@ -136,9 +157,180 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    int submits() => transport
-        .requestsTo(settlement.AccountService.submitAccountCall)
+    List<settlement.SubmitAccountCallRequest> submitted() =>
+        transport.requestsTo(settlement.AccountService.submitAccountCall);
+
+    int submits() => submitted().length;
+
+    int prepares() => transport
+        .requestsTo(settlement.AccountService.prepareAccountCall)
         .length;
+
+    Future<void> sign(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('money-review-sign')));
+      await tester.pumpAndSettle();
+    }
+
+    settlement.GetAccountCallResponse callIn(
+      settlement.GetAccountCallRequest req,
+      settlement.AccountCallState state,
+    ) => settlement.GetAccountCallResponse(
+      call: settlement.AccountCall(callId: req.callId, state: state),
+    );
+
+    Never lost(connect.Code code) =>
+        throw connect.ConnectException(code, 'the response was lost');
+
+    group(
+      'a submit with no clear answer is followed, never prepared again',
+      () {
+        testWidgets('a call settlement took is followed, not submitted again', (
+          tester,
+        ) async {
+          final service = await serve(
+            gate: SigningGate.open,
+            onSubmit: (req, n) => lost(connect.Code.unavailable),
+            onGetCall: (req, n) => callIn(
+              req,
+              n == 0
+                  ? settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED
+                  : settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+            ),
+          );
+          await openAndSubmit(tester, service);
+          await sign(tester);
+
+          expect(submits(), 1);
+          expect(prepares(), 1);
+          expect(find.byKey(const Key('contribute-state')), findsOneWidget);
+          expect(
+            find.text('Stawi is unreachable; try again shortly'),
+            findsNothing,
+          );
+        });
+
+        testWidgets(
+          'a call settlement did not take is submitted again with the '
+          'same signature',
+          (tester) async {
+            final gate = RecordingSigningGate();
+            final service = await serve(
+              gate: gate,
+              onSubmit: (req, n) => n == 0
+                  ? lost(connect.Code.deadlineExceeded)
+                  : settlement.SubmitAccountCallResponse(
+                      call: settlement.AccountCall(
+                        callId: req.callId,
+                        state: settlement
+                            .AccountCallState
+                            .ACCOUNT_CALL_STATE_SUBMITTED,
+                      ),
+                    ),
+              onGetCall: (req, n) => callIn(
+                req,
+                n == 0
+                    ? settlement.AccountCallState.ACCOUNT_CALL_STATE_PREPARED
+                    : settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+              ),
+            );
+            await openAndSubmit(tester, service);
+            await sign(tester);
+
+            expect(prepares(), 1);
+            expect(submits(), 2);
+            final [first, second] = submitted();
+            expect(second.callId, first.callId);
+            expect(second.authorization, first.authorization);
+            expect(
+              gate.reasons,
+              hasLength(1),
+              reason: 'signed once, not again',
+            );
+            expect(find.byKey(const Key('contribute-state')), findsOneWidget);
+          },
+        );
+
+        testWidgets('an answer that never comes says so honestly and blocks '
+            'another payment until it is known', (tester) async {
+          var reachable = false;
+          final service = await serve(
+            gate: SigningGate.open,
+            onSubmit: (req, n) => reachable
+                ? settlement.SubmitAccountCallResponse(
+                    call: settlement.AccountCall(callId: req.callId),
+                  )
+                : lost(connect.Code.unavailable),
+            onGetCall: (req, n) => reachable
+                ? callIn(
+                    req,
+                    settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+                  )
+                : lost(connect.Code.unavailable),
+          );
+          await openAndSubmit(tester, service);
+          await sign(tester);
+
+          expect(find.text(notConfirmedSubmitMessage), findsOneWidget);
+          expect(find.byKey(const Key('contribute-state')), findsNothing);
+          final firstCall = submitted().first.callId;
+
+          // Tapping again does not prepare and pay a second time: the earlier
+          // call is checked first.
+          ScaffoldMessenger.of(tester.element(find.byType(ContributeScreen)))
+              .removeCurrentSnackBar();
+          reachable = true;
+          await tester.tap(find.byKey(const Key('contribute-submit')));
+          await tester.pumpAndSettle();
+
+          expect(find.byKey(const Key('money-review')), findsNothing);
+          expect(submitted().map((r) => r.callId).toSet(), {
+            firstCall,
+          }, reason: 'no new call was submitted');
+          expect(
+            find.text(earlierCallSentMessage('Pay 500.00 USDC into Chama')),
+            findsOneWidget,
+          );
+
+          // Once it is known, a new payment goes through as usual.
+          ScaffoldMessenger.of(tester.element(find.byType(ContributeScreen)))
+              .removeCurrentSnackBar();
+          await tester.tap(find.byKey(const Key('contribute-submit')));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const Key('money-review')), findsOneWidget);
+        });
+
+        testWidgets('a clear refusal says why and leaves nothing pending', (
+          tester,
+        ) async {
+          final service = await serve(
+            gate: SigningGate.open,
+            onSubmit: (req, n) => n == 0
+                ? throw connect.ConnectException(
+                    connect.Code.failedPrecondition,
+                    'insufficient balance',
+                  )
+                : settlement.SubmitAccountCallResponse(
+                    call: settlement.AccountCall(callId: req.callId),
+                  ),
+          );
+          await openAndSubmit(tester, service);
+          await sign(tester);
+
+          expect(submits(), 1);
+          expect(
+            transport.requestsTo(settlement.AccountService.getAccountCall),
+            isEmpty,
+          );
+          expect(find.text('insufficient balance'), findsOneWidget);
+
+          ScaffoldMessenger.of(tester.element(find.byType(ContributeScreen)))
+              .removeCurrentSnackBar();
+          await tester.tap(find.byKey(const Key('contribute-submit')));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const Key('money-review')), findsOneWidget);
+        });
+      },
+    );
 
     testWidgets('confirming signs and submits once', (tester) async {
       final gate = RecordingSigningGate();

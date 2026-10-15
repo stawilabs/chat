@@ -761,6 +761,13 @@ func (rb *roomBusiness) AddRoomSubscriptions(
 		return dmErr
 	}
 
+	// Role ceiling: every requested role must be a known one no higher than
+	// the adder's own. Checked before a proposal is raised, so an admin cannot
+	// even propose an owner.
+	if ceilErr := checkRoleCeiling(admin.Role, req.GetMembers()); ceilErr != nil {
+		return ceilErr
+	}
+
 	// Check if room requires approval for changes
 	if needsApproval, approvalErr := rb.requiresApproval(ctx, req.GetRoomId()); approvalErr == nil && needsApproval {
 		if crErr := rb.createProposal(ctx, req.GetRoomId(), models.ProposalTypeAddSubscriptions,
@@ -981,6 +988,43 @@ func validateRoles(roles []string) error {
 	for _, r := range roles {
 		if !authz.IsValidRole(r) {
 			return service.ErrInvalidRole
+		}
+	}
+	return nil
+}
+
+// roleRank orders the room roles; an unknown role ranks below guest.
+func roleRank(role string) int {
+	switch strings.TrimSpace(role) {
+	case roleOwner:
+		return int(roleOwnerLevel)
+	case roleAdmin:
+		return int(roleAdminLevel)
+	case roleMember:
+		return int(roleMemberLevel)
+	case roleGuest:
+		return int(roleGuestLevel)
+	default:
+		return -1
+	}
+}
+
+// checkRoleCeiling refuses an unknown role (ErrInvalidRole) and any role above
+// the highest one in actorRoles, the actor's comma-separated role field
+// (ErrRoleGrantDenied).
+func checkRoleCeiling(actorRoles string, members []*chatv1.RoomSubscription) error {
+	ceiling := -1
+	for _, r := range strings.Split(actorRoles, ",") {
+		ceiling = max(ceiling, roleRank(r))
+	}
+	for _, member := range members {
+		if err := validateRoles(member.GetRoles()); err != nil {
+			return err
+		}
+		for _, r := range member.GetRoles() {
+			if roleRank(r) > ceiling {
+				return service.ErrRoleGrantDenied
+			}
 		}
 	}
 	return nil
@@ -1259,23 +1303,29 @@ func (rb *roomBusiness) addRoomMembersWithRoles(ctx context.Context,
 			}
 
 			subscriptionModel = existingSubs[0]
-			if !subscriptionModel.IsActive() {
-				if activateErr := rb.subscriptionRepo.Activate(ctx, subscriptionModel.GetID()); activateErr != nil {
-					itemErrors = append(itemErrors, service.ItemError{
-						Index:   idx,
-						ItemID:  subscription.GetMember().GetProfileId(),
-						Message: fmt.Sprintf("failed to reactivate subscription: %v", activateErr),
-					})
-					continue
-				}
-			}
-			if subscriptionModel.Role != strings.Join(roles, ",") {
+			// An active member keeps their role: adding never changes it
+			// (UpdateSubscriptionRole does, owner-only and last-owner
+			// guarded). A returning member comes back with the role asked
+			// for, which the caller has held to its role ceiling.
+			if subscriptionModel.IsActive() {
+				roles = strings.Split(subscriptionModel.Role, ",")
+			} else if subscriptionModel.Role != strings.Join(roles, ",") {
 				subscriptionModel.Role = strings.Join(roles, ",")
 				if _, updateErr := rb.subscriptionRepo.Update(ctx, subscriptionModel, "role"); updateErr != nil {
 					itemErrors = append(itemErrors, service.ItemError{
 						Index:   idx,
 						ItemID:  subscription.GetMember().GetProfileId(),
 						Message: fmt.Sprintf("failed to sync subscription role: %v", updateErr),
+					})
+					continue
+				}
+			}
+			if !subscriptionModel.IsActive() {
+				if activateErr := rb.subscriptionRepo.Activate(ctx, subscriptionModel.GetID()); activateErr != nil {
+					itemErrors = append(itemErrors, service.ItemError{
+						Index:   idx,
+						ItemID:  subscription.GetMember().GetProfileId(),
+						Message: fmt.Sprintf("failed to reactivate subscription: %v", activateErr),
 					})
 					continue
 				}
