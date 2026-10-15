@@ -615,16 +615,31 @@ class StawiAccountService {
 
   /// Signs a prepared, checked call on this device and submits it. The
   /// device lock shows the review's plain title.
-  Future<settlement.AccountCall> submit(PreparedMoneyCall prepared) async {
+  Future<settlement.AccountCall> submit(PreparedMoneyCall prepared) async =>
+      submitSigned(await sign(prepared));
+
+  /// Signs a prepared, checked call on this device, behind the device lock
+  /// (which shows the review's plain title). Nothing is sent.
+  Future<SignedMoneyCall> sign(PreparedMoneyCall prepared) async {
     final me = await _identity();
     final key = await _keys.unlock(me.profileId, reason: prepared.review.title);
-    return (await _accounts.submitAccountCall(
-      settlement.SubmitAccountCallRequest(
-        callId: prepared.callId,
-        authorization: key.sign(prepared.digest),
-      ),
-    )).call;
+    return SignedMoneyCall._(
+      callId: prepared.callId,
+      authorization: key.sign(prepared.digest),
+      review: prepared.review,
+    );
   }
+
+  /// Submits [signed]. Settlement takes a call once: the same signed call
+  /// again answers the call as it stands, so this is safe to repeat when an
+  /// earlier submit's answer was lost.
+  Future<settlement.AccountCall> submitSigned(SignedMoneyCall signed) async =>
+      (await _accounts.submitAccountCall(
+        settlement.SubmitAccountCallRequest(
+          callId: signed.callId,
+          authorization: signed.authorization,
+        ),
+      )).call;
 
   /// Whether [loan]'s standing order (automatic payment) is on, read off the
   /// account's authorizations.
@@ -752,6 +767,21 @@ class PreparedMoneyCall {
   /// What the account will do, decoded from the prepared calldata; null for a
   /// call that is not an engine call.
   final EngineCall? call;
+}
+
+/// A prepared call signed on this device: exactly what is submitted, kept so
+/// that a submit whose answer was lost is repeated as the same call, never
+/// prepared again (a new prepare takes the next nonce and pays twice).
+class SignedMoneyCall {
+  const SignedMoneyCall._({
+    required this.callId,
+    required this.authorization,
+    required this.review,
+  });
+
+  final String callId;
+  final Uint8List authorization;
+  final MoneyReview review;
 }
 
 /// Settlement's genesis states for a deployment already on its way.
