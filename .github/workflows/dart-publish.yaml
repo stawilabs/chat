@@ -29,6 +29,7 @@ jobs:
   publish:
     needs: resolve
     permissions:
+      contents: read
       id-token: write
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1.8.1
     with:
