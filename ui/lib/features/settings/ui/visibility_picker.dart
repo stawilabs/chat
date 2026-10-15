@@ -69,15 +69,13 @@ class VisibilityPicker extends StatelessWidget {
           ),
           title: Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w500),
           ),
           subtitle: Text(
             currentOption.label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppTheme.primaryGreen),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: AppTheme.primaryGreen),
           ),
           trailing: Icon(
             Icons.chevron_right,

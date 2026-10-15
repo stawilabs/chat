@@ -131,9 +131,8 @@ void main() {
           ),
         ),
       )!;
-      final genesis = StawiConversionView.fromContent(
-        conversion.content,
-      ).genesis!;
+      final genesis = StawiConversionView.fromContent(conversion.content)
+          .genesis!;
       expect(genesis.genesisId, 'gen1');
       expect(genesis.genesisHash, hash);
       expect(genesis.isFounder('p2'), isTrue);

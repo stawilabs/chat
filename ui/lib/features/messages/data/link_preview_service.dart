@@ -124,9 +124,8 @@ class LinkPreviewService {
     // Fallback: legacy HTTP endpoint
     try {
       final token = await _getAccessToken();
-      final uri = Uri.parse(
-        '${ApiConfig.filesBaseUrl}/v1/preview',
-      ).replace(queryParameters: {'url': url});
+      final uri = Uri.parse('${ApiConfig.filesBaseUrl}/v1/preview')
+          .replace(queryParameters: {'url': url});
 
       final response = await http.get(
         uri,
@@ -195,8 +194,7 @@ class LinkPreviewService {
           .get(
             Uri.parse(url),
             headers: {
-              'User-Agent':
-                  'Mozilla/5.0 (compatible; LinkPreviewBot/1.0; +https://stawi.org)',
+              'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0; +https://stawi.org)',
             },
           )
           .timeout(_fetchTimeout);

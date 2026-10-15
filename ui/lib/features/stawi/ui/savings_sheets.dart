@@ -414,9 +414,8 @@ Future<void> startGoal(
     return;
   }
   if (context.mounted) {
-    ScaffoldMessenger.maybeOf(
-      context,
-    )?.showSnackBar(SnackBar(content: Text(why)));
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(SnackBar(content: Text(why)));
   }
 }
 

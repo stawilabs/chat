@@ -33,9 +33,8 @@ class FormMessageCard extends ConsumerWidget {
     final linkedSubmission = submissionAsync.asData?.value;
     final linkedSnapshot = linkedSubmission == null
         ? null
-        : FormSubmissionResultMessageModel.fromContent(
-            linkedSubmission.content,
-          ).submissionSnapshot;
+        : FormSubmissionResultMessageModel.fromContent(linkedSubmission.content)
+              .submissionSnapshot;
 
     final directSnapshotMatchesCurrentUser =
         directSnapshot != null &&

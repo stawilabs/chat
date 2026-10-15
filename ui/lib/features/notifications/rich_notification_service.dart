@@ -35,12 +35,17 @@ class NotificationChannels {
 }
 
 /// Callback type for notification action handlers
-typedef NotificationActionCallback =
-    void Function(String actionId, String? roomId, String? payload);
+typedef NotificationActionCallback = void Function(
+  String actionId,
+  String? roomId,
+  String? payload,
+);
 
 /// Callback type for notification tap handlers
-typedef NotificationTapCallback =
-    void Function(String? roomId, String? roomName);
+typedef NotificationTapCallback = void Function(
+  String? roomId,
+  String? roomName,
+);
 
 /// Provider for RichNotificationService
 final richNotificationServiceProvider = Provider<RichNotificationService>(

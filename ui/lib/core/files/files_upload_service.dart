@@ -321,8 +321,7 @@ class FilesUploadService {
       'm4a' => 'audio/mp4',
       'pdf' => 'application/pdf',
       'doc' => 'application/msword',
-      'docx' =>
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'txt' => 'text/plain',
       'json' => 'application/json',
       _ => 'application/octet-stream',

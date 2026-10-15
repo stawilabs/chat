@@ -30,8 +30,10 @@ class TransferNotificationActions {
 }
 
 /// Callback type for transfer notification action handlers
-typedef TransferActionCallback =
-    void Function(String actionId, String transferId);
+typedef TransferActionCallback = void Function(
+  String actionId,
+  String transferId,
+);
 
 /// Provider for TransferNotificationService
 final transferNotificationServiceProvider =

@@ -59,8 +59,7 @@ class _ChatSettingsScreenState extends ConsumerState<ChatSettingsScreen> {
                 _buildSwitchItem(
                   context,
                   title: 'Keep chats archived',
-                  subtitle:
-                      'Archived chats will remain archived when new messages arrive',
+                  subtitle: 'Archived chats will remain archived when new messages arrive',
                   value: settings['archive_chats'] ?? false,
                   onChanged: (value) {
                     ref
@@ -191,15 +190,13 @@ class _ChatSettingsScreenState extends ConsumerState<ChatSettingsScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       title: Text(
         title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       trailing: Icon(
         Icons.chevron_right,
@@ -233,15 +230,13 @@ class _ChatSettingsScreenState extends ConsumerState<ChatSettingsScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       title: Text(
         title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       trailing: Switch(
         value: value,

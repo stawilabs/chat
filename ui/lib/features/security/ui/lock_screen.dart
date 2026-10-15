@@ -87,13 +87,11 @@ class _LockScreenState extends ConsumerState<LockScreen>
         });
       case BiometricAuthResult.notEnrolled:
         setState(() {
-          _errorMessage =
-              'No biometrics enrolled. Please set up biometrics in device settings.';
+          _errorMessage = 'No biometrics enrolled. Please set up biometrics in device settings.';
         });
       case BiometricAuthResult.lockedOut:
         setState(() {
-          _errorMessage =
-              'Too many failed attempts. Please try again later or use device PIN.';
+          _errorMessage = 'Too many failed attempts. Please try again later or use device PIN.';
         });
       case BiometricAuthResult.error:
         setState(() {

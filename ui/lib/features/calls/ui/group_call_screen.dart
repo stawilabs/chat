@@ -713,10 +713,8 @@ class _AudienceStrip extends StatelessWidget {
         children: [
           Text(
             'Audience',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Colors.white70,
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.titleSmall
+                ?.copyWith(color: Colors.white70, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Expanded(

@@ -240,9 +240,8 @@ class _StorageSettingsScreenState extends ConsumerState<StorageSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to clear media: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to clear media: $e')));
       }
     }
   }
@@ -251,9 +250,8 @@ class _StorageSettingsScreenState extends ConsumerState<StorageSettingsScreen> {
     try {
       await AppDatabase.instance.customStatement('VACUUM');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Database optimized')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Database optimized')));
       }
     } catch (e) {
       if (mounted) {
@@ -349,15 +347,13 @@ class _StorageSettingsScreenState extends ConsumerState<StorageSettingsScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       title: Text(
         title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       trailing: Icon(
         Icons.chevron_right,

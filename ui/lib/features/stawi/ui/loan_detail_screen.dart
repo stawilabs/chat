@@ -335,11 +335,7 @@ class _LoanDetailScreenState extends ConsumerState<LoanDetailScreen> {
     final heading = Theme.of(context).textTheme.titleSmall;
     return [
       const AccountSetupBanner(),
-      LoanCard(
-        view: view,
-        assets: assets,
-        counterpartyName: _counterparty,
-      ),
+      LoanCard(view: view, assets: assets, counterpartyName: _counterparty),
       if (waiting)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),

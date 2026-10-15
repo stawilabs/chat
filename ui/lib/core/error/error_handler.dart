@@ -86,9 +86,8 @@ class ErrorHandler {
     Duration duration = const Duration(seconds: 3),
   }) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message), duration: duration));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message), duration: duration));
     }
   }
 }

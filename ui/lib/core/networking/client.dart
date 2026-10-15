@@ -151,11 +151,10 @@ final tokenManagerProvider = Provider<TokenManager>((ref) {
 ///
 /// This enables dependency injection of the CertificatePinning service
 /// while maintaining compatibility with the client factory function signature.
-typedef CreateTransportFn =
-    connect.Transport Function(
-      Uri baseUrl,
-      List<connect.Interceptor> interceptors,
-    );
+typedef CreateTransportFn = connect.Transport Function(
+  Uri baseUrl,
+  List<connect.Interceptor> interceptors,
+);
 
 /// Creates a transport factory bound to a CertificatePinning instance
 ///

@@ -23,11 +23,9 @@ PersonalTerms _chain(Map<String, dynamic> t) => PersonalTerms(
 void main() {
   final vectors =
       ((jsonDecode(
-                    File(
-                      'test/fixtures/stawi/go_personal_terms.json',
-                    ).readAsStringSync(),
-                  )
-                  as Map<String, dynamic>)['terms']
+                File('test/fixtures/stawi/go_personal_terms.json')
+                    .readAsStringSync(),
+              ) as Map<String, dynamic>)['terms']
               as List)
           .cast<Map<String, dynamic>>();
 

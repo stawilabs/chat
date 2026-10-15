@@ -225,8 +225,7 @@ class _PairLoans extends ConsumerWidget {
                     counterpartyName: name,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) =>
-                            LoanDetailScreen(ref: LoanRef.of(loan)),
+                        builder: (_) => LoanDetailScreen(ref: LoanRef.of(loan)),
                       ),
                     ),
                   ),

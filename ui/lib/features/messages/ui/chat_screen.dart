@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../../../core/db/database.dart' hide RoomEvent;
 import '../../../core/logging/app_logger.dart';
 import '../../../core/navigation/navigation_helper.dart';
@@ -182,9 +183,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (unreadIds.isNotEmpty) {
           final syncEngine = await ref.read(syncEngineProvider.future);
           await syncEngine.sendReadReceipts(widget.roomId, unreadIds);
-          await RoomRepository(
-            AppDatabase.instance,
-          ).updateUnreadCount(widget.roomId, 0);
+          await RoomRepository(AppDatabase.instance)
+              .updateUnreadCount(widget.roomId, 0);
         }
       } catch (e) {
         // Silently fail for read receipts - they're not critical
@@ -284,9 +284,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to retry: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to retry: $e')));
       }
     }
   }
@@ -347,9 +346,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to send file: $e')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Failed to send file: $e')));
         }
       }
     }
@@ -392,9 +390,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to send file: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to send file: $e')));
       }
     }
   }
@@ -555,9 +552,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.surface,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surface,
                                       borderRadius: BorderRadius.circular(20),
                                       boxShadow: [
                                         BoxShadow(
@@ -669,9 +666,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     Text(
                       'Last seen recently',
                       style: AppTheme.metadataText.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).appBarTheme.foregroundColor?.withValues(alpha: 0.7),
+                        color: Theme.of(context).appBarTheme.foregroundColor
+                            ?.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -773,9 +769,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.primaryContainer
+                .withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -795,9 +790,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         const SizedBox(height: 8),
         Text(
           'Send a message to begin chatting with ${widget.roomName}',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -831,9 +825,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.primaryContainer
+                .withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: CircularProgressIndicator(
@@ -853,9 +846,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Text(
           'Please wait while we fetch your conversation',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            color: Theme.of(context).colorScheme.onSurfaceVariant
+                .withValues(alpha: 0.7),
           ),
           textAlign: TextAlign.center,
         ),
@@ -886,9 +878,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         const SizedBox(height: 8),
         Text(
           'Unable to load messages. Please try again.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),

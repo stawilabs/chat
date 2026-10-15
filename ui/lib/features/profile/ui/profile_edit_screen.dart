@@ -394,9 +394,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         if (result.success) {
           await _loadProfile();
           if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Contact removed')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('Contact removed')));
           }
         } else {
           _showError(result.errorMessage ?? 'Failed to remove contact');
@@ -457,9 +456,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               const SizedBox(height: 8),
               Text(
                 contact.value,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.bodyLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               TextField(

@@ -133,8 +133,7 @@ class Rooms extends Table {
 class RoomSubscriptions extends Table {
   TextColumn get id => text()(); // Primary key from API
   TextColumn get roomId => text().references(Rooms, #id)();
-  TextColumn get profileId => text()
-      .nullable()(); // Global profile identity (from JWT) - nullable for anonymous subscriptions
+  TextColumn get profileId => text().nullable()(); // Global profile identity (from JWT) - nullable for anonymous subscriptions
   TextColumn get contactId =>
       text().nullable()(); // Contact method (phone/email/etc)
   TextColumn get role => text().nullable()();

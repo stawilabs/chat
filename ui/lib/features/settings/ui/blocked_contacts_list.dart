@@ -57,16 +57,14 @@ class BlockedContactsListScreen extends ConsumerWidget {
             Icon(
               Icons.block,
               size: 80,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              color: Theme.of(context).colorScheme.onSurfaceVariant
+                  .withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
               'No blocked contacts',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -318,9 +316,8 @@ class _BlockedContactTile extends StatelessWidget {
         ),
         title: Text(
           contact.displayName ?? contact.contactDetail,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w500),
         ),
         subtitle: contact.displayName != null
             ? Text(
@@ -368,9 +365,8 @@ class _ContactSelectionSheet extends ConsumerWidget {
           width: 40,
           height: 4,
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+            color: Theme.of(context).colorScheme.onSurfaceVariant
+                .withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -378,9 +374,8 @@ class _ContactSelectionSheet extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Text(
             'Select a contact to block',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         const Divider(),

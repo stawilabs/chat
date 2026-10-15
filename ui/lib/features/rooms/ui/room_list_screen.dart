@@ -170,9 +170,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to archive: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to archive: $e')));
       }
     }
   }
@@ -221,9 +220,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     ref.read(roomListWithMessagesProvider.notifier).refresh();
     _toggleMultiSelectMode();
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Marked as read')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Marked as read')));
     }
   }
 
@@ -235,9 +233,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     ref.invalidate(roomListWithMessagesProvider);
     _toggleMultiSelectMode();
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Muted selected chats')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Muted selected chats')));
     }
   }
 
@@ -246,9 +243,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   }
 
   void _navigateToNewChat() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const NewChatScreen()));
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const NewChatScreen()));
   }
 
   @override

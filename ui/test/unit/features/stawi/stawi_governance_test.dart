@@ -32,14 +32,9 @@ void main() {
   setUp(() => transport = FakeConnectTransport());
 
   test('vote commitments match Go stawi.Commitment', () {
-    final vectors =
-        (jsonDecode(
-                  File(
-                    'test/fixtures/stawi/go_vote_commitments.json',
-                  ).readAsStringSync(),
-                )
-                as List)
-            .cast<Map<String, dynamic>>();
+    final vectors = (jsonDecode(
+      File('test/fixtures/stawi/go_vote_commitments.json').readAsStringSync(),
+    ) as List).cast<Map<String, dynamic>>();
     expect(vectors, hasLength(5));
     for (final v in vectors) {
       expect(
