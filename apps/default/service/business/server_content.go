@@ -22,10 +22,12 @@ func isServerOrigin(ctx context.Context) bool {
 
 // serverOnlyPayloadTypes are what only the server, or for cards the service
 // card path, produces: they read as official, so a member may not send them.
+// A moderation is a system line too: only the server may post one.
 //
 //nolint:gochecknoglobals,exhaustive // immutable lookup table over the server-only types
 var serverOnlyPayloadTypes = map[chatv1.PayloadType]struct{}{
 	chatv1.PayloadType_PAYLOAD_TYPE_ROOM_CHANGE:        {},
+	chatv1.PayloadType_PAYLOAD_TYPE_MODERATION:         {},
 	chatv1.PayloadType_PAYLOAD_TYPE_FINANCE_CARD:       {},
 	chatv1.PayloadType_PAYLOAD_TYPE_STAWI_CALL_OUTCOME: {},
 	chatv1.PayloadType_PAYLOAD_TYPE_MOTION_TALLY:       {},
@@ -37,8 +39,8 @@ func isServerOnlyContent(payload *chatv1.Payload) bool {
 		return true
 	}
 	switch payload.GetData().(type) {
-	case *chatv1.Payload_RoomChange, *chatv1.Payload_FinanceCard, *chatv1.Payload_StawiCallOutcome,
-		*chatv1.Payload_MotionTally, *chatv1.Payload_VoteTally:
+	case *chatv1.Payload_RoomChange, *chatv1.Payload_Moderation, *chatv1.Payload_FinanceCard,
+		*chatv1.Payload_StawiCallOutcome, *chatv1.Payload_MotionTally, *chatv1.Payload_VoteTally:
 		return true
 	default:
 		return false

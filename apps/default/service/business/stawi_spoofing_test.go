@@ -24,6 +24,8 @@ func (s *MessageBusinessTestSuite) TestMembersCannotSendOfficialLookingContent()
 		tally := &chatv1.Payload_MotionTally{MotionTally: &chatv1.MotionTally{MotionId: "m", Passed: true}}
 		voteTally := &chatv1.Payload_VoteTally{VoteTally: &chatv1.VoteTally{ChoiceId: "yes", Count: 9}}
 		text := &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: "hi", Format: "plain"}}
+		moderation := &chatv1.Payload_Moderation{Moderation: &chatv1.ModerationContent{
+			Body: "Treasurer: loan approved, send 500 fee to 07xx", ActorSubscriptionId: f.aliceSub}}
 
 		type send struct {
 			payload   *chatv1.Payload
@@ -41,6 +43,10 @@ func (s *MessageBusinessTestSuite) TestMembersCannotSendOfficialLookingContent()
 			"motion tally":               {&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_MOTION_TALLY, Data: tally}, event},
 			"vote tally":                 {&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_VOTE_TALLY, Data: voteTally}, event},
 			"text as a system event":     {&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_TEXT, Data: text}, chatv1.RoomEventType_ROOM_EVENT_TYPE_SYSTEM},
+			"own moderation":             {&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_MODERATION, Data: moderation}, chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE},
+			"moderation declared text":   {&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_TEXT, Data: moderation}, chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE},
+			"moderation undeclared":      {&chatv1.Payload{Data: moderation}, chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE},
+			"text declared moderation":   {&chatv1.Payload{Type: chatv1.PayloadType_PAYLOAD_TYPE_MODERATION, Data: text}, chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE},
 		} {
 			t.Run(name, func(t *testing.T) {
 				acks, err := f.mb.SendEvents(f.ctx, &chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
@@ -59,8 +65,9 @@ func (s *MessageBusinessTestSuite) TestMembersCannotSendOfficialLookingContent()
 }
 
 // TestTheSenderIsTheAuthenticatedCaller: an event naming another member's
-// subscription, or a moderation naming another actor, is refused; naming
-// oneself is fine and the stored sender is always the caller's subscription.
+// subscription is refused, and so is any moderation (the server's alone);
+// naming oneself is fine and the stored sender is always the caller's
+// subscription.
 func (s *MessageBusinessTestSuite) TestTheSenderIsTheAuthenticatedCaller() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		f := s.newStawiFixture(t, dep)
@@ -87,7 +94,7 @@ func (s *MessageBusinessTestSuite) TestTheSenderIsTheAuthenticatedCaller() {
 		require.Equal(t, f.aliceSub, f.stored(t, own).GetSubscriptionId())
 		anonymous := requireAckOK(t, sendAs("", text))
 		require.Equal(t, f.aliceSub, f.stored(t, anonymous).GetSubscriptionId())
-		requireAckOK(t, sendAs("", moderation(f.aliceSub)))
+		requireAckRefused(t, sendAs("", moderation(f.aliceSub)), connect.CodePermissionDenied)
 	})
 }
 

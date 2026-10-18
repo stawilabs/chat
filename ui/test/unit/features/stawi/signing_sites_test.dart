@@ -17,8 +17,8 @@ const Set<String> deviceSignSites = {
   // Account deployment (the account's genesis).
   'lib/features/stawi/data/stawi_account_service.dart deploy',
   // Money and ADD_KEY: every prepared and checked call (loans, savings,
-  // wallet, another device's key).
-  'lib/features/stawi/data/stawi_account_service.dart submit',
+  // wallet, another device's key), signed once and submitted as signed.
+  'lib/features/stawi/data/stawi_account_service.dart signCall',
   // Room genesis.
   'lib/features/stawi/data/stawi_room_service.dart submitGenesisSignature',
   // Every room call (governance acts, votes, secret-ballot commits and

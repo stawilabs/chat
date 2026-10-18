@@ -914,25 +914,9 @@ class SyncEngine with WidgetsBindingObserver {
               ciphertext,
               senderKey: senderKey,
             );
-            // If plaintext is JSON, treat as structured content (e.g. media)
-            try {
-              final decoded = jsonDecode(plaintext);
-              if (decoded is Map<String, dynamic>) {
-                content = {...decoded, 'encrypted': true, 'decrypted': true};
-              } else {
-                content = {
-                  'text': plaintext,
-                  'encrypted': true, // Mark as was encrypted for UI indicator
-                  'decrypted': true,
-                };
-              }
-            } catch (_) {
-              content = {
-                'text': plaintext,
-                'encrypted': true, // Mark as was encrypted for UI indicator
-                'decrypted': true,
-              };
-            }
+            // Structured plaintext (e.g. media) is data only: it never
+            // decides how the event renders.
+            content = ChatEventCodec.decryptedContent(plaintext);
             AppLogger.debug(
               'Message decrypted',
               data: {'roomId': event.roomId, 'sessionId': sessionId},
@@ -991,22 +975,11 @@ class SyncEngine with WidgetsBindingObserver {
             'details': _structToMap(roomChange.details),
         };
       } else if (payload.hasModeration()) {
-        // Handle legacy moderation events (backward compatibility)
-        await _processModerationEvent(
-          event.roomId,
-          payload.moderation,
-          event.hasSubscriptionId() ? event.subscriptionId : '',
-        );
-
-        // Extract moderation content for display as system message
-        final moderation = payload.moderation;
-        content = {
-          'text': moderation.body, // For text rendering compatibility
-          'body': moderation.body,
-          'actorSubscriptionId': moderation.actorSubscriptionId,
-          'targetSubscriptionIds': moderation.targetSubscriptionIds.toList(),
-          'isModeration': true,
-        };
+        // Legacy: the server refuses a moderation from members and posts
+        // none. One in history is its sender's text: it neither renders as a
+        // system line nor changes the room's members here (the server's room
+        // changes do that).
+        content = {'text': payload.moderation.body};
       } else if (payload.hasFormRequest()) {
         content = _messageToMap(payload.formRequest);
       } else if (payload.hasFormSubmissionResult()) {
@@ -1036,7 +1009,9 @@ class SyncEngine with WidgetsBindingObserver {
     // Determine domain event type - override for room change/moderation events
     final domainType =
         stawiType ??
-        ((content['isRoomChange'] == true || content['isModeration'] == true)
+        (ChatEventCodec.isSystemPayload(
+              event.hasPayload() ? event.payload : null,
+            )
             ? domain.RoomEventType.roomChange
             : _resolveDomainEventType(
                 event.type,
@@ -1199,113 +1174,6 @@ class SyncEngine with WidgetsBindingObserver {
         error: e,
         stackTrace: stackTrace,
         data: {'eventId': event.id, 'type': event.type.toString()},
-      );
-    }
-  }
-
-  /// Process moderation events (room created, members added/removed)
-  ///
-  /// These events contain subscription IDs for room members.
-  /// When we receive a moderation event:
-  /// 1. Store all subscription IDs in the RoomSubscriptions table
-  /// 2. Notify RoomSyncManager to check if we now have current user's subscription
-  /// 3. Handle member removals by cleaning up local state
-  Future<void> _processModerationEvent(
-    String roomId,
-    pb.ModerationContent moderation,
-    String actorSubscriptionId,
-  ) async {
-    try {
-      final targetSubscriptionIds = moderation.targetSubscriptionIds.toList();
-      final body = moderation.body.toLowerCase();
-
-      AppLogger.info(
-        'Processing moderation event',
-        data: {
-          'roomId': roomId,
-          'body': moderation.body,
-          'actorSubscriptionId': actorSubscriptionId.isNotEmpty
-              ? actorSubscriptionId.substring(0, 8)
-              : 'unknown',
-          'targetCount': targetSubscriptionIds.length,
-        },
-      );
-
-      // Determine action type from body text (mutually exclusive — check most
-      // specific patterns first to avoid double-matching on compound sentences).
-      final isRoomCreated =
-          body.contains('created') || body.contains('room created');
-      final isMemberRemoved =
-          body.contains('removed') ||
-          body.contains('left') ||
-          body.contains('kicked');
-      final isMemberAdded =
-          !isMemberRemoved &&
-          (body.contains('added') || body.contains('joined'));
-
-      if (isRoomCreated || isMemberAdded) {
-        // Store all subscription IDs from the event
-        for (final subscriptionId in targetSubscriptionIds) {
-          final created = await _roomSubscriptionRepository.createSubscription(
-            id: subscriptionId,
-            roomId: roomId,
-            // Note: profileId/contactId not available in moderation event
-            // Will be populated when profile info is fetched or from API sync
-          );
-
-          if (created) {
-            AppLogger.debug(
-              'Created subscription from moderation event',
-              data: {
-                'subscriptionId': subscriptionId.substring(0, 8),
-                'roomId': roomId,
-              },
-            );
-          }
-        }
-
-        // Notify RoomSyncManager about new members
-        if (isRoomCreated) {
-          // For room creation, all members are in targetSubscriptionIds
-          _roomSyncManager.onMembersReceived(roomId, targetSubscriptionIds);
-        } else {
-          // For member addition, notify for each added member
-          for (final subscriptionId in targetSubscriptionIds) {
-            await _roomSyncManager.onMemberAdded(roomId, subscriptionId);
-          }
-        }
-      } else if (isMemberRemoved) {
-        // Handle member removal
-        for (final subscriptionId in targetSubscriptionIds) {
-          // Remove subscription from local database
-          await _roomSubscriptionRepository.removeSubscription(subscriptionId);
-
-          // Notify RoomSyncManager about member removal
-          await _roomSyncManager.onMemberRemoved(roomId, subscriptionId);
-
-          AppLogger.debug(
-            'Removed subscription from moderation event',
-            data: {
-              'subscriptionId': subscriptionId.substring(0, 8),
-              'roomId': roomId,
-            },
-          );
-        }
-      }
-
-      // Also store the actor's subscription if provided and not empty
-      if (actorSubscriptionId.isNotEmpty) {
-        await _roomSubscriptionRepository.createSubscription(
-          id: actorSubscriptionId,
-          roomId: roomId,
-        );
-      }
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        'Error processing moderation event',
-        error: e,
-        stackTrace: stackTrace,
-        data: {'roomId': roomId, 'body': moderation.body},
       );
     }
   }

@@ -307,16 +307,9 @@ class BackgroundSyncTask {
                 };
                 eventType = domain.RoomEventType.roomChange;
               } else if (payload.hasModeration()) {
-                final moderation = payload.moderation;
-                content = {
-                  'text': moderation.body,
-                  'body': moderation.body,
-                  'actorSubscriptionId': moderation.actorSubscriptionId,
-                  'targetSubscriptionIds': moderation.targetSubscriptionIds
-                      .toList(),
-                  'isModeration': true,
-                };
-                eventType = domain.RoomEventType.roomChange;
+                // A member's own message, never a system line.
+                content = {'text': payload.moderation.body};
+                eventType = domain.RoomEventType.text;
               } else if (payload.hasFormRequest()) {
                 content = _messageToMap(payload.formRequest);
                 eventType = domain.RoomEventType.formRequest;

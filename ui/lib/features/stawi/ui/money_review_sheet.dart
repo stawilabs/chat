@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 
+import '../data/money_call_fate.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/money_review.dart';
 import 'stawi_feedback.dart';
@@ -84,26 +85,78 @@ Future<bool> showMoneyReview(BuildContext context, MoneyReview review) async {
 }
 
 /// Shows [prepared]'s review and, once confirmed, signs and submits it.
-/// Null when the person cancelled or the submit failed (a snack bar says why).
+/// Null when the person cancelled, the call was not paid, or its fate is not
+/// known yet (a snack bar says which).
+///
+/// The signed call is kept (in the app database, across restarts) before it
+/// is sent. A submit that fails without a clear refusal may still have been
+/// taken, so the call is followed: read, and submitted again as the same
+/// signed call while settlement has not taken it. It is never prepared
+/// again, which would take the next nonce and pay twice. Until its fate is
+/// known no other call is prepared or reviewed
+/// ([StawiAccountService.refuseWhileUnconfirmed]).
 Future<settlement.AccountCall?> reviewAndSubmit(
   BuildContext context,
   WidgetRef ref,
   PreparedMoneyCall prepared,
 ) async {
-  if (!await showMoneyReview(context, prepared.review) || !context.mounted) {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final service = ref.read(stawiAccountServiceProvider);
+  void say(String message) => messenger
+    ?..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+
+  // Prepares already refuse while an earlier call is unconfirmed; this
+  // covers one held by another flow since [prepared] was prepared.
+  if (await runStawiAction(context, () async {
+        await service.refuseWhileUnconfirmed();
+        return true;
+      }) ==
+      null) {
     return null;
   }
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  final call = await runStawiAction(
-    context,
-    () => ref.read(stawiAccountServiceProvider).submit(prepared),
-    success: sentWaitingMessage,
-  );
-  if (call != null) {
-    _outcomes[call] = _Outcome(messenger, prepared.review.done);
+  if (!context.mounted ||
+      !await showMoneyReview(context, prepared.review) ||
+      !context.mounted) {
+    return null;
   }
-  return call;
+  final signed = await runStawiAction(
+    context,
+    () => service.signCall(prepared),
+  );
+  if (signed == null || !context.mounted) return null;
+  // Kept before it is sent, so a submit cut short (the app stopped, the
+  // answer lost) is followed as this call, never prepared again; forgotten
+  // only once its fate is known. Nothing is sent if it cannot be kept.
+  if (await runStawiAction(context, () => service.holdUnconfirmed(signed)) ==
+      null) {
+    return null;
+  }
+
+  say(checkingSubmitMessage);
+  final MoneyCallFate fate;
+  try {
+    fate = await service.submitHeld(signed);
+  } on Object catch (error) {
+    say(stawiErrorMessage(error));
+    return null;
+  }
+  switch (fate) {
+    case CallTaken(:final call):
+      say(sentWaitingMessage);
+      _outcomes[call] = _Outcome(messenger, prepared.review.done);
+      return call;
+    case final CallNotPaid notPaid:
+      say(notPaidMessage(notPaid));
+      return null;
+    case CallUnknown():
+      say(notConfirmedSubmitMessage);
+      return null;
+  }
 }
+
+/// Said while a submit is sent and, without a clear answer, checked.
+const String checkingSubmitMessage = 'Checking whether it went through…';
 
 /// Said when a call is submitted: nothing is done until the chain says so.
 const String sentWaitingMessage = 'Sent; waiting for confirmation';
