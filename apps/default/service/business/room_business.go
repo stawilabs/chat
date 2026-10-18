@@ -830,6 +830,13 @@ func (rb *roomBusiness) RemoveRoomSubscriptions(
 		return service.ErrRoomRemoveMembersDenied
 	}
 
+	// Role ceiling: no one is removed whose role is above the remover's, so an
+	// admin can neither remove an owner nor demote one by removing and
+	// re-adding them. Checked before a proposal is raised.
+	if ceilErr := rb.checkRemovalCeiling(ctx, req.GetRoomId(), admin.Role, req.GetSubscriptionId()); ceilErr != nil {
+		return ceilErr
+	}
+
 	// Check if room requires approval for changes
 	if needsApproval, approvalErr := rb.requiresApproval(ctx, req.GetRoomId()); approvalErr == nil && needsApproval {
 		if crErr := rb.createProposal(ctx, req.GetRoomId(), models.ProposalTypeRemoveSubscriptions,
@@ -1013,10 +1020,7 @@ func roleRank(role string) int {
 // the highest one in actorRoles, the actor's comma-separated role field
 // (ErrRoleGrantDenied).
 func checkRoleCeiling(actorRoles string, members []*chatv1.RoomSubscription) error {
-	ceiling := -1
-	for _, r := range strings.Split(actorRoles, ",") {
-		ceiling = max(ceiling, roleRank(r))
-	}
+	ceiling := maxRoleRank(actorRoles)
 	for _, member := range members {
 		if err := validateRoles(member.GetRoles()); err != nil {
 			return err
@@ -1025,6 +1029,36 @@ func checkRoleCeiling(actorRoles string, members []*chatv1.RoomSubscription) err
 			if roleRank(r) > ceiling {
 				return service.ErrRoleGrantDenied
 			}
+		}
+	}
+	return nil
+}
+
+// maxRoleRank answers the highest rank in a comma-separated role field.
+func maxRoleRank(roles string) int {
+	rank := -1
+	for _, r := range strings.Split(roles, ",") {
+		rank = max(rank, roleRank(r))
+	}
+	return rank
+}
+
+// checkRemovalCeiling refuses (ErrRoleRemoveDenied) removing any of
+// subscriptionIDs in roomID whose role is above the highest one in
+// actorRoles. IDs not in the room are left to the removal's own check.
+func (rb *roomBusiness) checkRemovalCeiling(
+	ctx context.Context,
+	roomID, actorRoles string,
+	subscriptionIDs []string,
+) error {
+	subs, err := rb.subscriptionRepo.GetByIDsInRoom(ctx, roomID, subscriptionIDs)
+	if err != nil {
+		return fmt.Errorf("failed to load subscriptions for removal: %w", err)
+	}
+	ceiling := maxRoleRank(actorRoles)
+	for _, sub := range subs {
+		if maxRoleRank(sub.Role) > ceiling {
+			return service.ErrRoleRemoveDenied
 		}
 	}
 	return nil

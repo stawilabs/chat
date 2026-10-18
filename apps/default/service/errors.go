@@ -101,6 +101,12 @@ var (
 		connect.CodePermissionDenied,
 		"you cannot grant a role above your own",
 	)
+	// ErrRoleRemoveDenied is returned when removing members would remove
+	// someone ranked above the remover (an admin cannot remove an owner).
+	ErrRoleRemoveDenied = connect.NewError(
+		connect.CodePermissionDenied,
+		"you cannot remove someone whose role is above your own",
+	)
 	ErrRoomMemberNotFound = connect.NewError(connect.CodeNotFound, "member not found in room")
 
 	// ErrCannotRemoveLastOwner is returned when an operation would leave a room

@@ -104,3 +104,97 @@ func (s *RoomBusinessTestSuite) TestAddRoomSubscriptions_RoleCeiling() {
 		})
 	})
 }
+
+// subscriptionOf answers the member's subscription id in the room.
+func subscriptionOf(
+	ctx context.Context,
+	t *testing.T,
+	rb business.RoomBusiness,
+	roomID string,
+	reader, member *commonv1.ContactLink,
+) string {
+	t.Helper()
+	subs, err := rb.SearchRoomSubscriptions(ctx, &chatv1.SearchRoomSubscriptionsRequest{RoomId: roomID}, reader)
+	require.NoError(t, err)
+	for _, sub := range subs {
+		if sub.GetMember().GetProfileId() == member.GetProfileId() {
+			return sub.GetId()
+		}
+	}
+	t.Fatalf("%s is not in the room", member.GetProfileId())
+	return ""
+}
+
+// TestRemoveRoomSubscriptions_RoleCeiling: removing is held to the same
+// ceiling as adding. An admin cannot remove any owner (not only the last), so
+// cannot demote one by removing and re-adding them; an owner still can remove
+// a co-owner, and an admin still removes members.
+func (s *RoomBusinessTestSuite) TestRemoveRoomSubscriptions_RoleCeiling() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		rb := s.setupBusinessLayer(ctx, svc)
+
+		owner := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		coOwner := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		admin := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+		member := &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()}
+
+		created, err := rb.CreateRoom(ctx, &chatv1.CreateRoomRequest{Name: "Ceiling"}, owner)
+		require.NoError(t, err)
+		roomID := created.GetId()
+		s.WaitForMemberSubscription(ctx, svc, roomID, owner.GetProfileId(), t)
+		s.WaitForAuthzAccess(ctx, svc, owner.GetProfileId(), roomID, t)
+
+		require.NoError(t, rb.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
+			RoomId: roomID,
+			Members: []*chatv1.RoomSubscription{
+				{Member: coOwner, Roles: []string{"owner"}},
+				{Member: admin, Roles: []string{"admin"}},
+				{Member: member, Roles: []string{"member"}},
+			},
+		}, owner))
+		for _, m := range []*commonv1.ContactLink{coOwner, admin, member} {
+			s.WaitForMemberSubscription(ctx, svc, roomID, m.GetProfileId(), t)
+		}
+		s.WaitForAuthzAccess(ctx, svc, admin.GetProfileId(), roomID, t)
+
+		remove := func(by *commonv1.ContactLink, who ...*commonv1.ContactLink) error {
+			ids := make([]string, 0, len(who))
+			for _, w := range who {
+				ids = append(ids, subscriptionOf(ctx, t, rb, roomID, owner, w))
+			}
+			return rb.RemoveRoomSubscriptions(ctx, &chatv1.RemoveRoomSubscriptionsRequest{
+				RoomId: roomID, SubscriptionId: ids,
+			}, by)
+		}
+
+		t.Run("an admin cannot remove an owner who is not the last", func(t *testing.T) {
+			require.ErrorIs(t, remove(admin, coOwner), service.ErrRoleRemoveDenied)
+			require.Equal(t, []string{"owner"}, rolesOf(ctx, t, rb, roomID, owner)[coOwner.GetProfileId()])
+		})
+
+		t.Run("nor demote one by removing and re-adding them", func(t *testing.T) {
+			require.ErrorIs(t, remove(admin, member, coOwner), service.ErrRoleRemoveDenied,
+				"one owner in the batch refuses it all")
+			_ = rb.AddRoomSubscriptions(ctx, &chatv1.AddRoomSubscriptionsRequest{
+				RoomId:  roomID,
+				Members: []*chatv1.RoomSubscription{{Member: coOwner, Roles: []string{"member"}}},
+			}, admin)
+			roles := rolesOf(ctx, t, rb, roomID, owner)
+			require.Equal(t, []string{"owner"}, roles[coOwner.GetProfileId()])
+			require.Equal(t, []string{"member"}, roles[member.GetProfileId()], "the member was not removed")
+		})
+
+		t.Run("an admin still removes a member", func(t *testing.T) {
+			require.NoError(t, remove(admin, member))
+			_, present := rolesOf(ctx, t, rb, roomID, owner)[member.GetProfileId()]
+			require.False(t, present)
+		})
+
+		t.Run("an owner removes a co-owner", func(t *testing.T) {
+			require.NoError(t, remove(owner, coOwner))
+			_, present := rolesOf(ctx, t, rb, roomID, owner)[coOwner.GetProfileId()]
+			require.False(t, present)
+		})
+	})
+}
