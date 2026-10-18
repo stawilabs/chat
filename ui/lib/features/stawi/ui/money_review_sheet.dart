@@ -88,9 +88,10 @@ Future<bool> showMoneyReview(BuildContext context, MoneyReview review) async {
 /// Null when the person cancelled, the submit was refused, or its fate is not
 /// known yet (a snack bar says which).
 ///
-/// A submit that fails without a clear refusal may still have been taken, so
-/// the signed call is kept and followed: read, and submitted again as the
-/// same signed call while settlement has not taken it. It is never prepared
+/// The signed call is kept (in the app database, across restarts) before it
+/// is sent. A submit that fails without a clear refusal may still have been
+/// taken, so the call is followed: read, and submitted again as the same
+/// signed call while settlement has not taken it. It is never prepared
 /// again, which would take the next nonce and pay twice. Until its fate is
 /// known no other call is reviewed: the next attempt checks it first.
 Future<settlement.AccountCall?> reviewAndSubmit(
@@ -100,50 +101,67 @@ Future<settlement.AccountCall?> reviewAndSubmit(
 ) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   final service = ref.read(stawiAccountServiceProvider);
-  final unconfirmed = ref.read(unconfirmedMoneyCallProvider);
   void say(String message) => messenger
     ?..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
 
-  if (unconfirmed.call case final earlier?) {
+  // Kept across restarts: a call signed before the app stopped is checked
+  // first, and re-submitted as signed while settlement has not taken it.
+  final SignedMoneyCall? earlier;
+  try {
+    earlier = await service.unconfirmedCall();
+  } on Object catch (error) {
+    say(stawiErrorMessage(error));
+    return null;
+  }
+  if (earlier != null) {
     say(checkingSubmitMessage);
     try {
       if (await _followSigned(service, earlier) == null) {
         say(notConfirmedSubmitMessage);
         return null;
       }
-      unconfirmed.call = null;
-      say(earlierCallSentMessage(earlier.review.title));
+      await service.clearUnconfirmed(earlier);
+      say(earlierCallSentMessage(earlier.title));
     } on Object catch (error) {
-      unconfirmed.call = null;
+      await service.clearUnconfirmed(earlier);
       say(stawiErrorMessage(error));
     }
     return null;
   }
 
-  if (!await showMoneyReview(context, prepared.review) || !context.mounted) {
+  if (!context.mounted ||
+      !await showMoneyReview(context, prepared.review) ||
+      !context.mounted) {
     return null;
   }
   final signed = await runStawiAction(
     context,
     () => service.signCall(prepared),
   );
-  if (signed == null) return null;
+  if (signed == null || !context.mounted) return null;
+  // Kept before it is sent, so a submit cut short (the app stopped, the
+  // answer lost) is followed as this call, never prepared again; forgotten
+  // only once its fate is known. Nothing is sent if it cannot be kept.
+  if (await runStawiAction(context, () => service.holdUnconfirmed(signed)) ==
+      null) {
+    return null;
+  }
 
   settlement.AccountCall? call;
   try {
     call = await service.submitSigned(signed);
   } on Object catch (error) {
     if (isDefiniteRefusal(error)) {
+      await service.clearUnconfirmed(signed);
       say(stawiErrorMessage(error));
       return null;
     }
-    unconfirmed.call = signed;
     say(checkingSubmitMessage);
     try {
       call = await _followSigned(service, signed);
     } on Object catch (refused) {
-      unconfirmed.call = null;
+      await service.clearUnconfirmed(signed);
       say(stawiErrorMessage(refused));
       return null;
     }
@@ -151,8 +169,8 @@ Future<settlement.AccountCall?> reviewAndSubmit(
       say(notConfirmedSubmitMessage);
       return null;
     }
-    unconfirmed.call = null;
   }
+  await service.clearUnconfirmed(signed);
   say(sentWaitingMessage);
   _outcomes[call] = _Outcome(messenger, prepared.review.done);
   return call;
@@ -202,17 +220,6 @@ bool isDefiniteRefusal(Object error) => switch (error) {
   },
   _ => false,
 };
-
-/// The signed call whose submit got no clear answer, until its fate is known.
-final class UnconfirmedMoneyCall {
-  SignedMoneyCall? call;
-}
-
-/// The one call per app whose submit got no clear answer: no other call is
-/// reviewed until it is known.
-final unconfirmedMoneyCallProvider = Provider<UnconfirmedMoneyCall>(
-  (ref) => UnconfirmedMoneyCall(),
-);
 
 /// Said while a submit without a clear answer is checked.
 const String checkingSubmitMessage = 'Checking whether it went through…';

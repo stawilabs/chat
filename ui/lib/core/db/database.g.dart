@@ -12262,6 +12262,392 @@ class AnalyticsEventsCompanion extends UpdateCompanion<AnalyticsEvent> {
   }
 }
 
+class $UnconfirmedMoneyCallsTable extends UnconfirmedMoneyCalls
+    with TableInfo<$UnconfirmedMoneyCallsTable, UnconfirmedMoneyCall> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UnconfirmedMoneyCallsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _callIdMeta = const VerificationMeta('callId');
+  @override
+  late final GeneratedColumn<String> callId = GeneratedColumn<String>(
+    'call_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorizationMeta = const VerificationMeta(
+    'authorization',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> authorization =
+      GeneratedColumn<Uint8List>(
+        'authorization',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    profileId,
+    callId,
+    authorization,
+    title,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'unconfirmed_money_calls';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UnconfirmedMoneyCall> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('call_id')) {
+      context.handle(
+        _callIdMeta,
+        callId.isAcceptableOrUnknown(data['call_id']!, _callIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_callIdMeta);
+    }
+    if (data.containsKey('authorization')) {
+      context.handle(
+        _authorizationMeta,
+        authorization.isAcceptableOrUnknown(
+          data['authorization']!,
+          _authorizationMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_authorizationMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId};
+  @override
+  UnconfirmedMoneyCall map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UnconfirmedMoneyCall(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      callId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}call_id'],
+      )!,
+      authorization: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}authorization'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $UnconfirmedMoneyCallsTable createAlias(String alias) {
+    return $UnconfirmedMoneyCallsTable(attachedDatabase, alias);
+  }
+}
+
+class UnconfirmedMoneyCall extends DataClass
+    implements Insertable<UnconfirmedMoneyCall> {
+  /// The profile whose account signed the call.
+  final String profileId;
+
+  /// Settlement's id of the prepared call.
+  final String callId;
+
+  /// The device's signature over the call's digest, exactly as submitted.
+  final Uint8List authorization;
+
+  /// The call's review title, to name it to the person.
+  final String title;
+
+  /// When it was signed (milliseconds since epoch).
+  final int createdAt;
+  const UnconfirmedMoneyCall({
+    required this.profileId,
+    required this.callId,
+    required this.authorization,
+    required this.title,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['call_id'] = Variable<String>(callId);
+    map['authorization'] = Variable<Uint8List>(authorization);
+    map['title'] = Variable<String>(title);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  UnconfirmedMoneyCallsCompanion toCompanion(bool nullToAbsent) {
+    return UnconfirmedMoneyCallsCompanion(
+      profileId: Value(profileId),
+      callId: Value(callId),
+      authorization: Value(authorization),
+      title: Value(title),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory UnconfirmedMoneyCall.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UnconfirmedMoneyCall(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      callId: serializer.fromJson<String>(json['callId']),
+      authorization: serializer.fromJson<Uint8List>(json['authorization']),
+      title: serializer.fromJson<String>(json['title']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'callId': serializer.toJson<String>(callId),
+      'authorization': serializer.toJson<Uint8List>(authorization),
+      'title': serializer.toJson<String>(title),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  UnconfirmedMoneyCall copyWith({
+    String? profileId,
+    String? callId,
+    Uint8List? authorization,
+    String? title,
+    int? createdAt,
+  }) => UnconfirmedMoneyCall(
+    profileId: profileId ?? this.profileId,
+    callId: callId ?? this.callId,
+    authorization: authorization ?? this.authorization,
+    title: title ?? this.title,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  UnconfirmedMoneyCall copyWithCompanion(UnconfirmedMoneyCallsCompanion data) {
+    return UnconfirmedMoneyCall(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      callId: data.callId.present ? data.callId.value : this.callId,
+      authorization: data.authorization.present
+          ? data.authorization.value
+          : this.authorization,
+      title: data.title.present ? data.title.value : this.title,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UnconfirmedMoneyCall(')
+          ..write('profileId: $profileId, ')
+          ..write('callId: $callId, ')
+          ..write('authorization: $authorization, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    profileId,
+    callId,
+    $driftBlobEquality.hash(authorization),
+    title,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UnconfirmedMoneyCall &&
+          other.profileId == this.profileId &&
+          other.callId == this.callId &&
+          $driftBlobEquality.equals(other.authorization, this.authorization) &&
+          other.title == this.title &&
+          other.createdAt == this.createdAt);
+}
+
+class UnconfirmedMoneyCallsCompanion
+    extends UpdateCompanion<UnconfirmedMoneyCall> {
+  final Value<String> profileId;
+  final Value<String> callId;
+  final Value<Uint8List> authorization;
+  final Value<String> title;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const UnconfirmedMoneyCallsCompanion({
+    this.profileId = const Value.absent(),
+    this.callId = const Value.absent(),
+    this.authorization = const Value.absent(),
+    this.title = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UnconfirmedMoneyCallsCompanion.insert({
+    required String profileId,
+    required String callId,
+    required Uint8List authorization,
+    required String title,
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       callId = Value(callId),
+       authorization = Value(authorization),
+       title = Value(title),
+       createdAt = Value(createdAt);
+  static Insertable<UnconfirmedMoneyCall> custom({
+    Expression<String>? profileId,
+    Expression<String>? callId,
+    Expression<Uint8List>? authorization,
+    Expression<String>? title,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (callId != null) 'call_id': callId,
+      if (authorization != null) 'authorization': authorization,
+      if (title != null) 'title': title,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UnconfirmedMoneyCallsCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? callId,
+    Value<Uint8List>? authorization,
+    Value<String>? title,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return UnconfirmedMoneyCallsCompanion(
+      profileId: profileId ?? this.profileId,
+      callId: callId ?? this.callId,
+      authorization: authorization ?? this.authorization,
+      title: title ?? this.title,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (callId.present) {
+      map['call_id'] = Variable<String>(callId.value);
+    }
+    if (authorization.present) {
+      map['authorization'] = Variable<Uint8List>(authorization.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UnconfirmedMoneyCallsCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('callId: $callId, ')
+          ..write('authorization: $authorization, ')
+          ..write('title: $title, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -12293,6 +12679,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AnalyticsEventsTable analyticsEvents = $AnalyticsEventsTable(
     this,
   );
+  late final $UnconfirmedMoneyCallsTable unconfirmedMoneyCalls =
+      $UnconfirmedMoneyCallsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12320,6 +12708,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transferJobs,
     callHistory,
     analyticsEvents,
+    unconfirmedMoneyCalls,
   ];
 }
 
@@ -19461,6 +19850,239 @@ typedef $$AnalyticsEventsTableProcessedTableManager =
       AnalyticsEvent,
       PrefetchHooks Function()
     >;
+typedef $$UnconfirmedMoneyCallsTableCreateCompanionBuilder =
+    UnconfirmedMoneyCallsCompanion Function({
+      required String profileId,
+      required String callId,
+      required Uint8List authorization,
+      required String title,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $$UnconfirmedMoneyCallsTableUpdateCompanionBuilder =
+    UnconfirmedMoneyCallsCompanion Function({
+      Value<String> profileId,
+      Value<String> callId,
+      Value<Uint8List> authorization,
+      Value<String> title,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+class $$UnconfirmedMoneyCallsTableFilterComposer
+    extends Composer<_$AppDatabase, $UnconfirmedMoneyCallsTable> {
+  $$UnconfirmedMoneyCallsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get callId => $composableBuilder(
+    column: $table.callId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get authorization => $composableBuilder(
+    column: $table.authorization,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UnconfirmedMoneyCallsTableOrderingComposer
+    extends Composer<_$AppDatabase, $UnconfirmedMoneyCallsTable> {
+  $$UnconfirmedMoneyCallsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get callId => $composableBuilder(
+    column: $table.callId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get authorization => $composableBuilder(
+    column: $table.authorization,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UnconfirmedMoneyCallsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UnconfirmedMoneyCallsTable> {
+  $$UnconfirmedMoneyCallsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get callId =>
+      $composableBuilder(column: $table.callId, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get authorization => $composableBuilder(
+    column: $table.authorization,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$UnconfirmedMoneyCallsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UnconfirmedMoneyCallsTable,
+          UnconfirmedMoneyCall,
+          $$UnconfirmedMoneyCallsTableFilterComposer,
+          $$UnconfirmedMoneyCallsTableOrderingComposer,
+          $$UnconfirmedMoneyCallsTableAnnotationComposer,
+          $$UnconfirmedMoneyCallsTableCreateCompanionBuilder,
+          $$UnconfirmedMoneyCallsTableUpdateCompanionBuilder,
+          (
+            UnconfirmedMoneyCall,
+            BaseReferences<
+              _$AppDatabase,
+              $UnconfirmedMoneyCallsTable,
+              UnconfirmedMoneyCall
+            >,
+          ),
+          UnconfirmedMoneyCall,
+          PrefetchHooks Function()
+        > {
+  $$UnconfirmedMoneyCallsTableTableManager(
+    _$AppDatabase db,
+    $UnconfirmedMoneyCallsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UnconfirmedMoneyCallsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$UnconfirmedMoneyCallsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$UnconfirmedMoneyCallsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> callId = const Value.absent(),
+                Value<Uint8List> authorization = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UnconfirmedMoneyCallsCompanion(
+                profileId: profileId,
+                callId: callId,
+                authorization: authorization,
+                title: title,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String callId,
+                required Uint8List authorization,
+                required String title,
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => UnconfirmedMoneyCallsCompanion.insert(
+                profileId: profileId,
+                callId: callId,
+                authorization: authorization,
+                title: title,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $UnconfirmedMoneyCallsTable,
+                    UnconfirmedMoneyCall
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UnconfirmedMoneyCallsTable,
+                    UnconfirmedMoneyCall
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UnconfirmedMoneyCallsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UnconfirmedMoneyCallsTable,
+      UnconfirmedMoneyCall,
+      $$UnconfirmedMoneyCallsTableFilterComposer,
+      $$UnconfirmedMoneyCallsTableOrderingComposer,
+      $$UnconfirmedMoneyCallsTableAnnotationComposer,
+      $$UnconfirmedMoneyCallsTableCreateCompanionBuilder,
+      $$UnconfirmedMoneyCallsTableUpdateCompanionBuilder,
+      (
+        UnconfirmedMoneyCall,
+        BaseReferences<
+          _$AppDatabase,
+          $UnconfirmedMoneyCallsTable,
+          UnconfirmedMoneyCall
+        >,
+      ),
+      UnconfirmedMoneyCall,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -19509,4 +20131,6 @@ class $AppDatabaseManager {
       $$CallHistoryTableTableManager(_db, _db.callHistory);
   $$AnalyticsEventsTableTableManager get analyticsEvents =>
       $$AnalyticsEventsTableTableManager(_db, _db.analyticsEvents);
+  $$UnconfirmedMoneyCallsTableTableManager get unconfirmedMoneyCalls =>
+      $$UnconfirmedMoneyCallsTableTableManager(_db, _db.unconfirmedMoneyCalls);
 }

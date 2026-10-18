@@ -259,9 +259,10 @@ void main() {
         expect(db, isNotNull);
       });
 
-      test('schema version is 2', () {
+      test('schema version is 3', () {
         // Version 2: added pending_jobs dedup index.
-        expect(db.schemaVersion, equals(2));
+        // Version 3: added unconfirmed_money_calls.
+        expect(db.schemaVersion, equals(3));
       });
     });
 

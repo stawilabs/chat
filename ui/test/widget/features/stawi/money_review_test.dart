@@ -9,6 +9,7 @@ import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
+import 'package:stawi/features/stawi/data/unconfirmed_money_calls.dart';
 import 'package:stawi/features/stawi/domain/money_review.dart';
 import 'package:stawi/features/stawi/ui/contribute_screen.dart';
 import 'package:stawi/features/stawi/ui/money_review_sheet.dart';
@@ -17,6 +18,7 @@ import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
 import '../../../support/stawi_fakes.dart';
+import '../../../test_helpers/test_database.dart';
 
 const roomId = 'room00000000000000aa';
 
@@ -78,6 +80,7 @@ void main() {
         int n,
       )?
       onGetCall,
+      UnconfirmedMoneyCallStore? unconfirmed,
     }) async {
       var prepares = 0;
       var submitted = 0;
@@ -130,13 +133,15 @@ void main() {
         proofs: refusingSessionProofs,
         identity: () async => identityWith('p1', account),
         followEvery: Duration.zero,
+        unconfirmed: unconfirmed,
       );
     }
 
     Future<void> openAndSubmit(
       WidgetTester tester,
-      StawiAccountService service,
-    ) async {
+      StawiAccountService service, {
+      bool tap = true,
+    }) async {
       final overrides = [
         roomCustodyProvider.overrideWith((ref, id) async => custody),
         stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
@@ -153,6 +158,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('contribute-amount')), '500');
+      if (!tap) return;
       await tester.tap(find.byKey(const Key('contribute-submit')));
       await tester.pumpAndSettle();
     }
@@ -298,6 +304,59 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.byKey(const Key('money-review')), findsOneWidget);
         });
+
+        testWidgets(
+          'a call whose fate was not known is still checked after the '
+          'app restarts, and submitted again as signed',
+          (tester) async {
+            final db = createTestDatabase();
+            addTearDown(db.close);
+
+            // Before the restart: the submit's answer never comes.
+            await openAndSubmit(
+              tester,
+              await serve(
+                gate: SigningGate.open,
+                unconfirmed: DriftUnconfirmedMoneyCallStore(db),
+                onSubmit: (req, n) => lost(connect.Code.unavailable),
+                onGetCall: (req, n) => lost(connect.Code.unavailable),
+              ),
+            );
+            await sign(tester);
+            expect(find.text(notConfirmedSubmitMessage), findsOneWidget);
+            final before = submitted().first;
+
+            // The app restarts: a new provider container and service, the same
+            // database. Settlement never took the call.
+            await tester.pumpWidget(const SizedBox());
+            final restarted = await serve(
+              gate: SigningGate.open,
+              unconfirmed: DriftUnconfirmedMoneyCallStore(db),
+              onGetCall: (req, n) => callIn(
+                req,
+                settlement.AccountCallState.ACCOUNT_CALL_STATE_PREPARED,
+              ),
+            );
+            await openAndSubmit(tester, restarted, tap: false);
+            await tester.tap(find.byKey(const Key('contribute-submit')));
+            await tester.pumpAndSettle();
+
+            expect(find.byKey(const Key('money-review')), findsNothing);
+            expect(prepares(), 1, reason: 'the new prepare is never signed');
+            final [again] = submitted();
+            expect(again.callId, before.callId);
+            expect(again.authorization, before.authorization);
+            expect(
+              find.text(earlierCallSentMessage('Pay 500.00 USDC into Chama')),
+              findsOneWidget,
+            );
+            expect(
+              await DriftUnconfirmedMoneyCallStore(db).read('p1'),
+              isNull,
+              reason: 'cleared once settlement took it',
+            );
+          },
+        );
 
         testWidgets('a clear refusal says why and leaves nothing pending', (
           tester,

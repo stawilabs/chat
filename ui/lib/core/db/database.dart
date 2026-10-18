@@ -426,6 +426,31 @@ class UserSettings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// A money call signed on this device whose submit got no clear answer: it
+/// may have been taken, so until settlement says what became of it the same
+/// signed call is checked or submitted again, and no other money call is
+/// made. One per signed-in profile (the person's Stawi account); a row is
+/// removed only once the call's fate is known.
+class UnconfirmedMoneyCalls extends Table {
+  /// The profile whose account signed the call.
+  TextColumn get profileId => text()();
+
+  /// Settlement's id of the prepared call.
+  TextColumn get callId => text()();
+
+  /// The device's signature over the call's digest, exactly as submitted.
+  BlobColumn get authorization => blob()();
+
+  /// The call's review title, to name it to the person.
+  TextColumn get title => text()();
+
+  /// When it was signed (milliseconds since epoch).
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {profileId};
+}
+
 /// Draft messages persistence table
 ///
 /// Stores unsent message drafts for each room, allowing users to continue
@@ -915,6 +940,7 @@ class CallHistory extends Table {
     TransferJobs,
     CallHistory,
     AnalyticsEvents,
+    UnconfirmedMoneyCalls,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -927,7 +953,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -949,6 +975,9 @@ class AppDatabase extends _$AppDatabase {
                     'ON pending_jobs (status, type, created_at)',
               ),
             );
+          case 3:
+            // Money calls whose submit got no clear answer survive a restart.
+            await m.createTable(unconfirmedMoneyCalls);
         }
       }
     },

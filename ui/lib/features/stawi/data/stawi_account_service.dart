@@ -21,6 +21,7 @@ import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
 import 'stawi_loan_service.dart';
 import 'stawi_vault_service.dart';
+import 'unconfirmed_money_calls.dart';
 
 /// Issues the authentication service's genesis session proof (P26): proof
 /// that this profile held a live session on this device when its first key
@@ -99,10 +100,16 @@ class StawiAccountService {
     this._readyEvery = const Duration(seconds: 3),
     this._readyAttempts = 60,
     this._followEvery = const Duration(seconds: 3),
+    UnconfirmedMoneyCallStore? unconfirmed,
   }) : _deploymentChainId =
-           deploymentChainId ?? BigInt.from(ApiConfig.stawiChainId);
+           deploymentChainId ?? BigInt.from(ApiConfig.stawiChainId),
+       _unconfirmed = unconfirmed ?? MemoryUnconfirmedMoneyCallStore();
 
   final settlement.AccountServiceClient _accounts;
+
+  /// The signed call whose submit got no clear answer, until its fate is
+  /// known.
+  final UnconfirmedMoneyCallStore _unconfirmed;
   final DeviceKeyStore _keys;
   final GenesisSessionProofs _proofs;
   final Future<StawiIdentity> Function() _identity;
@@ -623,12 +630,28 @@ class StawiAccountService {
   Future<SignedMoneyCall> signCall(PreparedMoneyCall prepared) async {
     final me = await _identity();
     final key = await _keys.unlock(me.profileId, reason: prepared.review.title);
-    return SignedMoneyCall._(
+    return SignedMoneyCall(
       callId: prepared.callId,
       authorization: key.sign(prepared.digest),
-      review: prepared.review,
+      title: prepared.review.title,
     );
   }
+
+  /// The signed call whose submit got no clear answer and whose fate is not
+  /// known yet, kept across restarts; null when there is none.
+  Future<SignedMoneyCall?> unconfirmedCall() async =>
+      _unconfirmed.read((await _identity()).profileId);
+
+  /// Keeps [signed] until its fate is known: until then no other money call
+  /// is made. Answers [signed].
+  Future<SignedMoneyCall> holdUnconfirmed(SignedMoneyCall signed) async {
+    await _unconfirmed.hold((await _identity()).profileId, signed);
+    return signed;
+  }
+
+  /// Forgets [signed] once its fate is known: taken, or clearly refused.
+  Future<void> clearUnconfirmed(SignedMoneyCall signed) async =>
+      _unconfirmed.clear((await _identity()).profileId, signed.callId);
 
   /// Submits [signed]. Settlement takes a call once: the same signed call
   /// again answers the call as it stands, so this is safe to repeat when an
@@ -773,15 +796,17 @@ class PreparedMoneyCall {
 /// that a submit whose answer was lost is repeated as the same call, never
 /// prepared again (a new prepare takes the next nonce and pays twice).
 class SignedMoneyCall {
-  const SignedMoneyCall._({
+  const SignedMoneyCall({
     required this.callId,
     required this.authorization,
-    required this.review,
+    required this.title,
   });
 
   final String callId;
   final Uint8List authorization;
-  final MoneyReview review;
+
+  /// The call's review title, to name it to the person.
+  final String title;
 }
 
 /// Settlement's genesis states for a deployment already on its way.
@@ -848,6 +873,7 @@ final stawiAccountServiceProvider = Provider<StawiAccountService>((ref) {
     targets: () => ref.read(stawiVaultServiceProvider).targets(),
     loan: (loanRef) => ref.read(stawiLoanServiceProvider).loan(loanRef),
     roomAssets: financeRoomAssets(ref.watch(financeRoomsProvider)),
+    unconfirmed: ref.watch(unconfirmedMoneyCallStoreProvider),
   );
 });
 

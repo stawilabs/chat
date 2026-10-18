@@ -29,6 +29,7 @@ import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/data/stawi_timeline_providers.dart';
+import 'package:stawi/features/stawi/data/unconfirmed_money_calls.dart';
 import 'package:stawi/features/stawi/ui/my_money_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_room_screen.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -431,6 +432,10 @@ class JourneyHarness {
         (ref) => DeviceKeyStore(keys, gate: ref.watch(signingGateProvider)),
       ),
       stawiClockProvider.overrideWithValue(() => now),
+      // Unconfirmed money calls are kept in memory, not the app database.
+      unconfirmedMoneyCallStoreProvider.overrideWithValue(
+        MemoryUnconfirmedMoneyCallStore(),
+      ),
       // The account is deployed: no genesis session is asked for.
       genesisSessionProofsProvider.overrideWithValue(refusingSessionProofs),
       // The services, over the fake transports.
