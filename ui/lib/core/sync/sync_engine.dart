@@ -975,9 +975,10 @@ class SyncEngine with WidgetsBindingObserver {
             'details': _structToMap(roomChange.details),
         };
       } else if (payload.hasModeration()) {
-        // A member may send a moderation naming themselves as actor, so it is
-        // their message: it neither renders as a system line nor changes the
-        // room's members here (the server's room changes do that).
+        // Legacy: the server refuses a moderation from members and posts
+        // none. One in history is its sender's text: it neither renders as a
+        // system line nor changes the room's members here (the server's room
+        // changes do that).
         content = {'text': payload.moderation.body};
       } else if (payload.hasFormRequest()) {
         content = _messageToMap(payload.formRequest);

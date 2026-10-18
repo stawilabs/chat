@@ -199,8 +199,8 @@ void main() {
     });
 
     test('a moderation payload is the sender\'s own message', () {
-      // Chat lets a member send a moderation naming themselves as actor, so
-      // it reads as theirs, not as the room's.
+      // Legacy: chat refuses it from members now; one in history reads as
+      // its sender's, not as the room's.
       expect(
         ChatEventCodec.isSystemPayload(
           pb.Payload(moderation: pb.ModerationContent(body: 'x removed')),

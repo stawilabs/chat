@@ -104,10 +104,15 @@ void main() {
         })
         ..on(
           settlement.AccountService.submitAccountCall,
+          // As settlement answers a submit it took.
           (req) =>
               onSubmit?.call(req, submitted++) ??
               settlement.SubmitAccountCallResponse(
-                call: settlement.AccountCall(callId: req.callId),
+                call: settlement.AccountCall(
+                  callId: req.callId,
+                  state:
+                      settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+                ),
               ),
         )
         ..on(
@@ -292,6 +297,7 @@ void main() {
           expect(submitted().map((r) => r.callId).toSet(), {
             firstCall,
           }, reason: 'no new call was submitted');
+          expect(prepares(), 1, reason: 'nor prepared');
           expect(
             find.text(earlierCallSentMessage('Pay 500.00 USDC into Chama')),
             findsOneWidget,
@@ -342,7 +348,7 @@ void main() {
             await tester.pumpAndSettle();
 
             expect(find.byKey(const Key('money-review')), findsNothing);
-            expect(prepares(), 1, reason: 'the new prepare is never signed');
+            expect(prepares(), 0, reason: 'nothing new is prepared');
             final [again] = submitted();
             expect(again.callId, before.callId);
             expect(again.authorization, before.authorization);
@@ -357,6 +363,166 @@ void main() {
             );
           },
         );
+
+        testWidgets('a read that is refused says nothing of the call: it stays '
+            'held and is followed again', (tester) async {
+          var answer = false;
+          final service = await serve(
+            gate: SigningGate.open,
+            onSubmit: (req, n) => lost(connect.Code.unavailable),
+            onGetCall: (req, n) {
+              if (answer) {
+                return callIn(
+                  req,
+                  settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+                );
+              }
+              // An expired token, a rate limit, a gateway: answers about the
+              // read, not the call.
+              throw connect.ConnectException(switch (n % 3) {
+                0 => connect.Code.unauthenticated,
+                1 => connect.Code.resourceExhausted,
+                _ => connect.Code.permissionDenied,
+              }, 'the read was refused');
+            },
+          );
+          await openAndSubmit(tester, service);
+          await sign(tester);
+
+          expect(find.text(notConfirmedSubmitMessage), findsOneWidget);
+          final held = await service.unconfirmedCall();
+          expect(held?.callId, submitted().single.callId, reason: 'still held');
+
+          ScaffoldMessenger.of(tester.element(find.byType(ContributeScreen)))
+              .removeCurrentSnackBar();
+          answer = true;
+          await tester.tap(find.byKey(const Key('contribute-submit')));
+          await tester.pumpAndSettle();
+          expect(
+            find.text(earlierCallSentMessage('Pay 500.00 USDC into Chama')),
+            findsOneWidget,
+          );
+          expect(prepares(), 1);
+          expect(await service.unconfirmedCall(), isNull);
+        });
+
+        testWidgets('AlreadyExists from the submit means it was taken', (
+          tester,
+        ) async {
+          final service = await serve(
+            gate: SigningGate.open,
+            onSubmit: (req, n) => throw connect.ConnectException(
+              connect.Code.alreadyExists,
+              'call was already submitted with another signature',
+            ),
+            onGetCall: (req, n) => callIn(
+              req,
+              n == 0
+                  ? settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED
+                  : settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+            ),
+          );
+          await openAndSubmit(tester, service);
+          await sign(tester);
+
+          expect(find.byKey(const Key('contribute-state')), findsOneWidget);
+          expect(submits(), 1);
+          expect(await service.unconfirmedCall(), isNull);
+        });
+
+        for (final (name, state, failure, message) in [
+          (
+            'an expired call',
+            settlement.AccountCallState.ACCOUNT_CALL_STATE_EXPIRED,
+            '',
+            'It expired before it went through; nothing was paid',
+          ),
+          (
+            'a failed call',
+            settlement.AccountCallState.ACCOUNT_CALL_STATE_FAILED,
+            'insufficient funds',
+            'Not done: insufficient funds; nothing was paid',
+          ),
+        ]) {
+          testWidgets('$name is not paid, not sent', (tester) async {
+            final service = await serve(
+              gate: SigningGate.open,
+              onSubmit: (req, n) => lost(connect.Code.unavailable),
+              onGetCall: (req, n) => settlement.GetAccountCallResponse(
+                call: settlement.AccountCall(
+                  callId: req.callId,
+                  state: state,
+                  failureReason: failure,
+                ),
+              ),
+            );
+            await openAndSubmit(tester, service);
+            await sign(tester);
+
+            expect(find.text(message), findsOneWidget);
+            expect(find.text(sentWaitingMessage), findsNothing);
+            expect(find.byKey(const Key('contribute-state')), findsNothing);
+            expect(await service.unconfirmedCall(), isNull, reason: 'known');
+          });
+        }
+
+        testWidgets('a call settlement no longer knows is not paid', (
+          tester,
+        ) async {
+          final service = await serve(
+            gate: SigningGate.open,
+            onSubmit: (req, n) => lost(connect.Code.unavailable),
+            onGetCall: (req, n) => throw connect.ConnectException(
+              connect.Code.notFound,
+              'no such call',
+            ),
+          );
+          await openAndSubmit(tester, service);
+          await sign(tester);
+
+          expect(
+            find.text('It did not go through; nothing was paid'),
+            findsOneWidget,
+          );
+          expect(await service.unconfirmedCall(), isNull);
+        });
+
+        testWidgets('an earlier call that expired is named, and nothing new is '
+            'prepared', (tester) async {
+          final db = createTestDatabase();
+          addTearDown(db.close);
+          final store = DriftUnconfirmedMoneyCallStore(db);
+          await store.hold(
+            'p1',
+            SignedMoneyCall(
+              callId: 'acct-earlier',
+              authorization: Uint8List(65),
+              title: 'Pay 200.00 USDC into Chama',
+            ),
+          );
+          await openAndSubmit(
+            tester,
+            await serve(
+              gate: SigningGate.open,
+              unconfirmed: store,
+              onGetCall: (req, n) => callIn(
+                req,
+                settlement.AccountCallState.ACCOUNT_CALL_STATE_EXPIRED,
+              ),
+            ),
+          );
+
+          expect(find.byKey(const Key('money-review')), findsNothing);
+          expect(prepares(), 0);
+          expect(
+            find.text(
+              '“Pay 200.00 USDC into Chama” was not sent: It expired before it '
+              'went through; nothing was paid',
+            ),
+            findsOneWidget,
+          );
+          expect(await store.read('p1'), isNull);
+        });
 
         testWidgets('a clear refusal says why and leaves nothing pending', (
           tester,

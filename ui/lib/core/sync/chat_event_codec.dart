@@ -359,9 +359,10 @@ class ChatEventCodec {
   }
 
   /// Whether an event renders as a system line. Only a room change does: the
-  /// server writes it itself and refuses it from a member. A member may send
-  /// a moderation (naming themselves as actor), so it renders as theirs; and
-  /// a member's message, encrypted or not, never renders as a system line.
+  /// server writes it itself and refuses it from a member. A moderation is
+  /// legacy (the server refuses it from members and posts none), so one in
+  /// history renders as its sender's text; and a member's message, encrypted
+  /// or not, never renders as a system line.
   static bool isSystemPayload(pb.Payload? payload) =>
       payload != null && payload.hasRoomChange();
 }

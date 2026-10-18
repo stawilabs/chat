@@ -203,7 +203,10 @@ void main() {
       ..on(
         settlement.AccountService.submitAccountCall,
         (req) => settlement.SubmitAccountCallResponse(
-          call: settlement.AccountCall(callId: req.callId),
+          call: settlement.AccountCall(
+            callId: req.callId,
+            state: settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+          ),
         ),
       )
       ..on(

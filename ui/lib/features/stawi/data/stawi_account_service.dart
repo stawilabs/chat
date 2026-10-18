@@ -3,12 +3,14 @@ import 'dart:typed_data';
 
 import 'package:antinvestor_api_authentication/antinvestor_api_authentication.dart'
     as authentication;
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import '../../../core/logging/app_logger.dart';
 import '../../../core/networking/api_config.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/money_review.dart';
@@ -16,6 +18,7 @@ import '../domain/personal_calls.dart';
 import '../domain/signing_checks.dart';
 import '../domain/stawi_money.dart';
 import 'device_key_store.dart';
+import 'money_call_fate.dart';
 import 'stawi_clients.dart';
 import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
@@ -270,7 +273,7 @@ class StawiAccountService {
       throw const StawiUnavailable('Your profile has no Stawi account yet');
     }
     const kind = settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY;
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: kind,
@@ -353,7 +356,7 @@ class StawiAccountService {
   }) async {
     final account = await ensureReady();
     final targets = await _personalTargets();
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: request.call.kind,
@@ -391,7 +394,7 @@ class StawiAccountService {
   }) async {
     final account = await ensureReady();
     final targets = await _personalTargets();
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
@@ -442,7 +445,7 @@ class StawiAccountService {
         'payment cannot be checked; try again shortly',
       );
     }
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: kind,
@@ -492,7 +495,7 @@ class StawiAccountService {
     required BigInt amount,
   }) async {
     final account = await ensureReady();
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
@@ -543,7 +546,7 @@ class StawiAccountService {
       throw const FormatException('Enter a whole amount greater than zero');
     }
     final account = await ensureReady();
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
@@ -584,7 +587,7 @@ class StawiAccountService {
   }) async {
     if (engines == null) throw const SigningRefused(enginesUnknownReason);
     final account = await ensureReady();
-    final prepared = await _accounts.prepareAccountCall(
+    final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: request.call.kind,
@@ -652,6 +655,101 @@ class StawiAccountService {
   /// Forgets [signed] once its fate is known: taken, or clearly refused.
   Future<void> clearUnconfirmed(SignedMoneyCall signed) async =>
       _unconfirmed.clear((await _identity()).profileId, signed.callId);
+
+  /// Refuses a new money call while an earlier signed call's fate is
+  /// unknown: the earlier call is followed first and an [EarlierMoneyCall]
+  /// says what became of it. Nothing new is prepared, so a blocked attempt
+  /// spends none of settlement's prepared-call allowance.
+  Future<void> refuseWhileUnconfirmed() async {
+    final earlier = await unconfirmedCall();
+    if (earlier == null) return;
+    throw EarlierMoneyCall(earlier.title, await followSigned(earlier));
+  }
+
+  /// Every account call is prepared here, behind [refuseWhileUnconfirmed].
+  Future<settlement.PrepareAccountCallResponse> _prepareAccountCall(
+    settlement.PrepareAccountCallRequest request,
+  ) async {
+    await refuseWhileUnconfirmed();
+    return _accounts.prepareAccountCall(request);
+  }
+
+  /// Submits [signed], already held, and finds out what became of it: a
+  /// clear refusal is not paid; any other error, or AlreadyExists (it was
+  /// submitted), is followed. The held call is forgotten only once its fate
+  /// is known.
+  Future<MoneyCallFate> submitHeld(SignedMoneyCall signed) async {
+    MoneyCallFate fate;
+    try {
+      fate = fateOfCall(await submitSigned(signed)) ?? await _follow(signed);
+    } on Object catch (error) {
+      fate = isSubmitRefusal(error)
+          ? CallNotPaid.refused(error)
+          : await _follow(signed);
+    }
+    return _settled(signed, fate);
+  }
+
+  /// Follows [signed], a held call whose fate is unknown, forgetting it once
+  /// its fate is known.
+  Future<MoneyCallFate> followSigned(SignedMoneyCall signed) async =>
+      _settled(signed, await _follow(signed));
+
+  Future<MoneyCallFate> _settled(
+    SignedMoneyCall signed,
+    MoneyCallFate fate,
+  ) async {
+    if (fate is CallUnknown) return fate;
+    try {
+      await clearUnconfirmed(signed);
+    } on Object catch (error) {
+      // Kept: it is followed again before the next call, and found settled.
+      AppLogger.warning(
+        'Unconfirmed money call not cleared',
+        data: {'callId': signed.callId, 'error': '$error'},
+      );
+    }
+    return fate;
+  }
+
+  /// Reads [signed] until settlement says what became of it, submitting the
+  /// same signed call again while it is PREPARED. Classified per leg: on the
+  /// read only NotFound (settlement no longer knows the call) is an answer,
+  /// any other error says nothing about the call; on the submit a clear
+  /// refusal is one. [CallUnknown] when no answer came in [attempts] tries.
+  Future<MoneyCallFate> _follow(
+    SignedMoneyCall signed, {
+    int attempts = 3,
+  }) async {
+    for (var i = 0; i < attempts; i++) {
+      if (i > 0) await Future<void>.delayed(_followEvery);
+      final settlement.AccountCall call;
+      try {
+        call = await accountCall(signed.callId);
+      } on connect.ConnectException catch (error) {
+        if (error.code == connect.Code.notFound) {
+          return const CallNotPaid.gone();
+        }
+        continue;
+      } on Object {
+        continue;
+      }
+      if (call.state !=
+          settlement.AccountCallState.ACCOUNT_CALL_STATE_PREPARED) {
+        if (fateOfCall(call) case final fate?) return fate;
+        continue;
+      }
+      try {
+        if (fateOfCall(await submitSigned(signed)) case final fate?) {
+          return fate;
+        }
+      } on Object catch (error) {
+        if (isSubmitRefusal(error)) return CallNotPaid.refused(error);
+        // AlreadyExists or no answer: read it again.
+      }
+    }
+    return const CallUnknown();
+  }
 
   /// Submits [signed]. Settlement takes a call once: the same signed call
   /// again answers the call as it stands, so this is safe to repeat when an

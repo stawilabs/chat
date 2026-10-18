@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderBase;
 
+import '../data/money_call_fate.dart';
 import '../data/stawi_counterparty.dart';
 import '../data/stawi_identity.dart';
 import '../domain/signing_checks.dart';
+
+export '../data/money_call_fate.dart' show isAccountCatchingUp;
 
 /// What to tell the member when settlement asks them to retry a member
 /// action because their account is still being settled (an engine's
@@ -13,16 +16,46 @@ import '../domain/signing_checks.dart';
 const String accountCatchingUpMessage =
     'Your account is being brought up to date; try again shortly';
 
-/// Whether [error] is settlement's retryable answer to a member action whose
-/// account is being brought up to date (Unavailable, from SettleAgain).
-bool isAccountCatchingUp(Object error) =>
-    error is connect.ConnectException &&
-    error.code == connect.Code.unavailable &&
-    error.message.contains('being brought up to date');
+/// Said when a submit's fate could not be found out.
+const String notConfirmedSubmitMessage =
+    'Could not confirm it went through; it may still. Do not send it again; '
+    'check again shortly';
+
+/// Said when a call whose submit got no clear answer turns out to be taken.
+String earlierCallSentMessage(String title) =>
+    '“$title” was sent; waiting for confirmation. Check it before sending '
+    'again';
+
+/// Said when a new money call waits on an earlier one whose fate is still
+/// unknown.
+String earlierCallUnconfirmedMessage(String title) =>
+    'Could not confirm “$title” went through; it may still. Nothing new is '
+    'sent until it is known; check again shortly';
+
+/// Why [fate]'s call was not paid; nothing moved.
+String notPaidMessage(CallNotPaid fate) => switch (fate.reason) {
+  NotPaidReason.refused => stawiErrorMessage(fate.error!),
+  NotPaidReason.expired =>
+    'It expired before it went through; nothing was paid',
+  NotPaidReason.failed =>
+    fate.failureReason.isEmpty
+        ? 'It did not go through; nothing was paid'
+        : 'Not done: ${fate.failureReason}; nothing was paid',
+  NotPaidReason.gone => 'It did not go through; nothing was paid',
+};
+
+/// What to say when a new money call was held back by an earlier one.
+String earlierCallMessage(EarlierMoneyCall earlier) => switch (earlier.fate) {
+  CallTaken() => earlierCallSentMessage(earlier.title),
+  final CallNotPaid notPaid =>
+    '“${earlier.title}” was not sent: ${notPaidMessage(notPaid)}',
+  CallUnknown() => earlierCallUnconfirmedMessage(earlier.title),
+};
 
 /// What to tell the member when a Stawi action fails.
 String stawiErrorMessage(Object error) => switch (error) {
   _ when isAccountCatchingUp(error) => accountCatchingUpMessage,
+  final EarlierMoneyCall earlier => earlierCallMessage(earlier),
   SigningRefused(:final reason) => 'Not signed: $reason',
   StawiUnavailable(:final message) => message,
   DirectPartnerRefused() => DirectPartnerRefused.messageFor('They'),

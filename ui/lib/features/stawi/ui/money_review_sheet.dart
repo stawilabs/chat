@@ -1,8 +1,8 @@
-import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 
+import '../data/money_call_fate.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/money_review.dart';
 import 'stawi_feedback.dart';
@@ -85,7 +85,7 @@ Future<bool> showMoneyReview(BuildContext context, MoneyReview review) async {
 }
 
 /// Shows [prepared]'s review and, once confirmed, signs and submits it.
-/// Null when the person cancelled, the submit was refused, or its fate is not
+/// Null when the person cancelled, the call was not paid, or its fate is not
 /// known yet (a snack bar says which).
 ///
 /// The signed call is kept (in the app database, across restarts) before it
@@ -93,7 +93,8 @@ Future<bool> showMoneyReview(BuildContext context, MoneyReview review) async {
 /// taken, so the call is followed: read, and submitted again as the same
 /// signed call while settlement has not taken it. It is never prepared
 /// again, which would take the next nonce and pay twice. Until its fate is
-/// known no other call is reviewed: the next attempt checks it first.
+/// known no other call is prepared or reviewed
+/// ([StawiAccountService.refuseWhileUnconfirmed]).
 Future<settlement.AccountCall?> reviewAndSubmit(
   BuildContext context,
   WidgetRef ref,
@@ -105,31 +106,15 @@ Future<settlement.AccountCall?> reviewAndSubmit(
     ?..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
 
-  // Kept across restarts: a call signed before the app stopped is checked
-  // first, and re-submitted as signed while settlement has not taken it.
-  final SignedMoneyCall? earlier;
-  try {
-    earlier = await service.unconfirmedCall();
-  } on Object catch (error) {
-    say(stawiErrorMessage(error));
+  // Prepares already refuse while an earlier call is unconfirmed; this
+  // covers one held by another flow since [prepared] was prepared.
+  if (await runStawiAction(context, () async {
+        await service.refuseWhileUnconfirmed();
+        return true;
+      }) ==
+      null) {
     return null;
   }
-  if (earlier != null) {
-    say(checkingSubmitMessage);
-    try {
-      if (await _followSigned(service, earlier) == null) {
-        say(notConfirmedSubmitMessage);
-        return null;
-      }
-      await service.clearUnconfirmed(earlier);
-      say(earlierCallSentMessage(earlier.title));
-    } on Object catch (error) {
-      await service.clearUnconfirmed(earlier);
-      say(stawiErrorMessage(error));
-    }
-    return null;
-  }
-
   if (!context.mounted ||
       !await showMoneyReview(context, prepared.review) ||
       !context.mounted) {
@@ -148,91 +133,30 @@ Future<settlement.AccountCall?> reviewAndSubmit(
     return null;
   }
 
-  settlement.AccountCall? call;
+  say(checkingSubmitMessage);
+  final MoneyCallFate fate;
   try {
-    call = await service.submitSigned(signed);
+    fate = await service.submitHeld(signed);
   } on Object catch (error) {
-    if (isDefiniteRefusal(error)) {
-      await service.clearUnconfirmed(signed);
-      say(stawiErrorMessage(error));
+    say(stawiErrorMessage(error));
+    return null;
+  }
+  switch (fate) {
+    case CallTaken(:final call):
+      say(sentWaitingMessage);
+      _outcomes[call] = _Outcome(messenger, prepared.review.done);
+      return call;
+    case final CallNotPaid notPaid:
+      say(notPaidMessage(notPaid));
       return null;
-    }
-    say(checkingSubmitMessage);
-    try {
-      call = await _followSigned(service, signed);
-    } on Object catch (refused) {
-      await service.clearUnconfirmed(signed);
-      say(stawiErrorMessage(refused));
-      return null;
-    }
-    if (call == null) {
+    case CallUnknown():
       say(notConfirmedSubmitMessage);
       return null;
-    }
   }
-  await service.clearUnconfirmed(signed);
-  say(sentWaitingMessage);
-  _outcomes[call] = _Outcome(messenger, prepared.review.done);
-  return call;
 }
 
-/// Finds out whether settlement took [signed]: the call as it stands once it
-/// is past PREPARED, submitting the same signed call again while it is not.
-/// Null when no answer came in [attempts] tries; a clear refusal is thrown.
-Future<settlement.AccountCall?> _followSigned(
-  StawiAccountService service,
-  SignedMoneyCall signed, {
-  int attempts = 3,
-}) async {
-  for (var i = 0; i < attempts; i++) {
-    if (i > 0) await Future<void>.delayed(service.followEvery);
-    try {
-      final call = await service.accountCall(signed.callId);
-      if (call.state !=
-          settlement.AccountCallState.ACCOUNT_CALL_STATE_PREPARED) {
-        return call;
-      }
-      return await service.submitSigned(signed);
-    } on Object catch (error) {
-      if (isDefiniteRefusal(error)) rethrow;
-    }
-  }
-  return null;
-}
-
-/// Whether [error] is settlement's clear answer that it did not take a call:
-/// it refused it, or the account is catching up (the call stays prepared).
-/// Anything else (unreachable, timed out, a lost connection) may have been
-/// taken before the answer was lost.
-bool isDefiniteRefusal(Object error) => switch (error) {
-  _ when isAccountCatchingUp(error) => true,
-  connect.ConnectException(:final code) => switch (code) {
-    connect.Code.invalidArgument ||
-    connect.Code.notFound ||
-    connect.Code.alreadyExists ||
-    connect.Code.permissionDenied ||
-    connect.Code.failedPrecondition ||
-    connect.Code.outOfRange ||
-    connect.Code.unauthenticated ||
-    connect.Code.unimplemented ||
-    connect.Code.resourceExhausted => true,
-    _ => false,
-  },
-  _ => false,
-};
-
-/// Said while a submit without a clear answer is checked.
+/// Said while a submit is sent and, without a clear answer, checked.
 const String checkingSubmitMessage = 'Checking whether it went through…';
-
-/// Said when a submit's fate could not be found out.
-const String notConfirmedSubmitMessage =
-    'Could not confirm it went through; it may still. Do not send it again; '
-    'check again shortly';
-
-/// Said when a call whose submit got no clear answer turns out to be taken.
-String earlierCallSentMessage(String title) =>
-    '“$title” was sent; waiting for confirmation. Check it before sending '
-    'again';
 
 /// Said when a call is submitted: nothing is done until the chain says so.
 const String sentWaitingMessage = 'Sent; waiting for confirmation';

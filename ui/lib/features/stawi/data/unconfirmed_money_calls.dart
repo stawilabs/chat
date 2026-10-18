@@ -10,12 +10,18 @@ abstract interface class UnconfirmedMoneyCallStore {
   /// The profile's unconfirmed call, if any.
   Future<SignedMoneyCall?> read(String profileId);
 
-  /// Keeps [call] as the profile's unconfirmed call.
+  /// Keeps [call] as the profile's unconfirmed call. Holding it again is a
+  /// no-op; while another call is held this fails ([anotherCallHeldMessage])
+  /// and nothing may be sent, since replacing it would lose that call.
   Future<void> hold(String profileId, SignedMoneyCall call);
 
   /// Forgets the profile's unconfirmed call when it is [callId].
   Future<void> clear(String profileId, String callId);
 }
+
+/// Said when a call cannot be kept because another is still unconfirmed.
+const String anotherCallHeldMessage =
+    'Another payment is still being checked; wait until it is known';
 
 /// An in-memory store: what is held is lost when the app stops.
 final class MemoryUnconfirmedMoneyCallStore
@@ -26,8 +32,13 @@ final class MemoryUnconfirmedMoneyCallStore
   Future<SignedMoneyCall?> read(String profileId) async => _calls[profileId];
 
   @override
-  Future<void> hold(String profileId, SignedMoneyCall call) async =>
-      _calls[profileId] = call;
+  Future<void> hold(String profileId, SignedMoneyCall call) async {
+    final held = _calls[profileId];
+    if (held != null && held.callId != call.callId) {
+      throw StateError(anotherCallHeldMessage);
+    }
+    _calls[profileId] = call;
+  }
 
   @override
   Future<void> clear(String profileId, String callId) async {
@@ -56,17 +67,27 @@ final class DriftUnconfirmedMoneyCallStore
   }
 
   @override
-  Future<void> hold(String profileId, SignedMoneyCall call) => _db
-      .into(_db.unconfirmedMoneyCalls)
-      .insertOnConflictUpdate(
-        UnconfirmedMoneyCallsCompanion.insert(
-          profileId: profileId,
-          callId: call.callId,
-          authorization: call.authorization,
-          title: call.title,
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
+  Future<void> hold(String profileId, SignedMoneyCall call) =>
+      _db.transaction(() async {
+        final held = await read(profileId);
+        if (held != null) {
+          if (held.callId != call.callId) {
+            throw StateError(anotherCallHeldMessage);
+          }
+          return;
+        }
+        await _db
+            .into(_db.unconfirmedMoneyCalls)
+            .insert(
+              UnconfirmedMoneyCallsCompanion.insert(
+                profileId: profileId,
+                callId: call.callId,
+                authorization: call.authorization,
+                title: call.title,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+      });
 
   @override
   Future<void> clear(String profileId, String callId) =>

@@ -40,12 +40,28 @@ void main() {
     expect(await store.read('p1'), isNull);
   });
 
-  test('holding another call replaces the profile\'s one', () async {
-    final store = DriftUnconfirmedMoneyCallStore(db);
-    await store.hold('p1', signed('call-1', 7));
-    await store.hold('p1', signed('call-2', 8));
-    expect((await store.read('p1'))?.callId, 'call-2');
-  });
+  for (final (name, make) in [
+    ('the database', () => DriftUnconfirmedMoneyCallStore(db)),
+    ('memory', MemoryUnconfirmedMoneyCallStore.new),
+  ]) {
+    test('$name never replaces a held call with another', () async {
+      final store = make();
+      await store.hold('p1', signed('call-1', 7));
+      await store.hold('p1', signed('call-1', 7));
+      await expectLater(
+        store.hold('p1', signed('call-2', 8)),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            anotherCallHeldMessage,
+          ),
+        ),
+      );
+      expect((await store.read('p1'))?.callId, 'call-1');
+      expect((await store.read('p1'))?.authorization, List.filled(65, 7));
+    });
+  }
 
   test('the in-memory store behaves the same', () async {
     final store = MemoryUnconfirmedMoneyCallStore();
