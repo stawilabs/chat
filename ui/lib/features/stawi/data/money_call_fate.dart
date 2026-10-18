@@ -58,15 +58,31 @@ final class CallUnknown extends MoneyCallFate {
   const CallUnknown();
 }
 
-/// A new money call was asked for while an earlier signed call's fate was
+/// What a new account call held back by an earlier one would have done.
+enum HeldBack {
+  /// Money (or any account call but a key change).
+  money,
+
+  /// Adding a device key.
+  keyChange,
+}
+
+/// A new account call was asked for while an earlier signed call's fate was
 /// unknown. The earlier call was followed first ([fate]) and no new call was
 /// prepared.
 final class EarlierMoneyCall implements Exception {
-  const EarlierMoneyCall(this.title, this.fate);
+  const EarlierMoneyCall(
+    this.title,
+    this.fate, {
+    this.heldBack = HeldBack.money,
+  });
 
   /// The earlier call's review title.
   final String title;
   final MoneyCallFate fate;
+
+  /// What the new call would have done.
+  final HeldBack heldBack;
 
   @override
   String toString() => 'an earlier money call ("$title") was checked first';
@@ -93,6 +109,24 @@ bool isAccountCatchingUp(Object error) =>
     error is connect.ConnectException &&
     error.code == connect.Code.unavailable &&
     error.message.contains('being brought up to date');
+
+/// Whether [error], from submitting a held call again, is settlement's own
+/// clear answer that it did not take the call. Narrower than
+/// [isSubmitRefusal]: unauthenticated, resourceExhausted and unimplemented
+/// come from interceptors or the gateway and describe this request, not the
+/// call, which an earlier submit still in flight may yet commit.
+bool isResubmitRefusal(Object error) => switch (error) {
+  _ when isAccountCatchingUp(error) => true,
+  connect.ConnectException(:final code) => switch (code) {
+    connect.Code.invalidArgument ||
+    connect.Code.notFound ||
+    connect.Code.permissionDenied ||
+    connect.Code.failedPrecondition ||
+    connect.Code.outOfRange => true,
+    _ => false,
+  },
+  _ => false,
+};
 
 /// Whether [error], from SubmitAccountCall, is settlement's clear answer that
 /// it did not take the call. AlreadyExists is not: it means the call was

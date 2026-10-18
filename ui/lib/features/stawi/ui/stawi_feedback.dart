@@ -44,13 +44,25 @@ String notPaidMessage(CallNotPaid fate) => switch (fate.reason) {
   NotPaidReason.gone => 'It did not go through; nothing was paid',
 };
 
-/// What to say when a new money call was held back by an earlier one.
-String earlierCallMessage(EarlierMoneyCall earlier) => switch (earlier.fate) {
-  CallTaken() => earlierCallSentMessage(earlier.title),
-  final CallNotPaid notPaid =>
-    '“${earlier.title}” was not sent: ${notPaidMessage(notPaid)}',
-  CallUnknown() => earlierCallUnconfirmedMessage(earlier.title),
-};
+/// What to say when a new account call was held back by an earlier one.
+String earlierCallMessage(EarlierMoneyCall earlier) =>
+    switch ((earlier.fate, earlier.heldBack)) {
+      (CallTaken(), HeldBack.money) => earlierCallSentMessage(earlier.title),
+      (CallTaken(), HeldBack.keyChange) =>
+        '“${earlier.title}” was sent and is being confirmed. Add the device '
+            'once it is; try again shortly',
+      (final CallNotPaid notPaid, HeldBack.money) =>
+        '“${earlier.title}” was not sent: ${notPaidMessage(notPaid)}',
+      (final CallNotPaid notPaid, HeldBack.keyChange) =>
+        '“${earlier.title}” was not sent: ${notPaidMessage(notPaid)}. You '
+            'can add the device now',
+      (CallUnknown(), HeldBack.money) => earlierCallUnconfirmedMessage(
+        earlier.title,
+      ),
+      (CallUnknown(), HeldBack.keyChange) =>
+        'Could not confirm “${earlier.title}” went through; a device can be '
+            'added once it is known. Check again shortly',
+    };
 
 /// What to tell the member when a Stawi action fails.
 String stawiErrorMessage(Object error) => switch (error) {

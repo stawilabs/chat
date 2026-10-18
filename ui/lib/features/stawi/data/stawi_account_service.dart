@@ -660,17 +660,30 @@ class StawiAccountService {
   /// unknown: the earlier call is followed first and an [EarlierMoneyCall]
   /// says what became of it. Nothing new is prepared, so a blocked attempt
   /// spends none of settlement's prepared-call allowance.
-  Future<void> refuseWhileUnconfirmed() async {
+  /// [heldBack] says what the new call would have done. A device-key change
+  /// waits too: it is an account call at the account's next nonce.
+  Future<void> refuseWhileUnconfirmed({
+    HeldBack heldBack = HeldBack.money,
+  }) async {
     final earlier = await unconfirmedCall();
     if (earlier == null) return;
-    throw EarlierMoneyCall(earlier.title, await followSigned(earlier));
+    throw EarlierMoneyCall(
+      earlier.title,
+      await followSigned(earlier),
+      heldBack: heldBack,
+    );
   }
 
   /// Every account call is prepared here, behind [refuseWhileUnconfirmed].
   Future<settlement.PrepareAccountCallResponse> _prepareAccountCall(
     settlement.PrepareAccountCallRequest request,
   ) async {
-    await refuseWhileUnconfirmed();
+    await refuseWhileUnconfirmed(
+      heldBack:
+          request.kind == settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY
+          ? HeldBack.keyChange
+          : HeldBack.money,
+    );
     return _accounts.prepareAccountCall(request);
   }
 
@@ -744,8 +757,9 @@ class StawiAccountService {
           return fate;
         }
       } on Object catch (error) {
-        if (isSubmitRefusal(error)) return CallNotPaid.refused(error);
-        // AlreadyExists or no answer: read it again.
+        if (isResubmitRefusal(error)) return CallNotPaid.refused(error);
+        // AlreadyExists, a gateway's refusal of this request, or no answer:
+        // read it again.
       }
     }
     return const CallUnknown();

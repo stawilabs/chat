@@ -24,8 +24,7 @@ const String anotherCallHeldMessage =
     'Another payment is still being checked; wait until it is known';
 
 /// An in-memory store: what is held is lost when the app stops.
-final class MemoryUnconfirmedMoneyCallStore
-    implements UnconfirmedMoneyCallStore {
+class MemoryUnconfirmedMoneyCallStore implements UnconfirmedMoneyCallStore {
   final Map<String, SignedMoneyCall> _calls = {};
 
   @override

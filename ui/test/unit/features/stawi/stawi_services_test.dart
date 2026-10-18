@@ -1,22 +1,26 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/money_call_fate.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
+import 'package:stawi/features/stawi/data/unconfirmed_money_calls.dart';
 import 'package:stawi/features/stawi/domain/governance_requests.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/loan_terms.dart';
 import 'package:stawi/features/stawi/domain/personal_calls.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
+import 'package:stawi/features/stawi/ui/stawi_feedback.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
@@ -580,15 +584,19 @@ void main() {
       final v = GoVaultVectors.load().addKeys.firstWhere((k) => !k.p256);
       // The deployment's chain, from the app's configuration.
       final chain = BigInt.parse(v.intent.domain.chainId.toStringUnsigned());
-      StawiAccountService service({BigInt? deploymentChainId}) =>
-          StawiAccountService(
-            roomAssets: testRoomAssets,
-            accounts: settlement.AccountServiceClient(transport),
-            keys: keys,
-            proofs: ({required Uint8List deviceAddress}) async => Uint8List(0),
-            identity: () async => identityWith('p1', v.account),
-            deploymentChainId: deploymentChainId ?? chain,
-          );
+      StawiAccountService service({
+        BigInt? deploymentChainId,
+        UnconfirmedMoneyCallStore? unconfirmed,
+      }) => StawiAccountService(
+        roomAssets: testRoomAssets,
+        accounts: settlement.AccountServiceClient(transport),
+        keys: keys,
+        proofs: ({required Uint8List deviceAddress}) async => Uint8List(0),
+        identity: () async => identityWith('p1', v.account),
+        deploymentChainId: deploymentChainId ?? chain,
+        followEvery: Duration.zero,
+        unconfirmed: unconfirmed,
+      );
       void prepares(settlement.PrepareAccountCallResponse prepared) {
         transport
           ..on(settlement.AccountService.prepareAccountCall, (req) => prepared)
@@ -697,6 +705,94 @@ void main() {
           transport.requestsTo(settlement.AccountService.submitAccountCall),
           isEmpty,
         );
+      });
+
+      group('waits while a payment is unconfirmed', () {
+        Future<EarlierMoneyCall> heldBack(
+          settlement.GetAccountCallResponse Function() read,
+        ) async {
+          final store = MemoryUnconfirmedMoneyCallStore();
+          await store.hold(
+            'p1',
+            SignedMoneyCall(
+              callId: 'acct-earlier',
+              authorization: Uint8List(65),
+              title: 'Pay 500.00 USDC into Chama',
+            ),
+          );
+          prepares(v.prepared());
+          transport.on(
+            settlement.AccountService.getAccountCall,
+            (req) => read(),
+          );
+          try {
+            await service(unconfirmed: store).prepareAddKey(v.key);
+          } on EarlierMoneyCall catch (e) {
+            expect(e.heldBack, HeldBack.keyChange);
+            expect(
+              transport.requestsTo(
+                settlement.AccountService.prepareAccountCall,
+              ),
+              isEmpty,
+              reason: 'nothing is prepared while it waits',
+            );
+            return e;
+          }
+          fail('the key change was not held back');
+        }
+
+        test(
+          'an unknown payment: the device is added once it is known',
+          () async {
+            final e = await heldBack(
+              () => throw connect.ConnectException(
+                connect.Code.unavailable,
+                'down',
+              ),
+            );
+            expect(
+              stawiErrorMessage(e),
+              'Could not confirm “Pay 500.00 USDC into Chama” went through; a '
+              'device can be added once it is known. Check again shortly',
+            );
+          },
+        );
+
+        test(
+          'a payment found sent is named, and the key change waits',
+          () async {
+            final e = await heldBack(
+              () => settlement.GetAccountCallResponse(
+                call: settlement.AccountCall(
+                  callId: 'acct-earlier',
+                  state:
+                      settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+                ),
+              ),
+            );
+            expect(
+              stawiErrorMessage(e),
+              '“Pay 500.00 USDC into Chama” was sent and is being confirmed. '
+              'Add the device once it is; try again shortly',
+            );
+          },
+        );
+
+        test('a payment found not paid frees the key change', () async {
+          final e = await heldBack(
+            () => settlement.GetAccountCallResponse(
+              call: settlement.AccountCall(
+                callId: 'acct-earlier',
+                state: settlement.AccountCallState.ACCOUNT_CALL_STATE_EXPIRED,
+              ),
+            ),
+          );
+          expect(
+            stawiErrorMessage(e),
+            '“Pay 500.00 USDC into Chama” was not sent: It expired before it '
+            'went through; nothing was paid. You can add the device now',
+          );
+        });
       });
 
       test('a malformed key id is never prepared', () async {
