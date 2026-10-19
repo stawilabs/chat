@@ -631,8 +631,9 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
         .read(roomEnginesProvider(widget.roomId).future)
         .catchError((Object _) => null);
     if (!mounted) return;
-    final prepared = await runStawiAction(
+    final prepared = await prepareMoneyCall(
       context,
+      ref,
       () => ref
           .read(stawiAccountServiceProvider)
           .prepareEngineCall(request, engines: engines),

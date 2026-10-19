@@ -81,11 +81,25 @@ void main() {
       )?
       onGetCall,
       UnconfirmedMoneyCallStore? unconfirmed,
+      settlement.ListAccountCallsResponse Function(
+        settlement.ListAccountCallsRequest req,
+        int n,
+      )?
+      onList,
     }) async {
       var prepares = 0;
       var submitted = 0;
       var reads = 0;
-      transport = FakeConnectTransport()
+      var lists = 0;
+      transport = FakeConnectTransport();
+      if (onList != null) {
+        // Settlement's open calls, or the error it answers.
+        transport.on(
+          settlement.AccountService.listAccountCalls,
+          (req) => onList(req, lists++),
+        );
+      }
+      transport
         ..on(settlement.AccountService.prepareAccountCall, (req) {
           if (catchingUp) {
             throw connect.ConnectException(
@@ -601,6 +615,184 @@ void main() {
         await tester.tap(find.byKey(const Key('contribute-submit')));
         await tester.pumpAndSettle();
         expect(find.byKey(const Key('money-review')), findsOneWidget);
+      });
+    });
+
+    group('settlement\'s open calls are checked before the review', () {
+      const title = 'Pay 500.00 USDC into Chama';
+
+      /// A contribution settlement lists as open on the account: sent from
+      /// another device, or before a reinstall.
+      settlement.ListAccountCallsResponse openContribution({List<int>? from}) =>
+          settlement.ListAccountCallsResponse(
+            calls: [
+              settlement.AccountCall(
+                callId: 'acct-other-device',
+                address: from ?? account,
+                kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
+                state: settlement.AccountCallState.ACCOUNT_CALL_STATE_SUBMITTED,
+              ),
+            ],
+          );
+
+      List<settlement.ListAccountCallsRequest> lists() =>
+          transport.requestsTo(settlement.AccountService.listAccountCalls);
+
+      void dismissSnack(WidgetTester tester) =>
+          ScaffoldMessenger.of(tester.element(find.byType(ContributeScreen)))
+              .removeCurrentSnackBar();
+
+      testWidgets('an open call is followed and nothing new is signed', (
+        tester,
+      ) async {
+        final gate = RecordingSigningGate();
+        final service = await serve(
+          gate: gate,
+          onList: (req, n) => openContribution(),
+        );
+        await openAndSubmit(tester, service);
+
+        expect(find.byKey(const Key('money-review')), findsNothing);
+        expect(gate.reasons, isEmpty, reason: 'nothing signed');
+        expect(submits(), 0, reason: 'nothing sent');
+        expect(prepares(), 1, reason: 'only the unsigned call this tap made');
+        expect(lists().single.address, account);
+        expect(
+          find.textContaining('A payment like this one is still going through'),
+          findsOneWidget,
+        );
+        expect(await service.unconfirmedCall(), isNull);
+
+        // The open call is followed until it ends, and that is said.
+        dismissSnack(tester);
+        await tester.pumpAndSettle();
+        expect(find.text('The earlier payment is done'), findsOneWidget);
+        expect(
+          transport
+              .requestsTo(settlement.AccountService.getAccountCall)
+              .map((r) => r.callId),
+          contains('acct-other-device'),
+        );
+      });
+
+      testWidgets('with no open call the payment goes ahead as usual', (
+        tester,
+      ) async {
+        final service = await serve(
+          gate: SigningGate.open,
+          onList: (req, n) => settlement.ListAccountCallsResponse(),
+        );
+        await openAndSubmit(tester, service);
+
+        expect(lists().single.address, account, reason: 'read first');
+        expect(find.byKey(const Key('money-review')), findsOneWidget);
+        await sign(tester);
+        expect(submits(), 1);
+        expect(prepares(), 1);
+        expect(find.byKey(const Key('contribute-state')), findsOneWidget);
+      });
+
+      testWidgets('another account\'s open call does not hold it back', (
+        tester,
+      ) async {
+        final service = await serve(
+          gate: SigningGate.open,
+          onList: (req, n) =>
+              openContribution(from: Uint8List.fromList(List.filled(20, 7))),
+        );
+        await openAndSubmit(tester, service);
+        expect(find.byKey(const Key('money-review')), findsOneWidget);
+      });
+
+      for (final code in [
+        connect.Code.unauthenticated,
+        connect.Code.resourceExhausted,
+        connect.Code.unavailable,
+      ]) {
+        testWidgets('a list that fails (${code.name}) sends nothing new and '
+            'holds the payment back until settlement can say', (tester) async {
+          var failing = true;
+          final gate = RecordingSigningGate();
+          final service = await serve(
+            gate: gate,
+            onList: (req, n) => failing
+                ? throw connect.ConnectException(code, 'the list was refused')
+                : settlement.ListAccountCallsResponse(),
+          );
+          await openAndSubmit(tester, service);
+
+          expect(find.byKey(const Key('money-review')), findsNothing);
+          expect(gate.reasons, isEmpty);
+          expect(submits(), 0);
+          expect(find.textContaining(openCallsUnknownMessage), findsOneWidget);
+          expect(await service.unconfirmedCall(), isNull);
+
+          // Still failing: still held back.
+          dismissSnack(tester);
+          await tester.tap(find.byKey(const Key('contribute-submit')));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const Key('money-review')), findsNothing);
+          expect(submits(), 0);
+
+          // Once settlement answers, the person may go on.
+          dismissSnack(tester);
+          failing = false;
+          await tester.tap(find.byKey(const Key('contribute-submit')));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const Key('money-review')), findsOneWidget);
+        });
+      }
+
+      testWidgets('a second device with no record of the call still finds it '
+          'and does not pay again', (tester) async {
+        // This device's database is empty: the call was sent from another
+        // device (or before a reinstall or cleared app data).
+        final db = createTestDatabase();
+        addTearDown(db.close);
+        final store = DriftUnconfirmedMoneyCallStore(db);
+        expect(await store.read('p1'), isNull);
+        final gate = RecordingSigningGate();
+        final service = await serve(
+          gate: gate,
+          unconfirmed: store,
+          onList: (req, n) => openContribution(),
+        );
+        await openAndSubmit(tester, service);
+
+        expect(find.byKey(const Key('money-review')), findsNothing);
+        expect(gate.reasons, isEmpty);
+        expect(submits(), 0);
+        expect(await store.read('p1'), isNull, reason: 'nothing was signed');
+      });
+
+      testWidgets('an earlier call found taken says its outcome once it ends '
+          '(M4)', (tester) async {
+        var reachable = false;
+        final service = await serve(
+          gate: SigningGate.open,
+          onSubmit: (req, n) => lost(connect.Code.unavailable),
+          onGetCall: (req, n) => reachable
+              ? callIn(
+                  req,
+                  settlement.AccountCallState.ACCOUNT_CALL_STATE_FINAL,
+                )
+              : lost(connect.Code.unavailable),
+        );
+        await openAndSubmit(tester, service);
+        await sign(tester);
+        expect(find.text(notConfirmedSubmitMessage), findsOneWidget);
+
+        dismissSnack(tester);
+        reachable = true;
+        await tester.tap(find.byKey(const Key('contribute-submit')));
+        await tester.pumpAndSettle();
+        expect(find.text(earlierCallSentMessage(title)), findsOneWidget);
+        expect(prepares(), 1, reason: 'nothing new prepared');
+
+        // Not reset silently: its own outcome follows once it is final.
+        dismissSnack(tester);
+        await tester.pumpAndSettle();
+        expect(find.text('Done: “$title”'), findsOneWidget);
       });
     });
 
