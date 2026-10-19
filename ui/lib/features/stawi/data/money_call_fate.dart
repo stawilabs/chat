@@ -88,6 +88,53 @@ final class EarlierMoneyCall implements Exception {
   String toString() => 'an earlier money call ("$title") was checked first';
 }
 
+/// A call of the same kind is still open on the account in settlement
+/// (submitted, included, or signed and not yet sent), perhaps from another
+/// device, a reinstall or cleared app data. Nothing new is reviewed or
+/// signed while it is.
+final class OpenMoneyCall implements Exception {
+  const OpenMoneyCall(
+    this.call,
+    this.fate, {
+    required this.samePayment,
+    required this.title,
+    this.heldBack = HeldBack.money,
+  });
+
+  /// The open call, as settlement listed it.
+  final settlement.AccountCall call;
+
+  /// [CallTaken] while it is submitted or included; [CallUnknown] for a
+  /// signed call settlement has not sent yet.
+  final MoneyCallFate fate;
+
+  /// Whether it is the very payment asked for again (same account, kind,
+  /// target and amount); otherwise only its kind is known to match.
+  final bool samePayment;
+
+  /// The review title of the call asked for now.
+  final String title;
+
+  /// What the new call would have done.
+  final HeldBack heldBack;
+
+  @override
+  String toString() => 'an open call of this kind was found (${call.callId})';
+}
+
+/// Settlement's open calls could not be read, so it is not known whether
+/// this payment was already sent (from another device, say). Nothing new is
+/// signed until they can be read.
+final class OpenCallsUnknown implements Exception {
+  const OpenCallsUnknown([this.error]);
+
+  /// Why they could not be read; null when there were too many to read.
+  final Object? error;
+
+  @override
+  String toString() => 'the open calls could not be read ($error)';
+}
+
 /// The fate a call's state tells, or null for one that says nothing yet
 /// (PREPARED, unspecified).
 MoneyCallFate? fateOfCall(settlement.AccountCall call) => switch (call.state) {

@@ -19,6 +19,7 @@ import '../domain/signing_checks.dart';
 import '../domain/stawi_money.dart';
 import 'device_key_store.dart';
 import 'money_call_fate.dart';
+import 'open_money_calls.dart';
 import 'stawi_clients.dart';
 import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
@@ -292,6 +293,8 @@ class StawiAccountService {
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: digest,
       kind: kind,
       review: MoneyReview.addKey(key: keyAddress),
@@ -371,6 +374,8 @@ class StawiAccountService {
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: checked.digest,
       kind: request.call.kind,
       call: checked.call,
@@ -413,6 +418,8 @@ class StawiAccountService {
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: digest,
       kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_VAULT_DEPOSIT,
       review: MoneyReview.deposit(
@@ -475,6 +482,8 @@ class StawiAccountService {
     }
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: digest,
       kind: kind,
       review: MoneyReview.standingOrder(
@@ -517,6 +526,8 @@ class StawiAccountService {
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: digest,
       kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER,
       review: MoneyReview.transferOut(
@@ -562,6 +573,8 @@ class StawiAccountService {
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: digest,
       kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE,
       review: MoneyReview.contribution(
@@ -611,6 +624,8 @@ class StawiAccountService {
     );
     return PreparedMoneyCall._(
       callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
       digest: checked.digest,
       kind: request.call.kind,
       call: checked.call,
@@ -678,13 +693,68 @@ class StawiAccountService {
   Future<settlement.PrepareAccountCallResponse> _prepareAccountCall(
     settlement.PrepareAccountCallRequest request,
   ) async {
-    await refuseWhileUnconfirmed(
-      heldBack:
-          request.kind == settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY
-          ? HeldBack.keyChange
-          : HeldBack.money,
-    );
+    await refuseWhileUnconfirmed(heldBack: heldBackBy(request.kind));
     return _accounts.prepareAccountCall(request);
+  }
+
+  /// At most this many pages of open calls are read before giving up.
+  static const int _openCallPages = 10;
+  static const int _openCallPageSize = 100;
+
+  /// Refuses [prepared] while settlement lists an open call of its kind on
+  /// its account that may be the same payment: one sent from another
+  /// device, or before a reinstall or cleared app data, that this device has
+  /// no record of. Throws [OpenMoneyCall] naming it, preferring one that is
+  /// the very payment asked for again. Only the person's own account is
+  /// read, and settlement lists it to its owner only.
+  ///
+  /// Fails safe: settlement's answer is the only answer. Any error reading
+  /// the list (signed out, rate limited, unreachable, or more open calls
+  /// than are read) throws [OpenCallsUnknown], and nothing is signed.
+  Future<void> refuseOpenCalls(PreparedMoneyCall prepared) async {
+    final me = await _identity();
+    if (!me.addresses.any((a) => bytesEqual(a, prepared.account))) {
+      throw const SigningRefused('the call is made from another account');
+    }
+    final intended = prepared.intended;
+    OpenMoneyCall? found;
+    var cursor = '';
+    for (var page = 0; ; page++) {
+      if (page == _openCallPages) throw const OpenCallsUnknown();
+      final settlement.ListAccountCallsResponse listed;
+      try {
+        listed = await _accounts.listAccountCalls(
+          settlement.ListAccountCallsRequest(
+            address: prepared.account,
+            pageSize: _openCallPageSize,
+            cursor: cursor,
+          ),
+        );
+      } on Object catch (error) {
+        throw OpenCallsUnknown(error);
+      }
+      for (final call in listed.calls) {
+        if (call.callId == prepared.callId || accountCallSettled(call.state)) {
+          continue;
+        }
+        final match = matchOpenCall(call, intended);
+        if (match == OpenCallMatch.none) continue;
+        final same = match == OpenCallMatch.samePayment;
+        if (found != null && (found.samePayment || !same)) continue;
+        found = OpenMoneyCall(
+          call,
+          // Submitted or included: taken. Signed but not sent: unknown.
+          fateOfCall(call) ?? const CallUnknown(),
+          samePayment: same,
+          title: prepared.review.title,
+          heldBack: heldBackBy(prepared.kind),
+        );
+      }
+      if (found != null && found.samePayment) break;
+      if (listed.nextCursor.isEmpty) break;
+      cursor = listed.nextCursor;
+    }
+    if (found != null) throw found;
   }
 
   /// Submits [signed], already held, and finds out what became of it: a
@@ -888,6 +958,8 @@ class StawiAccountService {
 class PreparedMoneyCall {
   const PreparedMoneyCall._({
     required this.callId,
+    required this.account,
+    required this.preparedCall,
     required this.digest,
     required this.review,
     required this.kind,
@@ -895,6 +967,13 @@ class PreparedMoneyCall {
   });
 
   final String callId;
+
+  /// The account the call is made from: one of the person's own.
+  final Uint8List account;
+
+  /// The call as settlement prepared it (its engine target and calldata,
+  /// already checked on the device).
+  final settlement.AccountCall preparedCall;
   final Uint8List digest;
   final MoneyReview review;
   final settlement.AccountCallKind kind;
@@ -902,6 +981,14 @@ class PreparedMoneyCall {
   /// What the account will do, decoded from the prepared calldata; null for a
   /// call that is not an engine call.
   final EngineCall? call;
+
+  /// What makes it this payment, to compare with settlement's open calls.
+  IntendedCall get intended => (
+    account: account,
+    kind: kind,
+    engineTarget: preparedCall.engineTarget,
+    engineCalldata: preparedCall.engineCalldata,
+  );
 }
 
 /// A prepared call signed on this device: exactly what is submitted, kept so
@@ -947,6 +1034,12 @@ const String deviceNotAKeyMessage =
     'one that is (Stawi account).';
 
 final RegExp _positiveDecimal = RegExp(r'^[1-9][0-9]{0,77}$');
+
+/// What a new call of [kind] held back by an earlier one would have done.
+HeldBack heldBackBy(settlement.AccountCallKind kind) =>
+    kind == settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY
+    ? HeldBack.keyChange
+    : HeldBack.money;
 
 /// Whether an account call has reached a state it will not leave.
 bool accountCallSettled(settlement.AccountCallState state) => switch (state) {

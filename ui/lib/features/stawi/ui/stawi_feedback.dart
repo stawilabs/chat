@@ -64,10 +64,44 @@ String earlierCallMessage(EarlierMoneyCall earlier) =>
             'added once it is known. Check again shortly',
     };
 
+/// Said when the payment asked for is already on its way: settlement lists
+/// it as open (sent from another device, say).
+String alreadySentMessage(String title) =>
+    '“$title” was already sent; waiting for confirmation. It is not sent '
+    'again';
+
+/// What to say when settlement lists an open call that holds a new one back.
+String openCallMessage(OpenMoneyCall open) =>
+    switch ((open.fate, open.samePayment, open.heldBack)) {
+      (_, _, HeldBack.keyChange) =>
+        'A device change on your account is still going through; add the '
+            'device once it is done. Check again shortly',
+      (CallTaken(), true, _) => alreadySentMessage(open.title),
+      (CallTaken(), false, _) =>
+        'A payment like this one is still going through (it may have been '
+            'sent from another device). Nothing new is sent until it is '
+            'done; check again shortly',
+      _ =>
+        'A payment like this one was signed earlier and has not gone through '
+            'yet. Nothing new is sent until it is known; check again shortly',
+    };
+
+/// Said when settlement's open calls could not be read: the payment may
+/// already be on its way, so it is not sent.
+const String openCallsUnknownMessage =
+    'Could not check whether this was already sent (from another device, '
+    'say). Nothing new is sent until it is known; try again shortly';
+
 /// What to tell the member when a Stawi action fails.
 String stawiErrorMessage(Object error) => switch (error) {
   _ when isAccountCatchingUp(error) => accountCatchingUpMessage,
   final EarlierMoneyCall earlier => earlierCallMessage(earlier),
+  final OpenMoneyCall open => openCallMessage(open),
+  OpenCallsUnknown(
+    error: connect.ConnectException(code: connect.Code.unauthenticated),
+  ) =>
+    '$openCallsUnknownMessage. Sign in again to continue',
+  OpenCallsUnknown() => openCallsUnknownMessage,
   SigningRefused(:final reason) => 'Not signed: $reason',
   StawiUnavailable(:final message) => message,
   DirectPartnerRefused() => DirectPartnerRefused.messageFor('They'),

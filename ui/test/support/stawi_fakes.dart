@@ -19,6 +19,15 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 /// A Connect transport that answers unary calls from handlers registered per
 /// procedure, so the generated stawi_api clients run unchanged in tests.
 class FakeConnectTransport implements connect.Transport {
+  /// Settlement lists no open account calls unless a test says otherwise, as
+  /// for an account with nothing on its way.
+  FakeConnectTransport() {
+    on(
+      settlement.AccountService.listAccountCalls,
+      (_) => settlement.ListAccountCallsResponse(),
+    );
+  }
+
   final Map<String, FutureOr<Object> Function(Object input)> _handlers = {};
 
   /// Every call made, in order: (procedure, request).

@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 
 import '../data/money_call_fate.dart';
+import '../data/open_money_calls.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/money_review.dart';
+import 'loan_widgets.dart' show moneyProviders, settleThenRefresh;
 import 'stawi_feedback.dart';
 
 /// Shows [review]; true when the person confirmed. Dismissing it, or
@@ -95,6 +99,13 @@ Future<bool> showMoneyReview(BuildContext context, MoneyReview review) async {
 /// again, which would take the next nonce and pay twice. Until its fate is
 /// known no other call is prepared or reviewed
 /// ([StawiAccountService.refuseWhileUnconfirmed]).
+///
+/// Before the review, settlement's open calls of the same kind are read
+/// ([StawiAccountService.refuseOpenCalls]), which covers a call sent from
+/// another device or before a reinstall. When the same payment is already
+/// on its way, that call is answered (and its outcome said once it is
+/// followed) and nothing new is signed; when they cannot be read, nothing is
+/// signed either.
 Future<settlement.AccountCall?> reviewAndSubmit(
   BuildContext context,
   WidgetRef ref,
@@ -106,13 +117,38 @@ Future<settlement.AccountCall?> reviewAndSubmit(
     ?..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
 
+  final container = moneyContainer(context);
+
   // Prepares already refuse while an earlier call is unconfirmed; this
-  // covers one held by another flow since [prepared] was prepared.
-  if (await runStawiAction(context, () async {
-        await service.refuseWhileUnconfirmed();
-        return true;
-      }) ==
-      null) {
+  // covers one held by another flow since [prepared] was prepared. Then
+  // settlement's open calls: one this device has no record of (sent from
+  // another device, or before a reinstall or cleared data) is followed, not
+  // paid again. Any doubt stops here, before anything is signed.
+  try {
+    await service.refuseWhileUnconfirmed(heldBack: heldBackBy(prepared.kind));
+    await service.refuseOpenCalls(prepared);
+  } on EarlierMoneyCall catch (earlier) {
+    say(stawiErrorMessage(earlier));
+    if (earlier.fate case CallTaken(:final call)) {
+      if (matchOpenCall(call, prepared.intended) == OpenCallMatch.samePayment) {
+        _outcomes[call] = _Outcome(messenger, prepared.review.done);
+        return call;
+      }
+      _followEarlier(container, service, call, messenger, earlier.title);
+    }
+    return null;
+  } on OpenMoneyCall catch (open) {
+    say(stawiErrorMessage(open));
+    if (open.fate case CallTaken(:final call)) {
+      if (open.samePayment) {
+        _outcomes[call] = _Outcome(messenger, prepared.review.done);
+        return call;
+      }
+      _followEarlier(container, service, call, messenger, null);
+    }
+    return null;
+  } on Object catch (error) {
+    say(stawiErrorMessage(error));
     return null;
   }
   if (!context.mounted ||
@@ -215,14 +251,71 @@ void reportDone(settlement.AccountCall submitted) => reportOutcome(
   ),
 );
 
+/// Said once an earlier call found taken is final: [title] names it, when
+/// known.
+String earlierDoneMessage(String? title) =>
+    title == null ? 'The earlier payment is done' : 'Done: “$title”';
+
+/// Follows [call], an earlier call found taken that is not the one asked for
+/// now, until it ends, then reads the money views again and says how it
+/// ended: its own outcome, so the person learns when they may go on.
+void _followEarlier(
+  ProviderContainer container,
+  StawiAccountService service,
+  settlement.AccountCall call,
+  ScaffoldMessengerState? messenger,
+  String? title,
+) {
+  // One follow per call, however often the person taps meanwhile.
+  if (!_followingEarlier.add(call.callId)) return;
+  _outcomes[call] = _Outcome(messenger, earlierDoneMessage(title));
+  unawaited(
+    settleThenRefresh(
+      container,
+      service,
+      call,
+      moneyProviders(),
+    ).whenComplete(() => _followingEarlier.remove(call.callId)),
+  );
+}
+
+/// The earlier calls [_followEarlier] is following now.
+final Set<String> _followingEarlier = {};
+
+/// Runs [prepare], with errors in a snack bar; null when nothing was
+/// prepared. An earlier call found taken instead is followed until it ends,
+/// and its outcome said.
+Future<PreparedMoneyCall?> prepareMoneyCall(
+  BuildContext context,
+  WidgetRef ref,
+  Future<PreparedMoneyCall> Function() prepare,
+) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final container = moneyContainer(context);
+  final service = ref.read(stawiAccountServiceProvider);
+  try {
+    return await prepare();
+  } on Object catch (error) {
+    messenger?.showSnackBar(SnackBar(content: Text(stawiErrorMessage(error))));
+    if (error case EarlierMoneyCall(
+      :final title,
+      fate: CallTaken(:final call),
+    )) {
+      _followEarlier(container, service, call, messenger, title);
+    }
+    return null;
+  }
+}
+
 /// prepare → review → device lock → submit, with errors in a snack bar; null
-/// when nothing was signed.
+/// when nothing was signed. The call it answers is followed by the caller:
+/// the new one, or the same payment found already sent.
 Future<settlement.AccountCall?> runMoneyAction(
   BuildContext context,
   WidgetRef ref,
   Future<PreparedMoneyCall> Function() prepare,
 ) async {
-  final prepared = await runStawiAction(context, prepare);
+  final prepared = await prepareMoneyCall(context, ref, prepare);
   if (prepared == null || !context.mounted) return null;
   return reviewAndSubmit(context, ref, prepared);
 }
