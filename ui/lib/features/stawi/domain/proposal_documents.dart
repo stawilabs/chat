@@ -116,6 +116,39 @@ Uint8List engineGrantDocument({
   _int(0),
 ]);
 
+/// GovernanceModule.policyChangePayloadHash's document: abi.encode(
+/// "POLICY_CHANGE", custody, constitutionHash, financePolicyHash,
+/// securityPolicyHash, paramsHash, capabilityIds) (Go
+/// stawi.PolicyChangePayload).
+Uint8List policyChangeDocument({
+  required List<int> custody,
+  required List<int> constitutionHash,
+  required List<int> financePolicyHash,
+  required List<int> securityPolicyHash,
+  required List<int> paramsHash,
+  required List<List<int>> capabilityIds,
+}) {
+  Uint8List b32(List<int> h, String name) {
+    if (h.length != 32) throw ArgumentError('$name: 32 bytes');
+    return Uint8List.fromList(h);
+  }
+
+  final tag = _dynamic(ascii.encode('POLICY_CHANGE'));
+  const head = 7 * 32;
+  return Uint8List.fromList([
+    ..._int(head),
+    ..._address(custody, 'custody'),
+    ...b32(constitutionHash, 'constitutionHash'),
+    ...b32(financePolicyHash, 'financePolicyHash'),
+    ...b32(securityPolicyHash, 'securityPolicyHash'),
+    ...b32(paramsHash, 'paramsHash'),
+    ..._int(head + tag.length),
+    ...tag,
+    ..._int(capabilityIds.length),
+    for (final id in capabilityIds) ...b32(id, 'capabilityId'),
+  ]);
+}
+
 /// The payload hash a proposal of [document] carries.
 Uint8List payloadHashOf(List<int> document) => keccak256(document);
 

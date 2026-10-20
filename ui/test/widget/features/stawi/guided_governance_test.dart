@@ -12,6 +12,7 @@ import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
+import 'package:stawi/features/stawi/ui/decision_progress_screen.dart';
 import 'package:stawi/features/stawi/ui/guided_governance.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -65,6 +66,15 @@ void main() {
           room: room,
           signer: account,
           chatRoomId: roomId,
+        ),
+      )
+      ..on(
+        settlement.RoomService.getRoomCall,
+        (req) => settlement.GetRoomCallResponse(
+          call: settlement.RoomCall(
+            callId: req.callId,
+            state: settlement.RoomCallState.ROOM_CALL_STATE_SUBMITTED,
+          ),
         ),
       );
     // Me (p1) and Baraka (p3, the treasurer who may lend) are members on
@@ -335,7 +345,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('guided-error')), findsOneWidget);
     await pick(tester, 'p4');
+    // Settlement finishes a passed removal itself: nothing to do by hand.
+    expect(
+      find.textContaining('Stawi carries it out by itself'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Queue a passed proposal'), findsNothing);
     await signAndConfirm(tester, 'Propose removing Chena');
+    // The proposal is followed from here: settlement has not put it on chain
+    // in this test, so it is still being sent.
+    expect(find.byType(DecisionProgressScreen), findsOneWidget);
+    expect(find.byKey(const Key('decision-stage-sending')), findsOneWidget);
     final req = prepared();
     expect(req.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
     expect(

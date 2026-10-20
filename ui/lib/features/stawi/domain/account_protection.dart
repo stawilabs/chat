@@ -147,42 +147,123 @@ bool _zeroOrEmpty(List<int> b) => b.every((x) => x == 0);
 const String notTheGuardianChange =
     'this would not make the guardian change you chose';
 
-/// The digest to sign for adding (or removing) [guardian] on [account]: an
-/// ADD_GUARDIAN (REMOVE_GUARDIAN) whose op proposes the policy in force
-/// ([state], read off the chain) with exactly the guardian set and
-/// threshold [guardianSetAfter] gives and nothing else changed, carried in a
-/// POLICY_CHANGE intent that binds that op, on [chainId] (the app's
-/// deployment configuration).
-Uint8List checkedGuardianChange({
+/// What a guardian change does, as the person asked for it.
+sealed class GuardianSetChange {
+  const GuardianSetChange();
+}
+
+/// [guardian] (known to the person as [name]) becomes a guardian.
+final class GuardianAdded extends GuardianSetChange {
+  const GuardianAdded(this.guardian, {this.name});
+  final Uint8List guardian;
+  final String? name;
+}
+
+/// [guardian] stops being a guardian.
+final class GuardianRemoved extends GuardianSetChange {
+  const GuardianRemoved(this.guardian);
+  final Uint8List guardian;
+}
+
+/// [old] is replaced by [guardian] (known as [name]).
+final class GuardianReplaced extends GuardianSetChange {
+  const GuardianReplaced(this.old, this.guardian, {this.name});
+  final Uint8List old;
+  final Uint8List guardian;
+  final String? name;
+}
+
+/// Only how many guardians must agree changes.
+final class GuardianThresholdChanged extends GuardianSetChange {
+  const GuardianThresholdChanged();
+}
+
+/// The guardian set after replacing [old] with [replacement], [requested]
+/// of them needed (0 keeps the current number, clamped to the set).
+({List<Uint8List> guardians, int threshold}) guardianSetReplacing(
+  settlement.AccountState state,
+  Uint8List old,
+  Uint8List replacement, {
+  int requested = 0,
+}) {
+  final current = [for (final g in state.guardians) Uint8List.fromList(g)];
+  if (!current.any((g) => bytesEqual(g, old))) {
+    throw const FormatException('That address is not one of your guardians');
+  }
+  final set = [
+    for (final g in current)
+      if (bytesEqual(g, old)) replacement else g,
+  ];
+  final threshold = (requested != 0 ? requested : state.guardianThreshold)
+      .clamp(1, set.length);
+  checkGuardianSet(state, set, threshold);
+  return (guardians: set, threshold: threshold);
+}
+
+/// Refuses a guardian set the account would not take: a guardian twice, the
+/// zero address, the account itself, more than 16, or a threshold outside 1
+/// to the set's size (0 only for an empty set).
+void checkGuardianSet(
+  settlement.AccountState state,
+  List<Uint8List> guardians,
+  int threshold,
+) {
+  if (guardians.length > maxGuardians) {
+    throw const FormatException('At most $maxGuardians guardians');
+  }
+  for (var i = 0; i < guardians.length; i++) {
+    final g = guardians[i];
+    if (g.length != 20 || g.every((b) => b == 0)) {
+      throw const FormatException('A guardian is a 20-byte address (0x…)');
+    }
+    if (bytesEqual(g, state.address)) {
+      throw const FormatException('Your account cannot guard itself');
+    }
+    if (guardians.skip(i + 1).any((o) => bytesEqual(o, g))) {
+      throw const FormatException('That address is already your guardian');
+    }
+  }
+  if (guardians.isEmpty
+      ? threshold != 0
+      : threshold < 1 || threshold > guardians.length) {
+    throw const FormatException('Choose how many guardians must agree');
+  }
+}
+
+/// The most guardians SET_GUARDIANS takes.
+const int maxGuardians = 16;
+
+/// The digest to sign for a SET_GUARDIANS on [account] naming exactly
+/// [guardians] with [threshold] of them to agree: its op proposes the
+/// policy in force ([state], read off the chain) with that guardian set and
+/// threshold and nothing else changed, carried in a POLICY_CHANGE intent
+/// that binds that op, on [chainId] (the app's deployment configuration).
+Uint8List checkedGuardianSet({
   required settlement.PrepareAccountCallResponse prepared,
   required settlement.AccountState state,
   required Uint8List account,
-  required Uint8List guardian,
-  required bool add,
+  required List<Uint8List> guardians,
+  required int threshold,
   required BigInt chainId,
-  int threshold = 0,
 }) {
   final digest = checkedAccountCallDigest(
     prepared: prepared,
-    kind: add
-        ? settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_GUARDIAN
-        : settlement.AccountCallKind.ACCOUNT_CALL_KIND_REMOVE_GUARDIAN,
+    kind: settlement.AccountCallKind.ACCOUNT_CALL_KIND_SET_GUARDIANS,
     account: account,
   );
   if (!bytesEqual(state.address, account)) {
     throw const SigningRefused('the account read is not yours');
   }
+  try {
+    checkGuardianSet(state, guardians, threshold);
+  } on FormatException {
+    throw const SigningRefused(notTheGuardianChange);
+  }
   final intent = checkedPreparedIntent(prepared, digest, account);
-  final after = guardianSetAfter(
-    state,
-    guardian,
-    add: add,
-    requested: threshold,
-  );
   final expected = policyInForce(
     state,
-    guardians: after.guardians,
-    threshold: after.threshold,
+    guardians: guardians,
+    threshold: threshold,
   );
   final op = prepared.managementOp;
   if (!prepared.hasManagementOp() ||

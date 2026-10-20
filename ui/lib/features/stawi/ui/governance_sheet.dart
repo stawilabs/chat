@@ -23,19 +23,27 @@ Future<bool> signRoomAct(
   BuildContext context,
   WidgetRef ref,
   Future<PreparedRoomAct> Function() prepare,
+) async => await signRoomActSent(context, ref, prepare) != null;
+
+/// [signRoomAct], answering the act that was signed and sent (null when it
+/// was not), so its progress can be followed.
+Future<PreparedRoomAct?> signRoomActSent(
+  BuildContext context,
+  WidgetRef ref,
+  Future<PreparedRoomAct> Function() prepare,
 ) async {
   final service = ref.read(stawiRoomServiceProvider);
   final prepared = await runStawiAction(context, prepare);
-  if (prepared == null || !context.mounted) return false;
+  if (prepared == null || !context.mounted) return null;
   if (!await showMoneyReview(context, prepared.review) || !context.mounted) {
-    return false;
+    return null;
   }
   final sent = await runStawiAction(
     context,
     () => service.submitAct(prepared),
     success: prepared.review.done,
   );
-  return sent != null;
+  return sent == null ? null : prepared;
 }
 
 Future<bool> _send<T>(

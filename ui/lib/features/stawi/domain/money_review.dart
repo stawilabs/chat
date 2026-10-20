@@ -5,6 +5,13 @@ import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
 import 'account_engine_calls.dart';
+import 'account_protection.dart'
+    show
+        GuardianSetChange,
+        GuardianAdded,
+        GuardianRemoved,
+        GuardianReplaced,
+        GuardianThresholdChanged;
 import 'personal_calls.dart';
 import 'stawi_money.dart';
 
@@ -289,35 +296,83 @@ final class MoneyReview {
     );
   }
 
-  /// Adding (or removing) [guardian]: who must agree afterwards, and when it
-  /// applies.
-  factory MoneyReview.guardianChange({
-    required Uint8List guardian,
-    required bool add,
+  /// A guardian change ([change]: who is added, removed or replaced): who
+  /// must agree afterwards, and when it applies.
+  factory MoneyReview.guardianSet({
+    required GuardianSetChange change,
     required int guardians,
     required int threshold,
   }) {
-    final id = _short(sdk.bytesToHex0x(guardian).toLowerCase());
+    String id(Uint8List g) => _short(sdk.bytesToHex0x(g).toLowerCase());
+    String named(Uint8List g, String? name) =>
+        name == null ? id(g) : '$name (${id(g)})';
+    final (title, done) = switch (change) {
+      GuardianAdded() => ('Add a guardian', 'Guardian added'),
+      GuardianRemoved() => ('Remove a guardian', 'Guardian removed'),
+      GuardianReplaced() => ('Replace a guardian', 'Guardian replaced'),
+      GuardianThresholdChanged() => (
+        'Change how many guardians must agree',
+        'Guardians changed',
+      ),
+    };
     return MoneyReview(
-      title: add ? 'Add a guardian' : 'Remove a guardian',
+      title: title,
       lines: [
-        ('Guardian', id),
+        ...switch (change) {
+          GuardianAdded(:final guardian, :final name) => [
+            ('Guardian', named(guardian, name)),
+          ],
+          GuardianRemoved(:final guardian) => [('Removed', id(guardian))],
+          GuardianReplaced(:final old, :final guardian, :final name) => [
+            ('Replaced', id(old)),
+            ('By', named(guardian, name)),
+          ],
+          GuardianThresholdChanged() => const <(String, String)>[],
+        },
         (
           'After the change',
           guardians == 0
               ? 'No guardians: nobody can recover your account'
               : '$threshold of $guardians guardians must agree to recover your account',
         ),
-        ('Takes effect', 'after ${_delay(keyChangeDelay)}'),
+        ('Takes effect', 'after ${_delay(keyChangeDelay)}, in one change'),
       ],
       notes: [
-        if (add) 'A guardian can help move your account to a new phone if you lose yours. Choose someone you trust: enough guardians together can take over your account after a waiting period you can contest.',
+        if (change is GuardianAdded || change is GuardianReplaced) 'A guardian can help move your account to a new phone if you lose yours. Choose someone you trust: enough guardians together can take over your account after a waiting period you can contest.',
         'Until it takes effect you can cancel it, and your guardians can stop it.',
       ],
       signLabel: _sign,
-      done: add
-          ? 'Guardian added; it takes effect in ${_delay(keyChangeDelay)}'
-          : 'Guardian removed; it takes effect in ${_delay(keyChangeDelay)}',
+      done: '$done; it takes effect in ${_delay(keyChangeDelay)}',
+    );
+  }
+
+  /// A guardian starting ([request]) or approving a recovery of [account]
+  /// to [newKey].
+  factory MoneyReview.guardianAct({
+    required bool request,
+    required Uint8List account,
+    required Uint8List newKey,
+    required int approvals,
+    required int required,
+    required int threshold,
+  }) {
+    String id(Uint8List g) => _short(sdk.bytesToHex0x(g).toLowerCase());
+    return MoneyReview(
+      title: request ? 'Start a recovery as guardian' : 'Approve the recovery',
+      lines: [
+        ('Account', id(account)),
+        ('Moves it to the key', id(newKey)),
+        if (request)
+          ('Guardians needed', '$threshold, this one included')
+        else
+          ('Approvals', '$approvals of $required so far, then yours'),
+      ],
+      notes: const [
+        'Only do this for someone who asked you: check the new key with them in person or on a call. Once enough guardians approve and the waiting time passes, the account moves to that key and its other keys stop working. The owner can contest it from any of their phones meanwhile.',
+        'Checked on this device: the act is on that account, for that key, signed with this phone\'s guardian key.',
+      ],
+      signLabel: _sign,
+      done: request ? 'Recovery started' : 'Recovery approved',
     );
   }
 

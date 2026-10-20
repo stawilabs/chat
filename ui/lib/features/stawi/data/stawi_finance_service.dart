@@ -2,6 +2,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
 
+import '../domain/decision_progress.dart' show undecidedProposalStates;
 import '../domain/stawi_money.dart';
 import 'stawi_clients.dart';
 import 'stawi_identity.dart';
@@ -141,6 +142,21 @@ class StawiFinanceService {
     return (await roomAssets(roomId)).of(bucket.assetIds.first);
   }
 
+  /// The room's policy in force: its constitution, hashes and epoch.
+  Future<finance.PolicyVersion> policy(String roomId) async =>
+      (await _rooms.getPolicy(finance.GetPolicyRequest(roomId: roomId)))
+          .policyVersion;
+
+  /// How many of the room's proposals are still to be decided or carried
+  /// out (indexed, open, revealing, passed or queued).
+  Future<int> undecidedProposals(String roomId) async =>
+      (await _governance.listProposals(
+        finance.ListProposalsRequest(
+          roomId: roomId,
+          states: undecidedProposalStates,
+        ),
+      )).proposals.length;
+
   /// The constitution's roles.
   Future<List<finance.RoleCapabilities>> roles(String roomId) async =>
       (await _rooms.getPolicy(finance.GetPolicyRequest(roomId: roomId)))
@@ -252,6 +268,25 @@ final stawiProposalByOnchainIdProvider = FutureProvider.autoDispose
           .watch(stawiFinanceServiceProvider)
           .proposalByOnchainId(key.$1, key.$2),
     );
+
+/// The room's policy in force, as finance holds it.
+final stawiPolicyProvider = FutureProvider.autoDispose
+    .family<finance.PolicyVersion, String>(
+      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).policy(roomId),
+    );
+
+/// How many of the room's proposals are undecided; null when finance cannot
+/// say just now.
+final stawiUndecidedProposalsProvider = FutureProvider.autoDispose
+    .family<int?, String>((ref, roomId) async {
+      try {
+        return await ref
+            .watch(stawiFinanceServiceProvider)
+            .undecidedProposals(roomId);
+      } on Object {
+        return null;
+      }
+    }, retry: (_, _) => null);
 
 final stawiRolesProvider = FutureProvider.autoDispose
     .family<List<finance.RoleCapabilities>, String>(

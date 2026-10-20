@@ -9,7 +9,9 @@ import '../../rooms/data/detail_panel_providers.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/guided_governance.dart';
+import 'decision_progress_screen.dart';
 import 'governance_sheet.dart';
+import 'rule_change_screen.dart';
 import 'stawi_feedback.dart';
 
 /// The decisions a member makes most, each a guided flow.
@@ -24,6 +26,11 @@ enum GroupDecision {
     'Remove a member',
     'The group votes on it',
     Icons.person_remove_outlined,
+  ),
+  rules(
+    'Change group rules',
+    'Quorum, voting time, members, fees…',
+    Icons.rule,
   ),
   leave('Leave the group', 'Stop being a member', Icons.exit_to_app);
 
@@ -70,6 +77,10 @@ Future<void> showGroupDecisionsSheet(
   if (!context.mounted) return;
   if (choice == #advanced) {
     await showGovernanceSheet(context, roomId: roomId);
+  } else if (choice == GroupDecision.rules) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => RuleChangeScreen(roomId: roomId)),
+    );
   } else if (choice is GroupDecision) {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -158,7 +169,7 @@ class _GuidedDecisionScreenState extends ConsumerState<GuidedDecisionScreen> {
         );
       case GroupDecision.remove:
         change = removalChange(name: person.name, account: account);
-      case GroupDecision.leave:
+      case GroupDecision.leave || GroupDecision.rules:
         change = leaveChange();
     }
     setState(() {
@@ -170,7 +181,7 @@ class _GuidedDecisionScreenState extends ConsumerState<GuidedDecisionScreen> {
   Future<void> _sign(GuidedChange change) async {
     setState(() => _sending = true);
     final service = ref.read(stawiRoomServiceProvider);
-    final ok = await signRoomAct(
+    final sent = await signRoomActSent(
       context,
       ref,
       () async => service.prepareAct(
@@ -179,12 +190,12 @@ class _GuidedDecisionScreenState extends ConsumerState<GuidedDecisionScreen> {
       ),
     );
     if (!mounted) return;
-    if (ok) {
-      ref.invalidate(stawiMembersProvider(widget.roomId));
-      Navigator.of(context).pop();
-    } else {
+    if (sent == null) {
       setState(() => _sending = false);
+      return;
     }
+    ref.invalidate(stawiMembersProvider(widget.roomId));
+    await followDecision(context, widget.roomId, sent, change.title);
   }
 
   @override
@@ -219,7 +230,7 @@ class _GuidedDecisionScreenState extends ConsumerState<GuidedDecisionScreen> {
       GroupDecision.invite => others.where((p) => p.invitable).toList(),
       GroupDecision.remove => others.where((p) => p.removable).toList(),
       GroupDecision.role => people.where((p) => p.active).toList(),
-      GroupDecision.leave => <GroupPerson>[],
+      GroupDecision.leave || GroupDecision.rules => <GroupPerson>[],
     };
     final theme = Theme.of(context);
     return ListView(
@@ -233,7 +244,7 @@ class _GuidedDecisionScreenState extends ConsumerState<GuidedDecisionScreen> {
           GroupDecision.role => 'Which role, and who? The group votes on it.',
           GroupDecision.remove =>
             'Who should be removed? The group votes on it.',
-          GroupDecision.leave => '',
+          GroupDecision.leave || GroupDecision.rules => '',
         }, style: theme.textTheme.titleMedium),
         const SizedBox(height: 12),
         if (_decision == GroupDecision.role) ..._roleFields(people),

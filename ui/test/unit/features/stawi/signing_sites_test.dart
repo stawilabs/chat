@@ -29,6 +29,12 @@ const Set<String> deviceSignSites = {
   // reveals): checked against the act chosen and the room's contracts
   // (verifyRoomCall), and reviewed first.
   'lib/features/stawi/data/stawi_room_service.dart submitAct',
+  // The guardian key's proof of possession (RegisterGuardianKey).
+  'lib/features/stawi/data/stawi_guardian_service.dart registerGuardianKey',
+  // A guardian's act on an account it guards (start or approve a
+  // recovery), checked against the account as the chain reads it and
+  // reviewed first.
+  'lib/features/stawi/data/stawi_guardian_service.dart submitAct',
 };
 
 /// Signers that are not a device key, as `file receiver`: Matrix Olm signs
