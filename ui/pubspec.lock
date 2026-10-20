@@ -2037,10 +2037,10 @@ packages:
     dependency: "direct main"
     description:
       name: stawi_api
-      sha256: e2e53db3632ea78de6897b592e1092f7d867b3a89fd2100313bcd708aa5612f9
+      sha256: bccb0754e2039a3e3514764c0d549172f87f9dc601950249ed326ea28a96e633
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.7.0"
   stawi_api_chat:
     dependency: "direct main"
     description:

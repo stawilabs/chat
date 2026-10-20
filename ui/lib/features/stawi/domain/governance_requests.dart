@@ -5,8 +5,10 @@ import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
+import 'proposal_documents.dart';
 import 'secret_ballot.dart';
 import 'signing_checks.dart';
+import 'stawi_money.dart' show formatBps;
 
 /// Builds the act the person chose as the SDK checks it: from the room's
 /// contracts as finance knows them and, for the parts only the chain fixes
@@ -667,4 +669,131 @@ GovernanceRequest revokeRoleRequest({
 
 extension on String {
   String ifEmpty(String other) => isEmpty ? other : this;
+}
+
+BigInt _loanNumber(finance.Loan loan) {
+  final id = BigInt.parse(loan.onchainLoanId.toStringUnsigned());
+  if (id == BigInt.zero) {
+    throw const SigningRefused('the loan is not on chain yet');
+  }
+  return id;
+}
+
+/// The LoanBook a room loan is on, as finance indexes it.
+Uint8List _loanBookOf(finance.Loan loan) {
+  if (loan.loanBook.length != 20 || loan.loanBook.every((b) => b == 0)) {
+    throw const SigningRefused('the loan\'s loan book is not known');
+  }
+  return Uint8List.fromList(loan.loanBook);
+}
+
+/// Opens the room's vote on [loan], a pending request the room decides by
+/// vote (PROPOSE loan_approval): the LOAN proposal of LoanBook's approval
+/// document for the loan as finance indexes it (its borrower, amount and
+/// instalments), on the room's custody. Any member may open it.
+GovernanceRequest openLoanVoteRequest(finance.Loan loan, {String? borrower}) {
+  final id = _loanNumber(loan);
+  final book = _loanBookOf(loan);
+  final amount = BigInt.tryParse(loan.requested.amount) ?? BigInt.zero;
+  if (amount <= BigInt.zero || loan.borrowerAccount.length != 20) {
+    throw const SigningRefused('the loan request could not be read');
+  }
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE,
+    params: settlement.RoomCallParams(
+      propose: settlement.RoomProposeParams(loanApproval: loan.onchainLoanId),
+    ),
+    summary: 'Open the vote on loan request #$id',
+    expected: (room, prepared) => RoomCallExpected.propose(
+      proposalKind: ProposalKinds.loan,
+      payloadHash: payloadHashOf(
+        loanApprovalDocument(
+          loanBook: book,
+          custody: _custody(room),
+          loanId: id,
+          borrower: loan.borrowerAccount,
+          amount: amount,
+          instalments: loan.instalments,
+        ),
+      ),
+    ),
+    lines: [
+      ('Loan request', '#$id'),
+      if (borrower != null) ('Borrower', borrower),
+      ('Instalments', '${loan.instalments}'),
+    ],
+  );
+}
+
+/// Proposes writing [loan] off: the room stops collecting it and takes the
+/// loss (PROPOSE loan_write_off, LoanBook's write-off document).
+GovernanceRequest writeOffRequest(finance.Loan loan) {
+  final id = _loanNumber(loan);
+  final book = _loanBookOf(loan);
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE,
+    params: settlement.RoomCallParams(
+      propose: settlement.RoomProposeParams(loanWriteOff: loan.onchainLoanId),
+    ),
+    summary: 'Propose writing off loan #$id',
+    expected: (room, prepared) => RoomCallExpected.propose(
+      proposalKind: ProposalKinds.writeOff,
+      payloadHash: payloadHashOf(
+        loanWriteOffDocument(
+          loanBook: book,
+          custody: _custody(room),
+          loanId: id,
+        ),
+      ),
+    ),
+    lines: [('Loan', '#$id'), ('Decision', 'Write it off')],
+  );
+}
+
+/// Proposes restructuring [loan]: what is owed repaid over [instalments]
+/// from now at [rateBps] interest per instalment (PROPOSE loan_restructure,
+/// LoanBook's restructure document).
+GovernanceRequest restructureRequest(
+  finance.Loan loan, {
+  required int instalments,
+  required int rateBps,
+}) {
+  if (instalments < 1 || instalments > 65535) {
+    throw ArgumentError.value(instalments, 'instalments', '1 to 65535');
+  }
+  if (rateBps < 0 || rateBps > 0xffffffff) {
+    throw ArgumentError.value(rateBps, 'rateBps', 'a uint32');
+  }
+  final id = _loanNumber(loan);
+  final book = _loanBookOf(loan);
+  return GovernanceRequest(
+    kind: settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE,
+    params: settlement.RoomCallParams(
+      propose: settlement.RoomProposeParams(
+        loanRestructure: settlement.RoomLoanRestructure(
+          loanId: loan.onchainLoanId,
+          instalments: instalments,
+          rateBps: rateBps,
+        ),
+      ),
+    ),
+    summary: 'Propose restructuring loan #$id',
+    expected: (room, prepared) => RoomCallExpected.propose(
+      proposalKind: ProposalKinds.restructure,
+      payloadHash: payloadHashOf(
+        loanRestructureDocument(
+          loanBook: book,
+          custody: _custody(room),
+          loanId: id,
+          instalments: instalments,
+          rateBps: rateBps,
+        ),
+      ),
+    ),
+    lines: [
+      ('Loan', '#$id'),
+      ('New instalments', '$instalments'),
+      ('Interest', '${formatBps(rateBps)} each instalment'),
+    ],
+  );
 }

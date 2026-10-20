@@ -249,6 +249,26 @@ void main() {
       // Settlement's CAST_VOTE, built for the choice it was asked (or
       // [preparedChoice]) on the room's governance at chain 146.
       ..on(settlement.RoomService.prepareRoomCall, (req) {
+        if (req.kind == settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE) {
+          // A loan decision: honest for the loan book and the pending
+          // request finance indexes (Amina's, 300 USDC, no instalments).
+          return honestRoomCall(
+            req,
+            room: RoomContracts(
+              governance: governance,
+              custody: custody,
+              chainId: BigInt.from(146),
+            ),
+            signer: Uint8List.fromList(req.account),
+            chatRoomId: roomId,
+            loanBook: book,
+            pendingLoan: (
+              borrower: amina,
+              amount: BigInt.from(300000000),
+              instalments: 0,
+            ),
+          );
+        }
         final choice = preparedChoice ?? req.params.vote.choice;
         final vote = RoomVote.cast(
           proposalId: BigInt.from(req.params.vote.onchainProposalId.toInt()),
@@ -369,6 +389,7 @@ void main() {
               ballots: SecretBallotStore(MemoryDeviceKeyVault()),
               contracts: (id) async => RoomContracts(
                 governance: governance,
+                custody: custody,
                 chainId: BigInt.from(146),
               ),
             ),
@@ -697,6 +718,86 @@ void main() {
       expect(find.text("The vote hasn't opened yet"), findsOneWidget);
       expect(find.byKey(const Key('loan-3-vote')), findsNothing);
       expect(find.byKey(const Key('governance-number')), findsNothing);
+    });
+
+    testWidgets('any member opens the vote with one tap', (tester) async {
+      await open(tester, loans: pending);
+      await tapAndSettle(tester, find.byKey(const Key('loan-3-open-vote')));
+      final req = transport
+          .requestsTo(settlement.RoomService.prepareRoomCall)
+          .single;
+      expect(req.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
+      expect(req.params.propose.loanApproval, Int64(3));
+      expect(inReview('Open the vote on loan request #3'), findsOneWidget);
+      expect(gate.reasons, isEmpty, reason: 'the review comes first');
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      expect(gate.reasons, ['Open the vote on loan request #3']);
+      expect(votesSent.sent.single.content['kind'], 'PROPOSE');
+    });
+
+    testWidgets('a loan the form approves by itself is not shown as a vote', (
+      tester,
+    ) async {
+      product = finance.RoomLoanProduct()
+        ..mergeFromMessage(normal)
+        ..officerApprovals = 0
+        ..autoApproveBelow = usd(500000000);
+      await open(tester, loans: pending);
+      expect(find.text('Decided by a room vote'), findsNothing);
+      expect(find.byKey(const Key('loan-3-open-vote')), findsNothing);
+    });
+  });
+
+  group('a loan in default', () {
+    final defaulted = [
+      groupLoan(
+        id: 5,
+        borrower: amina,
+        state: finance.LoanState.LOAN_STATE_DEFAULTED,
+      ),
+    ];
+
+    testWidgets('a member proposes writing it off', (tester) async {
+      await open(tester, loans: defaulted);
+      await tapAndSettle(tester, find.byKey(const Key('loan-5-write-off')));
+      final req = transport
+          .requestsTo(settlement.RoomService.prepareRoomCall)
+          .single;
+      expect(req.params.propose.loanWriteOff, Int64(5));
+      expect(inReview('Propose writing off loan #5'), findsOneWidget);
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      expect(votesSent.sent.single.content['kind'], 'PROPOSE');
+    });
+
+    testWidgets('a member proposes restructuring it, on terms they enter', (
+      tester,
+    ) async {
+      await open(tester, loans: defaulted);
+      await tapAndSettle(tester, find.byKey(const Key('loan-5-restructure')));
+      await tester.enterText(
+        find.byKey(const Key('restructure-instalments')),
+        '10',
+      );
+      await tester.enterText(find.byKey(const Key('restructure-rate')), '150');
+      await tapAndSettle(tester, find.byKey(const Key('restructure-review')));
+      final req = transport
+          .requestsTo(settlement.RoomService.prepareRoomCall)
+          .single;
+      expect(req.params.propose.loanRestructure.loanId, Int64(5));
+      expect(req.params.propose.loanRestructure.instalments, 10);
+      expect(req.params.propose.loanRestructure.rateBps, 150);
+      expect(inReview('1.5% each instalment'), findsOneWidget);
+      await tapAndSettle(tester, find.byKey(const Key('money-review-sign')));
+      expect(gate.reasons, ['Propose restructuring loan #5']);
+    });
+
+    testWidgets('someone who is no member on chain is offered neither', (
+      tester,
+    ) async {
+      membersFail = true;
+      await open(tester, loans: defaulted);
+      expect(find.byKey(const Key('loan-5-write-off')), findsNothing);
+      expect(find.byKey(const Key('loan-5-restructure')), findsNothing);
     });
   });
 

@@ -90,6 +90,16 @@ final financeSavingsProvider = Provider<finance.SavingsServiceClient>((ref) {
   );
 });
 
+final financeIntentsProvider = Provider<finance.IntentServiceClient>((ref) {
+  final runtime = ref.watch(authRuntimeProvider);
+  return finance.IntentServiceClient(
+    createRuntimeTransportFactory(runtime)(
+      Uri.parse(ApiConfig.financeBaseUrl),
+      const [],
+    ),
+  );
+});
+
 final financeLoansProvider = Provider<finance.LoanServiceClient>((ref) {
   final runtime = ref.watch(authRuntimeProvider);
   return finance.LoanServiceClient(

@@ -499,6 +499,13 @@ void main() {
           'LOAN_REPAID': 'Loan repaid',
           'LOAN_CLOSED_UNACCEPTED': 'Loan closed',
           'CONTRIBUTION_FAILED': 'Contribution missed',
+          'CONTRIBUTION': 'Contribution received',
+          'DUES_DUE': 'Dues due',
+          'WITHDRAWAL': 'Withdrawal',
+          'SHARE_OUT_COLLECTED': 'Share-out collected',
+          'MONEY_RECEIVED': 'Money received',
+          'DEPOSIT': 'Money saved',
+          'ROOM_SETUP': 'Lending setup',
           'PROPOSAL': 'Stawi update',
           '': 'Stawi update',
         };
@@ -510,6 +517,16 @@ void main() {
           expect(result.title, title, reason: kind);
           expect(result.body, 'Bob offers you 300.00 USDC', reason: kind);
         }
+      });
+
+      test('a dues reminder in a group names the room', () {
+        final result = formatter.format(
+          event: card('DUES_DUE', 'Dues due 27 Oct'),
+          senderName: 'Stawi',
+          roomName: 'Chama',
+        );
+        expect(result.title, 'Dues due @ Chama');
+        expect(result.body, 'Dues due 27 Oct');
       });
 
       test('in a group, name the room', () {

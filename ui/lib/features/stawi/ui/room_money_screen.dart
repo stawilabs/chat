@@ -19,6 +19,8 @@ import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
 import '../domain/payoff_top_up.dart';
 import '../domain/stawi_money.dart';
+import '../domain/withdrawal_fee.dart';
+import 'dues_autopay_switch.dart';
 import 'group_loan_request_screen.dart' show roomLoanProviders;
 import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
 import 'money_review_sheet.dart';
@@ -63,7 +65,7 @@ class RoomMoneyScreen extends StatelessWidget {
       ),
       body: TabBarView(
         children: [
-          _SavingsTab(roomId: roomId),
+          _SavingsTab(roomId: roomId, roomName: roomName),
           _ShareOutsTab(roomId: roomId),
           RoomLoansTab(roomId: roomId, roomName: roomName),
           _MembersTab(roomId: roomId),
@@ -175,9 +177,10 @@ Future<settlement.AccountCall?> runRoomEngineDialog(
 }
 
 class _SavingsTab extends ConsumerStatefulWidget {
-  const _SavingsTab({required this.roomId});
+  const _SavingsTab({required this.roomId, required this.roomName});
 
   final String roomId;
+  final String roomName;
 
   @override
   ConsumerState<_SavingsTab> createState() => _SavingsTabState();
@@ -195,6 +198,7 @@ class _SavingsTabState extends ConsumerState<_SavingsTab> {
       children: [
         const _Heading('My dues'),
         MyDuesSummary(roomId: roomId),
+        DuesAutoPaySwitch(roomId: roomId, roomName: widget.roomName),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: OutlinedButton.icon(
@@ -631,13 +635,38 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
         .read(roomEnginesProvider(widget.roomId).future)
         .catchError((Object _) => null);
     if (!mounted) return;
-    final prepared = await prepareMoneyCall(
-      context,
-      ref,
-      () => ref
+    final room = widget.call == AccountEngineCall.loanRequest
+        ? await ref
+              .read(stawiRoomContractsProvider(widget.roomId).future)
+              .catchError((Object _) => null)
+        : null;
+    if (!mounted) return;
+    final prepared = await prepareMoneyCall(context, ref, () async {
+      final prepared = await ref
           .read(stawiAccountServiceProvider)
-          .prepareEngineCall(request, engines: engines),
-    );
+          .prepareEngineCall(
+            request,
+            engines: engines,
+            room: room,
+            now: ref.read(stawiClockProvider),
+          );
+      final kind = withdrawalKindOf(widget.call);
+      if (kind == null) return prepared;
+      final assets = await ref
+          .read(stawiRoomAssetsProvider(widget.roomId).future)
+          .catchError((Object _) => StawiAssets.empty);
+      final fee = withdrawalFeeReview(
+        await ref
+            .read(stawiFinanceServiceProvider)
+            .quoteWithdrawal(
+              kind,
+              amount: prepared.call?.amount.toString() ?? request.amount,
+              roomId: widget.roomId,
+            ),
+        (m) => formatMoney(m, assets),
+      );
+      return prepared.withReviewAdded(lines: fee.lines, notes: fee.notes);
+    });
     if (!mounted) return;
     final topUp =
         prepared != null && widget.call == AccountEngineCall.loanPayoff
@@ -910,6 +939,17 @@ class _AccountEngineDialogState extends ConsumerState<AccountEngineDialog> {
     );
   }
 }
+
+/// The fee quote's kind for a member's withdrawal from the room; null for a
+/// call that withdraws nothing.
+finance.WithdrawalKind? withdrawalKindOf(AccountEngineCall call) =>
+    switch (call) {
+      AccountEngineCall.withdrawCredit =>
+        finance.WithdrawalKind.WITHDRAWAL_KIND_MEMBER_CREDIT,
+      AccountEngineCall.withdrawEquity =>
+        finance.WithdrawalKind.WITHDRAWAL_KIND_MEMBER_EQUITY,
+      _ => null,
+    };
 
 String _formatTopUp(AccountEngineRequest request, BigInt units) {
   final asset = request.asset;

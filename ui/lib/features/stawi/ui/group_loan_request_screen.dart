@@ -11,6 +11,7 @@ import '../data/stawi_custody.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_loan_service.dart';
 import '../data/stawi_room_engines.dart';
+import '../data/stawi_room_service.dart' show stawiRoomContractsProvider;
 import '../domain/account_engine_calls.dart';
 import '../domain/stawi_money.dart';
 import 'loan_widgets.dart';
@@ -203,6 +204,9 @@ class _GroupLoanRequestScreenState
       final engines = await ref
           .read(roomEnginesProvider(widget.roomId).future)
           .catchError((Object _) => null);
+      final room = await ref
+          .read(stawiRoomContractsProvider(widget.roomId).future)
+          .catchError((Object _) => null);
       if (!mounted) return;
       final request = AccountEngineRequest(
         call: AccountEngineCall.loanRequest,
@@ -220,6 +224,8 @@ class _GroupLoanRequestScreenState
           engines: engines,
           feeLine: _feeLine(q, asset),
           quoteLines: groupQuoteLines(q, asset),
+          room: room,
+          now: ref.read(stawiClockProvider),
         ),
       );
       if (call == null) return;

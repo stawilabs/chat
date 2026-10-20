@@ -784,17 +784,36 @@ void main() {
     await tester.tap(find.byKey(const Key('founder-sub-2')));
     await tester.pumpAndSettle();
 
-    // The template asks three founders to sign; only two are chosen.
-    expect(find.byKey(const Key('founding-quorum-problem')), findsOneWidget);
+    // The template asks three founders to sign; two are chosen, so the
+    // quorum and the minimum active members are pre-filled to two.
+    expect(find.byKey(const Key('founding-quorum-problem')), findsNothing);
     final send = find.byKey(const Key('stawi-send-conversion'));
-    expect(tester.widget<FilledButton>(send).onPressed, isNull);
+    expect(tester.widget<FilledButton>(send).onPressed, isNotNull);
 
     await tester.tap(find.text('Rules'));
     await tester.pumpAndSettle();
     final quorum = find.widgetWithText(TextField, 'Founding quorum');
+    expect(tester.widget<TextField>(quorum).controller!.text, '2');
+    expect(
+      tester
+          .widget<TextField>(
+            find.widgetWithText(TextField, 'Minimum active members'),
+          )
+          .controller!
+          .text,
+      '2',
+    );
     await tester.enterText(quorum, '3');
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('founding-quorum-problem')), findsOneWidget);
     expect(tester.widget<FilledButton>(send).onPressed, isNull);
+
+    // What the founder typed is kept as the founders change.
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(quorum).controller!.text, '3');
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(quorum, '2');
     await tester.pumpAndSettle();
@@ -804,7 +823,87 @@ void main() {
     await tester.pumpAndSettle();
 
     final view = StawiConversionView.fromContent(sender.sent.single.content);
-    expect(view.ruleValues, {'founding_quorum': '2'});
+    expect(view.ruleValues, {
+      'founding_quorum': '2',
+      'minimum_active_members': '2',
+    });
     expect(view.founderSubscriptionIds, unorderedEquals(['sub-me', 'sub-2']));
+  });
+
+  testWidgets('ConvertRoomScreen pre-fills a two-person room from its '
+      'founders', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1080, 4000)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sender = RecordingActSender();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          stawiTemplatesProvider.overrideWith(
+            (ref) async => [
+              finance.PolicyTemplate(
+                templateId: 'vsla',
+                name: 'VSLA',
+                policy: finance.RoomPolicy(
+                  governance: finance.Governance(
+                    foundingQuorum: 3,
+                    liveness: finance.GovernanceLiveness(
+                      minimumActiveMembers: 3,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          roomMembersProvider.overrideWith(
+            (ref, roomId) async => [
+              RoomSubscriptionInfo(
+                id: 'sub-me',
+                profileId: 'p1',
+                contactId: null,
+                name: 'Me',
+                avatarUrl: null,
+                role: 'owner',
+                joinedAt: 0,
+              ),
+              RoomSubscriptionInfo(
+                id: 'sub-2',
+                profileId: 'p2',
+                contactId: null,
+                name: 'Amina',
+                avatarUrl: null,
+                role: 'member',
+                joinedAt: 1,
+              ),
+            ],
+          ),
+          currentProfileIdProvider.overrideWith((ref) async => 'p1'),
+          stawiRoomServiceProvider.overrideWithValue(
+            StawiRoomService(
+              rooms: settlement.RoomServiceClient(FakeConnectTransport()),
+              keys: DeviceKeyStore(
+                MemoryDeviceKeyVault(),
+                gate: SigningGate.open,
+              ),
+              identity: () async => identityWith('p1', account),
+              send: sender.call,
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: ConvertRoomScreen(roomId: roomId)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('template-vsla')));
+    await tester.tap(find.byKey(const Key('founder-sub-2')));
+    await tester.pumpAndSettle();
+    final send = find.byKey(const Key('stawi-send-conversion'));
+    await tester.ensureVisible(send);
+    await tester.tap(send);
+    await tester.pumpAndSettle();
+    final view = StawiConversionView.fromContent(sender.sent.single.content);
+    expect(view.ruleValues['founding_quorum'], '2');
+    expect(view.ruleValues['minimum_active_members'], '2');
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:connectrpc/connect.dart' as connect;
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/money_call_fate.dart';
@@ -8,6 +9,7 @@ import 'package:stawi/features/stawi/data/open_money_calls.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
+import 'package:stawi_api/finance_v1.dart' as finance;
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
@@ -30,6 +32,7 @@ void main() {
     kind: kind,
     engineTarget: v.target,
     engineCalldata: calldata ?? v.calldata,
+    described: null,
   );
 
   settlement.AccountCall open(
@@ -135,9 +138,169 @@ void main() {
           kind: kind,
           engineTarget: const <int>[],
           engineCalldata: const <int>[],
+          described: settlement.AccountCall(
+            address: pledge.account,
+            kind: kind,
+            amount: '500',
+          ),
         )),
         OpenCallMatch.sameKind,
+        reason: 'a settlement that says nothing of the listed call',
       );
+    });
+
+    group('exactly, on what settlement says a call does', () {
+      final custody = Uint8List(20)..[19] = 0x31;
+      final otherRoom = Uint8List(20)..[19] = 0x32;
+      final token = Uint8List(20)..[19] = 0x77;
+      finance.ValueLocation to(Uint8List address, {String bucket = ''}) =>
+          finance.ValueLocation(
+            kind: finance.LocationKind.LOCATION_KIND_ROOM_CUSTODY,
+            address: address,
+            bucket: bucket,
+          );
+      settlement.AccountCall call(
+        settlement.AccountCallKind kind, {
+        finance.ValueLocation? destination,
+        String amount = '',
+        List<int>? asset,
+        finance.AccountManagementOp? op,
+        settlement.AccountGuardianOp? guardian,
+      }) => settlement.AccountCall(
+        address: pledge.account,
+        kind: kind,
+        destination: destination,
+        amount: amount,
+        asset: asset,
+        managementOp: op,
+        guardianOp: guardian,
+      );
+      OpenCallMatch match(
+        settlement.AccountCall listed,
+        settlement.AccountCall mine,
+      ) => matchOpenCall(listed, (
+        account: pledge.account,
+        kind: mine.kind,
+        engineTarget: const <int>[],
+        engineCalldata: const <int>[],
+        described: mine,
+      ));
+
+      const contribute =
+          settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTRIBUTE;
+      const transfer = settlement.AccountCallKind.ACCOUNT_CALL_KIND_TRANSFER;
+
+      test('a contribution to the same room of the same amount', () {
+        final mine = call(
+          contribute,
+          destination: to(custody, bucket: 'savings'),
+          amount: '500',
+          asset: token,
+        );
+        expect(match(mine.deepCopy(), mine), OpenCallMatch.samePayment);
+      });
+
+      test('not one to another room, bucket or of another amount', () {
+        final mine = call(
+          contribute,
+          destination: to(custody, bucket: 'savings'),
+          amount: '500',
+          asset: token,
+        );
+        for (final listed in [
+          call(
+            contribute,
+            destination: to(otherRoom, bucket: 'savings'),
+            amount: '500',
+            asset: token,
+          ),
+          call(
+            contribute,
+            destination: to(custody, bucket: 'ops'),
+            amount: '500',
+            asset: token,
+          ),
+          call(
+            contribute,
+            destination: to(custody, bucket: 'savings'),
+            amount: '501',
+            asset: token,
+          ),
+          call(
+            contribute,
+            destination: to(custody, bucket: 'savings'),
+            amount: '500',
+            asset: otherRoom,
+          ),
+        ]) {
+          expect(match(listed, mine), OpenCallMatch.none);
+        }
+      });
+
+      test('two transfers to different people are told apart', () {
+        finance.ValueLocation person(int b) => finance.ValueLocation(
+          kind: finance.LocationKind.LOCATION_KIND_USER_ACCOUNT,
+          address: Uint8List(20)..[19] = b,
+        );
+        final mine = call(transfer, destination: person(1), amount: '9');
+        expect(
+          match(call(transfer, destination: person(2), amount: '9'), mine),
+          OpenCallMatch.none,
+        );
+        expect(
+          match(call(transfer, destination: person(1), amount: '9'), mine),
+          OpenCallMatch.samePayment,
+        );
+      });
+
+      test('a key change or standing order by its operation', () {
+        const addKey = settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_KEY;
+        finance.AccountManagementOp keyOp(int b) =>
+            finance.AccountManagementOp(key: Uint8List(20)..[19] = b);
+        final mine = call(addKey, op: keyOp(1), amount: '0');
+        expect(
+          match(call(addKey, op: keyOp(1), amount: '0'), mine),
+          OpenCallMatch.samePayment,
+        );
+        expect(
+          match(call(addKey, op: keyOp(2), amount: '0'), mine),
+          OpenCallMatch.none,
+        );
+        const grant =
+            settlement.AccountCallKind.ACCOUNT_CALL_KIND_GRANT_STANDING;
+        finance.AccountManagementOp grantOp(int b) =>
+            finance.AccountManagementOp(
+              authorizationId: Uint8List(32)..[31] = b,
+            );
+        expect(
+          match(call(grant, op: grantOp(2)), call(grant, op: grantOp(1))),
+          OpenCallMatch.none,
+        );
+      });
+
+      test('a guardian act by its operation', () {
+        const kind =
+            settlement.AccountCallKind.ACCOUNT_CALL_KIND_GUARDIAN_FREEZE;
+        final mine = call(
+          kind,
+          guardian: settlement.AccountGuardianOp(kind: 1, round: Int64(2)),
+        );
+        expect(
+          match(
+            call(
+              kind,
+              guardian: settlement.AccountGuardianOp(kind: 1, round: Int64(3)),
+            ),
+            mine,
+          ),
+          OpenCallMatch.none,
+        );
+      });
+
+      test('by kind alone only when the listed call says nothing', () {
+        final mine = call(contribute, destination: to(custody), amount: '5');
+        expect(match(call(contribute), mine), OpenCallMatch.sameKind);
+      });
     });
 
     test('calldata the SDK cannot read only when it is the same bytes', () {

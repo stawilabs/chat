@@ -20,6 +20,8 @@ Future<bool> showGenesisReview(
   required List<String> founderNames,
   required bool agentConfirmed,
   String? agentName,
+  int setupSteps = 0,
+  String? setupProblem,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -30,6 +32,8 @@ Future<bool> showGenesisReview(
         founderNames: founderNames,
         agentConfirmed: agentConfirmed,
         agentName: agentName,
+        setupSteps: setupSteps,
+        setupProblem: setupProblem,
       ),
     ) ??
     false;
@@ -46,8 +50,16 @@ class GenesisReviewDialog extends StatelessWidget {
     required this.founderNames,
     required this.agentConfirmed,
     this.agentName,
+    this.setupSteps = 0,
+    this.setupProblem,
     super.key,
   });
+
+  /// The setup proposals signed with the genesis (0: none).
+  final int setupSteps;
+
+  /// Why the setup is not signed with it, when it failed the device check.
+  final String? setupProblem;
 
   final settlement.RoomGenesis genesis;
   final StawiGenesisView card;
@@ -97,6 +109,25 @@ class GenesisReviewDialog extends StatelessWidget {
               Text(
                 'Sign by: '
                 '${DateFormat.yMMMd().add_jm().format(card.expiresAt!.toLocal())}',
+              ),
+            ],
+            if (setupSteps > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Also signs the room\'s lending setup: $setupSteps '
+                'proposals in your name (the rules engine, the loan book and '
+                'the dues and loan rules). The members vote on each once the '
+                'room is on chain.',
+                key: const Key('genesis-review-setup'),
+              ),
+            ],
+            if (setupProblem != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'The lending setup is not signed with it ($setupProblem); '
+                'the room asks a founder to sign it later.',
+                key: const Key('genesis-review-setup-refused'),
+                style: theme.textTheme.bodySmall,
               ),
             ],
             const SizedBox(height: 12),

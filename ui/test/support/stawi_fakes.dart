@@ -5,11 +5,13 @@ import 'dart:typed_data';
 
 import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
+import 'package:stawi/features/stawi/domain/proposal_documents.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_money.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -939,6 +941,8 @@ settlement.PrepareRoomCallResponse honestRoomCall(
   int deadline = 4102444800, // 2100-01-01
   finance.FinancialIntent? exitIntent,
   List<int>? inviteHash,
+  List<int>? loanBook,
+  ({List<int> borrower, BigInt amount, int instalments})? pendingLoan,
 }) {
   final p = req.params;
   final at = BigInt.from(
@@ -948,6 +952,58 @@ settlement.PrepareRoomCallResponse honestRoomCall(
   Uint8List propose(int kind, List<int> payload) =>
       Uint8List.fromList([..._wi(kind), ...payload]);
   final (SignedCallKind kind, Uint8List params) = switch (req.kind) {
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
+        when p.propose.hasLoanApproval() =>
+      (
+        SignedCallKind.propose,
+        propose(
+          ProposalKinds.loan,
+          payloadHashOf(
+            loanApprovalDocument(
+              loanBook: loanBook!,
+              custody: room.custody!,
+              loanId: BigInt.parse(p.propose.loanApproval.toStringUnsigned()),
+              borrower: pendingLoan!.borrower,
+              amount: pendingLoan.amount,
+              instalments: pendingLoan.instalments,
+            ),
+          ),
+        ),
+      ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
+        when p.propose.hasLoanWriteOff() =>
+      (
+        SignedCallKind.propose,
+        propose(
+          ProposalKinds.writeOff,
+          payloadHashOf(
+            loanWriteOffDocument(
+              loanBook: loanBook!,
+              custody: room.custody!,
+              loanId: BigInt.parse(p.propose.loanWriteOff.toStringUnsigned()),
+            ),
+          ),
+        ),
+      ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
+        when p.propose.hasLoanRestructure() =>
+      (
+        SignedCallKind.propose,
+        propose(
+          ProposalKinds.restructure,
+          payloadHashOf(
+            loanRestructureDocument(
+              loanBook: loanBook!,
+              custody: room.custody!,
+              loanId: BigInt.parse(
+                p.propose.loanRestructure.loanId.toStringUnsigned(),
+              ),
+              instalments: p.propose.loanRestructure.instalments,
+              rateBps: p.propose.loanRestructure.rateBps,
+            ),
+          ),
+        ),
+      ),
     settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE => (
       SignedCallKind.propose,
       propose(
@@ -1186,4 +1242,99 @@ class GoRoomCallVector {
       requiresSignature: true,
     ),
   );
+}
+
+/// A rules template document (rules.TemplateDocument) for [custody] on the
+/// engines [rulesEngine] and [loanBook], with empty parts.
+Uint8List templateDocument({
+  required List<int> custody,
+  required List<int> rulesEngine,
+  required List<int> loanBook,
+}) {
+  Uint8List word(int v) => bigIntToBytes(BigInt.from(v), 32);
+  Uint8List addr(List<int> a) => Uint8List(32)..setRange(12, 32, a);
+  final tag = ascii.encode('STAWI_TEMPLATE_V1');
+  return Uint8List.fromList([
+    ...word(0x100),
+    ...addr(custody),
+    ...addr(rulesEngine),
+    ...word(0x140),
+    ...addr(loanBook),
+    ...word(0x160),
+    ...addr(Uint8List(20)..[19] = 0xee),
+    ...word(0x180),
+    ...word(tag.length),
+    ...tag,
+    ...Uint8List(32 - tag.length),
+    ...word(0),
+    ...word(0),
+    ...word(0),
+  ]);
+}
+
+/// A room's three setup proposals as settlement renders them for [account]:
+/// the two engine grants and the template, proposeBySig on [governance] at
+/// nonces from [firstNonce], until [deadline].
+List<settlement.RoomSetupDigest> setupDigestsFor({
+  required Uint8List account,
+  required List<int> governance,
+  required List<int> custody,
+  required BigInt chainId,
+  required DateTime deadline,
+  int firstNonce = 0,
+  List<settlement.RoomSetupStepKind> steps = const [
+    settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE,
+    settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE,
+    settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE,
+  ],
+}) {
+  final rules = Uint8List(20)..[19] = 0xa1;
+  final loans = Uint8List(20)..[19] = 0xa2;
+  final seconds = deadline.toUtc().millisecondsSinceEpoch ~/ 1000;
+  return [
+    for (var i = 0; i < steps.length; i++)
+      () {
+        final step = steps[i];
+        final template =
+            step ==
+            settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE;
+        final kind = template ? 5 : 11;
+        final document = template
+            ? templateDocument(
+                custody: custody,
+                rulesEngine: rules,
+                loanBook: loans,
+              )
+            : engineGrantDocument(
+                custody: custody,
+                module:
+                    step ==
+                        settlement
+                            .RoomSetupStepKind
+                            .ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE
+                    ? rules
+                    : loans,
+              );
+        final payload = keccak256(document);
+        final typed = roomCallTypedHash(
+          SignedCallKind.propose,
+          verifier: governance,
+          chainId: chainId,
+          member: account,
+          nonce: BigInt.from(firstNonce + i),
+          deadline: BigInt.from(seconds),
+          params: [...bigIntToBytes(BigInt.from(kind), 32), ...payload],
+        );
+        return settlement.RoomSetupDigest(
+          step: step,
+          typedHash: typed,
+          digest: accountWrappedHash(account, chainId, typed),
+          nonce: Int64(firstNonce + i),
+          deadline: Timestamp(seconds: Int64(seconds)),
+          proposalKind: kind,
+          payloadHash: payload,
+          payloadDocument: document,
+        );
+      }(),
+  ];
 }

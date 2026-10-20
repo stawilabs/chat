@@ -592,11 +592,22 @@ class StawiAccountService {
   /// [PreparedMoneyCall.call] (a payoff's quoted ceiling, for one) first.
   /// [engines] is the room's live Room.engines; without them nothing is
   /// prepared, since the call could not be checked.
+  ///
+  /// A loan request the room decides by vote comes with the borrower's own
+  /// proposal of that vote (PrepareAccountCallResponse.vote_proposal). It is
+  /// checked against [room], the room's contracts as finance knows them
+  /// ([checkedLoanVoteProposal]), and signed with the request under the one
+  /// unlock; settlement opens the vote with it once the request is on chain.
+  /// When it cannot be checked the request is still offered, and a member
+  /// opens the vote from the loan afterwards.
   Future<PreparedMoneyCall> prepareEngineCall(
     AccountEngineRequest request, {
     required RoomEngineTargets? engines,
     String? feeLine,
     List<(String, String)> quoteLines = const [],
+    List<String> notes = const [],
+    RoomContracts? room,
+    DateTime Function() now = DateTime.now,
   }) async {
     if (engines == null) throw const SigningRefused(enginesUnknownReason);
     final account = await ensureReady();
@@ -622,6 +633,31 @@ class StawiAccountService {
       account: account.address,
       engines: engines,
     );
+    Uint8List? voteDigest;
+    String? voteProblem;
+    if (request.call == AccountEngineCall.loanRequest &&
+        prepared.hasVoteProposal()) {
+      try {
+        if (room == null) {
+          throw const SigningRefused(roomContractsUnknownReason);
+        }
+        if (room.custody == null ||
+            !bytesEqual(room.custody!, request.custody)) {
+          throw const SigningRefused('the request is for another room');
+        }
+        voteDigest = checkedLoanVoteProposal(
+          proposal: prepared.voteProposal,
+          room: room,
+          loanBook: engines.loanBook,
+          borrower: account.address,
+          amount: checked.call.amount,
+          instalments: checked.call.instalments,
+          now: now(),
+        );
+      } on SigningRefused catch (e) {
+        voteProblem = e.reason;
+      }
+    }
     return PreparedMoneyCall._(
       callId: prepared.callId,
       account: account.address,
@@ -629,11 +665,18 @@ class StawiAccountService {
       digest: checked.digest,
       kind: request.call.kind,
       call: checked.call,
+      voteProposalDigest: voteDigest,
       review: MoneyReview.engine(
         request,
         checked.call,
         feeLine: feeLine,
         quoteLines: quoteLines,
+        notes: [
+          ...notes,
+          if (voteDigest != null) loanVoteOpensNote,
+          if (prepared.hasVoteProposal() && voteDigest == null)
+            loanVoteByHandNote(voteProblem),
+        ],
       ),
     );
   }
@@ -648,10 +691,12 @@ class StawiAccountService {
   Future<SignedMoneyCall> signCall(PreparedMoneyCall prepared) async {
     final me = await _identity();
     final key = await _keys.unlock(me.profileId, reason: prepared.review.title);
+    final vote = prepared.voteProposalDigest;
     return SignedMoneyCall(
       callId: prepared.callId,
       authorization: key.sign(prepared.digest),
       title: prepared.review.title,
+      voteProposalSignature: vote == null ? null : key.sign(vote),
     );
   }
 
@@ -843,6 +888,7 @@ class StawiAccountService {
         settlement.SubmitAccountCallRequest(
           callId: signed.callId,
           authorization: signed.authorization,
+          voteProposalSignature: signed.voteProposalSignature,
         ),
       )).call;
 
@@ -964,9 +1010,14 @@ class PreparedMoneyCall {
     required this.review,
     required this.kind,
     this.call,
+    this.voteProposalDigest,
   });
 
   final String callId;
+
+  /// A by-vote loan request's own proposal of the room's vote, checked:
+  /// signed with the request under the same unlock. Null for any other call.
+  final Uint8List? voteProposalDigest;
 
   /// The account the call is made from: one of the person's own.
   final Uint8List account;
@@ -982,12 +1033,37 @@ class PreparedMoneyCall {
   /// call that is not an engine call.
   final EngineCall? call;
 
+  /// The same call with [lines] and [notes] added to what its review shows
+  /// (a withdrawal's fee); the checked digest is unchanged.
+  PreparedMoneyCall withReviewAdded({
+    List<(String, String)> lines = const [],
+    List<String> notes = const [],
+  }) => lines.isEmpty && notes.isEmpty
+      ? this
+      : PreparedMoneyCall._(
+          callId: callId,
+          account: account,
+          preparedCall: preparedCall,
+          digest: digest,
+          kind: kind,
+          call: call,
+          voteProposalDigest: voteProposalDigest,
+          review: MoneyReview(
+            title: review.title,
+            lines: [...review.lines, ...lines],
+            notes: [...review.notes, ...notes],
+            signLabel: review.signLabel,
+            done: review.done,
+          ),
+        );
+
   /// What makes it this payment, to compare with settlement's open calls.
   IntendedCall get intended => (
     account: account,
     kind: kind,
     engineTarget: preparedCall.engineTarget,
     engineCalldata: preparedCall.engineCalldata,
+    described: preparedCall,
   );
 }
 
@@ -999,14 +1075,33 @@ class SignedMoneyCall {
     required this.callId,
     required this.authorization,
     required this.title,
+    this.voteProposalSignature,
   });
 
   final String callId;
   final Uint8List authorization;
 
+  /// The signature over a by-vote loan request's vote proposal, sent with
+  /// it. Kept in memory only: a call resumed after a restart is resent
+  /// without it, and a member then opens the vote from the loan.
+  final Uint8List? voteProposalSignature;
+
   /// The call's review title, to name it to the person.
   final String title;
 }
+
+/// A by-vote loan request's review, when its vote is signed with it.
+const String loanVoteOpensNote =
+    'The room decides this loan by vote. Signing also proposes the vote in '
+    'your name; it opens once the request is on chain, and members vote from '
+    'its card.';
+
+/// A by-vote loan request's review, when its vote could not be signed with
+/// it ([why]).
+String loanVoteByHandNote(String? why) =>
+    'The room decides this loan by vote. Its vote is not signed with the '
+    'request${why == null ? '' : ' ($why)'}; once the request is on chain any '
+    'member opens it from the loan.';
 
 /// Settlement's genesis states for a deployment already on its way.
 const Set<String> _genesisUnderway = {'PENDING', 'SUBMITTED'};

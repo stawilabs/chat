@@ -23,6 +23,9 @@ import 'genesis_review_dialog.dart';
 import 'governance_sheet.dart';
 import 'loan_detail_screen.dart';
 import 'loan_vote.dart';
+import 'my_money_screen.dart';
+import 'room_money_screen.dart';
+import 'room_setup_card.dart';
 import 'stawi_feedback.dart';
 
 /// The timeline widget for a Stawi event.
@@ -112,13 +115,22 @@ class _GenesisCardState extends ConsumerState<GenesisCard> {
         founderNames: founderNames,
         agentConfirmed: prepared.agentConfirmed,
         agentName: agentName,
+        setupSteps: prepared.setupDigests.length,
+        setupProblem: prepared.setupProblem,
       );
       if (!confirmed || !mounted) return;
-      await runStawiAction(
+      final signed = await runStawiAction(
         context,
         () => service.submitGenesisSignature(prepared, roomName: roomName),
-        success: 'Genesis signed',
+        success: prepared.setupDigests.isEmpty
+            ? 'Genesis signed'
+            : 'Genesis and lending setup signed',
       );
+      if (signed != null && signed.setupError != null && mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(content: Text(setupNotSignedMessage(signed.setupError!))),
+        );
+      }
     } finally {
       if (mounted) setState(() => _signing = false);
     }
@@ -240,6 +252,13 @@ class _GenesisCardState extends ConsumerState<GenesisCard> {
                     onPressed: _signing ? null : _sign,
                     icon: const Icon(Icons.draw_outlined),
                     label: Text(_signing ? 'Signing…' : 'Review and sign'),
+                  ),
+                ],
+                if (phase == StawiRoomPhase.active) ...[
+                  const SizedBox(height: 8),
+                  RoomSetupCard(
+                    roomId: event.roomId,
+                    roomName: _roomName(ref, event.roomId),
                   ),
                 ],
                 if (signedByMe && phase == StawiRoomPhase.awaitingSignatures)
@@ -440,6 +459,12 @@ class StawiOutcomeBubble extends StatelessWidget {
   }
 }
 
+/// Said when the genesis was signed but its lending setup was not.
+String setupNotSignedMessage(Object why) =>
+    'Genesis signed. The lending setup was not signed '
+    '(${why is String ? why : stawiErrorMessage(why)}); once the room is on '
+    'chain it asks a founder to sign it.';
+
 /// A display-only card finance posted. A proposal card offers the signed
 /// vote; nothing on a card authorizes anything by itself.
 class FinanceCardBubble extends ConsumerWidget {
@@ -519,6 +544,23 @@ class FinanceCardBubble extends ConsumerWidget {
                   const SizedBox(height: 8),
                   _OpenLoanButton(card: card, roomId: event.roomId),
                 ],
+                if (card.kind == roomSetupCardKind) ...[
+                  const SizedBox(height: 8),
+                  RoomSetupCard(
+                    roomId: event.roomId,
+                    roomName: _roomName(ref, event.roomId),
+                  ),
+                ],
+                if (moneyCardAction(card) case final action?) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('finance-card-open-money'),
+                    icon: Icon(action.icon),
+                    label: Text(action.label),
+                    onPressed: () =>
+                        _openMoney(context, ref, event.roomId, action),
+                  ),
+                ],
                 if (offersVote) ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
@@ -533,6 +575,23 @@ class FinanceCardBubble extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  static void _openMoney(
+    BuildContext context,
+    WidgetRef ref,
+    String roomId,
+    MoneyCardAction action,
+  ) {
+    final room = ref.read(roomByIdProvider(roomId)).asData?.value;
+    final name = room == null || room.name.isEmpty ? 'this room' : room.name;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => action.roomMoney
+            ? RoomMoneyScreen(roomId: roomId, roomName: name)
+            : MyMoneyScreen(),
       ),
     );
   }
@@ -599,9 +658,48 @@ IconData iconForCard(String kind) => switch (kind) {
   'LOAN_CLOSED' || 'LOAN_CLOSED_UNACCEPTED' => Icons.cancel_outlined,
   'CONTRIBUTION' || 'CONTRIBUTION_MISSED' => Icons.savings_outlined,
   'CONTRIBUTION_FAILED' => Icons.event_busy,
+  'DUES_DUE' => Icons.event_note_outlined,
+  'WITHDRAWAL' => Icons.outbox_outlined,
+  'SHARE_OUT_COLLECTED' => Icons.redeem_outlined,
+  'MONEY_RECEIVED' => Icons.call_received,
+  'DEPOSIT' => Icons.savings_outlined,
+  roomSetupCardKind => Icons.construction_outlined,
   _ when kind.startsWith('LOAN') => Icons.request_quote_outlined,
   _ => Icons.account_balance_outlined,
 };
+
+/// A room's lending setup card ("Setting up lending: vote 1 of 3").
+const String roomSetupCardKind = 'ROOM_SETUP';
+
+/// Where a money card's button goes: the room's money (its dues on the
+/// Savings tab), or the person's own money (savings, wallet).
+typedef MoneyCardAction = ({String label, IconData icon, bool roomMoney});
+
+/// The button a money card offers by its data `action`; null for none.
+MoneyCardAction? moneyCardAction(FinanceCardView card) =>
+    switch (card.data['action']) {
+      'open_dues' => (
+        label: 'See my dues',
+        icon: Icons.event_note_outlined,
+        roomMoney: true,
+      ),
+      'open_money' => (
+        label: 'Open the room\'s money',
+        icon: Icons.account_balance_outlined,
+        roomMoney: true,
+      ),
+      'open_savings' => (
+        label: 'Open my savings',
+        icon: Icons.savings_outlined,
+        roomMoney: false,
+      ),
+      'open_wallet' => (
+        label: 'Open my wallet',
+        icon: Icons.account_balance_wallet_outlined,
+        roomMoney: false,
+      ),
+      _ => null,
+    };
 
 /// Whether a card's kind is shown in the error colour: something went wrong
 /// with the person's money.
@@ -659,6 +757,12 @@ class _OpenLoanButton extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The room's name, or "this room".
+String _roomName(WidgetRef ref, String roomId) {
+  final room = ref.watch(roomByIdProvider(roomId)).asData?.value;
+  return room == null || room.name.isEmpty ? 'this room' : room.name;
 }
 
 /// "until 20 Oct, 14:05" in local time.

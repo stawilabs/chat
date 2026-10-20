@@ -157,6 +157,107 @@ void main() {
       expect(recoverDeviceAddress(prepared.digest, signature), key.address);
     });
 
+    group('loan decisions', () {
+      final loanBook = Uint8List(20)..[19] = 0x5b;
+      final borrower = Uint8List(20)..[19] = 0x22;
+      final loan = finance.Loan(
+        onchainLoanId: Int64(7),
+        loanBook: loanBook,
+        borrowerAccount: borrower,
+        requested: finance.Money(assetId: 'usdc', amount: '250000000'),
+        instalments: 6,
+        state: finance.LoanState.LOAN_STATE_DEFAULTED,
+      );
+      void preparesLoan({
+        List<int>? book,
+        ({List<int> borrower, BigInt amount, int instalments})? pending,
+      }) => transport.on(
+        settlement.RoomService.prepareRoomCall,
+        (req) => honestRoomCall(
+          req,
+          room: room,
+          signer: account,
+          chatRoomId: roomId,
+          now: now,
+          loanBook: book ?? loanBook,
+          pendingLoan:
+              pending ??
+              (
+                borrower: borrower,
+                amount: BigInt.from(250000000),
+                instalments: 6,
+              ),
+        ),
+      );
+
+      test('opening a by-vote loan\'s vote proposes its approval', () async {
+        preparesLoan();
+        final prepared = await roomService().prepareAct(
+          roomId: roomId,
+          request: openLoanVoteRequest(loan, borrower: 'Amina'),
+        );
+        expect(prepared.review.title, 'Open the vote on loan request #7');
+        final req = transport
+            .requestsTo(settlement.RoomService.prepareRoomCall)
+            .single;
+        expect(req.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
+        expect(req.params.propose.loanApproval, Int64(7));
+      });
+
+      test('a vote on another amount is refused', () async {
+        preparesLoan(
+          pending: (
+            borrower: borrower,
+            amount: BigInt.from(900000000),
+            instalments: 6,
+          ),
+        );
+        await expectLater(
+          roomService().prepareAct(
+            roomId: roomId,
+            request: openLoanVoteRequest(loan),
+          ),
+          throwsA(isA<SigningRefused>()),
+        );
+      });
+
+      test('a write-off and a restructure are checked documents', () async {
+        preparesLoan();
+        final s = roomService();
+        final off = await s.prepareAct(
+          roomId: roomId,
+          request: writeOffRequest(loan),
+        );
+        expect(off.review.title, 'Propose writing off loan #7');
+        final re = await s.prepareAct(
+          roomId: roomId,
+          request: restructureRequest(loan, instalments: 12, rateBps: 250),
+        );
+        expect(re.review.lines, [
+          ('Loan', '#7'),
+          ('New instalments', '12'),
+          ('Interest', '2.5% each instalment'),
+        ]);
+        final sent = transport
+            .requestsTo(settlement.RoomService.prepareRoomCall)
+            .last;
+        expect(sent.params.propose.loanRestructure.instalments, 12);
+        expect(sent.params.propose.loanRestructure.rateBps, 250);
+      });
+
+      test('a write-off on another loan book is refused', () async {
+        preparesLoan(book: Uint8List(20)..[19] = 0x99);
+        await expectLater(
+          roomService().prepareAct(
+            roomId: roomId,
+            request: writeOffRequest(loan),
+          ),
+          throwsA(isA<SigningRefused>()),
+        );
+        expect(gate.reasons, isEmpty);
+      });
+    });
+
     test('never signs or sends a substituted digest', () async {
       prepares(digestOverride: Uint8List(32));
       await expectLater(
@@ -373,9 +474,46 @@ void main() {
     }) async {
       final service = roomService();
       final prepared = await service.prepareGenesisSignature(conversion);
-      return roomName == null
-          ? service.submitGenesisSignature(prepared)
-          : service.submitGenesisSignature(prepared, roomName: roomName);
+      return (roomName == null
+              ? await service.submitGenesisSignature(prepared)
+              : await service.submitGenesisSignature(
+                  prepared,
+                  roomName: roomName,
+                ))
+          .event;
+    }
+
+    // The room's contracts as the factory will deploy them, and the founder's
+    // setup proposals at nonces 0 to 2 on them.
+    final setupGovernance = Uint8List(20)..[19] = 0x60;
+    final setupCustody = Uint8List(20)..[19] = 0x61;
+    final setupDigests = setupDigestsFor(
+      account: account,
+      governance: setupGovernance,
+      custody: setupCustody,
+      chainId: BigInt.parse(roomGenesis.chainId.toStringUnsigned()),
+      deadline: now.add(const Duration(days: 14)),
+    );
+
+    void genesisWithSetupOnSettlement({
+      List<settlement.RoomSetupDigest>? digests,
+      bool signed = false,
+    }) {
+      transport.on(settlement.RoomService.getRoomGenesis, (req) {
+        final g = roomGenesis.deepCopy()
+          ..genesisId = req.genesisId
+          ..chatRoomId = roomId
+          ..setup = settlement.RoomSetup(
+            chatRoomId: roomId,
+            governance: setupGovernance,
+            custody: setupCustody,
+            state: settlement.RoomSetupState.ROOM_SETUP_STATE_AWAITING_GENESIS,
+          );
+        g.founders[1]
+          ..setupDigests.addAll(digests ?? setupDigests)
+          ..setupSigned = signed;
+        return settlement.GetRoomGenesisResponse(genesis: g);
+      });
     }
 
     test('conversion names the agent by profile', () async {
@@ -525,6 +663,185 @@ void main() {
       );
       expect(signature, signer.sign(genesisDigest));
       expect(recoverDeviceAddress(otherDigest, signature), isNot(key.address));
+    });
+
+    group('the setup proposals beside the genesis', () {
+      test(
+        'are signed under the one unlock and sent to settlement first',
+        () async {
+          genesisWithSetupOnSettlement();
+          transport.on(
+            settlement.RoomService.submitRoomSetupSignatures,
+            (req) => settlement.SubmitRoomSetupSignaturesResponse(),
+          );
+          final service = roomService();
+          final prepared = await service.prepareGenesisSignature(card());
+          expect(prepared.setupDigests, [
+            for (final d in setupDigests) d.digest,
+          ]);
+          final signed = await service.submitGenesisSignature(prepared);
+
+          expect(signed.setupSigned, isTrue);
+          expect(gate.reasons, hasLength(1), reason: 'one unlock for all four');
+          final sent = transport
+              .requestsTo(settlement.RoomService.submitRoomSetupSignatures)
+              .single;
+          expect(sent.chatRoomId, roomId);
+          expect(sent.signatures, hasLength(3));
+          for (var i = 0; i < 3; i++) {
+            expect(sent.signatures[i].deviceKeyId, key.keyId);
+            expect(sent.signatures[i].algorithm, 'secp256k1');
+            expect(
+              recoverDeviceAddress(
+                setupDigests[i].digest,
+                sent.signatures[i].signature,
+              ),
+              key.address,
+            );
+          }
+          // The setup reaches settlement before the genesis signature can
+          // complete the founding quorum.
+          expect(
+            transport.calls.last.$1,
+            settlement.RoomService.submitRoomSetupSignatures.procedure,
+          );
+          expect(sender.sent.single.type, RoomEventType.stawiGenesisSignature);
+        },
+      );
+
+      test('a refused setup still sends the genesis signature', () async {
+        genesisWithSetupOnSettlement();
+        transport.on(
+          settlement.RoomService.submitRoomSetupSignatures,
+          (_) => throw connect.ConnectException(
+            connect.Code.failedPrecondition,
+            'no setup now',
+          ),
+        );
+        final service = roomService();
+        final signed = await service.submitGenesisSignature(
+          await service.prepareGenesisSignature(card()),
+        );
+        expect(signed.setupSigned, isFalse);
+        expect(signed.setupError, isA<connect.ConnectException>());
+        expect(sender.sent.single.type, RoomEventType.stawiGenesisSignature);
+      });
+
+      test('a setup that fails the device check is not signed', () async {
+        final forged = setupDigestsFor(
+          account: account,
+          governance: setupGovernance,
+          custody: setupCustody,
+          chainId: BigInt.parse(roomGenesis.chainId.toStringUnsigned()),
+          deadline: now.add(const Duration(days: 14)),
+        )..[2].payloadHash = Uint8List(32);
+        genesisWithSetupOnSettlement(digests: forged);
+        final service = roomService();
+        final prepared = await service.prepareGenesisSignature(card());
+        expect(prepared.setupDigests, isEmpty);
+        expect(
+          prepared.setupProblem,
+          'a setup step\'s document is not the one it proposes',
+        );
+        final signed = await service.submitGenesisSignature(prepared);
+        expect(signed.setupSigned, isFalse);
+        expect(
+          transport.requestsTo(
+            settlement.RoomService.submitRoomSetupSignatures,
+          ),
+          isEmpty,
+        );
+        expect(sender.sent, hasLength(1));
+      });
+
+      test(
+        'a founder who already signed the setup signs only the genesis',
+        () async {
+          genesisWithSetupOnSettlement(signed: true);
+          final service = roomService();
+          final prepared = await service.prepareGenesisSignature(card());
+          expect(prepared.setupDigests, isEmpty);
+          expect(prepared.setupProblem, isNull);
+        },
+      );
+    });
+
+    group('a setup awaiting a founder\'s signature', () {
+      settlement.RoomSetup awaiting({
+        int firstNonce = 3,
+      }) => settlement.RoomSetup(
+        chatRoomId: roomId,
+        governance: room.governance,
+        custody: room.custody,
+        state: settlement.RoomSetupState.ROOM_SETUP_STATE_AWAITING_SIGNATURE,
+        needsSignatures: setupDigestsFor(
+          account: account,
+          governance: room.governance!,
+          custody: room.custody!,
+          chainId: room.chainId,
+          deadline: now.add(const Duration(days: 7)),
+          firstNonce: firstNonce,
+          steps: const [
+            settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE,
+            settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE,
+          ],
+        ),
+      );
+
+      test(
+        'is checked against the room\'s contracts and signed once',
+        () async {
+          transport
+            ..on(
+              settlement.RoomService.getRoomSetup,
+              (_) => settlement.GetRoomSetupResponse(setup: awaiting()),
+            )
+            ..on(
+              settlement.RoomService.submitRoomSetupSignatures,
+              (req) => settlement.SubmitRoomSetupSignaturesResponse(
+                setup: settlement.RoomSetup(
+                  state: settlement.RoomSetupState.ROOM_SETUP_STATE_PROPOSING,
+                ),
+              ),
+            );
+          final service = roomService();
+          final prepared = await service.prepareSetupSignatures(roomId);
+          expect(gate.reasons, isEmpty);
+          expect(prepared.review.lines.map((l) => l.$2), [
+            'Turn on the loan book',
+            'Adopt the room\'s dues and loan rules',
+          ]);
+          final after = await service.submitSetupSignatures(prepared);
+          expect(
+            after.state,
+            settlement.RoomSetupState.ROOM_SETUP_STATE_PROPOSING,
+          );
+          expect(gate.reasons, [prepared.review.title]);
+          final sent = transport
+              .requestsTo(settlement.RoomService.submitRoomSetupSignatures)
+              .single;
+          expect(sent.signatures, hasLength(2));
+        },
+      );
+
+      test('naming other contracts than the room\'s is refused', () async {
+        transport.on(
+          settlement.RoomService.getRoomSetup,
+          (_) => settlement.GetRoomSetupResponse(
+            setup: awaiting()..governance = (Uint8List(20)..[0] = 9),
+          ),
+        );
+        await expectLater(
+          roomService().prepareSetupSignatures(roomId),
+          throwsA(
+            isA<SigningRefused>().having(
+              (e) => e.reason,
+              'reason',
+              'the setup names other contracts than the room\'s',
+            ),
+          ),
+        );
+      });
     });
 
     test('a member who is not a founder cannot sign', () async {

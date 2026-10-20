@@ -46,7 +46,35 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
   }
 
   void _quorumChanged() {
-    if (mounted) setState(() {});
+    if (mounted && !_prefilling) setState(() {});
+  }
+
+  /// The rules the person typed themselves: never pre-filled over.
+  final Set<String> _typed = {};
+  bool _prefilling = false;
+
+  /// Pre-fills the founding quorum and minimum active members from the
+  /// founders and the template ([prefilledRule]) while the person has not
+  /// typed them.
+  void _prefill(finance.PolicyTemplate? template) {
+    if (template == null) return;
+    final governance = template.policy.governance;
+    _prefilling = true;
+    try {
+      for (final key in const ['founding_quorum', 'minimum_active_members']) {
+        if (_typed.contains(key)) continue;
+        final value = prefilledRule(
+          key,
+          founders: _founders.length,
+          templateFoundingQuorum: governance.foundingQuorum,
+          templateMinimumActive: governance.liveness.minimumActiveMembers,
+        );
+        final controller = _rules[key]!;
+        if (value != null && controller.text != value) controller.text = value;
+      }
+    } finally {
+      _prefilling = false;
+    }
   }
 
   @override
@@ -123,6 +151,7 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
     final template = templates.asData?.value
         .where((t) => t.templateId == _templateId)
         .firstOrNull;
+    _prefill(template);
     final quorumProblem = template == null
         ? null
         : foundingQuorumProblem(
@@ -175,7 +204,11 @@ class _ConvertRoomScreenState extends ConsumerState<ConvertRoomScreen> {
               for (final rule in templateRules)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: _RuleField(rule: rule, controller: _rules[rule.key]!),
+                  child: _RuleField(
+                    rule: rule,
+                    controller: _rules[rule.key]!,
+                    onTyped: () => _typed.add(rule.key),
+                  ),
                 ),
             ],
           ),
@@ -323,10 +356,17 @@ class _TemplatePicker extends StatelessWidget {
 }
 
 class _RuleField extends StatefulWidget {
-  const _RuleField({required this.rule, required this.controller});
+  const _RuleField({
+    required this.rule,
+    required this.controller,
+    required this.onTyped,
+  });
 
   final TemplateRule rule;
   final TextEditingController controller;
+
+  /// The person set the rule themselves.
+  final VoidCallback onTyped;
 
   @override
   State<_RuleField> createState() => _RuleFieldState();
@@ -349,7 +389,10 @@ class _RuleFieldState extends State<_RuleField> {
           for (final c in rule.choices)
             DropdownMenuItem(value: c, child: Text(c)),
         ],
-        onChanged: (v) => setState(() => widget.controller.text = v ?? ''),
+        onChanged: (v) {
+          widget.onTyped();
+          setState(() => widget.controller.text = v ?? '');
+        },
       );
     }
     return TextField(
@@ -360,7 +403,10 @@ class _RuleFieldState extends State<_RuleField> {
         helperText: rule.help,
         errorText: rule.validate(widget.controller.text.trim()),
       ),
-      onChanged: (_) => setState(() {}),
+      onChanged: (_) {
+        widget.onTyped();
+        setState(() {});
+      },
     );
   }
 }

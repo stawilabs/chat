@@ -163,6 +163,30 @@ class StawiFinanceService {
         .firstOrNull;
   }
 
+  /// The protocol withdrawal fee on [amount] (minor units) of a withdrawal
+  /// of [kind] (from [roomId] for a room's kinds); null when finance cannot
+  /// quote it just now, and then the review says nothing about a fee.
+  Future<finance.QuoteWithdrawalResponse?> quoteWithdrawal(
+    finance.WithdrawalKind kind, {
+    required String amount,
+    String roomId = '',
+  }) async {
+    if (BigInt.tryParse(amount) == null || amount == '0' || amount.isEmpty) {
+      return null;
+    }
+    try {
+      return await _treasury.quoteWithdrawal(
+        finance.QuoteWithdrawalRequest(
+          kind: kind,
+          amount: amount,
+          roomId: roomId,
+        ),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
   Future<finance.Proposal> proposal(String proposalId) async =>
       (await _governance.getProposal(
         finance.GetProposalRequest(proposalId: proposalId),

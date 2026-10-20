@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -9,6 +10,7 @@ import '../../messages/data/message_sending_service.dart';
 import '../../messages/domain/room_event.dart';
 import '../domain/governance_requests.dart';
 import '../domain/money_review.dart';
+import '../domain/room_setup.dart';
 import '../domain/secret_ballot.dart';
 import '../domain/signing_checks.dart';
 import '../domain/stawi_payloads.dart';
@@ -131,17 +133,56 @@ class StawiRoomService {
       profileId: me.profileId,
       ownAccounts: me.addresses,
     );
+    final setup = _checkedGenesisSetup(checked.genesis, me.profileId);
     return PreparedGenesisSignature._(
       conversion: conversion,
       card: card,
       genesis: checked.genesis,
       digest: checked.digest,
       profileId: me.profileId,
+      setupDigests: setup.digests,
+      setupProblem: setup.problem,
       agentConfirmed: genesisAgentConfirmed(
         checked.genesis,
         resolvedAgentAccount: await _agentAccountOf(checked.genesis),
       ),
     );
+  }
+
+  /// The founder's setup proposals beside the genesis, checked on the device
+  /// ([checkedSetupDigests], nonces 0 to 2 on the room's governance as the
+  /// factory will deploy it). None when the genesis has no setup or the
+  /// founder already signed it; a setup that fails the check is not signed
+  /// (the genesis still can be) and says why.
+  ({List<Uint8List> digests, String? problem}) _checkedGenesisSetup(
+    settlement.RoomGenesis genesis,
+    String profileId,
+  ) {
+    final founder = genesis.founders
+        .where((f) => f.profileId == profileId)
+        .firstOrNull;
+    if (founder == null ||
+        !genesis.hasSetup() ||
+        founder.setupSigned ||
+        founder.setupDigests.isEmpty) {
+      return (digests: const [], problem: null);
+    }
+    try {
+      return (
+        digests: checkedSetupDigests(
+          digests: founder.setupDigests,
+          governance: genesis.setup.governance,
+          custody: genesis.setup.custody,
+          account: Uint8List.fromList(founder.account),
+          chainId: chainIdOf(genesis.chainId),
+          now: _now(),
+          firstNonce: 0,
+        ),
+        problem: null,
+      );
+    } on SigningRefused catch (e) {
+      return (digests: const [], problem: e.reason);
+    }
   }
 
   /// The account of a genesis agent who is not one of its founders, as this
@@ -163,7 +204,15 @@ class StawiRoomService {
   /// Signs a checked genesis the founder has reviewed with this device's key
   /// and sends the signature into the room, under the card. [roomName] names
   /// the room on the device lock prompt.
-  Future<RoomEvent> submitGenesisSignature(
+  ///
+  /// The founder's setup proposals ([PreparedGenesisSignature.setupDigests])
+  /// are signed under the same unlock and handed to settlement first
+  /// (SubmitRoomSetupSignatures, which takes them only while the genesis is
+  /// not on chain), so the signature that completes the founding quorum
+  /// finds them there. Chat's genesis signature carries none, so the app
+  /// sends them itself. A setup settlement refuses does not stop the
+  /// genesis: the room then asks a founder to sign the setup later.
+  Future<GenesisSigned> submitGenesisSignature(
     PreparedGenesisSignature prepared, {
     String roomName = 'this room',
   }) async {
@@ -174,7 +223,29 @@ class StawiRoomService {
       prepared.profileId,
       reason: 'Found $roomName on Stawi',
     );
-    return _send(
+    Object? setupError;
+    var setupSigned = false;
+    if (prepared.setupDigests.isNotEmpty) {
+      try {
+        await _rooms.submitRoomSetupSignatures(
+          settlement.SubmitRoomSetupSignaturesRequest(
+            chatRoomId: prepared.conversion.roomId,
+            signatures: [
+              for (final d in prepared.setupDigests)
+                finance.DeviceSignature(
+                  deviceKeyId: key.keyId,
+                  algorithm: secp256k1Algorithm,
+                  signature: key.sign(d),
+                ),
+            ],
+          ),
+        );
+        setupSigned = true;
+      } on Object catch (error) {
+        setupError = error;
+      }
+    }
+    final event = await _send(
       roomId: prepared.conversion.roomId,
       type: RoomEventType.stawiGenesisSignature,
       parentId: prepared.conversion.id,
@@ -184,6 +255,112 @@ class StawiRoomService {
         signerKeyId: key.keyId,
       ),
     );
+    return GenesisSigned(
+      event: event,
+      setupSigned: setupSigned,
+      setupError: setupError ?? prepared.setupProblem,
+    );
+  }
+
+  /// The room's lending setup, as settlement reports it to this reader.
+  /// A room settlement plans no setup for (or a settlement that plans
+  /// none) reads as NONE.
+  Future<settlement.RoomSetup> roomSetup(String roomId) async {
+    try {
+      return (await _rooms.getRoomSetup(
+        settlement.GetRoomSetupRequest(chatRoomId: roomId),
+      )).setup;
+    } on connect.ConnectException catch (e) {
+      if (e.code != connect.Code.notFound &&
+          e.code != connect.Code.unimplemented) {
+        rethrow;
+      }
+      return settlement.RoomSetup(
+        chatRoomId: roomId,
+        state: settlement.RoomSetupState.ROOM_SETUP_STATE_NONE,
+      );
+    }
+  }
+
+  /// Reads the setup proposals settlement asks this founder to sign and
+  /// checks them on the device against the room's contracts as finance
+  /// knows them ([checkedSetupDigests], from the founder's current nonce).
+  /// Nothing is signed yet: [PreparedSetupSignatures.review] is shown first.
+  Future<PreparedSetupSignatures> prepareSetupSignatures(String roomId) async {
+    final me = await _identity();
+    final account = me.primary;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    final setup = await roomSetup(roomId);
+    if (!RoomSetupProgress(setup).asksMe) {
+      throw const StawiUnavailable(
+        'The room\'s setup asks for no signature now',
+      );
+    }
+    final room = await _roomContracts(roomId);
+    final governance = room?.governance;
+    final custody = room?.custody;
+    if (room == null || governance == null || custody == null) {
+      throw const SigningRefused(roomContractsUnknownReason);
+    }
+    if (!bytesEqual(setup.governance, governance) ||
+        !bytesEqual(setup.custody, custody)) {
+      throw const SigningRefused(
+        'the setup names other contracts than the room\'s',
+      );
+    }
+    final digests = checkedSetupDigests(
+      digests: setup.needsSignatures,
+      governance: governance,
+      custody: custody,
+      account: account.address,
+      chainId: room.chainId,
+      now: _now(),
+    );
+    final steps = setup.needsSignatures.length;
+    return PreparedSetupSignatures._(
+      roomId: roomId,
+      profileId: me.profileId,
+      digests: digests,
+      review: MoneyReview(
+        title: 'Propose the room\'s lending setup',
+        lines: [
+          for (final d in setup.needsSignatures)
+            (
+              'Proposal',
+              setupStepTitle(settlement.RoomSetupStep(step: d.step)),
+            ),
+        ],
+        notes: [setupSigningNote(steps), checkedRoomActNote],
+        signLabel: 'Confirm and sign',
+        done: 'Setup signed; the votes open shortly',
+      ),
+    );
+  }
+
+  /// Signs the checked setup proposals behind the device lock and gives them
+  /// to settlement, which proposes them one at a time.
+  Future<settlement.RoomSetup> submitSetupSignatures(
+    PreparedSetupSignatures prepared,
+  ) async {
+    final key = await _keys.unlock(
+      prepared.profileId,
+      reason: prepared.review.title,
+    );
+    return (await _rooms.submitRoomSetupSignatures(
+      settlement.SubmitRoomSetupSignaturesRequest(
+        chatRoomId: prepared.roomId,
+        signatures: [
+          for (final d in prepared.digests)
+            finance.DeviceSignature(
+              deviceKeyId: key.keyId,
+              algorithm: secp256k1Algorithm,
+              signature: key.sign(d),
+            ),
+        ],
+      ),
+    )).setup;
   }
 
   /// The room's contracts as finance indexes them; null when they cannot be
@@ -333,6 +510,11 @@ class StawiRoomService {
     );
   }
 }
+
+/// What a founder's review of the setup says they sign.
+String setupSigningNote(int steps) =>
+    'Signs $steps proposal${steps == 1 ? '' : 's'} in your name; the members '
+    'then vote on each. Nothing moves money until a vote passes.';
 
 /// What every room act's review says was checked on the device.
 const String checkedRoomActNote =
@@ -516,6 +698,14 @@ RoomContractsSource financeContractsSource(finance.RoomServiceClient rooms) =>
       );
     };
 
+/// A room's contracts and chain as finance indexes them; null when not
+/// known (nothing is then checked against them, so nothing is signed).
+final stawiRoomContractsProvider = FutureProvider.autoDispose
+    .family<RoomContracts?, String>(
+      (ref, roomId) =>
+          financeContractsSource(ref.watch(financeRoomsProvider))(roomId),
+    );
+
 /// Resolves a member of a room, named by profile, to their account.
 typedef MemberAccountOf = Future<Uint8List?> Function(
   String roomId,
@@ -649,6 +839,8 @@ final class PreparedGenesisSignature {
     required this.digest,
     required this.profileId,
     required this.agentConfirmed,
+    this.setupDigests = const [],
+    this.setupProblem,
   });
 
   /// The conversion event whose card the founder signs from.
@@ -668,7 +860,55 @@ final class PreparedGenesisSignature {
   /// of the profile it is shown as ([genesisAgentConfirmed]). An unconfirmed
   /// genesis is shown but cannot be signed.
   final bool agentConfirmed;
+
+  /// The founder's setup proposals, checked, signed under the same unlock;
+  /// empty when there are none to sign.
+  final List<Uint8List> setupDigests;
+
+  /// Why the setup proposals were not offered for signing, when they failed
+  /// the device's check.
+  final String? setupProblem;
 }
+
+/// A sent genesis signature, and what became of the setup signed with it.
+final class GenesisSigned {
+  const GenesisSigned({
+    required this.event,
+    required this.setupSigned,
+    this.setupError,
+  });
+
+  final RoomEvent event;
+
+  /// Whether settlement took the founder's setup signatures.
+  final bool setupSigned;
+
+  /// Why it did not, when setup proposals were to be signed.
+  final Object? setupError;
+}
+
+/// A founder's setup proposals settlement asked for and the device checked,
+/// awaiting their review ([StawiRoomService.prepareSetupSignatures]).
+final class PreparedSetupSignatures {
+  const PreparedSetupSignatures._({
+    required this.roomId,
+    required this.profileId,
+    required this.digests,
+    required this.review,
+  });
+
+  final String roomId;
+  final String profileId;
+  final List<Uint8List> digests;
+  final MoneyReview review;
+}
+
+/// The room's lending setup; refreshed when the room screen asks again.
+final stawiRoomSetupProvider = FutureProvider.autoDispose
+    .family<settlement.RoomSetup, String>(
+      (ref, roomId) => ref.watch(stawiRoomServiceProvider).roomSetup(roomId),
+      retry: (_, _) => null,
+    );
 
 /// Shown, and refused with, when a genesis' agent could not be confirmed.
 const String agentNotConfirmed =
