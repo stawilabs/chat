@@ -188,12 +188,9 @@ class _AccountProtectionScreenState
     final canSign = status.deviceRegistered && !_busy;
     final canChange = canSign && p.pendingChangeAt == null && !p.recovering;
     final theme = Theme.of(context);
-    final names = {
-      for (final o
-          in ref.watch(guardianKeyOffersProvider).asData?.value ??
-              const <GuardianKeyOffer>[])
-        if (o.key case final k?) bytesToHex0x(k).toLowerCase(): o.name,
-    };
+    final names =
+        ref.watch(guardianNamesProvider).asData?.value ??
+        const <String, String>{};
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [

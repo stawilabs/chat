@@ -945,6 +945,7 @@ settlement.PrepareRoomCallResponse honestRoomCall(
   ({List<int> borrower, BigInt amount, int instalments})? pendingLoan,
   settlement.RoomPolicyChange? policyChange,
   List<int>? policyPayloadHash,
+  settlement.RoomRotation? rotation,
 }) {
   final p = req.params;
   final at = BigInt.from(
@@ -1003,6 +1004,21 @@ settlement.PrepareRoomCallResponse honestRoomCall(
               instalments: p.propose.loanRestructure.instalments,
               rateBps: p.propose.loanRestructure.rateBps,
             ),
+          ),
+        ),
+      ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
+        when p.propose.hasRotation() =>
+      (
+        SignedCallKind.propose,
+        propose(
+          ProposalKinds.distribution,
+          openCyclePayloadHash(
+            custody: room.custody!,
+            cycleId: rotation!.cycleId,
+            order: rotation.order,
+            pot: BigInt.parse(rotation.pot),
+            firstPeriod: rotation.firstPeriod,
           ),
         ),
       ),
@@ -1177,6 +1193,7 @@ settlement.PrepareRoomCallResponse honestRoomCall(
       requiresSignature: true,
       exitIntent: exitIntent,
       policyChange: policyChange,
+      rotation: rotation,
       payloadHash: exitIntent == null
           ? null
           : intentDigestOf(sdkIntentOf(exitIntent)),
@@ -1649,4 +1666,53 @@ class GoGuardianActVector {
       ),
     );
   }
+}
+
+/// One Go-written rotation (stawi v0.2.7 stawi.OpenCyclePayload(Hash) and
+/// stawi.RotationTurnID): test/fixtures/stawi/go_rotation.json, a copy of
+/// the SDK's test/vectors/go_rotation.json.
+class GoRotationVector {
+  GoRotationVector(this.json);
+
+  static List<GoRotationVector> load() => [
+    for (final v
+        in (jsonDecode(
+              File('test/fixtures/stawi/go_rotation.json').readAsStringSync(),
+            ) as Map<String, dynamic>)['rotations']
+            as List)
+      GoRotationVector(v as Map<String, dynamic>),
+  ];
+
+  static GoRotationVector named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Uint8List get custody => hexToBytes(json['custody'] as String);
+  Uint8List get cycleId => hexToBytes(json['cycle_id'] as String);
+  List<Uint8List> get order => [
+    for (final a in json['order'] as List) hexToBytes(a as String),
+  ];
+  BigInt get pot => BigInt.parse(json['pot'] as String);
+  int get firstPeriod => json['first_period'] as int;
+  Uint8List get payload => hexToBytes(json['payload'] as String);
+  Uint8List get payloadHash => hexToBytes(json['payload_hash'] as String);
+  List<Uint8List> get turnIds => [
+    for (final t in json['turn_ids'] as List) hexToBytes(t as String),
+  ];
+
+  /// The cycle as settlement's RoomCall.rotation carries it, on the clock
+  /// [epochStart] / [periodSeconds].
+  settlement.RoomRotation rotation({
+    required int epochStart,
+    required int periodSeconds,
+  }) => settlement.RoomRotation(
+    cycleId: cycleId,
+    order: order,
+    pot: pot.toString(),
+    firstPeriod: firstPeriod,
+    periodEpochStart: Int64(epochStart),
+    periodSeconds: Int64(periodSeconds),
+  );
 }

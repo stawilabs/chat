@@ -186,6 +186,17 @@ const List<String> lendingTemplates = [
   'none',
 ];
 
+/// The rules template a merry-go-round runs under: its setup grants the
+/// RotationModule instead of the LoanBook.
+const String rotationTemplate = 'merry_go_round_weekly';
+
+/// What the conversion says about a merry-go-round.
+const String rotationTemplateNote =
+    'A merry-go-round: every week each member pays in and one member at a '
+    'time receives the pot. It lends nothing. Once the group is on chain and '
+    'its setup votes pass, start the rotation from Group decisions: choose '
+    'the turn order and what each member pays.';
+
 /// What a rule is pre-filled with for a room of [founders] founders: the
 /// founding quorum and the minimum active members are at most the founders
 /// (settlement's own default for the minimum), so a two-person room can sign

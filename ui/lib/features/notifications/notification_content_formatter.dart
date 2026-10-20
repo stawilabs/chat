@@ -51,6 +51,11 @@ String financeCardNotificationTitle(String kind) => switch (kind) {
   'MONEY_RECEIVED' => 'Money received',
   'DEPOSIT' => 'Money saved',
   'ROOM_SETUP' => 'Lending setup',
+  'ROTATION_STARTED' => 'Rotation started',
+  'ROTATION_TURN' => 'Rotation turn',
+  'ROTATION_LATE' => 'Rotation waiting',
+  'ROTATION_SKIPPED' => 'Rotation turn passed over',
+  'ROTATION_PAYOUT' => 'Rotation payout',
   _ => 'Stawi update',
 };
 

@@ -2,9 +2,7 @@ import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/stawi/domain/guardian_acts.dart';
-import 'package:stawi/features/stawi/domain/guardian_contacts.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
@@ -164,46 +162,6 @@ void main() {
       expect(
         GuardedView(v.guarded(pending: true, approvals: 2)).canApprove,
         isFalse,
-      );
-    });
-  });
-
-  group('shared guardian keys', () {
-    final key = hexToBytes('0x3132333435363738393a3b3c3d3e3f4041424344');
-    final mine = hexToBytes('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266');
-    RoomEvent text(String id, String sender, String body, int at) => RoomEvent(
-      id: id,
-      roomId: 'dm',
-      senderId: sender,
-      type: RoomEventType.text,
-      content: {'text': body},
-      createdAt: at,
-    );
-
-    test('the partner\'s newest shared key is found, not mine', () {
-      final events = [
-        text('1', 'them', guardianKeyMessage(Uint8List(20)..[0] = 5), 1),
-        text('2', 'me', guardianKeyMessage(mine), 3),
-        text('3', 'them', guardianKeyMessage(key), 2),
-      ];
-      expect(
-        offeredGuardianKey(events, mySubscriptionId: 'me', myKey: mine),
-        key,
-      );
-    });
-
-    test('nothing offered, or only my own key, is null', () {
-      expect(
-        offeredGuardianKey(
-          [
-            text('1', 'them', 'hello', 1),
-            text('2', 'them', guardianAskMessage, 2),
-            text('3', 'x', guardianKeyMessage(mine), 3),
-          ],
-          mySubscriptionId: 'me',
-          myKey: mine,
-        ),
-        isNull,
       );
     });
   });

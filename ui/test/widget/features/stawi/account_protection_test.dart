@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,9 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/guardian_contacts.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
+import 'package:stawi/features/stawi/data/stawi_guardian_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
-import 'package:stawi/features/stawi/domain/guardian_contacts.dart';
 import 'package:stawi/features/stawi/ui/account_protection_screen.dart';
+import 'package:stawi/features/stawi/ui/guardian_picker.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
@@ -27,14 +29,29 @@ void main() {
   late Uint8List device;
   late settlement.AccountState state;
   late GoGuardianCallVector vector;
-  late List<(String, String)> sent;
+  late List<settlement.LookupGuardianKeysRequest> lookups;
 
   setUp(() async {
-    sent = [];
+    lookups = [];
     device = await deviceAddressOf(anvilKey);
     transport = FakeConnectTransport();
     gate = RecordingSigningGate();
     transport
+      ..on(settlement.AccountService.lookupGuardianKeys, (req) {
+        lookups.add(req);
+        // Amina registered g1; Baraka registered nothing; Chena shares no
+        // room with the owner on chain.
+        return switch (req.profileId) {
+          'amina0000000000000a1' => settlement.LookupGuardianKeysResponse(
+            keys: [settlement.GuardianKey(key: g1)],
+          ),
+          'chena0000000000000c1' => throw connect.ConnectException(
+            connect.Code.permissionDenied,
+            'not a member with you',
+          ),
+          _ => settlement.LookupGuardianKeysResponse(),
+        };
+      })
       ..on(
         settlement.AccountService.getAccount,
         (req) => settlement.GetAccountResponse(account: state),
@@ -92,14 +109,33 @@ void main() {
             (ref) async => identityWith('p1', vector.account),
           ),
           stawiAccountServiceProvider.overrideWithValue(service),
-          guardianKeyOffersProvider.overrideWith(
-            (ref) async => [
-              GuardianKeyOffer(roomId: 'dm-amina', name: 'Amina', key: g1),
-              const GuardianKeyOffer(roomId: 'dm-baraka', name: 'Baraka'),
-            ],
+          stawiGuardianServiceProvider.overrideWithValue(
+            StawiGuardianService(
+              accounts: settlement.AccountServiceClient(transport),
+              keys: DeviceKeyStore(vaultWith('p1', anvilKey), gate: gate),
+              identity: () async => identityWith('p1', vector.account),
+              status: service.status,
+              deploymentChainId: vector.chainId,
+            ),
           ),
-          guardianMessageSenderProvider.overrideWithValue(
-            (roomId, text) async => sent.add((roomId, text)),
+          guardianContactsProvider.overrideWith(
+            (ref) async => const [
+              GuardianContact(
+                profileId: 'amina0000000000000a1',
+                name: 'Amina',
+                roomId: 'room00000000000000aa',
+              ),
+              GuardianContact(
+                profileId: 'baraka000000000000b1',
+                name: 'Baraka',
+                roomId: 'room00000000000000aa',
+              ),
+              GuardianContact(
+                profileId: 'chena0000000000000c1',
+                name: 'Chena',
+                roomId: 'room00000000000000bb',
+              ),
+            ],
           ),
         ],
         child: const MaterialApp(home: AccountProtectionScreen()),
@@ -148,10 +184,9 @@ void main() {
     return req;
   }
 
-  testWidgets('adds a first guardian chosen from a contact who shared their '
-      'key: one SET_GUARDIANS, checked, reviewed, signed behind the lock', (
-    tester,
-  ) async {
+  testWidgets('adds a first guardian chosen from a contact whose key '
+      'settlement\'s directory answers: one SET_GUARDIANS, checked, '
+      'reviewed, signed behind the lock', (tester) async {
     vector = GoGuardianCallVector.named('add_first_guardian');
     state = withKey(vector.stateWith());
     await open(tester);
@@ -160,8 +195,20 @@ void main() {
 
     await tester.tap(find.byKey(const Key('add-guardian')));
     await tester.pumpAndSettle();
-    expect(find.text('Has not shared a guardian key'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('guardian-offer-dm-amina')));
+    expect(find.text(guardianRegisterHint), findsOneWidget);
+    expect(find.textContaining('not a member with you'), findsOneWidget);
+    expect(
+      {for (final r in lookups) (r.profileId, r.chatRoomId)},
+      {
+        ('amina0000000000000a1', 'room00000000000000aa'),
+        ('baraka000000000000b1', 'room00000000000000aa'),
+        ('chena0000000000000c1', 'room00000000000000bb'),
+      },
+      reason: 'each contact looked up in the Stawi room both share',
+    );
+    await tester.tap(
+      find.byKey(const Key('guardian-offer-amina0000000000000a1')),
+    );
     await tester.pumpAndSettle();
     await pickThreshold(tester, '1 of 1');
 
@@ -178,16 +225,18 @@ void main() {
     expectSignedByDevice(vector.digest, 'Add a guardian');
   });
 
-  testWidgets('a contact who has not shared a key is asked to, and nothing '
-      'is prepared', (tester) async {
+  testWidgets('a contact who has not registered cannot be chosen, and '
+      'nothing is prepared', (tester) async {
     vector = GoGuardianCallVector.named('add_first_guardian');
     state = withKey(vector.stateWith());
     await open(tester);
     await tester.tap(find.byKey(const Key('add-guardian')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('guardian-ask-dm-baraka')));
+    await tester.tap(
+      find.byKey(const Key('guardian-offer-baraka000000000000b1')),
+    );
     await tester.pumpAndSettle();
-    expect(sent, [('dm-baraka', guardianAskMessage)]);
+    expect(find.byKey(const Key('guardian-picker')), findsOneWidget);
     expect(
       transport.requestsTo(settlement.AccountService.prepareAccountCall),
       isEmpty,
@@ -204,7 +253,7 @@ void main() {
       find.text('1 of 1 must agree to recover your account.'),
       findsOneWidget,
     );
-    // Amina's shared key names her guardian row.
+    // Amina's registered key names her guardian row.
     expect(find.text('Amina'), findsOneWidget);
     await tester.tap(find.byKey(const Key('add-guardian')));
     await tester.pumpAndSettle();
@@ -264,7 +313,9 @@ void main() {
       find.byKey(Key('guardian-replace-${bytesToHex0x(g2).toLowerCase()}')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('guardian-offer-dm-amina')));
+    await tester.tap(
+      find.byKey(const Key('guardian-offer-amina0000000000000a1')),
+    );
     await tester.pumpAndSettle();
     final req = preparedSet();
     expect(req.params.guardians, [g1]);

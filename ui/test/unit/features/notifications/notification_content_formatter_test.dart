@@ -550,6 +550,26 @@ void main() {
         expect(result.body, 'Stawi update');
       });
 
+      test('the rotation cards are titled by what happened', () {
+        expect(
+          financeCardNotificationTitle('ROTATION_STARTED'),
+          'Rotation started',
+        );
+        expect(financeCardNotificationTitle('ROTATION_TURN'), 'Rotation turn');
+        expect(
+          financeCardNotificationTitle('ROTATION_LATE'),
+          'Rotation waiting',
+        );
+        expect(
+          financeCardNotificationTitle('ROTATION_SKIPPED'),
+          'Rotation turn passed over',
+        );
+        expect(
+          financeCardNotificationTitle('ROTATION_PAYOUT'),
+          'Rotation payout',
+        );
+      });
+
       test('never call the grace day free', () {
         for (final kind in [
           'LOAN_LATE',

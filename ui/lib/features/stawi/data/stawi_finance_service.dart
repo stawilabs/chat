@@ -148,14 +148,36 @@ class StawiFinanceService {
           .policyVersion;
 
   /// How many of the room's proposals are still to be decided or carried
-  /// out (indexed, open, revealing, passed or queued).
+  /// out (indexed, open, revealing, passed or queued): finance's
+  /// ListProposalsResponse.open_count, over every page. One proposal is
+  /// asked for; the count does not depend on the page.
   Future<int> undecidedProposals(String roomId) async =>
       (await _governance.listProposals(
         finance.ListProposalsRequest(
           roomId: roomId,
           states: undecidedProposalStates,
+          page: finance.PageRequest(pageSize: 1),
         ),
-      )).proposals.length;
+      )).openCount.toInt();
+
+  /// The room's rotation cycles, newest first.
+  Future<List<finance.RotationCycle>> rotations(String roomId) async =>
+      (await _savingsClient.listRotations(
+        finance.ListRotationsRequest(roomId: roomId),
+      )).rotations;
+
+  /// One rotation cycle ([cycleId], else the room's newest) with every
+  /// member's dues read live; Unavailable when the chain cannot be read.
+  Future<finance.GetRotationResponse> rotation(
+    String roomId, {
+    List<int>? cycleId,
+  }) => _savingsClient.getRotation(
+    finance.GetRotationRequest(
+      roomId: roomId,
+      cycleId: cycleId,
+      includeDues: true,
+    ),
+  );
 
   /// The constitution's roles.
   Future<List<finance.RoleCapabilities>> roles(String roomId) async =>
@@ -287,6 +309,19 @@ final stawiUndecidedProposalsProvider = FutureProvider.autoDispose
         return null;
       }
     }, retry: (_, _) => null);
+
+/// A room's rotation cycles, newest first (empty when it has none).
+final stawiRotationsProvider = FutureProvider.autoDispose
+    .family<List<finance.RotationCycle>, String>(
+      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).rotations(roomId),
+    );
+
+/// A room's newest rotation cycle, its members' dues read live.
+final stawiRotationProvider = FutureProvider.autoDispose
+    .family<finance.GetRotationResponse, String>(
+      (ref, roomId) => ref.watch(stawiFinanceServiceProvider).rotation(roomId),
+      retry: (_, _) => null,
+    );
 
 final stawiRolesProvider = FutureProvider.autoDispose
     .family<List<finance.RoleCapabilities>, String>(

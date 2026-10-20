@@ -11,6 +11,7 @@ import '../data/stawi_room_service.dart';
 import '../domain/guided_governance.dart';
 import 'decision_progress_screen.dart';
 import 'governance_sheet.dart';
+import 'rotation_screen.dart';
 import 'rule_change_screen.dart';
 import 'stawi_feedback.dart';
 
@@ -62,6 +63,21 @@ Future<void> showGroupDecisionsSheet(
               subtitle: Text(d.hint),
               onTap: () => Navigator.of(context).pop(d),
             ),
+          Consumer(
+            builder: (context, ref, _) =>
+                ref.watch(rotationEligibilityProvider(roomId)).asData?.value ==
+                    RotationEligibility.ready
+                ? ListTile(
+                    key: const Key('decision-rotation'),
+                    leading: const Icon(Icons.autorenew),
+                    title: const Text('Start a rotation'),
+                    subtitle: const Text(
+                      'Members take turns receiving the pot',
+                    ),
+                    onTap: () => Navigator.of(context).pop(#rotation),
+                  )
+                : const SizedBox.shrink(),
+          ),
           const Divider(),
           ListTile(
             key: const Key('decision-advanced'),
@@ -77,6 +93,12 @@ Future<void> showGroupDecisionsSheet(
   if (!context.mounted) return;
   if (choice == #advanced) {
     await showGovernanceSheet(context, roomId: roomId);
+  } else if (choice == #rotation) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => StartRotationScreen(roomId: roomId),
+      ),
+    );
   } else if (choice == GroupDecision.rules) {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => RuleChangeScreen(roomId: roomId)),

@@ -33,6 +33,7 @@ final governance = hx('governance');
 final member = hx('member');
 final rulesEngine = hx('module');
 final loanBook = hx('loan_book');
+final rotationModule = Uint8List(20)..[19] = 0x77;
 final chainId = BigInt.from(14601);
 final now = DateTime.utc(2026, 10, 20);
 final deadline = Int64(1900000000);
@@ -60,6 +61,10 @@ settlement.RoomSetupDigest digestFor(
         Kind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE => engineGrantDocument(
           custody: custody,
           module: loanBook,
+        ),
+        Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION => engineGrantDocument(
+          custody: custody,
+          module: rotationModule,
         ),
         _ => templateDocumentFor(custody, rulesEngine, loanBook),
       };
@@ -210,6 +215,55 @@ void main() {
       expect(check(digests), [for (final d in digests) d.digest]);
     });
 
+    test('a merry-go-round grants the RotationModule in place of the loan '
+        'book', () {
+      final digests = [
+        digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE, 0),
+        digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION, 1),
+        digestFor(Kind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE, 2),
+      ];
+      expect(check(digests), [for (final d in digests) d.digest]);
+      expect(
+        setupStepTitle(
+          settlement.RoomSetupStep(
+            step: Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION,
+          ),
+        ),
+        'Turn on the rotation payouts',
+      );
+    });
+
+    test('refuses a setup granting both the loan book and the rotation, or '
+        'the rules engine twice', () {
+      expect(
+        () => check([
+          digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE, 0),
+          digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION, 1),
+        ]),
+        throwsA(isA<SigningRefused>()),
+      );
+      expect(
+        () => check([
+          digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE, 0),
+          digestFor(
+            Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION,
+            1,
+            document: engineGrantDocument(
+              custody: custody,
+              module: rulesEngine,
+            ),
+          ),
+        ]),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            'both setup grants grant the same engine',
+          ),
+        ),
+      );
+    });
+
     test('later, the steps still to propose from the current nonce', () {
       final later = [
         digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE, 4),
@@ -355,6 +409,34 @@ void main() {
       expect(p.voting.map((s) => s.step), [
         Kind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE,
       ]);
+    });
+
+    test('a merry-go-round\'s setup speaks of the rotation', () {
+      final steps = [
+        step(
+          Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION,
+          settlement.RoomSetupStepState.ROOM_SETUP_STEP_STATE_VOTING,
+          closes: now.add(const Duration(days: 3)),
+        ),
+      ];
+      expect(
+        RoomSetupProgress(
+          settlement.RoomSetup(
+            state: settlement.RoomSetupState.ROOM_SETUP_STATE_VOTING,
+            steps: steps,
+          ),
+        ).headline(now),
+        'Setting up the rotation: vote 1 of 1, closes in 3 days',
+      );
+      final ready = settlement.RoomSetup(
+        state: settlement.RoomSetupState.ROOM_SETUP_STATE_READY,
+        steps: steps,
+      );
+      expect(setupRunsRotation(ready), isTrue);
+      expect(
+        RoomSetupProgress(ready).headline(now),
+        startsWith('The rotation is set up'),
+      );
     });
 
     test('a step not open yet says when it opens', () {
