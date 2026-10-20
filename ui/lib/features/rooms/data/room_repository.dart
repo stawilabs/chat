@@ -174,7 +174,6 @@ class RoomRepository {
         'room_subscriptions',
         'room_events',
         'transactions',
-        'invite_links',
         'drafts',
         'form_message_drafts',
         'read_receipts',

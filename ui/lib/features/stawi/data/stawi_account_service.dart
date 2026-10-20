@@ -13,6 +13,7 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/networking/api_config.dart';
 import '../domain/account_engine_calls.dart';
+import '../domain/account_protection.dart';
 import '../domain/money_review.dart';
 import '../domain/personal_calls.dart';
 import '../domain/signing_checks.dart';
@@ -298,6 +299,135 @@ class StawiAccountService {
       digest: digest,
       kind: kind,
       review: MoneyReview.addKey(key: keyAddress),
+    );
+  }
+
+  /// The deployed account and its state, for a change to the account itself.
+  Future<(StawiAccountRef, settlement.AccountState)> _deployedAccount() async {
+    final s = await status();
+    final account = s.account;
+    final state = s.state;
+    if (account == null) {
+      throw const StawiUnavailable('Your profile has no Stawi account yet');
+    }
+    if (state == null || !s.deployed) {
+      throw const StawiUnavailable('Your account is not on chain yet');
+    }
+    if (!s.deviceRegistered) {
+      throw const StawiUnavailable(deviceNotAKeyMessage);
+    }
+    return (account, state);
+  }
+
+  /// Prepares adding (or, with [add] false, removing) [guardian] and checks
+  /// it on the device against the account as the chain reads it now: the op
+  /// proposes exactly the policy in force with that guardian added (removed)
+  /// and [threshold] of them needed (0 keeps the current number), and the
+  /// signed intent binds that op. Nothing is signed yet; the account applies
+  /// it after its policy delay.
+  Future<PreparedMoneyCall> prepareGuardianChange({
+    required Uint8List guardian,
+    required bool add,
+    int threshold = 0,
+  }) async {
+    final (account, state) = await _deployedAccount();
+    final after = guardianSetAfter(
+      state,
+      guardian,
+      add: add,
+      requested: threshold,
+    );
+    final kind = add
+        ? settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_GUARDIAN
+        : settlement.AccountCallKind.ACCOUNT_CALL_KIND_REMOVE_GUARDIAN;
+    final prepared = await _prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: kind,
+        params: settlement.AccountCallParams(
+          guardian: guardian,
+          guardianThreshold: after.threshold,
+        ),
+      ),
+    );
+    final digest = checkedGuardianChange(
+      prepared: prepared,
+      state: state,
+      account: account.address,
+      guardian: guardian,
+      add: add,
+      threshold: after.threshold,
+      chainId: _deploymentChainId,
+    );
+    return PreparedMoneyCall._(
+      callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
+      digest: digest,
+      kind: kind,
+      review: MoneyReview.guardianChange(
+        guardian: guardian,
+        add: add,
+        guardians: after.guardians.length,
+        threshold: after.threshold,
+      ),
+    );
+  }
+
+  /// Prepares contesting the account's pending recovery (once per
+  /// recovery), checked on the device.
+  Future<PreparedMoneyCall> prepareContestRecovery() async {
+    final (account, state) = await _deployedAccount();
+    final protection = AccountProtection.of(state);
+    if (!protection.canContest) {
+      throw const StawiUnavailable('No recovery of your account to contest');
+    }
+    return _plainManagement(
+      account,
+      settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTEST_RECOVERY,
+      MoneyReview.contestRecovery(newKey: protection.newKey),
+    );
+  }
+
+  /// Prepares cancelling the account's pending policy change (a guardian
+  /// change that has not taken effect), checked on the device.
+  Future<PreparedMoneyCall> prepareCancelGuardianChange() async {
+    final (account, state) = await _deployedAccount();
+    if (AccountProtection.of(state).pendingChangeAt == null) {
+      throw const StawiUnavailable('No guardian change is waiting');
+    }
+    return _plainManagement(
+      account,
+      settlement.AccountCallKind.ACCOUNT_CALL_KIND_CANCEL_POLICY,
+      MoneyReview.cancelGuardianChange(),
+    );
+  }
+
+  Future<PreparedMoneyCall> _plainManagement(
+    StawiAccountRef account,
+    settlement.AccountCallKind kind,
+    MoneyReview review,
+  ) async {
+    final prepared = await _prepareAccountCall(
+      settlement.PrepareAccountCallRequest(
+        address: account.address,
+        kind: kind,
+        params: settlement.AccountCallParams(),
+      ),
+    );
+    final digest = checkedPlainManagementCall(
+      prepared: prepared,
+      kind: kind,
+      account: account.address,
+      chainId: _deploymentChainId,
+    );
+    return PreparedMoneyCall._(
+      callId: prepared.callId,
+      account: account.address,
+      preparedCall: prepared.call,
+      digest: digest,
+      kind: kind,
+      review: review,
     );
   }
 

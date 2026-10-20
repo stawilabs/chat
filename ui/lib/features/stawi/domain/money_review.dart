@@ -289,6 +289,62 @@ final class MoneyReview {
     );
   }
 
+  /// Adding (or removing) [guardian]: who must agree afterwards, and when it
+  /// applies.
+  factory MoneyReview.guardianChange({
+    required Uint8List guardian,
+    required bool add,
+    required int guardians,
+    required int threshold,
+  }) {
+    final id = _short(sdk.bytesToHex0x(guardian).toLowerCase());
+    return MoneyReview(
+      title: add ? 'Add a guardian' : 'Remove a guardian',
+      lines: [
+        ('Guardian', id),
+        (
+          'After the change',
+          guardians == 0
+              ? 'No guardians: nobody can recover your account'
+              : '$threshold of $guardians guardians must agree to recover your account',
+        ),
+        ('Takes effect', 'after ${_delay(keyChangeDelay)}'),
+      ],
+      notes: [
+        if (add) 'A guardian can help move your account to a new phone if you lose yours. Choose someone you trust: enough guardians together can take over your account after a waiting period you can contest.',
+        'Until it takes effect you can cancel it, and your guardians can stop it.',
+      ],
+      signLabel: _sign,
+      done: add
+          ? 'Guardian added; it takes effect in ${_delay(keyChangeDelay)}'
+          : 'Guardian removed; it takes effect in ${_delay(keyChangeDelay)}',
+    );
+  }
+
+  /// Contesting a recovery the person did not ask for.
+  factory MoneyReview.contestRecovery({required Uint8List? newKey}) =>
+      MoneyReview(
+        title: 'Contest the recovery of my account',
+        lines: [
+          if (newKey != null)
+            ('Recovery to', _short(sdk.bytesToHex0x(newKey).toLowerCase())),
+          ('Your account', 'Frozen until your guardians decide'),
+        ],
+        notes: const [
+          'Contest only if you did not ask for this recovery. You can contest once: the account freezes, the wait grows to 7 days, and one more guardian must approve before the new key can take over.',
+        ],
+        signLabel: _sign,
+        done: 'Recovery contested; your account is frozen meanwhile',
+      );
+
+  /// Cancelling a guardian change that has not taken effect.
+  factory MoneyReview.cancelGuardianChange() => const MoneyReview(
+    title: 'Cancel the guardian change',
+    lines: [('Your guardians', 'Stay as they are now')],
+    signLabel: _sign,
+    done: 'Guardian change cancelled',
+  );
+
   /// "Lend 300.00 USDC to Bob".
   final String title;
 
