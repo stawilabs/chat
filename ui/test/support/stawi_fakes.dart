@@ -1338,3 +1338,114 @@ List<settlement.RoomSetupDigest> setupDigestsFor({
       }(),
   ];
 }
+
+// ---- guardians and recovery ---------------------------------------------
+
+/// One Go-produced account-protection call (stawi v0.2.5 ManagementOpHash,
+/// RequiredIntentType and Intent.Digest): a guardian change's proposed
+/// policy, a recovery contest or a pending policy's cancel.
+class GoGuardianCallVector {
+  GoGuardianCallVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  static List<GoGuardianCallVector> load() => [
+    for (final c
+        in (jsonDecode(
+              File('test/fixtures/stawi/go_guardian_calls.json')
+                  .readAsStringSync(),
+            ) as Map<String, dynamic>)['calls']
+            as List<dynamic>)
+      GoGuardianCallVector(c as Map<String, dynamic>),
+  ];
+
+  static GoGuardianCallVector named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  String get name => json['name'] as String;
+  int get kind => json['kind'] as int;
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+  BigInt get chainId => BigInt.parse(intent.domain.chainId.toStringUnsigned());
+
+  Map<String, dynamic>? get _policy => json['policy'] as Map<String, dynamic>?;
+
+  List<Uint8List> _addresses(String key) => [
+    for (final a in _policy![key] as List<dynamic>) hexToBytes(a as String),
+  ];
+
+  /// The policy the op proposes, as settlement sends it (management_op).
+  finance.AccountPolicyParams? get policy => _policy == null
+      ? null
+      : finance.AccountPolicyParams(
+          asset: hexToBytes(_policy!['asset'] as String),
+          periodLimit: _policy!['period_limit'] as String,
+          periodSeconds: Int64(_policy!['period_seconds'] as int),
+          epochStart: Int64(_policy!['epoch_start'] as int),
+          allowlist: _addresses('allowlist'),
+          guardians: _addresses('guardians'),
+          guardianThreshold: _policy!['guardian_threshold'] as int,
+          allowlistMode: finance.AccountDefaults_AllowlistMode.valueOf(
+            _policy!['allowlist_mode'] as int,
+          ),
+        );
+
+  /// The account as the chain reads it with [guardians] and [threshold] (the
+  /// rest of the policy the vector's), before the change.
+  settlement.AccountState stateWith({
+    List<Uint8List> guardians = const [],
+    int threshold = 0,
+    settlement.AccountRecovery? recovery,
+    bool guardianFrozen = false,
+  }) {
+    final p =
+        policy ?? GoGuardianCallVector.named('add_first_guardian').policy!;
+    return settlement.AccountState(
+      address: account,
+      deployed: true,
+      guardians: guardians,
+      guardianThreshold: threshold,
+      guardianFrozen: guardianFrozen,
+      recovery: recovery,
+      policy: settlement.AccountPolicy(
+        asset: p.asset,
+        periodLimit: p.periodLimit,
+        periodSeconds: p.periodSeconds,
+        epochStart: p.epochStart,
+        allowlistMode: p.allowlistMode,
+        allowlist: p.allowlist,
+      ),
+    );
+  }
+
+  /// What settlement's PrepareAccountCall returns for this call of [kind];
+  /// [opPolicy] replaces the proposed policy and [opKind] the op's kind.
+  settlement.PrepareAccountCallResponse prepared(
+    settlement.AccountCallKind kind, {
+    finance.AccountPolicyParams? opPolicy,
+    int? opKind,
+    finance.FinancialIntent? intent,
+  }) {
+    final i = intent ?? this.intent;
+    final d = sdkIntentOf(i).digest();
+    final p = opPolicy ?? policy;
+    return settlement.PrepareAccountCallResponse(
+      callId: 'acct00000000000000g1',
+      intentDigest: d,
+      financialIntent: i,
+      managementOp: finance.AccountManagementOp(
+        kind: opKind ?? this.kind,
+        policy: p,
+      ),
+      call: settlement.AccountCall(
+        callId: 'acct00000000000000g1',
+        address: account,
+        kind: kind,
+        intentDigest: d,
+      ),
+    );
+  }
+}

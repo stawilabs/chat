@@ -844,6 +844,14 @@ Uint8List checkedTransferOut({
 
 /// The prepared intent, checked to be the one [digest] signs and made from
 /// [account].
+/// The prepared call's intent, checked to be the one [digest] signs and made
+/// from [account].
+FinancialIntent checkedPreparedIntent(
+  settlement.PrepareAccountCallResponse prepared,
+  Uint8List digest,
+  Uint8List account,
+) => _intentOf(prepared, digest, account);
+
 FinancialIntent _intentOf(
   settlement.PrepareAccountCallResponse prepared,
   Uint8List digest,

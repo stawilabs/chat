@@ -1,0 +1,311 @@
+{
+  "calls": [
+    {
+      "name": "add_first_guardian",
+      "kind": 8,
+      "policy": {
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "period_limit": "500000000",
+        "period_seconds": 86400,
+        "epoch_start": 1700000000,
+        "allowlist": [
+          "0x505152535455565758595a5b5c5d5e5f60616263"
+        ],
+        "guardians": [
+          "0x3132333435363738393a3b3c3d3e3f4041424344"
+        ],
+        "guardian_threshold": 1,
+        "allowlist_mode": 1
+      },
+      "op_hash": "0xdb698e0d0530ab2a565ad53ace79059bca5cde8d05075955bd5919ed6e561d0c",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0bb0",
+        "type": 15,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xdb698e0d0530ab2a565ad53ace79059bca5cde8d05075955bd5919ed6e561d0c",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xbc4563bfd332a4d797ac610022a64772c69499e955514f5e9fd7b1aa5f25ff5a"
+    },
+    {
+      "name": "add_second_guardian",
+      "kind": 8,
+      "policy": {
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "period_limit": "500000000",
+        "period_seconds": 86400,
+        "epoch_start": 1700000000,
+        "allowlist": [
+          "0x505152535455565758595a5b5c5d5e5f60616263"
+        ],
+        "guardians": [
+          "0x3132333435363738393a3b3c3d3e3f4041424344",
+          "0x6162636465666768696a6b6c6d6e6f7071727374"
+        ],
+        "guardian_threshold": 2,
+        "allowlist_mode": 1
+      },
+      "op_hash": "0x574f869db9bb5d4bf37cee23ddd385c19250c6639d59893b352a8ccf20898ff3",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0bb1",
+        "type": 15,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x574f869db9bb5d4bf37cee23ddd385c19250c6639d59893b352a8ccf20898ff3",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x2ba71b7f573e1df22bacac30d7c92f0726e90b162f1add25a362750ef07dba89"
+    },
+    {
+      "name": "remove_last_guardian",
+      "kind": 8,
+      "policy": {
+        "asset": "0x707172737475767778797a7b7c7d7e7f80818283",
+        "period_limit": "500000000",
+        "period_seconds": 86400,
+        "epoch_start": 1700000000,
+        "allowlist": [
+          "0x505152535455565758595a5b5c5d5e5f60616263"
+        ],
+        "guardians": [],
+        "guardian_threshold": 0,
+        "allowlist_mode": 1
+      },
+      "op_hash": "0x236b982707ac14b2fa5009bf032d1a7e66de79cd2448006828f3814eb979d143",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0bb2",
+        "type": 15,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x236b982707ac14b2fa5009bf032d1a7e66de79cd2448006828f3814eb979d143",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x9e9d5b2c36df1a4bfeb4f1b2356a39ea023a8cd880f0e1dc822fe30ff430112f"
+    },
+    {
+      "name": "contest_recovery",
+      "kind": 4,
+      "op_hash": "0x442f49a27ee35d56192f076965b923bbeeea077fd424fbac908ebc12dfe64bb8",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0bb3",
+        "type": 18,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0x442f49a27ee35d56192f076965b923bbeeea077fd424fbac908ebc12dfe64bb8",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0xc3585f701aefb67522c436fd63624966c16a67e9b31964b19522fb232211aff7"
+    },
+    {
+      "name": "cancel_policy",
+      "kind": 9,
+      "op_hash": "0xcf01e681935506d31712789bca786ccd4f553a13cbbf8fe18a27d6c6d0ec0986",
+      "intent": {
+        "intent_id": "0x0102030405060708090a0bb4",
+        "type": 15,
+        "domain": {
+          "account_version": 1,
+          "chain_id": 14601,
+          "environment": "staging",
+          "module_version": 1,
+          "protocol_version": 1,
+          "verifying_contract": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3"
+        },
+        "requested_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "authorized_by": {
+          "id": "0xc0c1c2c3c4c5c6c7c8c9cacb",
+          "type": 1
+        },
+        "account": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+        "room": "0x",
+        "source": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "destination": {
+          "address": "0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3",
+          "bucket": "",
+          "kind": 1
+        },
+        "asset": "0x",
+        "amount": "0",
+        "mode": 1,
+        "authorization_id": "0xcf01e681935506d31712789bca786ccd4f553a13cbbf8fe18a27d6c6d0ec0986",
+        "capability_id": "0x",
+        "constitution_hash": "0x",
+        "security_policy_hash": "0x",
+        "policy_epoch": 0,
+        "nonce": 0,
+        "credential_epoch": 0,
+        "recovery_epoch": 0,
+        "valid_after": 1760000000,
+        "valid_until": 1760003600,
+        "country_policy_version": "0x",
+        "compliance_required": false
+      },
+      "digest": "0x718bf1e19053c386b4855414da1126f897c93356475172c0d23060c7fcf1e906"
+    }
+  ],
+  "description": "stawi v0.2.5 pkg/evm/stawi ManagementOpHash / RequiredIntentType / Intent.Digest for the guardian and recovery management calls (ADD_GUARDIAN and REMOVE_GUARDIAN propose a policy; CONTEST_RECOVERY; CANCEL_POLICY)"
+}

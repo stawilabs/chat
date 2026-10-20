@@ -576,88 +576,6 @@ class Reports extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Invite links for group room joining
-///
-/// Stores shareable invite links that allow users to join rooms
-/// via a unique code. Links can have expiration times, max uses,
-/// and can be revoked by admins.
-///
-/// Example:
-/// ```dart
-/// final link = await db.inviteLinks.select()
-///   .where((l) => l.code.equals('abc123'))
-///   .getSingleOrNull();
-/// if (link != null && !link.revoked) {
-///   // Process invite
-/// }
-/// ```
-class InviteLinks extends Table {
-  /// Unique invite link identifier
-  TextColumn get id => text()();
-
-  /// Room this invite links to (foreign key)
-  TextColumn get roomId => text().references(Rooms, #id)();
-
-  /// Unique invite code for URL (e.g., chat.app/join/{code})
-  TextColumn get code => text().unique()();
-
-  /// Profile ID of the user who created this link
-  TextColumn get createdBy => text()();
-
-  /// Creation timestamp (milliseconds since epoch)
-  IntColumn get createdAt => integer()();
-
-  /// Optional expiration timestamp (milliseconds since epoch, null = never expires)
-  IntColumn get expiresAt => integer().nullable()();
-
-  /// Optional maximum number of uses (null = unlimited)
-  IntColumn get maxUses => integer().nullable()();
-
-  /// Current number of times this link has been used
-  IntColumn get useCount => integer().withDefault(const Constant(0))();
-
-  /// Whether this link has been revoked by an admin
-  BoolColumn get revoked => boolean().withDefault(const Constant(false))();
-
-  /// Whether joining via this link requires admin approval
-  BoolColumn get requiresApproval =>
-      boolean().withDefault(const Constant(false))();
-
-  /// Optional custom name/label for the link
-  TextColumn get name => text().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-/// Tracks users who joined via invite links
-///
-/// Records each use of an invite link for analytics and
-/// "see who joined" functionality.
-///
-/// Example:
-/// ```dart
-/// final joins = await (db.inviteLinkJoins.select()
-///   ..where((j) => j.inviteLinkId.equals(linkId))
-/// ).get();
-/// ```
-class InviteLinkJoins extends Table {
-  /// Auto-incrementing primary key
-  IntColumn get id => integer().autoIncrement()();
-
-  /// The invite link that was used
-  TextColumn get inviteLinkId => text().references(InviteLinks, #id)();
-
-  /// Profile ID of the user who joined
-  TextColumn get profileId => text()();
-
-  /// Timestamp when the user joined (milliseconds since epoch)
-  IntColumn get joinedAt => integer()();
-
-  /// Approval status: 'approved', 'pending', 'rejected'
-  TextColumn get status => text().withDefault(const Constant('approved'))();
-}
-
 /// Tracks chunk progress for resumable uploads
 ///
 /// Stores upload state to allow resuming interrupted uploads.
@@ -933,8 +851,6 @@ class CallHistory extends Table {
     FormMessageDrafts,
     ReadReceipts,
     Reports,
-    InviteLinks,
-    InviteLinkJoins,
     UploadChunks,
     DownloadChunks,
     TransferJobs,
@@ -953,7 +869,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -978,6 +894,10 @@ class AppDatabase extends _$AppDatabase {
           case 3:
             // Money calls whose submit got no clear answer survive a restart.
             await m.createTable(unconfirmedMoneyCalls);
+          case 4:
+            // The local-only invite links had no backend and are gone.
+            await m.deleteTable('invite_link_joins');
+            await m.deleteTable('invite_links');
         }
       }
     },

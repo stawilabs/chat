@@ -46,9 +46,4 @@ const _$JobTypeEnumMap = {
   JobType.vote: 'vote',
   JobType.syncContacts: 'syncContacts',
   JobType.custom: 'custom',
-  JobType.createInviteLink: 'createInviteLink',
-  JobType.revokeInviteLink: 'revokeInviteLink',
-  JobType.useInviteLink: 'useInviteLink',
-  JobType.approveJoinRequest: 'approveJoinRequest',
-  JobType.rejectJoinRequest: 'rejectJoinRequest',
 };

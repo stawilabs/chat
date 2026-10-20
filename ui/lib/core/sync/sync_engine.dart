@@ -1674,13 +1674,6 @@ class SyncEngine with WidgetsBindingObserver {
         case domain_job.JobType.custom:
           // Custom jobs are handled by their respective services
           break;
-        case domain_job.JobType.createInviteLink:
-        case domain_job.JobType.revokeInviteLink:
-        case domain_job.JobType.useInviteLink:
-        case domain_job.JobType.approveJoinRequest:
-        case domain_job.JobType.rejectJoinRequest:
-          // Invite link jobs are handled by InviteLinkService
-          break;
       }
       await _jobRepo.deleteJob(job.id);
     } on MissingSubscriptionIdException catch (e) {

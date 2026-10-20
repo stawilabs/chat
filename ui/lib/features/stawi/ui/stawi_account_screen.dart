@@ -7,6 +7,7 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 import '../../../core/networking/api_config.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/stawi_money.dart';
+import 'account_protection_screen.dart';
 import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
 import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
@@ -155,6 +156,11 @@ class _AccountViewState extends ConsumerState<_AccountView> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (state != null && status.deployed)
+          AccountProtectionBanner(
+            state: state,
+            thisDevice: status.deviceKey.address,
+          ),
         Card(
           child: Column(
             children: [
@@ -240,6 +246,27 @@ class _AccountViewState extends ConsumerState<_AccountView> {
             padding: EdgeInsets.only(top: 8),
             child: Text(waitingForCompletion),
           ),
+        if (status.deployed) ...[
+          const SizedBox(height: 8),
+          ListTile(
+            key: const Key('stawi-guardians'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.shield_outlined),
+            title: const Text('Guardians and recovery'),
+            subtitle: Text(
+              state == null || state.guardians.isEmpty
+                  ? 'No guardians yet'
+                  : '${state.guardianThreshold} of ${state.guardians.length} '
+                        'guardians must agree',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AccountProtectionScreen(),
+              ),
+            ),
+          ),
+        ],
         if (status.deployed && !status.deviceRegistered)
           Text(
             'To sign from this device, add its key id from a device that is '

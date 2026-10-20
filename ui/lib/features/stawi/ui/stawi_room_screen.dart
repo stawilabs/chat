@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/stawi_timeline_providers.dart';
 import 'contribute_screen.dart';
 import 'convert_room_screen.dart';
-import 'governance_sheet.dart';
+import 'guided_governance.dart';
 import 'pending_reveals_card.dart';
 import 'protocol_fee_line.dart';
 import 'room_money_screen.dart';
@@ -100,8 +100,8 @@ class StawiRoomScreen extends ConsumerWidget {
           FilledButton.icon(
             key: const Key('stawi-governance'),
             icon: const Icon(Icons.gavel_outlined),
-            label: const Text('Sign a room act'),
-            onPressed: () => showGovernanceSheet(context, roomId: roomId),
+            label: const Text('Group decisions'),
+            onPressed: () => showGroupDecisionsSheet(context, roomId: roomId),
           ),
           const SizedBox(height: 8),
           FilledButton.tonalIcon(

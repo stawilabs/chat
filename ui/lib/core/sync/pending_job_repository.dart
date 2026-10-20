@@ -138,11 +138,6 @@ class PendingJobRepository {
       case domain.JobType.removeRoomMembers:
       case domain.JobType.changeMemberRole:
       case domain.JobType.leaveRoom:
-      case domain.JobType.createInviteLink:
-      case domain.JobType.revokeInviteLink:
-      case domain.JobType.useInviteLink:
-      case domain.JobType.approveJoinRequest:
-      case domain.JobType.rejectJoinRequest:
         return JobPriority.normal;
 
       // Low - background tasks
