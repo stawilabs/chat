@@ -423,6 +423,12 @@ class StawiRoomService {
     );
   }
 
+  /// A room call settlement holds for the person: how far a signed act has
+  /// got, and the on-chain proposal a PROPOSE opened.
+  Future<settlement.RoomCall> roomCall(String callId) async =>
+      (await _rooms.getRoomCall(settlement.GetRoomCallRequest(callId: callId)))
+          .call;
+
   /// Signs a checked room act the person reviewed, behind the device lock
   /// (its review title), and sends it into the room. A secret ballot's seal
   /// is kept on this device first, so a sent commitment never loses its

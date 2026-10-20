@@ -8,6 +8,7 @@ import '../../../core/networking/api_config.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/stawi_money.dart';
 import 'account_protection_screen.dart';
+import 'guarded_accounts_screen.dart';
 import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
 import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
@@ -263,6 +264,21 @@ class _AccountViewState extends ConsumerState<_AccountView> {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const AccountProtectionScreen(),
+              ),
+            ),
+          ),
+          ListTile(
+            key: const Key('stawi-people-i-guard'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.diversity_3_outlined),
+            title: const Text('People I guard'),
+            subtitle: const Text(
+              'Be a guardian for someone, and help them recover their account',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const GuardedAccountsScreen(),
               ),
             ),
           ),

@@ -943,6 +943,8 @@ settlement.PrepareRoomCallResponse honestRoomCall(
   List<int>? inviteHash,
   List<int>? loanBook,
   ({List<int> borrower, BigInt amount, int instalments})? pendingLoan,
+  settlement.RoomPolicyChange? policyChange,
+  List<int>? policyPayloadHash,
 }) {
   final p = req.params;
   final at = BigInt.from(
@@ -1003,6 +1005,12 @@ settlement.PrepareRoomCallResponse honestRoomCall(
             ),
           ),
         ),
+      ),
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
+        when p.propose.hasRuleChanges() =>
+      (
+        SignedCallKind.propose,
+        propose(ProposalKinds.policyChange, policyPayloadHash!),
       ),
     settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE => (
       SignedCallKind.propose,
@@ -1168,6 +1176,7 @@ settlement.PrepareRoomCallResponse honestRoomCall(
       digest: digest,
       requiresSignature: true,
       exitIntent: exitIntent,
+      policyChange: policyChange,
       payloadHash: exitIntent == null
           ? null
           : intentDigestOf(sdkIntentOf(exitIntent)),
@@ -1445,6 +1454,198 @@ class GoGuardianCallVector {
         address: account,
         kind: kind,
         intentDigest: d,
+      ),
+    );
+  }
+}
+
+/// One rule change stawi v0.2.6's Go compiled (test/fixtures/stawi/
+/// go_governance.json, rule_changes): templates.ApplyRuleValues on the
+/// savings-and-credit template, policy.Compile, policy.ChainSecurityParams,
+/// ParamsHash and PolicyChangePayloadHash.
+class GoRuleChange {
+  GoRuleChange(this.json);
+
+  final Map<String, dynamic> json;
+
+  static List<GoRuleChange> load() => [
+    for (final c
+        in (jsonDecode(
+              File('test/fixtures/stawi/go_governance.json').readAsStringSync(),
+            ) as Map<String, dynamic>)['rule_changes']
+            as List<dynamic>)
+      GoRuleChange(c as Map<String, dynamic>),
+  ];
+
+  static GoRuleChange named(String name) =>
+      load().firstWhere((v) => v.name == name);
+
+  String get name => json['name'] as String;
+  Map<String, String> get values =>
+      (json['rule_values'] as Map<String, dynamic>).cast<String, String>();
+  Uint8List hex(String k) => hexToBytes(json[k] as String);
+  Uint8List get custody => hex('custody');
+  List<Uint8List> get documents => [
+    for (final d in json['documents'] as List<dynamic>) hexToBytes(d as String),
+  ];
+  List<Uint8List> get capabilityIds => [
+    for (final d in json['capability_ids'] as List<dynamic>)
+      hexToBytes(d as String),
+  ];
+  finance.RoomSecurityParams _params(String k) =>
+      finance.RoomSecurityParams()..mergeFromProto3Json(json[k]);
+  finance.RoomSecurityParams get params => _params('security_params');
+  finance.RoomSecurityParams get previousParams =>
+      _params('previous_security_params');
+  finance.RoomPolicy get previousConstitution => finance.RoomPolicy()
+    ..mergeFromProto3Json(
+      jsonDecode(utf8.decode(hex('previous_constitution'))),
+    );
+
+  /// What finance's GetPolicy holds in force before the change.
+  finance.PolicyVersion get inForce => finance.PolicyVersion(
+    constitution: previousConstitution,
+    constitutionHash: hex('previous_constitution_hash'),
+    policyEpoch: Int64.ONE,
+  );
+
+  settlement.RoomPolicyChange get change => settlement.RoomPolicyChange(
+    ruleValues: values.entries,
+    constitutionHash: hex('constitution_hash'),
+    financePolicyHash: hex('finance_policy_hash'),
+    securityPolicyHash: hex('security_policy_hash'),
+    securityParams: params,
+    capabilityIds: capabilityIds,
+    documents: documents,
+    policyEpoch: Int64.ONE,
+    previousConstitutionHash: hex('previous_constitution_hash'),
+    previousSecurityParams: previousParams,
+  );
+
+  settlement.PrepareRoomCallResponse prepared([
+    settlement.RoomPolicyChange? c,
+  ]) => settlement.PrepareRoomCallResponse(
+    call: settlement.RoomCall(policyChange: c ?? change),
+  );
+}
+
+/// stawi v0.2.6's Go vectors for this round (test/fixtures/stawi/
+/// go_governance.json): SET_GUARDIANS, guardian acts and the guardian key
+/// proof. The rule changes are [GoRuleChange].
+abstract final class GoGovernanceVectors {
+  static Map<String, dynamic> get _json => jsonDecode(
+    File('test/fixtures/stawi/go_governance.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+
+  static List<GoSetGuardiansVector> setGuardians() => [
+    for (final v in _json['set_guardians'] as List<dynamic>)
+      GoSetGuardiansVector(v as Map<String, dynamic>),
+  ];
+
+  static List<GoGuardianActVector> guardianActs() => [
+    for (final v in _json['guardian_acts'] as List<dynamic>)
+      GoGuardianActVector(v as Map<String, dynamic>),
+  ];
+
+  static GoGuardianActVector guardianAct(String name) =>
+      guardianActs().firstWhere((v) => v.name == name);
+
+  static Map<String, dynamic> get guardianKeyProof =>
+      _json['guardian_key_proof'] as Map<String, dynamic>;
+}
+
+/// A SET_GUARDIANS vector: the guardians [before] and [after] the change.
+class GoSetGuardiansVector extends GoGuardianCallVector {
+  GoSetGuardiansVector(super.json);
+
+  ({List<Uint8List> guardians, int threshold}) _set(String key) {
+    final p = this.json[key] as Map<String, dynamic>;
+    return (
+      guardians: [
+        for (final g in p['guardians'] as List<dynamic>)
+          hexToBytes(g as String),
+      ],
+      threshold: p['guardian_threshold'] as int,
+    );
+  }
+
+  ({List<Uint8List> guardians, int threshold}) get before => _set('before');
+  ({List<Uint8List> guardians, int threshold}) get after => _set('policy');
+}
+
+/// A guardian act on account 0xa0… by anvil's first key as guardian.
+class GoGuardianActVector {
+  GoGuardianActVector(this.json);
+
+  final Map<String, dynamic> json;
+
+  String get name => json['name'] as String;
+  Map<String, dynamic> get _op => json['op'] as Map<String, dynamic>;
+  int get opKind => _op['kind'] as int;
+  Uint8List get newKey => hexToBytes(_op['new_key'] as String);
+  int get round => _op['round'] as int;
+  int get algorithm => _op['algorithm'] as int;
+  Uint8List get guardian => hexToBytes(json['guardian'] as String);
+  Uint8List get opHash => hexToBytes(json['op_hash'] as String);
+  Uint8List get digest => hexToBytes(json['digest'] as String);
+  finance.FinancialIntent get intent =>
+      financeIntentOf(json['intent'] as Map<String, dynamic>);
+  Uint8List get account => Uint8List.fromList(intent.account);
+  BigInt get chainId => BigInt.parse(intent.domain.chainId.toStringUnsigned());
+
+  /// The account as GetGuardedAccount reads it for this guardian, with a
+  /// pending recovery to [newKey] in [round] when [pending].
+  settlement.GuardedAccount guarded({
+    bool pending = false,
+    int approvals = 1,
+    int required = 2,
+  }) => settlement.GuardedAccount(
+    address: account,
+    ownerProfileId: 'owner0000000000000p9',
+    guardian: guardian,
+    guardians: [guardian, Uint8List(20)..[19] = 0x77],
+    guardianThreshold: 2,
+    guardianNonce: intent.nonce,
+    recovery: settlement.AccountRecovery(
+      round: Int64(round),
+      state: pending
+          ? settlement.AccountRecoveryState.ACCOUNT_RECOVERY_STATE_PENDING
+          : settlement.AccountRecoveryState.ACCOUNT_RECOVERY_STATE_NONE,
+      newKey: pending ? newKey : null,
+      newKeyAlgorithm: pending
+          ? settlement.DeviceKeyAlgorithm.DEVICE_KEY_ALGORITHM_SECP256K1
+          : null,
+      approvals: Int64(pending ? approvals : 0),
+      approvalsRequired: Int64(pending ? required : 0),
+      executableAfter: Int64(pending ? 1760090000 : 0),
+      expiresAt: Int64(pending ? 1760600000 : 0),
+    ),
+  );
+
+  /// What settlement's PrepareAccountCall returns for this act of [kind].
+  settlement.PrepareAccountCallResponse prepared(
+    settlement.AccountCallKind kind, {
+    finance.FinancialIntent? intent,
+    Uint8List? signer,
+  }) {
+    final i = intent ?? this.intent;
+    final d = sdkIntentOf(i).digest();
+    return settlement.PrepareAccountCallResponse(
+      callId: 'acct00000000000000ga',
+      intentDigest: d,
+      financialIntent: i,
+      call: settlement.AccountCall(
+        callId: 'acct00000000000000ga',
+        address: account,
+        kind: kind,
+        intentDigest: d,
+        signer: signer ?? guardian,
+        guardianOp: settlement.AccountGuardianOp(
+          kind: opKind,
+          newKey: newKey,
+          round: Int64(round),
+          algorithm: algorithm,
+        ),
       ),
     );
   }

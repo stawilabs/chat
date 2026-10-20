@@ -4,20 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
+import '../data/guardian_contacts.dart';
 import '../data/stawi_account_service.dart';
 import '../domain/account_protection.dart';
+import 'guardian_picker.dart';
 import 'loan_widgets.dart' show settleThenRefresh, waitingForCompletion;
 import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
 
-/// What a guardian can and cannot do from this app today: the chain takes a
-/// guardian's approval only as a key's own signature, and settlement
-/// prepares one only for the profile that owns that key.
+/// How the person's guardians act: from their own phones.
 const String guardianActsNote =
-    'Your guardians start and approve a recovery with their own keys. The '
-    'Stawi app cannot sign as someone else\'s guardian yet, so a recovery is '
-    'started outside the app; when one is under way it shows here, and you '
-    'can contest it.';
+    'Your guardians start and approve a recovery from their own phones '
+    '(Stawi account, People I guard), each with their own guardian key. When '
+    'one is under way it shows here, and you can contest it.';
 
 /// The recovery status of an account, as a banner: a recovery under way, a
 /// freeze, or a guardian change waiting. Nothing when there is none.
@@ -97,27 +96,59 @@ class _AccountProtectionScreenState
     }
   }
 
-  Future<void> _add(settlement.AccountState state) async {
-    final choice = await showDialog<(Uint8List, int)>(
-      context: context,
-      builder: (_) => AddGuardianDialog(current: state.guardians.length),
-    );
-    if (choice == null || !mounted) return;
+  /// The guardian set and threshold the change leads to, prepared as one
+  /// SET_GUARDIANS.
+  Future<void> _set(
+    List<Uint8List> guardians,
+    int threshold,
+    GuardianSetChange change,
+  ) async {
     final service = ref.read(stawiAccountServiceProvider);
     await _run(
-      () => service.prepareGuardianChange(
-        guardian: choice.$1,
-        add: true,
-        threshold: choice.$2,
+      () => service.prepareGuardianSet(
+        guardians: guardians,
+        threshold: threshold,
+        change: change,
       ),
     );
   }
 
-  Future<void> _remove(Uint8List guardian) async {
-    final service = ref.read(stawiAccountServiceProvider);
-    await _run(
-      () => service.prepareGuardianChange(guardian: guardian, add: false),
+  List<Uint8List> _current(settlement.AccountState state) => [
+    for (final g in state.guardians) Uint8List.fromList(g),
+  ];
+
+  Future<void> _add(settlement.AccountState state) async {
+    final current = _current(state);
+    final choice = await showGuardianPicker(context, exclude: current);
+    if (choice == null || !mounted) return;
+    final n = current.length + 1;
+    final k = await showGuardianThresholdDialog(
+      context,
+      n: n,
+      initial: n ~/ 2 + 1,
     );
+    if (k == null || !mounted) return;
+    await _set(
+      [...current, choice.key],
+      k,
+      GuardianAdded(choice.key, name: choice.name),
+    );
+  }
+
+  Future<void> _replace(settlement.AccountState state, Uint8List old) async {
+    final choice = await showGuardianPicker(context, exclude: _current(state));
+    if (choice == null || !mounted) return;
+    final after = guardianSetReplacing(state, old, choice.key);
+    await _set(
+      after.guardians,
+      after.threshold,
+      GuardianReplaced(old, choice.key, name: choice.name),
+    );
+  }
+
+  Future<void> _remove(settlement.AccountState state, Uint8List g) async {
+    final after = guardianSetAfter(state, g, add: false);
+    await _set(after.guardians, after.threshold, GuardianRemoved(g));
   }
 
   @override
@@ -155,7 +186,14 @@ class _AccountProtectionScreenState
     final p = AccountProtection.of(state);
     final service = ref.read(stawiAccountServiceProvider);
     final canSign = status.deviceRegistered && !_busy;
+    final canChange = canSign && p.pendingChangeAt == null && !p.recovering;
     final theme = Theme.of(context);
+    final names = {
+      for (final o
+          in ref.watch(guardianKeyOffersProvider).asData?.value ??
+              const <GuardianKeyOffer>[])
+        if (o.key case final k?) bytesToHex0x(k).toLowerCase(): o.name,
+    };
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -219,12 +257,26 @@ class _AccountProtectionScreenState
             key: Key('guardian-${bytesToHex0x(g).toLowerCase()}'),
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.shield_outlined),
-            title: Text(bytesToHex0x(g).toLowerCase()),
-            trailing: TextButton(
-              onPressed: canSign && p.pendingChangeAt == null
-                  ? () => _remove(g)
-                  : null,
-              child: const Text('Remove'),
+            title: Text(
+              names[bytesToHex0x(g).toLowerCase()] ??
+                  bytesToHex0x(g).toLowerCase(),
+            ),
+            subtitle: names.containsKey(bytesToHex0x(g).toLowerCase())
+                ? Text(shortHex(bytesToHex0x(g).toLowerCase()))
+                : null,
+            trailing: Wrap(
+              children: [
+                TextButton(
+                  key: Key('guardian-replace-${bytesToHex0x(g).toLowerCase()}'),
+                  onPressed: canChange ? () => _replace(state, g) : null,
+                  child: const Text('Replace'),
+                ),
+                TextButton(
+                  key: Key('guardian-remove-${bytesToHex0x(g).toLowerCase()}'),
+                  onPressed: canChange ? () => _remove(state, g) : null,
+                  child: const Text('Remove'),
+                ),
+              ],
             ),
           ),
         const SizedBox(height: 8),
@@ -251,8 +303,8 @@ class _AccountProtectionScreenState
           ),
         const SizedBox(height: 16),
         Text(
-          'To replace a guardian, remove them and add the new one once the '
-          'removal has taken effect (each change waits 24 hours).',
+          'Adding, removing or replacing a guardian is one change; it takes '
+          'effect after 24 hours, and you can cancel it until then.',
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
@@ -260,92 +312,6 @@ class _AccountProtectionScreenState
           guardianActsNote,
           key: const Key('guardian-acts-note'),
           style: theme.textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-/// Asks for a guardian's key (a 20-byte address) and how many guardians must
-/// agree once it is added; pops (guardian, threshold).
-class AddGuardianDialog extends StatefulWidget {
-  const AddGuardianDialog({required this.current, super.key});
-
-  /// How many guardians the account has now.
-  final int current;
-
-  @override
-  State<AddGuardianDialog> createState() => _AddGuardianDialogState();
-}
-
-class _AddGuardianDialogState extends State<AddGuardianDialog> {
-  final _controller = TextEditingController();
-  late int _threshold = _defaultThreshold(widget.current + 1);
-  String? _error;
-
-  /// A majority of the guardians after the change.
-  static int _defaultThreshold(int n) => n ~/ 2 + 1;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    try {
-      Navigator.of(context)
-          .pop((parseKeyAddress(_controller.text), _threshold));
-    } on FormatException catch (e) {
-      setState(() => _error = e.message);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final n = widget.current + 1;
-    return AlertDialog(
-      title: const Text('Add a guardian'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'A guardian is someone you trust who holds their own key. Paste '
-            'the key they give you.',
-          ),
-          TextField(
-            key: const Key('guardian-key'),
-            controller: _controller,
-            decoration: InputDecoration(
-              labelText: 'Guardian key (0x…)',
-              errorText: _error,
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            key: const Key('guardian-threshold'),
-            initialValue: _threshold,
-            decoration: const InputDecoration(
-              labelText: 'Guardians who must agree',
-            ),
-            items: [
-              for (var k = 1; k <= n; k++)
-                DropdownMenuItem(value: k, child: Text('$k of $n')),
-            ],
-            onChanged: (v) => setState(() => _threshold = v ?? _threshold),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          key: const Key('guardian-review'),
-          onPressed: _submit,
-          child: const Text('Review'),
         ),
       ],
     );

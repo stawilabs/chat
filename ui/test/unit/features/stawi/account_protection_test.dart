@@ -12,7 +12,6 @@ import '../../../support/stawi_fakes.dart';
 
 void main() {
   const add = settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_GUARDIAN;
-  const remove = settlement.AccountCallKind.ACCOUNT_CALL_KIND_REMOVE_GUARDIAN;
   const contest = settlement.AccountCallKind.ACCOUNT_CALL_KIND_CONTEST_RECOVERY;
   const cancel = settlement.AccountCallKind.ACCOUNT_CALL_KIND_CANCEL_POLICY;
   final g1 = hexToBytes('0x3132333435363738393a3b3c3d3e3f4041424344');
@@ -69,129 +68,170 @@ void main() {
     });
   });
 
-  group('checkedGuardianChange', () {
-    test('signs adding the first guardian', () {
-      final v = GoGuardianCallVector.named('add_first_guardian');
-      expect(
-        checkedGuardianChange(
-          prepared: v.prepared(add),
-          state: v.stateWith(),
-          account: v.account,
-          guardian: g1,
-          add: true,
-          chainId: v.chainId,
-        ),
-        v.digest,
-      );
-    });
-
-    test('signs adding a second guardian with 2 of 2', () {
-      final v = GoGuardianCallVector.named('add_second_guardian');
-      expect(
-        checkedGuardianChange(
-          prepared: v.prepared(add),
-          state: v.stateWith(guardians: [g1], threshold: 1),
-          account: v.account,
-          guardian: g2,
-          add: true,
-          threshold: 2,
-          chainId: v.chainId,
-        ),
-        v.digest,
-      );
-    });
-
-    test('signs removing the last guardian', () {
-      final v = GoGuardianCallVector.named('remove_last_guardian');
-      expect(
-        checkedGuardianChange(
-          prepared: v.prepared(remove),
-          state: v.stateWith(guardians: [g1], threshold: 1),
-          account: v.account,
-          guardian: g1,
-          add: false,
-          chainId: v.chainId,
-        ),
-        v.digest,
-      );
+  group('checkedGuardianSet (SET_GUARDIANS)', () {
+    const set = settlement.AccountCallKind.ACCOUNT_CALL_KIND_SET_GUARDIANS;
+    test('signs the guardian sets Go builds', () {
+      // stawi v0.2.5's add/remove vectors propose the same op as the whole
+      // set would.
+      for (final (name, before, k, after, threshold) in [
+        ('add_first_guardian', <Uint8List>[], 0, [g1], 1),
+        ('add_second_guardian', [g1], 1, [g1, g2], 2),
+        ('remove_last_guardian', [g1], 1, <Uint8List>[], 0),
+      ]) {
+        final v = GoGuardianCallVector.named(name);
+        expect(
+          checkedGuardianSet(
+            prepared: v.prepared(set),
+            state: v.stateWith(guardians: before, threshold: k),
+            account: v.account,
+            guardians: after,
+            threshold: threshold,
+            chainId: v.chainId,
+          ),
+          v.digest,
+          reason: name,
+        );
+      }
+      // stawi v0.2.6: two guardians replaced by two others, and all removed.
+      for (final v in GoGovernanceVectors.setGuardians()) {
+        final before = v.before;
+        expect(
+          checkedGuardianSet(
+            prepared: v.prepared(set),
+            state: v.stateWith(
+              guardians: before.guardians,
+              threshold: before.threshold,
+            ),
+            account: v.account,
+            guardians: v.after.guardians,
+            threshold: v.after.threshold,
+            chainId: v.chainId,
+          ),
+          v.digest,
+          reason: v.name,
+        );
+      }
     });
 
     Matcher refused(String reason) => throwsA(
       isA<SigningRefused>().having((e) => e.reason, 'reason', reason),
     );
 
-    test('refuses another guardian, threshold or policy', () {
+    test('refuses another set, threshold or policy', () {
       final v = GoGuardianCallVector.named('add_second_guardian');
       final state = v.stateWith(guardians: [g1], threshold: 1);
-      Uint8List check(settlement.PrepareAccountCallResponse p, {int t = 2}) =>
-          checkedGuardianChange(
-            prepared: p,
-            state: state,
-            account: v.account,
-            guardian: g2,
-            add: true,
-            threshold: t,
-            chainId: v.chainId,
-          );
+      Uint8List check(
+        settlement.PrepareAccountCallResponse p, {
+        List<Uint8List>? guardians,
+        int t = 2,
+      }) => checkedGuardianSet(
+        prepared: p,
+        state: state,
+        account: v.account,
+        guardians: guardians ?? [g1, g2],
+        threshold: t,
+        chainId: v.chainId,
+      );
       // The person asked for 1 of 2; the op makes it 2 of 2.
-      expect(() => check(v.prepared(add), t: 1), refused(notTheGuardianChange));
+      expect(() => check(v.prepared(set), t: 1), refused(notTheGuardianChange));
+      // Another order of the same guardians is another policy.
+      expect(
+        () => check(v.prepared(set), guardians: [g2, g1]),
+        refused(notTheGuardianChange),
+      );
       // A raised limit slipped into the proposed policy.
       final raised = v.policy!..periodLimit = '999999999999';
       expect(
-        () => check(v.prepared(add, opPolicy: raised)),
-        refused(notTheGuardianChange),
-      );
-      // Another guardian than the one typed.
-      final other = GoGuardianCallVector.named('add_second_guardian').policy!;
-      other.guardians[1] = Uint8List(20)..[19] = 9;
-      expect(
-        () => check(v.prepared(add, opPolicy: other)),
+        () => check(v.prepared(set, opPolicy: raised)),
         refused(notTheGuardianChange),
       );
       // The op is not a policy proposal.
       expect(
-        () => check(v.prepared(add, opKind: ProtectionOps.cancelPolicy)),
+        () => check(v.prepared(set, opKind: ProtectionOps.cancelPolicy)),
+        refused(notTheGuardianChange),
+      );
+      // A set the account would refuse is never signed.
+      expect(
+        () => check(v.prepared(set), guardians: [g1, g1]),
         refused(notTheGuardianChange),
       );
     });
 
-    test('refuses an intent that binds another op or account', () {
+    test('refuses an intent that binds another op, chain or kind', () {
       final v = GoGuardianCallVector.named('add_first_guardian');
       final other = v.intent..authorizationId = Uint8List(32);
+      Uint8List check(
+        settlement.PrepareAccountCallResponse p, {
+        BigInt? chainId,
+      }) => checkedGuardianSet(
+        prepared: p,
+        state: v.stateWith(),
+        account: v.account,
+        guardians: [g1],
+        threshold: 1,
+        chainId: chainId ?? v.chainId,
+      );
       expect(
-        () => checkedGuardianChange(
-          prepared: v.prepared(add, intent: other),
-          state: v.stateWith(),
-          account: v.account,
-          guardian: g1,
-          add: true,
-          chainId: v.chainId,
-        ),
+        () => check(v.prepared(set, intent: other)),
         refused(notTheGuardianChange),
       );
       final v2 = GoGuardianCallVector.named('add_first_guardian');
       expect(
-        () => checkedGuardianChange(
-          prepared: v2.prepared(add),
+        () => checkedGuardianSet(
+          prepared: v2.prepared(set),
           state: v2.stateWith(),
           account: v2.account,
-          guardian: g1,
-          add: true,
+          guardians: [g1],
+          threshold: 1,
           chainId: v2.chainId + BigInt.one,
         ),
         refused('the change is for another account'),
       );
       expect(
-        () => checkedGuardianChange(
-          prepared: v2.prepared(remove),
+        () => checkedGuardianSet(
+          prepared: v2.prepared(add),
           state: v2.stateWith(),
           account: v2.account,
-          guardian: g1,
-          add: true,
+          guardians: [g1],
+          threshold: 1,
           chainId: v2.chainId,
         ),
         refused('settlement prepared another kind of call'),
       );
+    });
+  });
+
+  group('guardian sets', () {
+    final v = GoGuardianCallVector.named('add_second_guardian');
+    test('replacing keeps the threshold, clamped', () {
+      final s = v.stateWith(guardians: [g1, g2], threshold: 2);
+      final g3 = Uint8List(20)..[19] = 3;
+      final after = guardianSetReplacing(s, g1, g3);
+      expect(after.guardians, [g3, g2]);
+      expect(after.threshold, 2);
+      expect(
+        () => guardianSetReplacing(s, g1, g2),
+        throwsFormatException,
+        reason: 'a guardian twice',
+      );
+      expect(
+        () => guardianSetReplacing(s, g3, g1),
+        throwsFormatException,
+        reason: 'not a guardian',
+      );
+    });
+    test('the account refuses itself, zero and a bad threshold', () {
+      final s = v.stateWith();
+      expect(() => checkGuardianSet(s, [v.account], 1), throwsFormatException);
+      expect(
+        () => checkGuardianSet(s, [Uint8List(20)], 1),
+        throwsFormatException,
+      );
+      expect(() => checkGuardianSet(s, [g1], 2), throwsFormatException);
+      expect(() => checkGuardianSet(s, [g1], 0), throwsFormatException);
+      expect(() => checkGuardianSet(s, [], 1), throwsFormatException);
+      checkGuardianSet(s, [], 0);
+      checkGuardianSet(s, [g1, g2], 1);
     });
   });
 

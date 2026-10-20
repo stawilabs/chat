@@ -319,44 +319,37 @@ class StawiAccountService {
     return (account, state);
   }
 
-  /// Prepares adding (or, with [add] false, removing) [guardian] and checks
-  /// it on the device against the account as the chain reads it now: the op
-  /// proposes exactly the policy in force with that guardian added (removed)
-  /// and [threshold] of them needed (0 keeps the current number), and the
-  /// signed intent binds that op. Nothing is signed yet; the account applies
-  /// it after its policy delay.
-  Future<PreparedMoneyCall> prepareGuardianChange({
-    required Uint8List guardian,
-    required bool add,
-    int threshold = 0,
+  /// Prepares naming exactly [guardians], [threshold] of them to agree, as
+  /// the account's guardians in one change (SET_GUARDIANS: a guardian added,
+  /// removed or replaced, or the whole set), and checks it on the device
+  /// against the account as the chain reads it now: the op proposes exactly
+  /// the policy in force with that set and threshold, and the signed intent
+  /// binds that op. Nothing is signed yet; the account applies it after its
+  /// policy delay. [change] says what the person asked for, for the review.
+  Future<PreparedMoneyCall> prepareGuardianSet({
+    required List<Uint8List> guardians,
+    required int threshold,
+    required GuardianSetChange change,
   }) async {
     final (account, state) = await _deployedAccount();
-    final after = guardianSetAfter(
-      state,
-      guardian,
-      add: add,
-      requested: threshold,
-    );
-    final kind = add
-        ? settlement.AccountCallKind.ACCOUNT_CALL_KIND_ADD_GUARDIAN
-        : settlement.AccountCallKind.ACCOUNT_CALL_KIND_REMOVE_GUARDIAN;
+    checkGuardianSet(state, guardians, threshold);
+    const kind = settlement.AccountCallKind.ACCOUNT_CALL_KIND_SET_GUARDIANS;
     final prepared = await _prepareAccountCall(
       settlement.PrepareAccountCallRequest(
         address: account.address,
         kind: kind,
         params: settlement.AccountCallParams(
-          guardian: guardian,
-          guardianThreshold: after.threshold,
+          guardians: guardians,
+          guardianThreshold: threshold,
         ),
       ),
     );
-    final digest = checkedGuardianChange(
+    final digest = checkedGuardianSet(
       prepared: prepared,
       state: state,
       account: account.address,
-      guardian: guardian,
-      add: add,
-      threshold: after.threshold,
+      guardians: guardians,
+      threshold: threshold,
       chainId: _deploymentChainId,
     );
     return PreparedMoneyCall._(
@@ -365,11 +358,10 @@ class StawiAccountService {
       preparedCall: prepared.call,
       digest: digest,
       kind: kind,
-      review: MoneyReview.guardianChange(
-        guardian: guardian,
-        add: add,
-        guardians: after.guardians.length,
-        threshold: after.threshold,
+      review: MoneyReview.guardianSet(
+        change: change,
+        guardians: guardians.length,
+        threshold: threshold,
       ),
     );
   }

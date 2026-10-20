@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:stawi_api/finance_v1.dart' as finance;
 
+import 'decision_progress.dart' show finishesItselfNote;
 import 'governance_requests.dart';
 
 /// A person in the chat room, with their on-chain membership when finance has
@@ -110,9 +111,6 @@ final class GuidedChange {
   final Future<GovernanceRequest> Function() request;
 }
 
-const String _finishFromAdvanced =
-    'When the vote passes, any member finishes it from Advanced: "Queue a passed proposal", then, once its waiting time is over, "Run a passed invitation" (or the role or removal it decided).';
-
 /// Inviting [name]. An officer who may invite does it at once; anyone else
 /// proposes it and the group votes.
 GuidedChange inviteChange({
@@ -144,7 +142,7 @@ GuidedChange inviteChange({
       'If it passes, the invitation stands until ${inviteExpiryLabel(expiresAt)} UTC.',
     ],
     afterwards: [
-      _finishFromAdvanced,
+      finishesItselfNote,
       '$name then accepts the invitation from their own phone.',
     ],
     request: () async => proposeInviteRequest(
@@ -189,7 +187,7 @@ GuidedChange roleChange({
     afterwards: [
       if (full)
         '$roleName has room for $maxHolders and is held by ${currentHolders.join(', ')}: propose removing one of them too, or this cannot take effect.',
-      _finishFromAdvanced,
+      finishesItselfNote,
     ],
     request: () async => give
         ? assignRoleRequest(
@@ -218,7 +216,7 @@ GuidedChange removalChange({
     'The group votes on removing $name.',
     'If it passes, $name stops being a member on chain; what they are owed and what they owe are settled by the group\'s rules.',
   ],
-  afterwards: [_finishFromAdvanced],
+  afterwards: [finishesItselfNote],
   request: () async =>
       proposeRemovalRequest(account: await account(), name: name),
 );

@@ -228,6 +228,10 @@ void main() {
     });
 
     testWidgets('mint to the account on testnet builds', (tester) async {
+      tester.view
+        ..physicalSize = const Size(1080, 4000)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(screen(showTestFunds: true));
       await tester.pumpAndSettle();
       expect(find.text('Get test USDC (testnet)'), findsOneWidget);
