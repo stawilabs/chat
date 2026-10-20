@@ -17,7 +17,7 @@ import 'stawi_payloads.dart';
 /// that the digest is StawiAccount's ERC-1271 wrapping of the call's typed hash
 /// for the member's own account, so a wrong or substituted digest is never
 /// signed.
-final class SigningRefused implements Exception {
+base class SigningRefused implements Exception {
   const SigningRefused(this.reason);
 
   final String reason;

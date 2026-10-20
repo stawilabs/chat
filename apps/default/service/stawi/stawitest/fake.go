@@ -266,3 +266,44 @@ func (p *ProfileAccounts) GetProfileAccount(_ context.Context, profileID string)
 	account := p.accounts[profileID]
 	return &account, nil
 }
+
+// GuardianKeys is a fake settlement LookupGuardianKeys: a profile with no
+// registered keys answers none, as settlement does.
+type GuardianKeys struct {
+	mu   sync.Mutex
+	keys map[string][]stawi.GuardianKey
+	err  error
+	// Head is the block every answer names.
+	Head uint64
+	// Asked records every profile looked up.
+	Asked []string
+}
+
+// NewGuardianKeys returns a fake directory that knows no keys.
+func NewGuardianKeys() *GuardianKeys {
+	return &GuardianKeys{keys: map[string][]stawi.GuardianKey{}, Head: 1}
+}
+
+// Set records profileID's guardian keys.
+func (g *GuardianKeys) Set(profileID string, keys ...stawi.GuardianKey) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.keys[profileID] = keys
+}
+
+// Fail makes every lookup fail with err (nil restores it).
+func (g *GuardianKeys) Fail(err error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.err = err
+}
+
+func (g *GuardianKeys) LookupGuardianKeys(_ context.Context, profileID string) ([]stawi.GuardianKey, uint64, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.Asked = append(g.Asked, profileID)
+	if g.err != nil {
+		return nil, 0, g.err
+	}
+	return g.keys[profileID], g.Head, nil
+}

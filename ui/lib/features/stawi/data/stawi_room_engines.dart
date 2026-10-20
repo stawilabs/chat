@@ -34,6 +34,39 @@ final roomEngineSourceProvider = Provider<RoomEngineSource>((ref) {
   );
 });
 
+/// What a room's rotation runs on, from one GetRoom read of its engines: the
+/// RotationModule binding (null when finance names none: the deployment has
+/// no RotationModule, or the engines could not be read) and whether the
+/// room's RulesEngine grant is ACTIVE (a rotation's contributions are its
+/// dues, so a rotation needs it).
+typedef RotationEngines = ({
+  finance.RoomModuleBinding? module,
+  bool rulesGranted,
+});
+
+/// Reads a room's [RotationEngines].
+typedef RotationEnginesSource = Future<RotationEngines> Function(String roomId);
+
+final rotationEnginesSourceProvider = Provider<RotationEnginesSource>((ref) {
+  final rooms = ref.watch(financeRoomsProvider);
+  return (roomId) async {
+    final room = (await rooms.getRoom(finance.GetRoomRequest(roomId: roomId)))
+        .room;
+    final e = room.hasEngines() ? room.engines : null;
+    return (
+      module: e != null && e.hasRotationModule() ? e.rotationModule : null,
+      rulesGranted: e != null && e.rulesEngine.grantActive,
+    );
+  };
+});
+
+/// The room's [RotationEngines], read fresh for each screen.
+final rotationEnginesProvider = FutureProvider.autoDispose
+    .family<RotationEngines, String>(
+      (ref, roomId) => ref.watch(rotationEnginesSourceProvider)(roomId),
+      retry: (_, _) => null,
+    );
+
 final roomProductSourceProvider = Provider<RoomProductSource>((ref) {
   final savings = ref.watch(financeSavingsProvider);
   return (roomId) =>

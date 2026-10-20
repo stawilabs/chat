@@ -42,6 +42,13 @@ const Map<settlement.RoomSetupStepKind, int> setupStepProposalKinds = {
 /// module) or from the first digest's. A deadline that has passed, a step
 /// twice, or anything else is refused: nothing is signed on settlement's
 /// word.
+///
+/// A RotationModule grant (GRANT_ROTATION) must grant exactly
+/// [rotationModule]: the deployment's RotationModule as finance names it and
+/// the device accepted it (rotation_module.dart checkedRotationModule).
+/// Without one the rotation's setup is refused (the genesis can still be
+/// signed, and the setup later, once the room is on chain and finance names
+/// the module).
 List<Uint8List> checkedSetupDigests({
   required List<settlement.RoomSetupDigest> digests,
   required List<int> governance,
@@ -50,6 +57,7 @@ List<Uint8List> checkedSetupDigests({
   required BigInt chainId,
   required DateTime now,
   int? firstNonce,
+  List<int>? rotationModule,
 }) {
   if (digests.isEmpty) return const [];
   if (governance.length != 20 || governance.every((b) => b == 0)) {
@@ -151,6 +159,16 @@ List<Uint8List> checkedSetupDigests({
       'a setup grants both the loan book and the rotation',
     );
   }
+  if (rotation != null) {
+    if (rotationModule == null) {
+      throw const SigningRefused(rotationModuleUnknownReason);
+    }
+    if (!bytesEqual(rotation, rotationModule)) {
+      throw const SigningRefused(
+        'the setup grants another module than the protocol\'s rotation module',
+      );
+    }
+  }
   final second = loans ?? rotation;
   if (rules != null && second != null && bytesEqual(rules, second)) {
     throw const SigningRefused('both setup grants grant the same engine');
@@ -165,6 +183,12 @@ List<Uint8List> checkedSetupDigests({
   }
   return out;
 }
+
+/// Shown when a rotation's setup is asked for before finance names the
+/// deployment's RotationModule.
+const String rotationModuleUnknownReason =
+    'the rotation module could not be checked yet; the setup is signed once '
+    'the room is on chain';
 
 /// Whether a room's setup runs a rotation (a merry_go_round_weekly room:
 /// its second grant is the RotationModule's).

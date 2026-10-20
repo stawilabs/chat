@@ -69,6 +69,7 @@ type serverOptions struct {
 	stawiRooms      stawi.Rooms
 	stawiAccounts   stawi.AccountResolver
 	profileAccounts stawi.ProfileAccounts
+	guardianKeys    stawi.GuardianKeys
 }
 
 // WithStawi gives the server settlement's RoomService and the profile account
@@ -84,6 +85,12 @@ func WithStawi(rooms stawi.Rooms, accounts stawi.AccountResolver) ServerOption {
 // which GetDirectPartnerAccount calls once chat has checked the DM.
 func WithProfileAccounts(accounts stawi.ProfileAccounts) ServerOption {
 	return func(o *serverOptions) { o.profileAccounts = accounts }
+}
+
+// WithGuardianKeys gives the server settlement's guardian key directory,
+// which LookupContactGuardianKeys calls once chat has checked the room.
+func WithGuardianKeys(keys stawi.GuardianKeys) ServerOption {
+	return func(o *serverOptions) { o.guardianKeys = keys }
 }
 
 // NewChatServer creates a new ChatServer with the business layers initialized.
@@ -162,6 +169,7 @@ func NewChatServer(
 		business.WithStawiBindings(stawiBindings),
 		business.WithPersonalRooms(serviceChecker), // stawi_room_resolve gate
 		business.WithProfileAccounts(options.profileAccounts),
+		business.WithGuardianKeys(options.guardianKeys),
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,
@@ -400,6 +408,32 @@ func (ps *ChatServer) GetRoom(
 	return &chatv1.GetRoomResponse{
 		Room: room,
 	}, nil
+}
+
+// LookupContactGuardianKeys answers the guardian keys of a person the caller
+// shares a room with. Only a person (a contact) asks; the room decides the
+// rest.
+func (ps *ChatServer) LookupContactGuardianKeys(
+	ctx context.Context,
+	req *chatv1.LookupContactGuardianKeysRequest,
+) (*chatv1.LookupContactGuardianKeysResponse, error) {
+	authenticatedContact, err := chatutil.AuthContactLink(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.GetRoomId() == "" || req.GetProfileId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "room_id and profile_id must be specified")
+	}
+
+	timeoutCtx, cancel := ps.withTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := ps.RoomBusiness.LookupContactGuardianKeys(
+		timeoutCtx, req.GetRoomId(), req.GetProfileId(), authenticatedContact)
+	if err != nil {
+		return nil, ps.toAPIError(ctx, err)
+	}
+	return resp, nil
 }
 
 // GetDirectPartnerAccount answers the Stawi account of the other person in

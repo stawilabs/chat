@@ -11,6 +11,7 @@ import '../../messages/domain/room_event.dart';
 import '../domain/governance_requests.dart';
 import '../domain/money_review.dart';
 import '../domain/room_setup.dart';
+import '../domain/rotation_module.dart';
 import '../domain/secret_ballot.dart';
 import '../domain/signing_checks.dart';
 import '../domain/stawi_payloads.dart';
@@ -19,6 +20,7 @@ import 'device_key_store.dart';
 import 'stawi_clients.dart';
 import 'stawi_counterparty.dart';
 import 'stawi_identity.dart';
+import 'stawi_room_engines.dart';
 
 /// Sends one Stawi act into a room as a chat event.
 typedef StawiActSender = Future<RoomEvent> Function({
@@ -41,6 +43,7 @@ class StawiRoomService {
     this._agentAccounts,
     this._contracts,
     this._memberAccounts,
+    this._rotationModules,
     this._now = DateTime.now,
   });
 
@@ -60,6 +63,10 @@ class StawiRoomService {
 
   /// Resolves a member the person chose to the account the act names.
   final MemberAccountOf? _memberAccounts;
+
+  /// The deployment's RotationModule as finance names it for a room, which a
+  /// rotation's setup grant must grant.
+  final RotationModuleOf? _rotationModules;
 
   /// The clock a call's deadline is checked against.
   final DateTime Function() _now;
@@ -133,7 +140,15 @@ class StawiRoomService {
       profileId: me.profileId,
       ownAccounts: me.addresses,
     );
-    final setup = _checkedGenesisSetup(checked.genesis, me.profileId);
+    final setup = _checkedGenesisSetup(
+      checked.genesis,
+      me.profileId,
+      rotationModule: await _genesisRotationModule(
+        conversion.roomId,
+        checked.genesis,
+        me.profileId,
+      ),
+    );
     return PreparedGenesisSignature._(
       conversion: conversion,
       card: card,
@@ -156,8 +171,9 @@ class StawiRoomService {
   /// (the genesis still can be) and says why.
   ({List<Uint8List> digests, String? problem}) _checkedGenesisSetup(
     settlement.RoomGenesis genesis,
-    String profileId,
-  ) {
+    String profileId, {
+    List<int>? rotationModule,
+  }) {
     final founder = genesis.founders
         .where((f) => f.profileId == profileId)
         .firstOrNull;
@@ -177,6 +193,7 @@ class StawiRoomService {
           chainId: chainIdOf(genesis.chainId),
           now: _now(),
           firstNonce: 0,
+          rotationModule: rotationModule,
         ),
         problem: null,
       );
@@ -184,6 +201,35 @@ class StawiRoomService {
       return (digests: const [], problem: e.reason);
     }
   }
+
+  /// The RotationModule a founder's genesis setup may grant, when it grants
+  /// one: the deployment's, as finance names it and the device checks it
+  /// ([checkedRotationModule]); null when it cannot be read or checked yet,
+  /// and the rotation's setup is then left for later.
+  Future<List<int>?> _genesisRotationModule(
+    String roomId,
+    settlement.RoomGenesis genesis,
+    String profileId,
+  ) async {
+    final founder = genesis.founders
+        .where((f) => f.profileId == profileId)
+        .firstOrNull;
+    final source = _rotationModules;
+    if (source == null ||
+        founder == null ||
+        !founder.setupDigests.any(_grantsRotation)) {
+      return null;
+    }
+    try {
+      return checkedRotationModule(await source(roomId)).address;
+    } on Object {
+      return null;
+    }
+  }
+
+  static bool _grantsRotation(settlement.RoomSetupDigest d) =>
+      d.step ==
+      settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION;
 
   /// The account of a genesis agent who is not one of its founders, as this
   /// device can find it; null when it cannot.
@@ -310,6 +356,9 @@ class StawiRoomService {
         'the setup names other contracts than the room\'s',
       );
     }
+    final rotationModule = setup.needsSignatures.any(_grantsRotation)
+        ? checkedRotationModule(await _rotationModules?.call(roomId)).address
+        : null;
     final digests = checkedSetupDigests(
       digests: setup.needsSignatures,
       governance: governance,
@@ -317,6 +366,7 @@ class StawiRoomService {
       account: account.address,
       chainId: room.chainId,
       now: _now(),
+      rotationModule: rotationModule,
     );
     final steps = setup.needsSignatures.length;
     return PreparedSetupSignatures._(
@@ -712,6 +762,12 @@ final stawiRoomContractsProvider = FutureProvider.autoDispose
           financeContractsSource(ref.watch(financeRoomsProvider))(roomId),
     );
 
+/// The deployment's RotationModule binding as finance names it for a room;
+/// null when it names none.
+typedef RotationModuleOf = Future<finance.RoomModuleBinding?> Function(
+  String roomId,
+);
+
 /// Resolves a member of a room, named by profile, to their account.
 typedef MemberAccountOf = Future<Uint8List?> Function(
   String roomId,
@@ -831,6 +887,8 @@ final stawiRoomServiceProvider = Provider<StawiRoomService>((ref) {
       ref.watch(financeRoomsProvider),
       dmPartner: ref.watch(dmPartnerAccountOfProvider),
     ),
+    rotationModules: (roomId) async =>
+        (await ref.read(rotationEnginesSourceProvider)(roomId)).module,
   );
 });
 

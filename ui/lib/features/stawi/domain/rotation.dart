@@ -99,6 +99,16 @@ DateTime rotationTurnStarts(settlement.RoomRotation r, int turn) => _at(
   r.periodEpochStart.toInt() + (r.firstPeriod + turn) * r.periodSeconds.toInt(),
 );
 
+/// Refused when the contribution chosen is not exactly what the group's
+/// rules ask each member a period ([memberDues] minor units: settlement's
+/// RoomRotation.member_dues): a pot counted on other contributions would
+/// never be whole, or would leave money behind.
+final class RotationDuesMismatch extends SigningRefused {
+  const RotationDuesMismatch(this.memberDues, String reason) : super(reason);
+
+  final BigInt memberDues;
+}
+
 /// Shown when settlement's cycle is not the rotation the person chose.
 const String notTheRotation =
     'settlement prepared another rotation than the one you chose';
@@ -113,7 +123,11 @@ const String notTheRotation =
 ///   - the first turn is the first period beginning at or after [startsAt]
 ///     or, with none, the first one after the vote can apply (voting
 ///     period, reveal window, timelock and settlement's hour, within
-///     [rotationClockSlack] of [now]).
+///     [rotationClockSlack] of [now]);
+///   - [contribution] is exactly what the group's rules ask each member a
+///     period (member_dues, read from the RulesEngine when the call was
+///     prepared), else [RotationDuesMismatch]; with no one fixed figure
+///     (member_dues empty) the rotation is refused.
 /// The payload hash is then rebuilt from these values by the SDK
 /// (RoomCallExpected.proposeRotation), so the proposal signed is this cycle.
 settlement.RoomRotation checkedRotation({
@@ -123,6 +137,7 @@ settlement.RoomRotation checkedRotation({
   required finance.RoomPolicy inForce,
   required DateTime now,
   DateTime? startsAt,
+  String Function(BigInt units)? format,
 }) {
   if (!prepared.call.hasRotation()) {
     throw const SigningRefused(
@@ -130,6 +145,21 @@ settlement.RoomRotation checkedRotation({
     );
   }
   final r = prepared.call.rotation;
+  final dues = r.memberDues.isEmpty ? null : BigInt.tryParse(r.memberDues);
+  if (dues == null || dues <= BigInt.zero) {
+    throw const SigningRefused(
+      'the group\'s dues are not one fixed amount each period, so a '
+      'rotation\'s pot could not be counted on',
+    );
+  }
+  if (dues != contribution) {
+    final amount = format?.call(dues) ?? '$dues';
+    throw RotationDuesMismatch(
+      dues,
+      'each member pays exactly the group\'s dues, $amount a period, into a '
+      'rotation; it is set to that now',
+    );
+  }
   if (r.order.length != order.length ||
       [for (var i = 0; i < order.length; i++) i]
           .any((i) => !bytesEqual(r.order[i], order[i]))) {
@@ -227,6 +257,7 @@ GovernanceRequest proposeRotationRequest({
         inForce: inForce.constitution,
         now: clock(),
         startsAt: startsAt,
+        format: (u) => formatUnits(u, asset),
       );
       return RoomCallExpected.proposeRotation(
         custody:
@@ -340,6 +371,37 @@ String turnStateWords(finance.RotationTurn t) => switch (t.state) {
   finance.RotationTurnState.ROTATION_TURN_STATE_SKIPPED => 'Passed over',
   _ => '',
 };
+
+/// What the person pays now to be paid up for the rotation: GetRotation's
+/// pay_now (include_dues) of their own member row, the exact contribution
+/// that brings them CURRENT (penalties first, then dues, less credit); zero
+/// when they already are. Null when it was not read or none of [mine] is in
+/// the rotation.
+BigInt? rotationPayNow(finance.RotationCycle cycle, List<List<int>> mine) {
+  final me = cycle.members
+      .where((m) => mine.any((a) => bytesEqual(a, m.account)))
+      .firstOrNull;
+  if (me == null || !me.hasPayNow()) return null;
+  return BigInt.tryParse(me.payNow.amount);
+}
+
+/// Why [amount] cannot be paid into a rotation that asks exactly [exact]
+/// now; null when it can.
+String? exactContributionProblem(
+  BigInt amount,
+  BigInt exact,
+  StawiAsset asset,
+) {
+  if (exact <= BigInt.zero) {
+    return 'You are paid up for this period: nothing is due now';
+  }
+  if (amount != exact) {
+    return 'Pay exactly ${formatUnits(exact, asset)}: the rotation counts '
+        'each member\'s exact dues, and anything else would leave the pot '
+        'short or hold money it does not pay out';
+  }
+  return null;
+}
 
 /// The rotation chat cards (finance projection money_cards).
 abstract final class RotationCards {

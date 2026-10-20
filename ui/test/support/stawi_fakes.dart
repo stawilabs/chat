@@ -946,6 +946,7 @@ settlement.PrepareRoomCallResponse honestRoomCall(
   settlement.RoomPolicyChange? policyChange,
   List<int>? policyPayloadHash,
   settlement.RoomRotation? rotation,
+  List<int>? grantPayloadHash,
 }) {
   final p = req.params;
   final at = BigInt.from(
@@ -955,6 +956,10 @@ settlement.PrepareRoomCallResponse honestRoomCall(
   Uint8List propose(int kind, List<int> payload) =>
       Uint8List.fromList([..._wi(kind), ...payload]);
   final (SignedCallKind kind, Uint8List params) = switch (req.kind) {
+    // A CAPABILITY_GRANT (11) of the grant document settlement rendered.
+    settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
+        when p.propose.hasEngineGrant() =>
+      (SignedCallKind.propose, propose(11, grantPayloadHash!)),
     settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE
         when p.propose.hasLoanApproval() =>
       (
@@ -1195,7 +1200,7 @@ settlement.PrepareRoomCallResponse honestRoomCall(
       policyChange: policyChange,
       rotation: rotation,
       payloadHash: exitIntent == null
-          ? null
+          ? grantPayloadHash
           : intentDigestOf(sdkIntentOf(exitIntent)),
     ),
   );
@@ -1333,13 +1338,18 @@ List<settlement.RoomSetupDigest> setupDigestsFor({
               )
             : engineGrantDocument(
                 custody: custody,
-                module:
-                    step ==
-                        settlement
-                            .RoomSetupStepKind
-                            .ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE
-                    ? rules
-                    : loans,
+                module: switch (step) {
+                  settlement
+                      .RoomSetupStepKind
+                      .ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE =>
+                    rules,
+                  // The RotationModule of a merry-go-round's setup.
+                  settlement
+                      .RoomSetupStepKind
+                      .ROOM_SETUP_STEP_KIND_GRANT_ROTATION =>
+                    goGrantModule,
+                  _ => loans,
+                },
               );
         final payload = keccak256(document);
         final typed = roomCallTypedHash(
@@ -1703,10 +1713,12 @@ class GoRotationVector {
   ];
 
   /// The cycle as settlement's RoomCall.rotation carries it, on the clock
-  /// [epochStart] / [periodSeconds].
+  /// [epochStart] / [periodSeconds], with the room's dues [memberDues] (by
+  /// default the pot's share of each member: dues that make it whole).
   settlement.RoomRotation rotation({
     required int epochStart,
     required int periodSeconds,
+    String? memberDues,
   }) => settlement.RoomRotation(
     cycleId: cycleId,
     order: order,
@@ -1714,5 +1726,37 @@ class GoRotationVector {
     firstPeriod: firstPeriod,
     periodEpochStart: Int64(epochStart),
     periodSeconds: Int64(periodSeconds),
+    memberDues: memberDues ?? (pot ~/ BigInt.from(order.length)).toString(),
   );
 }
+
+/// The RotationModule in go_proposal_documents.json's grant vector (its
+/// `module`), as the protocol registers it.
+final Uint8List goGrantModule = hexToBytes(
+  '0xa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3',
+);
+
+/// Finance's GetRoom engines.rotation_module (stawi v0.2.8) for the
+/// RotationModule [address] (by default [goGrantModule]): named by a signed
+/// manifest, registered at version 1 with a code hash, and the room's grant
+/// ACTIVE when [grantActive].
+finance.RoomModuleBinding rotationModuleBinding({
+  bool grantActive = false,
+  List<int>? address,
+  bool registered = true,
+  int moduleVersion = 1,
+}) => finance.RoomModuleBinding(
+  address: address ?? goGrantModule,
+  manifestVersion: Int64(6),
+  manifestKeyId: 'manifest-key-1',
+  manifestPayloadHash: List<int>.filled(32, 0x6d),
+  moduleVersion: moduleVersion,
+  registered: registered,
+  codeHash: List<int>.filled(32, 0xc0),
+  moduleManifestHash: List<int>.filled(32, 0x3e),
+  capabilityId: grantActive ? List<int>.filled(32, 0xca) : null,
+  capabilityState: grantActive
+      ? finance.CapabilityState.CAPABILITY_STATE_ACTIVE
+      : null,
+  grantActive: grantActive,
+);

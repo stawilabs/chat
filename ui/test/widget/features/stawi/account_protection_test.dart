@@ -5,6 +5,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stawi/core/networking/client.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/guardian_contacts.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
@@ -13,6 +14,7 @@ import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/ui/account_protection_screen.dart';
 import 'package:stawi/features/stawi/ui/guardian_picker.dart';
 import 'package:stawi_api/settlement_v1.dart' as settlement;
+import 'package:stawi_api_chat/stawi_api_chat.dart' as pb;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart';
 
 import '../../../support/stawi_fakes.dart';
@@ -30,9 +32,13 @@ void main() {
   late settlement.AccountState state;
   late GoGuardianCallVector vector;
   late List<settlement.LookupGuardianKeysRequest> lookups;
+  late List<pb.LookupContactGuardianKeysRequest> chatLookups;
+  late Uint8List dinaKey;
 
   setUp(() async {
+    dinaKey = Uint8List(20)..[0] = 0xd1;
     lookups = [];
+    chatLookups = [];
     device = await deviceAddressOf(anvilKey);
     transport = FakeConnectTransport();
     gate = RecordingSigningGate();
@@ -51,6 +57,14 @@ void main() {
           ),
           _ => settlement.LookupGuardianKeysResponse(),
         };
+      })
+      // Dina shares only a DM with the owner: chat relays her keys.
+      ..on(pb.ChatService.lookupContactGuardianKeys, (req) {
+        chatLookups.add(req);
+        return pb.LookupContactGuardianKeysResponse(
+          profileId: req.profileId,
+          keys: [pb.ContactGuardianKey(key: dinaKey)],
+        );
       })
       ..on(
         settlement.AccountService.getAccount,
@@ -135,7 +149,16 @@ void main() {
                 name: 'Chena',
                 roomId: 'room00000000000000bb',
               ),
+              GuardianContact(
+                profileId: 'dina00000000000000d1',
+                name: 'Dina',
+                roomId: 'dm000000000000000dd1',
+                via: GuardianLookupVia.chat,
+              ),
             ],
+          ),
+          chatServiceClientProvider.overrideWith(
+            (ref) async => pb.ChatServiceClient(transport),
           ),
         ],
         child: const MaterialApp(home: AccountProtectionScreen()),
@@ -221,6 +244,37 @@ void main() {
       findsOneWidget,
     );
 
+    await confirmReview(tester);
+    expectSignedByDevice(vector.digest, 'Add a guardian');
+  });
+
+  testWidgets('a contact who shares only a DM is looked up through chat and '
+      'chosen like any other: the same SET_GUARDIANS, signed once', (
+    tester,
+  ) async {
+    vector = GoGuardianCallVector.named('add_first_guardian');
+    state = withKey(vector.stateWith());
+    // Dina registered the key Go's vector adds.
+    dinaKey = g1;
+    await open(tester);
+    await tester.tap(find.byKey(const Key('add-guardian')));
+    await tester.pumpAndSettle();
+    expect(
+      [for (final r in chatLookups) (r.roomId, r.profileId)],
+      [('dm000000000000000dd1', 'dina00000000000000d1')],
+      reason: 'chat is asked for the DM partner, naming the DM',
+    );
+    expect(
+      lookups.where((r) => r.profileId == 'dina00000000000000d1'),
+      isEmpty,
+      reason: 'settlement answers a person only for a shared Stawi room',
+    );
+    await tester.tap(
+      find.byKey(const Key('guardian-offer-dina00000000000000d1')),
+    );
+    await tester.pumpAndSettle();
+    await pickThreshold(tester, '1 of 1');
+    expect(preparedSet().params.guardians, [g1]);
     await confirmReview(tester);
     expectSignedByDevice(vector.digest, 'Add a guardian');
   });

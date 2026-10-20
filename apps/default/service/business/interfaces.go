@@ -35,6 +35,15 @@ type RoomBusiness interface {
 		ctx context.Context, roomID string, caller *commonv1.ContactLink,
 	) (*chatv1.GetDirectPartnerAccountResponse, error)
 
+	// LookupContactGuardianKeys answers the guardian keys the contact
+	// registered with Stawi, for a contact who is another active member of a
+	// room of the caller's tenancy the caller is an active member of and who
+	// has taken part in it. Anything else is refused PermissionDenied without
+	// saying why; a settlement outage is Unavailable.
+	LookupContactGuardianKeys(
+		ctx context.Context, roomID, contactID string, caller *commonv1.ContactLink,
+	) (*chatv1.LookupContactGuardianKeysResponse, error)
+
 	// UpdateRoom updates room details (name, description, etc.)
 	UpdateRoom(
 		ctx context.Context,

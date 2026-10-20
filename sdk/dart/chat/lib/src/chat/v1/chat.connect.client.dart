@@ -223,6 +223,34 @@ extension type ChatServiceClient (connect.Transport _transport) {
     );
   }
 
+  /// The guardian keys a contact registered with Stawi (settlement's
+  /// LookupGuardianKeys, its directory of keys a person opted in to guard
+  /// with), for a contact the caller shares a chat room with. Settlement
+  /// answers a person only for a contact in a Stawi room both are ACTIVE
+  /// members of; chat answers for any room it holds, a DM included, after
+  /// checking the relationship itself: the caller is a person and an active
+  /// member of the room in their tenancy, the contact is another active member
+  /// of it, and the contact has taken part (started the room or written in
+  /// it). Chat then asks settlement as its own service. Anything else is
+  /// refused without saying anything about the room. No keys means the contact
+  /// has registered none that count.
+  Future<chatv1chat.LookupContactGuardianKeysResponse> lookupContactGuardianKeys(
+    chatv1chat.LookupContactGuardianKeysRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.ChatService.lookupContactGuardianKeys,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
   Future<chatv1chat.SearchRoomSubscriptionsResponse> searchRoomSubscriptions(
     chatv1chat.SearchRoomSubscriptionsRequest input, {
     connect.Headers? headers,

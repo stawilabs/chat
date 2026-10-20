@@ -1074,6 +1074,116 @@ paths:
                 $ref: '#/components/schemas/chat.v1.LiveResponse'
       x-required-permissions:
         - event_view
+  /chat.v1.ChatService/LookupContactGuardianKeys:
+    get:
+      tags:
+        - Rooms
+        - chat.v1.ChatService
+      summary: Read the guardian keys of a person one shares a chat with
+      description: Returns the guardian keys a contact registered with Stawi that count now, for a contact who is another active member of a room the caller is an active member of and who has started that room or written in it.
+      operationId: lookupContactGuardianKeys
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+        - name: message
+          in: query
+          description: The URL-encoded message query parameter contains the JSON or binary serialized request message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.LookupContactGuardianKeysRequest'
+        - name: encoding
+          in: query
+          description: Define which encoding or 'Message-Codec' to use
+          required: true
+          schema:
+            $ref: '#/components/schemas/encoding'
+          example: json
+        - name: base64
+          in: query
+          description: Specifies if the message query param is base64 encoded, which may be required for binary data
+          schema:
+            $ref: '#/components/schemas/base64'
+          example: false
+        - name: compression
+          in: query
+          description: Which compression algorithm to use for this request
+          schema:
+            $ref: '#/components/schemas/compression'
+          example: gzip
+        - name: connect
+          in: query
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect'
+          example: v1
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.LookupContactGuardianKeysResponse'
+      x-required-permissions:
+        - direct_partner_account_view
+    post:
+      tags:
+        - Rooms
+        - chat.v1.ChatService
+      summary: Read the guardian keys of a person one shares a chat with
+      description: Returns the guardian keys a contact registered with Stawi that count now, for a contact who is another active member of a room the caller is an active member of and who has started that room or written in it.
+      operationId: lookupContactGuardianKeys2
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/chat.v1.LookupContactGuardianKeysRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/chat.v1.LookupContactGuardianKeysResponse'
+      x-required-permissions:
+        - direct_partner_account_view
   /chat.v1.ChatService/RemoveRoomSubscriptions:
     post:
       tags:
@@ -1831,6 +1941,27 @@ components:
         ClientCommand represents durable state changes initiated by the client.
          Commands are validated, persisted, and broadcast as needed.
          ClientCommand results in at least one RoomEvent being emitted.
+    chat.v1.ContactGuardianKey:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+          format: byte
+        account:
+          type: string
+          title: account
+          format: byte
+          description: The contact's account the key is a device key of.
+        registeredAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: registered_at
+      title: ContactGuardianKey
+      additionalProperties: false
+      description: |-
+        ContactGuardianKey is one guardian key a contact registered: a device key
+         of their Stawi account they proved they hold (settlement GuardianKey).
     chat.v1.CreateRoomRequest:
       type: object
       properties:
@@ -2914,6 +3045,45 @@ components:
           title: error
       title: LiveResponse
       additionalProperties: false
+    chat.v1.LookupContactGuardianKeysRequest:
+      type: object
+      properties:
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: 'The room the caller shares with the contact: a DM or any other room.'
+        profileId:
+          type: string
+          title: profile_id
+          maxLength: 40
+          minLength: 3
+          pattern: '[0-9a-z_-]{3,40}'
+          description: The contact whose guardian keys are read.
+      title: LookupContactGuardianKeysRequest
+      additionalProperties: false
+    chat.v1.LookupContactGuardianKeysResponse:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+          description: The contact.
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/chat.v1.ContactGuardianKey'
+          title: keys
+          description: Their guardian keys that count at block_number; empty when none.
+        blockNumber:
+          type: string
+          title: block_number
+          format: int64
+          description: The head settlement checked the keys at.
+      title: LookupContactGuardianKeysResponse
+      additionalProperties: false
     chat.v1.ModerationContent:
       type: object
       properties:
@@ -3190,6 +3360,22 @@ components:
           title: room_change
         - type: object
           properties:
+            stawiAgentAcceptance:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiAgentAcceptanceContent'
+              title: stawi_agent_acceptance
+              description: type = PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
+          title: stawi_agent_acceptance
+        - type: object
+          properties:
+            stawiAgentInvitation:
+              allOf:
+                - $ref: '#/components/schemas/chat.v1.StawiAgentInvitationContent'
+              title: stawi_agent_invitation
+              description: type = PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+          title: stawi_agent_invitation
+        - type: object
+          properties:
             stawiCallOutcome:
               allOf:
                 - $ref: '#/components/schemas/chat.v1.StawiCallOutcomeContent'
@@ -3273,6 +3459,10 @@ components:
               - required:
                   - roomChange
               - required:
+                  - stawiAgentAcceptance
+              - required:
+                  - stawiAgentInvitation
+              - required:
                   - stawiCallOutcome
               - required:
                   - stawiGenesisSignature
@@ -3312,6 +3502,10 @@ components:
                     - reaction
                 - required:
                     - roomChange
+                - required:
+                    - stawiAgentAcceptance
+                - required:
+                    - stawiAgentInvitation
                 - required:
                     - stawiCallOutcome
                 - required:
@@ -3358,6 +3552,8 @@ components:
         - PAYLOAD_TYPE_STAWI_GENESIS_SIGNATURE
         - PAYLOAD_TYPE_STAWI_SIGNED_CALL
         - PAYLOAD_TYPE_STAWI_CALL_OUTCOME
+        - PAYLOAD_TYPE_STAWI_AGENT_INVITATION
+        - PAYLOAD_TYPE_STAWI_AGENT_ACCEPTANCE
       description: Allowed message types. Extendable via new enum values; clients must ignore unknown values.
     chat.v1.PresenceEvent:
       type: object
@@ -3932,6 +4128,76 @@ components:
           title: ack
       title: SendEventResponse
       additionalProperties: false
+    chat.v1.StawiAgentAcceptanceContent:
+      type: object
+      properties:
+        invitationEventId:
+          type: string
+          title: invitation_event_id
+          maxLength: 40
+          minLength: 3
+          pattern: ^[0-9a-z_-]{3,40}$
+          description: |-
+            The event id of the StawiAgentInvitationContent being accepted, in this
+             DM.
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          description: 'Output only: the room the accepted invitation names. Set by the server.'
+        roomName:
+          type: string
+          title: room_name
+          maxLength: 256
+          description: 'Output only: that room''s name. Set by the server.'
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expires_at
+          description: |-
+            Output only: until when the inviter may name the acceptor the room's
+             agent. Set by the server.
+      title: StawiAgentAcceptanceContent
+      additionalProperties: false
+      description: |-
+        StawiAgentAcceptanceContent is sent in the same DM by the invited person:
+         they accept an agent invitation. Only the person the invitation was sent to
+         may accept it, before it expires. The acceptance lets the inviter name them
+         the room's agent until the acceptance itself expires.
+    chat.v1.StawiAgentInvitationContent:
+      type: object
+      properties:
+        roomId:
+          type: string
+          title: room_id
+          maxLength: 40
+          minLength: 3
+          pattern: ^[0-9a-z_-]{3,40}$
+          description: |-
+            The room the sender is converting to a Stawi room. The sender must be its
+             owner or an admin.
+        roomName:
+          type: string
+          title: room_name
+          maxLength: 256
+          description: |-
+            Output only: the room's name, as chat holds it. Set by the server on the
+             stored event; whatever the client sends is replaced.
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: expires_at
+          description: |-
+            Output only: until when the invitation may be accepted. Set by the
+             server.
+      title: StawiAgentInvitationContent
+      additionalProperties: false
+      description: |-
+        StawiAgentInvitationContent is sent in a DM: the sender, an owner or admin
+         of a group room, invites the other person in the DM to be that room's Stawi
+         agent. A converting member may name a DM partner who is not a room member
+         as the agent only once the partner has accepted an invitation for exactly
+         that room (StawiAgentAcceptanceContent) in the same DM.
     chat.v1.StawiCallOutcomeContent:
       type: object
       properties:
@@ -4180,6 +4446,18 @@ components:
           description: |-
             Output only: the genesis settlement prepared. Set by the server on the
              stored event; a client that sets it is refused.
+        agentProfileId:
+          type: string
+          title: agent_profile_id
+          pattern: ^([0-9a-v]{20})?$
+          description: |-
+            Optional: the profile of the room's Stawi agent (protocol fee spec), paid
+             a share of the Stawi fee for the life of the room; empty for none. Chat
+             accepts an active member of this room, or a DM partner of the converting
+             member who has accepted, in that DM, the converter's agent invitation for
+             this room (StawiAgentInvitationContent, StawiAgentAcceptanceContent) and
+             whose acceptance has not expired. Settlement resolves the profile to
+             its account; the founders sign it in the genesis.
       title: StawiRoomConversionContent
       additionalProperties: false
       description: |-
@@ -4780,10 +5058,15 @@ components:
       enum:
         - NULL_VALUE
       description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
+        Represents a JSON `null`.
 
-         The JSON representation for `NullValue` is JSON `null`.
+         `NullValue` is a sentinel, using an enum with only one value to represent
+         the null value for the `Value` type union.
+
+         A field of type `NullValue` with any value other than `0` is considered
+         invalid. Most ProtoJSON serializers will emit a Value with a `null_value` set
+         as a JSON `null` regardless of the integer value, and so will round trip to
+         a `0` value.
     google.protobuf.Struct:
       type: object
       additionalProperties:

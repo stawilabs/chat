@@ -200,3 +200,20 @@ type ProfileAccount struct {
 type ProfileAccounts interface {
 	GetProfileAccount(ctx context.Context, profileID string) (*ProfileAccount, error)
 }
+
+// GuardianKey is one guardian key a profile registered with settlement: a
+// device key of their account they proved they hold.
+type GuardianKey struct {
+	Key          []byte
+	Account      []byte
+	RegisteredAt time.Time
+}
+
+// GuardianKeys is settlement's AccountService.LookupGuardianKeys as chat uses
+// it: chat calls it as its own service principal, which settlement answers
+// without a room, and only after it has itself checked that the person it
+// acts for shares a room with the profile. It answers the profile's keys that
+// count at the head and that head.
+type GuardianKeys interface {
+	LookupGuardianKeys(ctx context.Context, profileID string) ([]GuardianKey, uint64, error)
+}

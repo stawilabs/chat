@@ -28,37 +28,39 @@ import (
 // stawiFixture is a room with two members, a business layer wired to a fake
 // settlement, and the repositories a test inspects.
 type stawiFixture struct {
-	ctx      context.Context
-	mb       business.MessageBusiness
-	rb       business.RoomBusiness
-	rooms    *stawitest.Rooms
-	accounts *stawitest.Accounts
-	partners *stawitest.ProfileAccounts
-	bindings repository.StawiRoomRepository
-	calls    repository.StawiRoomCallRepository
-	subRepo  repository.RoomSubscriptionRepository
-	roomRepo repository.RoomRepository
-	dbPool   pool.Pool
-	workMan  workerpool.Manager
-	authz    authz.Middleware
-	keto     security.Authorizer
-	roomID   string
-	alice    *commonv1.ContactLink
-	bob      *commonv1.ContactLink
-	aliceSub string
-	bobSub   string
+	ctx       context.Context
+	mb        business.MessageBusiness
+	rb        business.RoomBusiness
+	rooms     *stawitest.Rooms
+	accounts  *stawitest.Accounts
+	partners  *stawitest.ProfileAccounts
+	guardians *stawitest.GuardianKeys
+	bindings  repository.StawiRoomRepository
+	calls     repository.StawiRoomCallRepository
+	subRepo   repository.RoomSubscriptionRepository
+	roomRepo  repository.RoomRepository
+	dbPool    pool.Pool
+	workMan   workerpool.Manager
+	authz     authz.Middleware
+	keto      security.Authorizer
+	roomID    string
+	alice     *commonv1.ContactLink
+	bob       *commonv1.ContactLink
+	aliceSub  string
+	bobSub    string
 }
 
 func (s *MessageBusinessTestSuite) newStawiFixture(t *testing.T, dep *definition.DependencyOption) *stawiFixture {
 	t.Helper()
 	ctx, svc := s.CreateService(t, dep)
 	f := &stawiFixture{
-		ctx:      ctx,
-		rooms:    stawitest.NewRooms(),
-		accounts: stawitest.NewAccounts(),
-		partners: stawitest.NewProfileAccounts(),
-		alice:    &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
-		bob:      &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
+		ctx:       ctx,
+		rooms:     stawitest.NewRooms(),
+		accounts:  stawitest.NewAccounts(),
+		partners:  stawitest.NewProfileAccounts(),
+		guardians: stawitest.NewGuardianKeys(),
+		alice:     &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
+		bob:       &commonv1.ContactLink{ProfileId: util.IDString(), ContactId: util.IDString()},
 	}
 	f.mb, f.rb = s.setupStawiBusinessLayer(ctx, svc, f)
 
@@ -101,7 +103,7 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
 		s.AuthzMiddleware, business.WithStawiBindings(f.bindings),
 		business.WithPersonalRooms(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)),
-		business.WithProfileAccounts(f.partners))
+		business.WithProfileAccounts(f.partners), business.WithGuardianKeys(f.guardians))
 	f.roomRepo = roomRepo
 	return mb, rb
 }

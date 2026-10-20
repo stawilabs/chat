@@ -96,9 +96,11 @@ service ChatService {
       // room with one person, without being a member (CreateRoom with type
       // DIRECT or BOT). Service principals only.
       "stawi_room_resolve",
-      // Read the Stawi account of the other person in one's own DM. Whether
-      // the caller may is decided by the room: only an active member of a
-      // DIRECT room of exactly two people is answered.
+      // Read the Stawi account of the other person in one's own DM, or the
+      // guardian keys of a person one shares a room with. Whether the caller
+      // may is decided by the room: only an active member of a DIRECT room of
+      // exactly two people is answered an account, and only a fellow active
+      // member who took part in the room is answered keys.
       "direct_partner_account_view"
     ]
     role_bindings: [
@@ -347,6 +349,30 @@ service ChatService {
     };
   }
 
+  // The guardian keys a contact registered with Stawi (settlement's
+  // LookupGuardianKeys, its directory of keys a person opted in to guard
+  // with), for a contact the caller shares a chat room with. Settlement
+  // answers a person only for a contact in a Stawi room both are ACTIVE
+  // members of; chat answers for any room it holds, a DM included, after
+  // checking the relationship itself: the caller is a person and an active
+  // member of the room in their tenancy, the contact is another active member
+  // of it, and the contact has taken part (started the room or written in
+  // it). Chat then asks settlement as its own service. Anything else is
+  // refused without saying anything about the room. No keys means the contact
+  // has registered none that count.
+  rpc LookupContactGuardianKeys(LookupContactGuardianKeysRequest) returns (LookupContactGuardianKeysResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (common.v1.method_permissions) = {
+      permissions: ["direct_partner_account_view"]
+    };
+    option (gnostic.openapi.v3.operation) = {
+      operation_id: "lookupContactGuardianKeys"
+      summary: "Read the guardian keys of a person one shares a chat with"
+      description: "Returns the guardian keys a contact registered with Stawi that count now, for a contact who is another active member of a room the caller is an active member of and who has started that room or written in it."
+      tags: "Rooms"
+    };
+  }
+
   rpc SearchRoomSubscriptions(SearchRoomSubscriptionsRequest) returns (SearchRoomSubscriptionsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
     option (common.v1.method_permissions) = {
@@ -564,6 +590,39 @@ message GetDirectPartnerAccountResponse {
   bytes account = 2;
   // Whether the account is deployed on chain.
   bool deployed = 3;
+}
+
+message LookupContactGuardianKeysRequest {
+  // The room the caller shares with the contact: a DM or any other room.
+  string room_id = 1 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+  // The contact whose guardian keys are read.
+  string profile_id = 2 [
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 40,
+    (buf.validate.field).string.pattern = "[0-9a-z_-]{3,40}"
+  ];
+}
+
+// ContactGuardianKey is one guardian key a contact registered: a device key
+// of their Stawi account they proved they hold (settlement GuardianKey).
+message ContactGuardianKey {
+  bytes key = 1;
+  // The contact's account the key is a device key of.
+  bytes account = 2;
+  google.protobuf.Timestamp registered_at = 3;
+}
+
+message LookupContactGuardianKeysResponse {
+  // The contact.
+  string profile_id = 1;
+  // Their guardian keys that count at block_number; empty when none.
+  repeated ContactGuardianKey keys = 2;
+  // The head settlement checked the keys at.
+  uint64 block_number = 3;
 }
 
 message GetRoomResponse {

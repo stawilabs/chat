@@ -169,6 +169,102 @@ void main() {
       refused(prepared(rotation.deepCopy()..firstPeriod = 2));
       refused(prepared(rotation.deepCopy()..cycleId = Uint8List(32)));
       refused(settlement.PrepareRoomCallResponse());
+      // Dues of 9 a member, but a pot of 30 for three: the pot is refused.
+      refused(
+        prepared(rotation.deepCopy()..memberDues = '9000000'),
+        c: BigInt.from(9000000),
+      );
+    });
+
+    test('the contribution is exactly the group\'s dues as settlement read '
+        'them (member_dues); with no fixed dues there is no rotation', () {
+      settlement.RoomRotation dues(String d) =>
+          rotation.deepCopy()..memberDues = d;
+      final usdc = StawiAsset.fromInfo(
+        finance.AssetInfo(assetId: 'USDC.146', symbol: 'USDC', decimals: 6),
+      );
+      expect(
+        () => checkedRotation(
+          prepared: prepared(dues('12000000')),
+          order: v.order,
+          contribution: contribution,
+          inForce: policy(),
+          now: now,
+          format: (u) => formatUnits(u, usdc),
+        ),
+        throwsA(
+          isA<RotationDuesMismatch>()
+              .having((e) => e.memberDues, 'memberDues', BigInt.from(12000000))
+              .having((e) => e.reason, 'reason', contains('12.00')),
+        ),
+      );
+      for (final empty in ['', '0', 'x']) {
+        expect(
+          () => checkedRotation(
+            prepared: prepared(dues(empty)),
+            order: v.order,
+            contribution: contribution,
+            inForce: policy(),
+            now: now,
+          ),
+          throwsA(
+            isA<SigningRefused>()
+                .having(
+                  (e) => e,
+                  'not a mismatch',
+                  isNot(isA<RotationDuesMismatch>()),
+                )
+                .having((e) => e.reason, 'reason', contains('not one fixed')),
+          ),
+          reason: 'member_dues "$empty"',
+        );
+      }
+    });
+  });
+
+  group('the exact contribution (GetRotation pay_now)', () {
+    final usdc = StawiAsset.fromInfo(
+      finance.AssetInfo(assetId: 'USDC.146', symbol: 'USDC', decimals: 6),
+    );
+    final me = Uint8List(20)..[0] = 1;
+    final other = Uint8List(20)..[0] = 2;
+    finance.RotationMember m(Uint8List a, String? payNow) =>
+        finance.RotationMember(
+          account: a,
+          payNow: payNow == null
+              ? null
+              : finance.Money(assetId: 'USDC.146', amount: payNow),
+        );
+
+    test('is my own member row\'s pay_now', () {
+      final cycle = finance.RotationCycle(
+        members: [m(other, '1'), m(me, '10500000')],
+      );
+      expect(rotationPayNow(cycle, [me]), BigInt.from(10500000));
+      expect(rotationPayNow(cycle, [Uint8List(20)]), isNull);
+      expect(
+        rotationPayNow(finance.RotationCycle(members: [m(me, null)]), [me]),
+        isNull,
+        reason: 'not read (include_dues)',
+      );
+    });
+
+    test('anything but exactly pay_now is refused, and nothing when paid '
+        'up', () {
+      final exact = BigInt.from(10500000);
+      expect(exactContributionProblem(exact, exact, usdc), isNull);
+      expect(
+        exactContributionProblem(BigInt.from(10000000), exact, usdc),
+        contains('Pay exactly 10.50 USDC'),
+      );
+      expect(
+        exactContributionProblem(BigInt.from(11000000), exact, usdc),
+        contains('Pay exactly'),
+      );
+      expect(
+        exactContributionProblem(BigInt.one, BigInt.zero, usdc),
+        contains('paid up'),
+      );
     });
   });
 

@@ -61,8 +61,8 @@ class GuardianPicker extends ConsumerWidget {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Someone you trust from one of your Stawi groups who registered '
-            'their phone as a guardian key.',
+            'Someone you trust, from one of your Stawi groups or your direct '
+            'messages, who registered their phone as a guardian key.',
           ),
         ),
         Flexible(
@@ -81,8 +81,8 @@ class GuardianPicker extends ConsumerWidget {
                     padding: EdgeInsets.all(16),
                     child: Text(
                       'Your guardian is chosen from the members of your '
-                      'Stawi groups. Join one with them first, or paste their '
-                      'key below.',
+                      'Stawi groups and the people you message. Message them '
+                      'first, or paste their key below.',
                     ),
                   )
                 : ListView(

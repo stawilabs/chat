@@ -43,6 +43,12 @@ func (m *mockRoomBusiness) GetDirectPartnerAccount(
 	return nil, errors.New("not implemented")
 }
 
+func (m *mockRoomBusiness) LookupContactGuardianKeys(
+	_ context.Context, _, _ string, _ *commonv1.ContactLink,
+) (*chatv1.LookupContactGuardianKeysResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *mockRoomBusiness) ResolvePersonalRoom(
 	ctx context.Context,
 	req *chatv1.CreateRoomRequest,

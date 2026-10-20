@@ -110,6 +110,25 @@ abstract final class ChatService {
     idempotency: connect.Idempotency.noSideEffects,
   );
 
+  /// The guardian keys a contact registered with Stawi (settlement's
+  /// LookupGuardianKeys, its directory of keys a person opted in to guard
+  /// with), for a contact the caller shares a chat room with. Settlement
+  /// answers a person only for a contact in a Stawi room both are ACTIVE
+  /// members of; chat answers for any room it holds, a DM included, after
+  /// checking the relationship itself: the caller is a person and an active
+  /// member of the room in their tenancy, the contact is another active member
+  /// of it, and the contact has taken part (started the room or written in
+  /// it). Chat then asks settlement as its own service. Anything else is
+  /// refused without saying anything about the room. No keys means the contact
+  /// has registered none that count.
+  static const lookupContactGuardianKeys = connect.Spec(
+    '/$name/LookupContactGuardianKeys',
+    connect.StreamType.unary,
+    chatv1chat.LookupContactGuardianKeysRequest.new,
+    chatv1chat.LookupContactGuardianKeysResponse.new,
+    idempotency: connect.Idempotency.noSideEffects,
+  );
+
   static const searchRoomSubscriptions = connect.Spec(
     '/$name/SearchRoomSubscriptions',
     connect.StreamType.unary,

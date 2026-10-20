@@ -67,6 +67,9 @@ const (
 	// ChatServiceGetDirectPartnerAccountProcedure is the procedure name of the ChatService's
 	// GetDirectPartnerAccount RPC.
 	ChatServiceGetDirectPartnerAccountProcedure = "/chat.v1.ChatService/GetDirectPartnerAccount"
+	// ChatServiceLookupContactGuardianKeysProcedure is the procedure name of the ChatService's
+	// LookupContactGuardianKeys RPC.
+	ChatServiceLookupContactGuardianKeysProcedure = "/chat.v1.ChatService/LookupContactGuardianKeys"
 	// ChatServiceSearchRoomSubscriptionsProcedure is the procedure name of the ChatService's
 	// SearchRoomSubscriptions RPC.
 	ChatServiceSearchRoomSubscriptionsProcedure = "/chat.v1.ChatService/SearchRoomSubscriptions"
@@ -183,6 +186,14 @@ var (
 			IdempotencyLevel: connect.IdempotencyNoSideEffects,
 		}
 	})
+	chatServiceLookupContactGuardianKeysSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType:       connect.StreamTypeUnary,
+			Schema:           v1.File_chat_v1_chat_proto.Services().ByName("ChatService").Methods().ByName("LookupContactGuardianKeys"),
+			Procedure:        ChatServiceLookupContactGuardianKeysProcedure,
+			IdempotencyLevel: connect.IdempotencyNoSideEffects,
+		}
+	})
 	chatServiceSearchRoomSubscriptionsSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType:       connect.StreamTypeUnary,
@@ -279,6 +290,18 @@ type ChatServiceClient interface {
 	// saying anything about the room. An empty account means the partner has
 	// no Stawi account yet.
 	GetDirectPartnerAccount(context.Context, *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error)
+	// The guardian keys a contact registered with Stawi (settlement's
+	// LookupGuardianKeys, its directory of keys a person opted in to guard
+	// with), for a contact the caller shares a chat room with. Settlement
+	// answers a person only for a contact in a Stawi room both are ACTIVE
+	// members of; chat answers for any room it holds, a DM included, after
+	// checking the relationship itself: the caller is a person and an active
+	// member of the room in their tenancy, the contact is another active member
+	// of it, and the contact has taken part (started the room or written in
+	// it). Chat then asks settlement as its own service. Anything else is
+	// refused without saying anything about the room. No keys means the contact
+	// has registered none that count.
+	LookupContactGuardianKeys(context.Context, *v1.LookupContactGuardianKeysRequest) (*v1.LookupContactGuardianKeysResponse, error)
 	SearchRoomSubscriptions(context.Context, *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error)
 	// Get per-room subscription settings for a member (notification preferences, mute, archive)
 	GetSubscriptionSettings(context.Context, *v1.GetSubscriptionSettingsRequest) (*v1.GetSubscriptionSettingsResponse, error)
@@ -349,6 +372,18 @@ type ChatServiceHandler interface {
 	// saying anything about the room. An empty account means the partner has
 	// no Stawi account yet.
 	GetDirectPartnerAccount(context.Context, *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error)
+	// The guardian keys a contact registered with Stawi (settlement's
+	// LookupGuardianKeys, its directory of keys a person opted in to guard
+	// with), for a contact the caller shares a chat room with. Settlement
+	// answers a person only for a contact in a Stawi room both are ACTIVE
+	// members of; chat answers for any room it holds, a DM included, after
+	// checking the relationship itself: the caller is a person and an active
+	// member of the room in their tenancy, the contact is another active member
+	// of it, and the contact has taken part (started the room or written in
+	// it). Chat then asks settlement as its own service. Anything else is
+	// refused without saying anything about the room. No keys means the contact
+	// has registered none that count.
+	LookupContactGuardianKeys(context.Context, *v1.LookupContactGuardianKeysRequest) (*v1.LookupContactGuardianKeysResponse, error)
 	SearchRoomSubscriptions(context.Context, *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error)
 	// Get per-room subscription settings for a member (notification preferences, mute, archive)
 	GetSubscriptionSettings(context.Context, *v1.GetSubscriptionSettingsRequest) (*v1.GetSubscriptionSettingsResponse, error)
@@ -384,6 +419,7 @@ func RegisterChatServiceHandler(server *connect.Server, svc ChatServiceHandler) 
 		connect.Method{Spec: chatServiceRemoveRoomSubscriptionsSpec(), Handler: adapter.removeRoomSubscriptions},
 		connect.Method{Spec: chatServiceUpdateSubscriptionRoleSpec(), Handler: adapter.updateSubscriptionRole},
 		connect.Method{Spec: chatServiceGetDirectPartnerAccountSpec(), Handler: adapter.getDirectPartnerAccount},
+		connect.Method{Spec: chatServiceLookupContactGuardianKeysSpec(), Handler: adapter.lookupContactGuardianKeys},
 		connect.Method{Spec: chatServiceSearchRoomSubscriptionsSpec(), Handler: adapter.searchRoomSubscriptions},
 		connect.Method{Spec: chatServiceGetSubscriptionSettingsSpec(), Handler: adapter.getSubscriptionSettings},
 		connect.Method{Spec: chatServiceUpdateSubscriptionSettingsSpec(), Handler: adapter.updateSubscriptionSettings},
@@ -460,6 +496,10 @@ func (UnimplementedChatServiceHandler) UpdateSubscriptionRole(context.Context, *
 
 func (UnimplementedChatServiceHandler) GetDirectPartnerAccount(context.Context, *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.GetDirectPartnerAccount is not implemented")
+}
+
+func (UnimplementedChatServiceHandler) LookupContactGuardianKeys(context.Context, *v1.LookupContactGuardianKeysRequest) (*v1.LookupContactGuardianKeysResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "chat.v1.ChatService.LookupContactGuardianKeys is not implemented")
 }
 
 func (UnimplementedChatServiceHandler) SearchRoomSubscriptions(context.Context, *v1.SearchRoomSubscriptionsRequest) (*v1.SearchRoomSubscriptionsResponse, error) {
@@ -593,6 +633,14 @@ func (c *chatServiceClient) UpdateSubscriptionRole(ctx context.Context, req *v1.
 func (c *chatServiceClient) GetDirectPartnerAccount(ctx context.Context, req *v1.GetDirectPartnerAccountRequest) (*v1.GetDirectPartnerAccountResponse, error) {
 	var res v1.GetDirectPartnerAccountResponse
 	if err := c.client.CallUnary(ctx, chatServiceGetDirectPartnerAccountSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *chatServiceClient) LookupContactGuardianKeys(ctx context.Context, req *v1.LookupContactGuardianKeysRequest) (*v1.LookupContactGuardianKeysResponse, error) {
+	var res v1.LookupContactGuardianKeysResponse
+	if err := c.client.CallUnary(ctx, chatServiceLookupContactGuardianKeysSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -806,6 +854,18 @@ func (h chatServiceHandler) getDirectPartnerAccount(ctx context.Context, _ conne
 		return err
 	}
 	res, err := h.svc.GetDirectPartnerAccount(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h chatServiceHandler) lookupContactGuardianKeys(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.LookupContactGuardianKeysRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.LookupContactGuardianKeys(ctx, &req)
 	if err != nil {
 		return err
 	}
