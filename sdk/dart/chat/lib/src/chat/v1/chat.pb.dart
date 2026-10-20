@@ -15,9 +15,9 @@ import 'dart:core' as $core;
 
 import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
-import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart' as $2;
+import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart' as $3;
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
-    as $3;
+    as $2;
 
 import '../../common/v1/common.pb.dart' as $1;
 import 'chat.pbenum.dart';
@@ -651,6 +651,261 @@ class GetDirectPartnerAccountResponse extends $pb.GeneratedMessage {
   void clearDeployed() => $_clearField(3);
 }
 
+class LookupContactGuardianKeysRequest extends $pb.GeneratedMessage {
+  factory LookupContactGuardianKeysRequest({
+    $core.String? roomId,
+    $core.String? profileId,
+  }) {
+    final result = LookupContactGuardianKeysRequest._();
+    if (roomId != null) result.roomId = roomId;
+    if (profileId != null) result.profileId = profileId;
+    return result;
+  }
+
+  LookupContactGuardianKeysRequest._();
+
+  factory LookupContactGuardianKeysRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LookupContactGuardianKeysRequest()..mergeFromBuffer(data, registry);
+  factory LookupContactGuardianKeysRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LookupContactGuardianKeysRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LookupContactGuardianKeysRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
+      createEmptyInstance: LookupContactGuardianKeysRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'roomId')
+    ..aOS(2, _omitFieldNames ? '' : 'profileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LookupContactGuardianKeysRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LookupContactGuardianKeysRequest copyWith(
+          void Function(LookupContactGuardianKeysRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as LookupContactGuardianKeysRequest))
+          as LookupContactGuardianKeysRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LookupContactGuardianKeysRequest() / LookupContactGuardianKeysRequest.new instead')
+  static LookupContactGuardianKeysRequest create() =>
+      LookupContactGuardianKeysRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LookupContactGuardianKeysRequest._();
+  @$core.override
+  LookupContactGuardianKeysRequest createEmptyInstance() =>
+      LookupContactGuardianKeysRequest._();
+  @$core.pragma('dart2js:noInline')
+  static LookupContactGuardianKeysRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LookupContactGuardianKeysRequest>(
+          LookupContactGuardianKeysRequest.$_createMessage);
+  static LookupContactGuardianKeysRequest? _defaultInstance;
+
+  /// The room the caller shares with the contact: a DM or any other room.
+  @$pb.TagNumber(1)
+  $core.String get roomId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set roomId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRoomId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRoomId() => $_clearField(1);
+
+  /// The contact whose guardian keys are read.
+  @$pb.TagNumber(2)
+  $core.String get profileId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set profileId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProfileId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProfileId() => $_clearField(2);
+}
+
+/// ContactGuardianKey is one guardian key a contact registered: a device key
+/// of their Stawi account they proved they hold (settlement GuardianKey).
+class ContactGuardianKey extends $pb.GeneratedMessage {
+  factory ContactGuardianKey({
+    $core.List<$core.int>? key,
+    $core.List<$core.int>? account,
+    $2.Timestamp? registeredAt,
+  }) {
+    final result = ContactGuardianKey._();
+    if (key != null) result.key = key;
+    if (account != null) result.account = account;
+    if (registeredAt != null) result.registeredAt = registeredAt;
+    return result;
+  }
+
+  ContactGuardianKey._();
+
+  factory ContactGuardianKey.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContactGuardianKey()..mergeFromBuffer(data, registry);
+  factory ContactGuardianKey.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ContactGuardianKey()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContactGuardianKey',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
+      createEmptyInstance: ContactGuardianKey.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'key', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'account', $pb.PbFieldType.OY)
+    ..aOM<$2.Timestamp>(3, _omitFieldNames ? '' : 'registeredAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContactGuardianKey clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContactGuardianKey copyWith(void Function(ContactGuardianKey) updates) =>
+      super.copyWith((message) => updates(message as ContactGuardianKey))
+          as ContactGuardianKey;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ContactGuardianKey() / ContactGuardianKey.new instead')
+  static ContactGuardianKey create() => ContactGuardianKey._();
+  static $pb.GeneratedMessage $_createMessage() => ContactGuardianKey._();
+  @$core.override
+  ContactGuardianKey createEmptyInstance() => ContactGuardianKey._();
+  @$core.pragma('dart2js:noInline')
+  static ContactGuardianKey getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ContactGuardianKey>(
+          ContactGuardianKey.$_createMessage);
+  static ContactGuardianKey? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get key => $_getN(0);
+  @$pb.TagNumber(1)
+  set key($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKey() => $_clearField(1);
+
+  /// The contact's account the key is a device key of.
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get account => $_getN(1);
+  @$pb.TagNumber(2)
+  set account($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAccount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccount() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $2.Timestamp get registeredAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set registeredAt($2.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRegisteredAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRegisteredAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.Timestamp ensureRegisteredAt() => $_ensure(2);
+}
+
+class LookupContactGuardianKeysResponse extends $pb.GeneratedMessage {
+  factory LookupContactGuardianKeysResponse({
+    $core.String? profileId,
+    $core.Iterable<ContactGuardianKey>? keys,
+    $fixnum.Int64? blockNumber,
+  }) {
+    final result = LookupContactGuardianKeysResponse._();
+    if (profileId != null) result.profileId = profileId;
+    if (keys != null) result.keys.addAll(keys);
+    if (blockNumber != null) result.blockNumber = blockNumber;
+    return result;
+  }
+
+  LookupContactGuardianKeysResponse._();
+
+  factory LookupContactGuardianKeysResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LookupContactGuardianKeysResponse()..mergeFromBuffer(data, registry);
+  factory LookupContactGuardianKeysResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LookupContactGuardianKeysResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LookupContactGuardianKeysResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'chat.v1'),
+      createEmptyInstance: LookupContactGuardianKeysResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'profileId')
+    ..pPM<ContactGuardianKey>(2, _omitFieldNames ? '' : 'keys',
+        subBuilder: ContactGuardianKey.$_createMessage)
+    ..a<$fixnum.Int64>(
+        3, _omitFieldNames ? '' : 'blockNumber', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LookupContactGuardianKeysResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LookupContactGuardianKeysResponse copyWith(
+          void Function(LookupContactGuardianKeysResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as LookupContactGuardianKeysResponse))
+          as LookupContactGuardianKeysResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LookupContactGuardianKeysResponse() / LookupContactGuardianKeysResponse.new instead')
+  static LookupContactGuardianKeysResponse create() =>
+      LookupContactGuardianKeysResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      LookupContactGuardianKeysResponse._();
+  @$core.override
+  LookupContactGuardianKeysResponse createEmptyInstance() =>
+      LookupContactGuardianKeysResponse._();
+  @$core.pragma('dart2js:noInline')
+  static LookupContactGuardianKeysResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LookupContactGuardianKeysResponse>(
+          LookupContactGuardianKeysResponse.$_createMessage);
+  static LookupContactGuardianKeysResponse? _defaultInstance;
+
+  /// The contact.
+  @$pb.TagNumber(1)
+  $core.String get profileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set profileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProfileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfileId() => $_clearField(1);
+
+  /// Their guardian keys that count at block_number; empty when none.
+  @$pb.TagNumber(2)
+  $pb.PbList<ContactGuardianKey> get keys => $_getList(1);
+
+  /// The head settlement checked the keys at.
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get blockNumber => $_getI64(2);
+  @$pb.TagNumber(3)
+  set blockNumber($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBlockNumber() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBlockNumber() => $_clearField(3);
+}
+
 class GetRoomResponse extends $pb.GeneratedMessage {
   factory GetRoomResponse({
     Room? room,
@@ -732,9 +987,9 @@ class Room extends $pb.GeneratedMessage {
     $core.String? name,
     $core.String? description,
     $core.bool? isPrivate,
-    $2.Struct? metadata,
-    $3.Timestamp? createdAt,
-    $3.Timestamp? updatedAt,
+    $3.Struct? metadata,
+    $2.Timestamp? createdAt,
+    $2.Timestamp? updatedAt,
     $core.String? creatorId,
     $core.bool? requiresApproval,
     RoomType? type,
@@ -772,12 +1027,12 @@ class Room extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'name')
     ..aOS(4, _omitFieldNames ? '' : 'description')
     ..aOB(5, _omitFieldNames ? '' : 'isPrivate')
-    ..aOM<$2.Struct>(6, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $2.Struct.$_createMessage)
-    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
-        subBuilder: $3.Timestamp.$_createMessage)
-    ..aOM<$3.Timestamp>(8, _omitFieldNames ? '' : 'updatedAt',
-        subBuilder: $3.Timestamp.$_createMessage)
+    ..aOM<$3.Struct>(6, _omitFieldNames ? '' : 'metadata',
+        subBuilder: $3.Struct.$_createMessage)
+    ..aOM<$2.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(8, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOS(9, _omitFieldNames ? '' : 'creatorId')
     ..aOB(10, _omitFieldNames ? '' : 'requiresApproval')
     ..aE<RoomType>(11, _omitFieldNames ? '' : 'type',
@@ -843,37 +1098,37 @@ class Room extends $pb.GeneratedMessage {
   void clearIsPrivate() => $_clearField(5);
 
   @$pb.TagNumber(6)
-  $2.Struct get metadata => $_getN(4);
+  $3.Struct get metadata => $_getN(4);
   @$pb.TagNumber(6)
-  set metadata($2.Struct value) => $_setField(6, value);
+  set metadata($3.Struct value) => $_setField(6, value);
   @$pb.TagNumber(6)
   $core.bool hasMetadata() => $_has(4);
   @$pb.TagNumber(6)
   void clearMetadata() => $_clearField(6);
   @$pb.TagNumber(6)
-  $2.Struct ensureMetadata() => $_ensure(4);
+  $3.Struct ensureMetadata() => $_ensure(4);
 
   @$pb.TagNumber(7)
-  $3.Timestamp get createdAt => $_getN(5);
+  $2.Timestamp get createdAt => $_getN(5);
   @$pb.TagNumber(7)
-  set createdAt($3.Timestamp value) => $_setField(7, value);
+  set createdAt($2.Timestamp value) => $_setField(7, value);
   @$pb.TagNumber(7)
   $core.bool hasCreatedAt() => $_has(5);
   @$pb.TagNumber(7)
   void clearCreatedAt() => $_clearField(7);
   @$pb.TagNumber(7)
-  $3.Timestamp ensureCreatedAt() => $_ensure(5);
+  $2.Timestamp ensureCreatedAt() => $_ensure(5);
 
   @$pb.TagNumber(8)
-  $3.Timestamp get updatedAt => $_getN(6);
+  $2.Timestamp get updatedAt => $_getN(6);
   @$pb.TagNumber(8)
-  set updatedAt($3.Timestamp value) => $_setField(8, value);
+  set updatedAt($2.Timestamp value) => $_setField(8, value);
   @$pb.TagNumber(8)
   $core.bool hasUpdatedAt() => $_has(6);
   @$pb.TagNumber(8)
   void clearUpdatedAt() => $_clearField(8);
   @$pb.TagNumber(8)
-  $3.Timestamp ensureUpdatedAt() => $_ensure(6);
+  $2.Timestamp ensureUpdatedAt() => $_ensure(6);
 
   @$pb.TagNumber(9)
   $core.String get creatorId => $_getSZ(7);
@@ -926,12 +1181,12 @@ class StawiRoomBinding extends $pb.GeneratedMessage {
     StawiRoomState? state,
     $core.String? genesisId,
     $core.String? genesisEventId,
-    $3.Timestamp? genesisExpiresAt,
+    $2.Timestamp? genesisExpiresAt,
     $fixnum.Int64? chainId,
     $core.String? custodyAddress,
     $core.String? governanceAddress,
     $fixnum.Int64? policyEpoch,
-    $3.Timestamp? boundAt,
+    $2.Timestamp? boundAt,
   }) {
     final result = StawiRoomBinding._();
     if (state != null) result.state = state;
@@ -963,8 +1218,8 @@ class StawiRoomBinding extends $pb.GeneratedMessage {
         enumValues: StawiRoomState.values)
     ..aOS(2, _omitFieldNames ? '' : 'genesisId')
     ..aOS(3, _omitFieldNames ? '' : 'genesisEventId')
-    ..aOM<$3.Timestamp>(4, _omitFieldNames ? '' : 'genesisExpiresAt',
-        subBuilder: $3.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'genesisExpiresAt',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'chainId', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(6, _omitFieldNames ? '' : 'custodyAddress')
@@ -972,8 +1227,8 @@ class StawiRoomBinding extends $pb.GeneratedMessage {
     ..a<$fixnum.Int64>(
         8, _omitFieldNames ? '' : 'policyEpoch', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
-    ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'boundAt',
-        subBuilder: $3.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(9, _omitFieldNames ? '' : 'boundAt',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1029,15 +1284,15 @@ class StawiRoomBinding extends $pb.GeneratedMessage {
 
   /// When the pending genesis expires; unset once bound.
   @$pb.TagNumber(4)
-  $3.Timestamp get genesisExpiresAt => $_getN(3);
+  $2.Timestamp get genesisExpiresAt => $_getN(3);
   @$pb.TagNumber(4)
-  set genesisExpiresAt($3.Timestamp value) => $_setField(4, value);
+  set genesisExpiresAt($2.Timestamp value) => $_setField(4, value);
   @$pb.TagNumber(4)
   $core.bool hasGenesisExpiresAt() => $_has(3);
   @$pb.TagNumber(4)
   void clearGenesisExpiresAt() => $_clearField(4);
   @$pb.TagNumber(4)
-  $3.Timestamp ensureGenesisExpiresAt() => $_ensure(3);
+  $2.Timestamp ensureGenesisExpiresAt() => $_ensure(3);
 
   /// The following are set once the room is bound.
   @$pb.TagNumber(5)
@@ -1079,15 +1334,15 @@ class StawiRoomBinding extends $pb.GeneratedMessage {
   void clearPolicyEpoch() => $_clearField(8);
 
   @$pb.TagNumber(9)
-  $3.Timestamp get boundAt => $_getN(8);
+  $2.Timestamp get boundAt => $_getN(8);
   @$pb.TagNumber(9)
-  set boundAt($3.Timestamp value) => $_setField(9, value);
+  set boundAt($2.Timestamp value) => $_setField(9, value);
   @$pb.TagNumber(9)
   $core.bool hasBoundAt() => $_has(8);
   @$pb.TagNumber(9)
   void clearBoundAt() => $_clearField(9);
   @$pb.TagNumber(9)
-  $3.Timestamp ensureBoundAt() => $_ensure(8);
+  $2.Timestamp ensureBoundAt() => $_ensure(8);
 }
 
 class CreateRoomRequest extends $pb.GeneratedMessage {
@@ -1097,7 +1352,7 @@ class CreateRoomRequest extends $pb.GeneratedMessage {
     $core.String? description,
     $core.bool? isPrivate,
     $core.Iterable<$1.ContactLink>? members,
-    $2.Struct? metadata,
+    $3.Struct? metadata,
     $core.bool? requiresApproval,
     RoomType? type,
   }) {
@@ -1132,8 +1387,8 @@ class CreateRoomRequest extends $pb.GeneratedMessage {
     ..aOB(6, _omitFieldNames ? '' : 'isPrivate')
     ..pPM<$1.ContactLink>(7, _omitFieldNames ? '' : 'members',
         subBuilder: $1.ContactLink.$_createMessage)
-    ..aOM<$2.Struct>(8, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $2.Struct.$_createMessage)
+    ..aOM<$3.Struct>(8, _omitFieldNames ? '' : 'metadata',
+        subBuilder: $3.Struct.$_createMessage)
     ..aOB(9, _omitFieldNames ? '' : 'requiresApproval')
     ..aE<RoomType>(10, _omitFieldNames ? '' : 'type',
         enumValues: RoomType.values)
@@ -1211,15 +1466,15 @@ class CreateRoomRequest extends $pb.GeneratedMessage {
   $pb.PbList<$1.ContactLink> get members => $_getList(4);
 
   @$pb.TagNumber(8)
-  $2.Struct get metadata => $_getN(5);
+  $3.Struct get metadata => $_getN(5);
   @$pb.TagNumber(8)
-  set metadata($2.Struct value) => $_setField(8, value);
+  set metadata($3.Struct value) => $_setField(8, value);
   @$pb.TagNumber(8)
   $core.bool hasMetadata() => $_has(5);
   @$pb.TagNumber(8)
   void clearMetadata() => $_clearField(8);
   @$pb.TagNumber(8)
-  $2.Struct ensureMetadata() => $_ensure(5);
+  $3.Struct ensureMetadata() => $_ensure(5);
 
   /// If true, changes to this room require approval from owners before execution
   @$pb.TagNumber(9)
@@ -1320,7 +1575,7 @@ class SearchRoomsRequest extends $pb.GeneratedMessage {
   factory SearchRoomsRequest({
     $core.String? query,
     $core.Iterable<$core.String>? properties,
-    $2.Struct? extras,
+    $3.Struct? extras,
     $1.PageCursor? cursor,
   }) {
     final result = SearchRoomsRequest._();
@@ -1346,8 +1601,8 @@ class SearchRoomsRequest extends $pb.GeneratedMessage {
       createEmptyInstance: SearchRoomsRequest.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'query')
     ..pPS(6, _omitFieldNames ? '' : 'properties')
-    ..aOM<$2.Struct>(7, _omitFieldNames ? '' : 'extras',
-        subBuilder: $2.Struct.$_createMessage)
+    ..aOM<$3.Struct>(7, _omitFieldNames ? '' : 'extras',
+        subBuilder: $3.Struct.$_createMessage)
     ..aOM<$1.PageCursor>(10, _omitFieldNames ? '' : 'cursor',
         subBuilder: $1.PageCursor.$_createMessage)
     ..hasRequiredFields = false;
@@ -1387,15 +1642,15 @@ class SearchRoomsRequest extends $pb.GeneratedMessage {
   $pb.PbList<$core.String> get properties => $_getList(1);
 
   @$pb.TagNumber(7)
-  $2.Struct get extras => $_getN(2);
+  $3.Struct get extras => $_getN(2);
   @$pb.TagNumber(7)
-  set extras($2.Struct value) => $_setField(7, value);
+  set extras($3.Struct value) => $_setField(7, value);
   @$pb.TagNumber(7)
   $core.bool hasExtras() => $_has(2);
   @$pb.TagNumber(7)
   void clearExtras() => $_clearField(7);
   @$pb.TagNumber(7)
-  $2.Struct ensureExtras() => $_ensure(2);
+  $3.Struct ensureExtras() => $_ensure(2);
 
   @$pb.TagNumber(10)
   $1.PageCursor get cursor => $_getN(3);
@@ -1491,7 +1746,7 @@ class UpdateRoomRequest extends $pb.GeneratedMessage {
     $core.String? roomId,
     $core.String? name,
     $core.String? description,
-    $2.Struct? metadata,
+    $3.Struct? metadata,
   }) {
     final result = UpdateRoomRequest._();
     if (roomId != null) result.roomId = roomId;
@@ -1517,8 +1772,8 @@ class UpdateRoomRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'roomId')
     ..aOS(3, _omitFieldNames ? '' : 'name')
     ..aOS(4, _omitFieldNames ? '' : 'description')
-    ..aOM<$2.Struct>(5, _omitFieldNames ? '' : 'metadata',
-        subBuilder: $2.Struct.$_createMessage)
+    ..aOM<$3.Struct>(5, _omitFieldNames ? '' : 'metadata',
+        subBuilder: $3.Struct.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1571,15 +1826,15 @@ class UpdateRoomRequest extends $pb.GeneratedMessage {
   void clearDescription() => $_clearField(4);
 
   @$pb.TagNumber(5)
-  $2.Struct get metadata => $_getN(3);
+  $3.Struct get metadata => $_getN(3);
   @$pb.TagNumber(5)
-  set metadata($2.Struct value) => $_setField(5, value);
+  set metadata($3.Struct value) => $_setField(5, value);
   @$pb.TagNumber(5)
   $core.bool hasMetadata() => $_has(3);
   @$pb.TagNumber(5)
   void clearMetadata() => $_clearField(5);
   @$pb.TagNumber(5)
-  $2.Struct ensureMetadata() => $_ensure(3);
+  $3.Struct ensureMetadata() => $_ensure(3);
 }
 
 class UpdateRoomResponse extends $pb.GeneratedMessage {
@@ -1792,8 +2047,8 @@ class RoomSubscription extends $pb.GeneratedMessage {
     $core.String? roomId,
     $1.ContactLink? member,
     $core.Iterable<$core.String>? roles,
-    $3.Timestamp? joinedAt,
-    $3.Timestamp? lastActive,
+    $2.Timestamp? joinedAt,
+    $2.Timestamp? lastActive,
   }) {
     final result = RoomSubscription._();
     if (id != null) result.id = id;
@@ -1823,10 +2078,10 @@ class RoomSubscription extends $pb.GeneratedMessage {
     ..aOM<$1.ContactLink>(3, _omitFieldNames ? '' : 'member',
         subBuilder: $1.ContactLink.$_createMessage)
     ..pPS(4, _omitFieldNames ? '' : 'roles')
-    ..aOM<$3.Timestamp>(5, _omitFieldNames ? '' : 'joinedAt',
-        subBuilder: $3.Timestamp.$_createMessage)
-    ..aOM<$3.Timestamp>(6, _omitFieldNames ? '' : 'lastActive',
-        subBuilder: $3.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(5, _omitFieldNames ? '' : 'joinedAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(6, _omitFieldNames ? '' : 'lastActive',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1887,26 +2142,26 @@ class RoomSubscription extends $pb.GeneratedMessage {
   $pb.PbList<$core.String> get roles => $_getList(3);
 
   @$pb.TagNumber(5)
-  $3.Timestamp get joinedAt => $_getN(4);
+  $2.Timestamp get joinedAt => $_getN(4);
   @$pb.TagNumber(5)
-  set joinedAt($3.Timestamp value) => $_setField(5, value);
+  set joinedAt($2.Timestamp value) => $_setField(5, value);
   @$pb.TagNumber(5)
   $core.bool hasJoinedAt() => $_has(4);
   @$pb.TagNumber(5)
   void clearJoinedAt() => $_clearField(5);
   @$pb.TagNumber(5)
-  $3.Timestamp ensureJoinedAt() => $_ensure(4);
+  $2.Timestamp ensureJoinedAt() => $_ensure(4);
 
   @$pb.TagNumber(6)
-  $3.Timestamp get lastActive => $_getN(5);
+  $2.Timestamp get lastActive => $_getN(5);
   @$pb.TagNumber(6)
-  set lastActive($3.Timestamp value) => $_setField(6, value);
+  set lastActive($2.Timestamp value) => $_setField(6, value);
   @$pb.TagNumber(6)
   $core.bool hasLastActive() => $_has(5);
   @$pb.TagNumber(6)
   void clearLastActive() => $_clearField(6);
   @$pb.TagNumber(6)
-  $3.Timestamp ensureLastActive() => $_ensure(5);
+  $2.Timestamp ensureLastActive() => $_ensure(5);
 }
 
 class AddRoomSubscriptionsRequest extends $pb.GeneratedMessage {
@@ -3153,11 +3408,11 @@ class Proposal extends $pb.GeneratedMessage {
     ProposalType? type,
     ProposalState? state,
     $core.String? requestedBy,
-    $2.Struct? payload,
-    $3.Timestamp? createdAt,
-    $3.Timestamp? expiresAt,
+    $3.Struct? payload,
+    $2.Timestamp? createdAt,
+    $2.Timestamp? expiresAt,
     $core.String? resolvedBy,
-    $3.Timestamp? resolvedAt,
+    $2.Timestamp? resolvedAt,
     $core.String? reason,
   }) {
     final result = Proposal._();
@@ -3195,15 +3450,15 @@ class Proposal extends $pb.GeneratedMessage {
     ..aE<ProposalState>(4, _omitFieldNames ? '' : 'state',
         enumValues: ProposalState.values)
     ..aOS(5, _omitFieldNames ? '' : 'requestedBy')
-    ..aOM<$2.Struct>(6, _omitFieldNames ? '' : 'payload',
-        subBuilder: $2.Struct.$_createMessage)
-    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
-        subBuilder: $3.Timestamp.$_createMessage)
-    ..aOM<$3.Timestamp>(8, _omitFieldNames ? '' : 'expiresAt',
-        subBuilder: $3.Timestamp.$_createMessage)
+    ..aOM<$3.Struct>(6, _omitFieldNames ? '' : 'payload',
+        subBuilder: $3.Struct.$_createMessage)
+    ..aOM<$2.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(8, _omitFieldNames ? '' : 'expiresAt',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOS(9, _omitFieldNames ? '' : 'resolvedBy')
-    ..aOM<$3.Timestamp>(10, _omitFieldNames ? '' : 'resolvedAt',
-        subBuilder: $3.Timestamp.$_createMessage)
+    ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'resolvedAt',
+        subBuilder: $2.Timestamp.$_createMessage)
     ..aOS(11, _omitFieldNames ? '' : 'reason')
     ..hasRequiredFields = false;
 
@@ -3273,37 +3528,37 @@ class Proposal extends $pb.GeneratedMessage {
   void clearRequestedBy() => $_clearField(5);
 
   @$pb.TagNumber(6)
-  $2.Struct get payload => $_getN(5);
+  $3.Struct get payload => $_getN(5);
   @$pb.TagNumber(6)
-  set payload($2.Struct value) => $_setField(6, value);
+  set payload($3.Struct value) => $_setField(6, value);
   @$pb.TagNumber(6)
   $core.bool hasPayload() => $_has(5);
   @$pb.TagNumber(6)
   void clearPayload() => $_clearField(6);
   @$pb.TagNumber(6)
-  $2.Struct ensurePayload() => $_ensure(5);
+  $3.Struct ensurePayload() => $_ensure(5);
 
   @$pb.TagNumber(7)
-  $3.Timestamp get createdAt => $_getN(6);
+  $2.Timestamp get createdAt => $_getN(6);
   @$pb.TagNumber(7)
-  set createdAt($3.Timestamp value) => $_setField(7, value);
+  set createdAt($2.Timestamp value) => $_setField(7, value);
   @$pb.TagNumber(7)
   $core.bool hasCreatedAt() => $_has(6);
   @$pb.TagNumber(7)
   void clearCreatedAt() => $_clearField(7);
   @$pb.TagNumber(7)
-  $3.Timestamp ensureCreatedAt() => $_ensure(6);
+  $2.Timestamp ensureCreatedAt() => $_ensure(6);
 
   @$pb.TagNumber(8)
-  $3.Timestamp get expiresAt => $_getN(7);
+  $2.Timestamp get expiresAt => $_getN(7);
   @$pb.TagNumber(8)
-  set expiresAt($3.Timestamp value) => $_setField(8, value);
+  set expiresAt($2.Timestamp value) => $_setField(8, value);
   @$pb.TagNumber(8)
   $core.bool hasExpiresAt() => $_has(7);
   @$pb.TagNumber(8)
   void clearExpiresAt() => $_clearField(8);
   @$pb.TagNumber(8)
-  $3.Timestamp ensureExpiresAt() => $_ensure(7);
+  $2.Timestamp ensureExpiresAt() => $_ensure(7);
 
   @$pb.TagNumber(9)
   $core.String get resolvedBy => $_getSZ(8);
@@ -3315,15 +3570,15 @@ class Proposal extends $pb.GeneratedMessage {
   void clearResolvedBy() => $_clearField(9);
 
   @$pb.TagNumber(10)
-  $3.Timestamp get resolvedAt => $_getN(9);
+  $2.Timestamp get resolvedAt => $_getN(9);
   @$pb.TagNumber(10)
-  set resolvedAt($3.Timestamp value) => $_setField(10, value);
+  set resolvedAt($2.Timestamp value) => $_setField(10, value);
   @$pb.TagNumber(10)
   $core.bool hasResolvedAt() => $_has(9);
   @$pb.TagNumber(10)
   void clearResolvedAt() => $_clearField(10);
   @$pb.TagNumber(10)
-  $3.Timestamp ensureResolvedAt() => $_ensure(9);
+  $2.Timestamp ensureResolvedAt() => $_ensure(9);
 
   @$pb.TagNumber(11)
   $core.String get reason => $_getSZ(10);
@@ -4291,6 +4546,26 @@ class ChatServiceApi {
           'GetDirectPartnerAccount',
           request,
           GetDirectPartnerAccountResponse());
+
+  /// The guardian keys a contact registered with Stawi (settlement's
+  /// LookupGuardianKeys, its directory of keys a person opted in to guard
+  /// with), for a contact the caller shares a chat room with. Settlement
+  /// answers a person only for a contact in a Stawi room both are ACTIVE
+  /// members of; chat answers for any room it holds, a DM included, after
+  /// checking the relationship itself: the caller is a person and an active
+  /// member of the room in their tenancy, the contact is another active member
+  /// of it, and the contact has taken part (started the room or written in
+  /// it). Chat then asks settlement as its own service. Anything else is
+  /// refused without saying anything about the room. No keys means the contact
+  /// has registered none that count.
+  $async.Future<LookupContactGuardianKeysResponse> lookupContactGuardianKeys(
+          $pb.ClientContext? ctx, LookupContactGuardianKeysRequest request) =>
+      _client.invoke<LookupContactGuardianKeysResponse>(
+          ctx,
+          'ChatService',
+          'LookupContactGuardianKeys',
+          request,
+          LookupContactGuardianKeysResponse());
   $async.Future<SearchRoomSubscriptionsResponse> searchRoomSubscriptions(
           $pb.ClientContext? ctx, SearchRoomSubscriptionsRequest request) =>
       _client.invoke<SearchRoomSubscriptionsResponse>(

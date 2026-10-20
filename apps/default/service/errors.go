@@ -193,6 +193,16 @@ var (
 	// chain reads. The caller may retry shortly.
 	ErrPartnerLookupsExhausted = connect.NewError(connect.CodeResourceExhausted,
 		"too many partner account lookups; try again in a minute")
+	// ErrNoSharedContact refuses a contact's guardian key lookup the caller is
+	// not entitled to. It is the one answer for every reason (no such room,
+	// not a member, the contact not a member or silent in it), so it says
+	// nothing about the room.
+	ErrNoSharedContact = connect.NewError(connect.CodePermissionDenied,
+		"this is not a person who has written in a room you share")
+	// ErrContactKeysUnavailable is a contact's guardian key lookup settlement
+	// could not answer; the caller may retry.
+	ErrContactKeysUnavailable = connect.NewError(connect.CodeUnavailable,
+		"the contact's guardian keys cannot be read right now")
 	// ErrPersonalRoomNotStawi refuses a conversion of a DM or a bot room: neither
 	// is ever a Stawi room (person to person money is the personal loan book's).
 	ErrPersonalRoomNotStawi = connect.NewError(connect.CodeFailedPrecondition,

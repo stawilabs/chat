@@ -18,6 +18,8 @@ import 'package:stawi/features/stawi/domain/governance_requests.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
 import 'package:stawi/features/stawi/domain/loan_terms.dart';
 import 'package:stawi/features/stawi/domain/personal_calls.dart';
+import 'package:stawi/features/stawi/domain/room_setup.dart'
+    show rotationModuleUnknownReason;
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_payloads.dart';
 import 'package:stawi/features/stawi/ui/stawi_feedback.dart';
@@ -71,20 +73,23 @@ void main() {
   final amina = Uint8List(20)..[19] = 0x22;
   final now = DateTime.utc(2026, 10, 14, 9);
 
-  StawiRoomService roomService({DmPartnerAccountOf? agentAccounts}) =>
-      StawiRoomService(
-        rooms: settlement.RoomServiceClient(transport),
-        keys: keys,
-        identity: () async => identityWith('p1', account),
-        send: sender.call,
-        agentAccounts:
-            agentAccounts ??
-            (profileId) async => profileId == 'p-agent' ? vectorAgent : null,
-        contracts: (id) async => id == roomId ? room : null,
-        memberAccounts: (id, profileId) async =>
-            id == roomId && profileId == 'p2' ? amina : null,
-        now: () => now,
-      );
+  StawiRoomService roomService({
+    DmPartnerAccountOf? agentAccounts,
+    RotationModuleOf? rotationModules,
+  }) => StawiRoomService(
+    rooms: settlement.RoomServiceClient(transport),
+    keys: keys,
+    identity: () async => identityWith('p1', account),
+    send: sender.call,
+    agentAccounts:
+        agentAccounts ??
+        (profileId) async => profileId == 'p-agent' ? vectorAgent : null,
+    contracts: (id) async => id == roomId ? room : null,
+    memberAccounts: (id, profileId) async =>
+        id == roomId && profileId == 'p2' ? amina : null,
+    rotationModules: rotationModules,
+    now: () => now,
+  );
 
   group('signed room calls', () {
     void prepares({List<int>? digestOverride}) {
@@ -754,6 +759,40 @@ void main() {
         expect(sender.sent, hasLength(1));
       });
 
+      test('a merry-go-round founder signs the rotation grant beside the '
+          'genesis only once finance names the RotationModule', () async {
+        List<settlement.RoomSetupDigest> rotationDigests() => setupDigestsFor(
+          account: account,
+          governance: setupGovernance,
+          custody: setupCustody,
+          chainId: BigInt.parse(roomGenesis.chainId.toStringUnsigned()),
+          deadline: now.add(const Duration(days: 14)),
+          steps: const [
+            settlement
+                .RoomSetupStepKind
+                .ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE,
+            settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION,
+            settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE,
+          ],
+        );
+        genesisWithSetupOnSettlement(digests: rotationDigests());
+        final named = await roomService(
+          rotationModules: (id) async => rotationModuleBinding(),
+        ).prepareGenesisSignature(card());
+        expect(named.setupDigests, hasLength(3));
+        expect(named.setupProblem, isNull);
+
+        // Before the room is on chain finance may name no module: the
+        // genesis is still signed, the setup later.
+        final unnamed = await roomService(
+          rotationModules: (id) async =>
+              throw connect.ConnectException(connect.Code.notFound, 'no room'),
+        ).prepareGenesisSignature(card());
+        expect(unnamed.setupDigests, isEmpty);
+        expect(unnamed.setupProblem, rotationModuleUnknownReason);
+        expect(unnamed.digest, named.digest);
+      });
+
       test(
         'a founder who already signed the setup signs only the genesis',
         () async {
@@ -823,6 +862,77 @@ void main() {
           expect(sent.signatures, hasLength(2));
         },
       );
+
+      test('a merry-go-round\'s rotation grant is signed only for the '
+          'protocol\'s RotationModule as finance names it', () async {
+        final rotationSetup = awaiting()
+          ..needsSignatures.clear()
+          ..needsSignatures.addAll(
+            setupDigestsFor(
+              account: account,
+              governance: room.governance!,
+              custody: room.custody!,
+              chainId: room.chainId,
+              deadline: now.add(const Duration(days: 7)),
+              firstNonce: 3,
+              steps: const [
+                settlement
+                    .RoomSetupStepKind
+                    .ROOM_SETUP_STEP_KIND_GRANT_ROTATION,
+                settlement
+                    .RoomSetupStepKind
+                    .ROOM_SETUP_STEP_KIND_RULES_TEMPLATE,
+              ],
+            ),
+          );
+        transport.on(
+          settlement.RoomService.getRoomSetup,
+          (_) => settlement.GetRoomSetupResponse(setup: rotationSetup),
+        );
+        final asked = <String>[];
+        final prepared = await roomService(
+          rotationModules: (id) async {
+            asked.add(id);
+            return rotationModuleBinding();
+          },
+        ).prepareSetupSignatures(roomId);
+        expect(asked, [roomId]);
+        expect(
+          prepared.review.lines.map((l) => l.$2).first,
+          'Turn on the rotation payouts',
+        );
+
+        await expectLater(
+          roomService(
+            rotationModules: (id) async =>
+                rotationModuleBinding(address: Uint8List(20)..[0] = 0xee),
+          ).prepareSetupSignatures(roomId),
+          throwsA(
+            isA<SigningRefused>().having(
+              (e) => e.reason,
+              'reason',
+              contains('another module than the protocol\'s rotation module'),
+            ),
+          ),
+        );
+        await expectLater(
+          roomService(
+            rotationModules: (id) async =>
+                rotationModuleBinding(registered: false),
+          ).prepareSetupSignatures(roomId),
+          throwsA(
+            isA<SigningRefused>().having(
+              (e) => e.reason,
+              'reason',
+              contains('not registered'),
+            ),
+          ),
+        );
+        await expectLater(
+          roomService().prepareSetupSignatures(roomId),
+          throwsA(isA<SigningRefused>()),
+        );
+      });
 
       test('naming other contracts than the room\'s is refused', () async {
         transport.on(

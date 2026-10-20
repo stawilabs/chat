@@ -2037,18 +2037,17 @@ packages:
     dependency: "direct main"
     description:
       name: stawi_api
-      sha256: ec7bebd1b32b26628d13cba76f90ab0758038cf7ed91a86478fc6a2c399be3b1
+      sha256: da2abd5a203284f306aa725ecc089442c7795b59eec509362610705a2514dec1
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.10.0"
   stawi_api_chat:
     dependency: "direct main"
     description:
-      name: stawi_api_chat
-      sha256: e90400051b8775327ac04b2dc6b4986a8b7c672ae77d41587771c87817ff33c1
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.0"
+      path: "../sdk/dart/chat"
+      relative: true
+    source: path
+    version: "2.1.0"
   stawi_finance_sdk:
     dependency: "direct main"
     description:

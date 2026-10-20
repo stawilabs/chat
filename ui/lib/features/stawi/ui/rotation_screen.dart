@@ -9,11 +9,14 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 import '../../rooms/data/detail_panel_providers.dart';
 import '../data/stawi_finance_service.dart';
 import '../data/stawi_identity.dart';
+import '../data/stawi_room_engines.dart';
 import '../data/stawi_room_service.dart';
 import '../domain/decision_progress.dart' show finishesItselfNote;
 import '../domain/governance_requests.dart' show shortAccount;
 import '../domain/room_setup.dart' show setupRunsRotation;
 import '../domain/rotation.dart';
+import '../domain/rotation_module.dart';
+import '../domain/signing_checks.dart' show SigningRefused;
 import '../domain/stawi_money.dart';
 import 'contribute_screen.dart';
 import 'decision_progress_screen.dart' show followDecision;
@@ -71,18 +74,61 @@ final rotationNamesProvider = FutureProvider.autoDispose
       return RotationNames(names, mine);
     });
 
-/// Whether a room can start a rotation: a merry-go-round room once its
-/// setup votes have passed.
-enum RotationEligibility { notRotationRoom, settingUp, ready }
+/// Whether a room can start a rotation. It can once its grant to the
+/// deployment's RotationModule is ACTIVE, however the grant was voted (the
+/// merry-go-round setup, or a later "Add a rotation to this group" vote),
+/// the module checked on the device first ([checkedRotationModule]).
+enum RotationEligibility {
+  /// The deployment has no RotationModule the device can tie to the
+  /// protocol, or the room's engines could not be read.
+  unavailable,
+
+  /// The room's RulesEngine is not granted: a rotation's contributions are
+  /// its dues, so rules come first.
+  needsRules,
+
+  /// The room has not granted the RotationModule: the group can vote to add
+  /// a rotation.
+  notGranted,
+
+  /// A merry-go-round setup is still granting it.
+  settingUp,
+
+  /// The room's grant to the RotationModule is ACTIVE.
+  ready,
+}
 
 final rotationEligibilityProvider = FutureProvider.autoDispose
     .family<RotationEligibility, String>((ref, roomId) async {
-      final setup = await ref.watch(stawiRoomSetupProvider(roomId).future);
-      if (!setupRunsRotation(setup)) return RotationEligibility.notRotationRoom;
-      return setup.state == settlement.RoomSetupState.ROOM_SETUP_STATE_READY
-          ? RotationEligibility.ready
-          : RotationEligibility.settingUp;
+      final engines = await ref.watch(rotationEnginesProvider(roomId).future);
+      final CheckedRotationModule module;
+      try {
+        module = checkedRotationModule(engines.module);
+      } on SigningRefused {
+        return RotationEligibility.unavailable;
+      }
+      if (module.grantActive) return RotationEligibility.ready;
+      settlement.RoomSetup? setup;
+      try {
+        setup = await ref.watch(stawiRoomSetupProvider(roomId).future);
+      } on Object {
+        setup = null;
+      }
+      if (setup != null &&
+          setupRunsRotation(setup) &&
+          setup.state != settlement.RoomSetupState.ROOM_SETUP_STATE_READY &&
+          setup.state != settlement.RoomSetupState.ROOM_SETUP_STATE_STALLED) {
+        return RotationEligibility.settingUp;
+      }
+      return engines.rulesGranted
+          ? RotationEligibility.notGranted
+          : RotationEligibility.needsRules;
     });
+
+/// Whether the room shows its rotation entry: it can start one, or is about
+/// to.
+bool _showsRotation(RotationEligibility? e) =>
+    e == RotationEligibility.ready || e == RotationEligibility.settingUp;
 
 /// The room's rotation at a glance on its Stawi page: hidden when it has
 /// none (and cannot start one).
@@ -103,8 +149,7 @@ class RotationCard extends ConsumerWidget {
         ref.watch(rotationNamesProvider(roomId)).asData?.value ??
         RotationNames.none;
     final cycle = cycles?.firstOrNull;
-    if (cycle == null &&
-        (eligible == null || eligible == RotationEligibility.notRotationRoom)) {
+    if (cycle == null && !_showsRotation(eligible)) {
       return const SizedBox.shrink();
     }
     final String title;
@@ -208,8 +253,8 @@ class _NoRotation extends ConsumerWidget {
           'at a time receives the whole pot, in the order the group agrees.',
         ),
         const SizedBox(height: 16),
-        if (eligible == RotationEligibility.ready)
-          FilledButton.icon(
+        switch (eligible) {
+          RotationEligibility.ready => FilledButton.icon(
             key: const Key('rotation-start'),
             icon: const Icon(Icons.autorenew),
             label: const Text('Start a rotation'),
@@ -218,16 +263,177 @@ class _NoRotation extends ConsumerWidget {
                 builder: (_) => StartRotationScreen(roomId: roomId),
               ),
             ),
-          )
-        else if (eligible == RotationEligibility.settingUp)
-          const Text('You can start one once the group\'s setup votes pass.')
-        else
-          const Text(
-            'Rotations run in merry-go-round groups (the '
-            'merry_go_round_weekly rules, chosen when the group is made a '
-            'Stawi room).',
           ),
+          RotationEligibility.notGranted => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This group has not turned rotations on yet. The group votes '
+                'on it once; then anyone can propose a rotation.',
+              ),
+              const SizedBox(height: 8),
+              FilledButton.tonalIcon(
+                key: const Key('rotation-add'),
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Add a rotation to this group'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AddRotationScreen(roomId: roomId),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          RotationEligibility.settingUp => const Text(
+            'You can start one once the group\'s setup votes pass.',
+          ),
+          RotationEligibility.needsRules => const Text(
+            'A rotation\'s contributions are the group\'s dues: the group '
+            'needs its dues rules on Stawi first.',
+            key: Key('rotation-needs-rules'),
+          ),
+          _ => const Text(
+            'Rotations cannot be run in this group just now.',
+            key: Key('rotation-unavailable'),
+          ),
+        },
       ],
+    );
+  }
+}
+
+/// "Add a rotation to this group": the group votes to grant the protocol's
+/// RotationModule, checked on the device ([checkedRotationModule]), an
+/// unlimited capability. The prepared grant is rebuilt on the device
+/// ([proposeRotationGrantRequest]) before it is reviewed and signed.
+class AddRotationScreen extends ConsumerStatefulWidget {
+  const AddRotationScreen({required this.roomId, super.key});
+
+  final String roomId;
+
+  @override
+  ConsumerState<AddRotationScreen> createState() => _AddRotationScreenState();
+}
+
+class _AddRotationScreenState extends ConsumerState<AddRotationScreen> {
+  bool _sending = false;
+
+  Future<void> _sign() async {
+    setState(() => _sending = true);
+    final service = ref.read(stawiRoomServiceProvider);
+    final sent = await signRoomActSent(context, ref, () async {
+      // Read again at signing: the module checked is the one granted.
+      final engines = await ref.read(rotationEnginesSourceProvider)(
+        widget.roomId,
+      );
+      final module = checkedRotationModule(engines.module);
+      if (module.grantActive) {
+        throw const StawiUnavailable(
+          'This group has rotations turned on already',
+        );
+      }
+      return service.prepareAct(
+        roomId: widget.roomId,
+        request: proposeRotationGrantRequest(module: module),
+      );
+    });
+    if (!mounted) return;
+    if (sent == null) {
+      setState(() => _sending = false);
+      return;
+    }
+    ref.invalidate(rotationEnginesProvider(widget.roomId));
+    await followDecision(
+      context,
+      widget.roomId,
+      sent,
+      'Add a rotation to this group',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final engines = ref.watch(rotationEnginesProvider(widget.roomId));
+    Widget body;
+    if (engines.hasError) {
+      body = Center(child: Text(stawiErrorMessage(engines.error!)));
+    } else if (!engines.hasValue) {
+      body = const Center(child: CircularProgressIndicator());
+    } else {
+      String? problem;
+      CheckedRotationModule? module;
+      try {
+        module = checkedRotationModule(engines.value!.module);
+      } on SigningRefused catch (e) {
+        problem = e.reason;
+      }
+      body = ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'Add a rotation to this group',
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          Text('What will change', style: theme.textTheme.titleSmall),
+          const Text(
+            'The group turns on Stawi\'s rotation payouts. Nothing moves '
+            'yet: a rotation starts only when the group votes on one (who '
+            'receives the pot, in which order, and from when). Then Stawi pays '
+            'each turn\'s pot from the group\'s savings once everyone\'s dues '
+            'for the period are in.',
+            key: Key('rotation-add-terms'),
+          ),
+          const SizedBox(height: 12),
+          Text('What happens next', style: theme.textTheme.titleSmall),
+          const Text(
+            'The group votes on it. $finishesItselfNote Once it has passed, '
+            'anyone in the group can propose a rotation.',
+          ),
+          if (module != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Your phone checks the grant settlement prepares: it names the '
+              'protocol\'s rotation module ${shortAccount(module.address)}, '
+              'which the protocol registered, for this group, with no limits '
+              'and no expiry. Then it asks for your screen lock to sign.',
+              key: const Key('rotation-add-check'),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+          if (problem != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              'This group cannot add a rotation: $problem.',
+              key: const Key('rotation-add-problem'),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ],
+          if (!engines.value!.rulesGranted && problem == null) ...[
+            const SizedBox(height: 12),
+            Text(
+              'The group\'s dues rules are not on Stawi yet. A rotation\'s '
+              'contributions are its dues, so a rotation can start only once '
+              'they are.',
+              key: const Key('rotation-add-needs-rules'),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 16),
+          FilledButton(
+            key: const Key('rotation-add-sign'),
+            onPressed: _sending || module == null || module.grantActive
+                ? null
+                : _sign,
+            child: Text(_sending ? 'Signing…' : 'Review and sign'),
+          ),
+        ],
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add a rotation')),
+      body: body,
     );
   }
 }
@@ -264,6 +470,12 @@ class _CycleView extends ConsumerWidget {
 
     final current = s.current;
     final next = s.next;
+    final mine =
+        ref.watch(stawiIdentityProvider).asData?.value.addresses ??
+        const <List<int>>[];
+    final payNow = live.asData == null
+        ? null
+        : rotationPayNow(live.asData!.value.rotation, mine);
     return RefreshIndicator(
       onRefresh: () async {
         ref
@@ -365,21 +577,34 @@ class _CycleView extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 8),
+            if (payNow != null && asset != null)
+              Text(
+                payNow > BigInt.zero
+                    ? 'You pay ${formatUnits(payNow, asset)} now'
+                    : 'You are paid up for this period',
+                key: const Key('rotation-pay-now'),
+                style: theme.textTheme.titleSmall,
+              ),
             FilledButton.tonalIcon(
               key: const Key('rotation-pay'),
               icon: const Icon(Icons.savings_outlined),
               label: const Text('Pay my contribution'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      ContributeScreen(roomId: roomId, roomName: roomName),
-                ),
-              ),
+              onPressed: payNow == null || payNow > BigInt.zero
+                  ? () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ContributeScreen(
+                          roomId: roomId,
+                          roomName: roomName,
+                          rotation: true,
+                        ),
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(height: 4),
             Text(
-              'Your contribution is the group\'s dues: pay it here or turn on '
-              'automatic dues on the room\'s Savings tab.',
+              'Your contribution is exactly the group\'s dues: pay it here or '
+              'turn on automatic dues on the room\'s Savings tab.',
               style: theme.textTheme.bodySmall,
             ),
           ],
@@ -512,23 +737,38 @@ class _StartRotationScreenState extends ConsumerState<StartRotationScreen> {
   ) async {
     setState(() => _sending = true);
     final service = ref.read(stawiRoomServiceProvider);
-    final sent = await signRoomActSent(
-      context,
-      ref,
-      () => service.prepareAct(
-        roomId: widget.roomId,
-        request: proposeRotationRequest(
-          order: chosen.order,
-          contribution: chosen.contribution,
-          inForce: inForce,
-          asset: asset,
-          startsAt: _startsAt,
-        ),
-      ),
-    );
+    BigInt? dues;
+    final sent = await signRoomActSent(context, ref, () async {
+      try {
+        return await service.prepareAct(
+          roomId: widget.roomId,
+          request: proposeRotationRequest(
+            order: chosen.order,
+            contribution: chosen.contribution,
+            inForce: inForce,
+            asset: asset,
+            startsAt: _startsAt,
+          ),
+        );
+      } on RotationDuesMismatch catch (e) {
+        dues = e.memberDues;
+        rethrow;
+      }
+    });
     if (!mounted) return;
     if (sent == null) {
-      setState(() => _sending = false);
+      setState(() {
+        _sending = false;
+        final exact = dues;
+        if (exact != null) {
+          // Back to the choice, holding the group's exact dues.
+          _amount.text = plainUnits(exact, asset);
+          _chosen = null;
+          _error =
+              'Each member pays exactly the group\'s dues: '
+              '${formatUnits(exact, asset)} a period';
+        }
+      });
       return;
     }
     ref.invalidate(stawiRotationsProvider(widget.roomId));
@@ -563,7 +803,7 @@ class _StartRotationScreenState extends ConsumerState<StartRotationScreen> {
           inForce.constitution.savings.minimum.amount,
         );
         if (min != null && min > BigInt.zero) {
-          _amount.text = _plain(min, a);
+          _amount.text = plainUnits(min, a);
         }
       }
       final chosen = _chosen;
@@ -575,17 +815,6 @@ class _StartRotationScreenState extends ConsumerState<StartRotationScreen> {
       appBar: AppBar(title: const Text('Start a rotation')),
       body: body,
     );
-  }
-
-  /// [units] as a person types it: "10", "12.5".
-  static String _plain(BigInt units, StawiAsset asset) {
-    if (asset.decimals == 0) return units.toString();
-    final scale = BigInt.from(10).pow(asset.decimals);
-    final frac = (units % scale)
-        .toString()
-        .padLeft(asset.decimals, '0')
-        .replaceFirst(RegExp(r'0+$'), '');
-    return frac.isEmpty ? '${units ~/ scale}' : '${units ~/ scale}.$frac';
   }
 
   Widget _choose(
@@ -777,8 +1006,9 @@ class _StartRotationScreenState extends ConsumerState<StartRotationScreen> {
           const SizedBox(height: 8),
           Text(
             'The group\'s dues are ${formatUnits(dues, asset)} a $period, '
-            'not ${formatUnits(chosen.contribution, asset)}: each turn is '
-            'paid only once the room\'s savings hold its whole pot.',
+            'not ${formatUnits(chosen.contribution, asset)}. A rotation\'s '
+            'contribution is exactly the dues: your phone checks it against '
+            'the group\'s rules before you sign, and refuses anything else.',
             key: const Key('rotation-dues-differ'),
             style: TextStyle(color: theme.colorScheme.error),
           ),
@@ -794,8 +1024,9 @@ class _StartRotationScreenState extends ConsumerState<StartRotationScreen> {
         const SizedBox(height: 12),
         Text(
           'Your phone checks the rotation settlement prepares (the order, '
-          'the pot and the first turn) against what you chose before you '
-          'sign, and asks for your screen lock to sign.',
+          'the pot, the first turn, and that each member pays exactly the '
+          'group\'s dues) against what you chose before you sign, and asks '
+          'for your screen lock to sign.',
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 16),
@@ -924,8 +1155,11 @@ class RotationCardDetails extends ConsumerWidget {
                 label: const Text('Pay now'),
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        ContributeScreen(roomId: roomId, roomName: roomName),
+                    builder: (_) => ContributeScreen(
+                      roomId: roomId,
+                      roomName: roomName,
+                      rotation: true,
+                    ),
                   ),
                 ),
               ),

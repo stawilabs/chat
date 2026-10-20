@@ -113,6 +113,8 @@ List<Uint8List> check(
   List<settlement.RoomSetupDigest> digests, {
   int? firstNonce = 0,
   DateTime? at,
+  List<int>? module,
+  bool noModule = false,
 }) => checkedSetupDigests(
   digests: digests,
   governance: governance,
@@ -121,6 +123,7 @@ List<Uint8List> check(
   chainId: chainId,
   now: at ?? now,
   firstNonce: firstNonce,
+  rotationModule: noModule ? null : (module ?? rotationModule),
 );
 
 void main() {
@@ -253,7 +256,7 @@ void main() {
               module: rulesEngine,
             ),
           ),
-        ]),
+        ], module: rulesEngine),
         throwsA(
           isA<SigningRefused>().having(
             (e) => e.reason,
@@ -262,6 +265,37 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('a rotation grant grants exactly the protocol\'s RotationModule, '
+        'and waits until finance names it', () {
+      final digests = [
+        digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE, 0),
+        digestFor(Kind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION, 1),
+        digestFor(Kind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE, 2),
+      ];
+      expect(
+        () => check(digests, noModule: true),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            rotationModuleUnknownReason,
+          ),
+        ),
+      );
+      expect(
+        () => check(digests, module: Uint8List(20)..[19] = 0x78),
+        throwsA(
+          isA<SigningRefused>().having(
+            (e) => e.reason,
+            'reason',
+            contains('another module than the protocol\'s rotation module'),
+          ),
+        ),
+      );
+      // A setup with no rotation grant needs no module.
+      expect(check(genesisDigests(), noModule: true), hasLength(3));
     });
 
     test('later, the steps still to propose from the current nonce', () {

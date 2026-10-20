@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -11,13 +12,17 @@ import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
 import 'package:stawi/features/rooms/data/detail_panel_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
+import 'package:stawi/features/stawi/data/stawi_custody.dart';
 import 'package:stawi/features/stawi/data/stawi_finance_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
+import 'package:stawi/features/stawi/data/stawi_room_engines.dart';
 import 'package:stawi/features/stawi/data/stawi_room_service.dart';
+import 'package:stawi/features/stawi/domain/proposal_documents.dart';
 import 'package:stawi/features/stawi/domain/rotation.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi/features/stawi/domain/stawi_money.dart';
+import 'package:stawi/features/stawi/ui/contribute_screen.dart';
 import 'package:stawi/features/stawi/ui/guided_governance.dart';
 import 'package:stawi/features/stawi/ui/rotation_screen.dart';
 import 'package:stawi/features/stawi/ui/stawi_timeline.dart';
@@ -38,11 +43,12 @@ void main() {
   final account = hexToBytes(wrapped['account'] as String);
   final v = GoRotationVector.named('three members');
   final [amina, baraka, chena] = v.order;
-  final room = RoomContracts(
+  final rotationRoom = RoomContracts(
     governance: Uint8List(20)..[0] = 0x41,
     custody: v.custody,
     chainId: BigInt.from(146),
   );
+  var room = rotationRoom;
   final usdc = StawiAsset.fromInfo(
     finance.AssetInfo(assetId: 'USDC.146', symbol: 'USDC', decimals: 6),
   );
@@ -54,6 +60,9 @@ void main() {
   late settlement.RoomRotation prepared;
   late List<finance.RotationCycle> cycles;
   late settlement.RoomSetup setup;
+  late finance.RoomModuleBinding? module;
+  late bool rulesGranted;
+  List<int>? grantPayloadHash;
   settlement.PrepareRoomCallResponse? lastPrepared;
 
   finance.Member member(String id, String profileId, Uint8List a) =>
@@ -114,6 +123,10 @@ void main() {
       ],
     );
     lastPrepared = null;
+    room = rotationRoom;
+    module = rotationModuleBinding(grantActive: true);
+    rulesGranted = true;
+    grantPayloadHash = null;
     gate = RecordingSigningGate();
     sender = RecordingActSender();
     transport = FakeConnectTransport()
@@ -125,6 +138,7 @@ void main() {
           signer: account,
           chatRoomId: roomId,
           rotation: prepared,
+          grantPayloadHash: grantPayloadHash,
         ),
       )
       ..on(
@@ -189,6 +203,10 @@ void main() {
     ),
     stawiRoomAssetProvider.overrideWith((ref, id) async => usdc),
     stawiRoomSetupProvider.overrideWith((ref, id) async => setup),
+    rotationEnginesSourceProvider.overrideWithValue(
+      (id) async => (module: module, rulesGranted: rulesGranted),
+    ),
+    roomCustodyProvider.overrideWith((ref, id) async => room.custody),
     stawiFinanceServiceProvider.overrideWithValue(
       StawiFinanceService(
         rooms: finance.RoomServiceClient(transport),
@@ -417,12 +435,207 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(StartRotationScreen), findsOneWidget);
 
+      // A room that has not granted the RotationModule is offered the vote
+      // that adds a rotation instead.
       setup = settlement.RoomSetup(
         state: settlement.RoomSetupState.ROOM_SETUP_STATE_READY,
       );
+      module = rotationModuleBinding();
       await tester.pumpWidget(const SizedBox());
       await openSheet();
       expect(find.byKey(const Key('decision-rotation')), findsNothing);
+      expect(find.byKey(const Key('decision-add-rotation')), findsOneWidget);
+
+      // A deployment with no RotationModule offers neither.
+      module = null;
+      await tester.pumpWidget(const SizedBox());
+      await openSheet();
+      expect(find.byKey(const Key('decision-rotation')), findsNothing);
+      expect(find.byKey(const Key('decision-add-rotation')), findsNothing);
+    });
+
+    testWidgets('a room that granted the rotation later by vote can start '
+        'one, whatever its setup', (tester) async {
+      setup = settlement.RoomSetup(
+        state: settlement.RoomSetupState.ROOM_SETUP_STATE_NONE,
+      );
+      await pump(
+        tester,
+        const RotationScreen(roomId: roomId, roomName: 'Chama'),
+      );
+      expect(find.byKey(const Key('rotation-start')), findsOneWidget);
+    });
+
+    testWidgets('a contribution other than the group\'s dues is refused '
+        'before review, and the dues are set in its place', (tester) async {
+      prepared = prepared.deepCopy()..memberDues = '12000000';
+      await pump(tester, const StartRotationScreen(roomId: roomId));
+      await chooseGoOrder(tester);
+      await tester.tap(find.byKey(const Key('rotation-sign')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('money-review')), findsNothing);
+      expect(gate.reasons, isEmpty);
+      expect(sender.sent, isEmpty);
+      // Back to the choice, holding exactly the group's dues.
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('rotation-amount')))
+            .controller!
+            .text,
+        '12',
+      );
+      expect(
+        find.text(
+          'Each member pays exactly the group\'s dues: 12.00 USDC a period',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a room whose dues are not one fixed amount cannot start '
+        'one', (tester) async {
+      prepared = prepared.deepCopy()..memberDues = '';
+      await pump(tester, const StartRotationScreen(roomId: roomId));
+      await chooseGoOrder(tester);
+      await tester.tap(find.byKey(const Key('rotation-sign')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('money-review')), findsNothing);
+      expect(find.textContaining('not one fixed amount'), findsOneWidget);
+      expect(gate.reasons, isEmpty);
+    });
+  });
+
+  group('Add a rotation to this group', () {
+    // stawi's Go grant vector: GrantPayload(custody, module, 1, no limits,
+    // no expiry) and its hash.
+    final goDocs = jsonDecode(
+      File('test/fixtures/stawi/go_proposal_documents.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final goGrant = goDocs['grant'] as Map<String, dynamic>;
+    final goCustody = hexToBytes(goDocs['custody'] as String);
+    final goPayload = hexToBytes(goGrant['payload_hash'] as String);
+
+    setUp(() {
+      setup = settlement.RoomSetup(
+        state: settlement.RoomSetupState.ROOM_SETUP_STATE_NONE,
+      );
+      module = rotationModuleBinding();
+      room = RoomContracts(
+        governance: Uint8List(20)..[0] = 0x41,
+        custody: goCustody,
+        chainId: BigInt.from(146),
+      );
+      grantPayloadHash = goPayload;
+    });
+
+    testWidgets('the grant of the protocol\'s RotationModule is rebuilt on '
+        'the device, reviewed, then signed once behind the lock', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const RotationScreen(roomId: roomId, roomName: 'Chama'),
+      );
+      expect(find.byKey(const Key('rotation-start')), findsNothing);
+      await tester.tap(find.byKey(const Key('rotation-add')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddRotationScreen), findsOneWidget);
+      expect(find.byKey(const Key('rotation-add-terms')), findsOneWidget);
+      expect(find.textContaining('0xa0a1'), findsOneWidget);
+      expect(
+        transport.requestsTo(settlement.RoomService.prepareRoomCall),
+        isEmpty,
+      );
+
+      await tester.tap(find.byKey(const Key('rotation-add-sign')));
+      await tester.pumpAndSettle();
+      final req = transport
+          .requestsTo(settlement.RoomService.prepareRoomCall)
+          .single;
+      expect(req.kind, settlement.RoomCallKind.ROOM_CALL_KIND_PROPOSE);
+      expect(
+        req.params.propose.engineGrant.engine,
+        settlement.RoomEngine.ROOM_ENGINE_ROTATION,
+      );
+      expect(find.byKey(const Key('money-review')), findsOneWidget);
+      expect(find.text('Rotation payouts'), findsOneWidget);
+      expect(gate.reasons, isEmpty);
+
+      await tester.tap(find.byKey(const Key('money-review-sign')));
+      await tester.pumpAndSettle();
+      expect(gate.reasons, ['Add a rotation to this group']);
+      final params = lastPrepared!.call.params;
+      expect(params.sublist(0, 32), bigIntToBytes(BigInt.from(11), 32));
+      expect(
+        params.sublist(32),
+        goPayload,
+        reason: 'the CAPABILITY_GRANT of Go\'s GrantPayloadHash',
+      );
+      expect(
+        recoverDeviceAddress(
+          Uint8List.fromList(lastPrepared!.digest),
+          base64Decode(sender.sent.single.content['signature'] as String),
+        ),
+        await deviceAddressOf(anvilKey),
+      );
+      expect(find.byKey(const Key('decision-stage-voting')), findsOneWidget);
+    });
+
+    testWidgets('a grant of another module is never reviewed or signed', (
+      tester,
+    ) async {
+      grantPayloadHash = payloadHashOf(
+        engineGrantDocument(
+          custody: goCustody,
+          module: Uint8List(20)..[0] = 0xee,
+        ),
+      );
+      await pump(tester, const AddRotationScreen(roomId: roomId));
+      await tester.tap(find.byKey(const Key('rotation-add-sign')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('money-review')), findsNothing);
+      expect(
+        find.textContaining('another grant than the rotation module'),
+        findsOneWidget,
+      );
+      expect(gate.reasons, isEmpty);
+      expect(sender.sent, isEmpty);
+    });
+
+    testWidgets('a module the protocol has not registered is not offered', (
+      tester,
+    ) async {
+      module = rotationModuleBinding(registered: false);
+      await pump(
+        tester,
+        const RotationScreen(roomId: roomId, roomName: 'Chama'),
+      );
+      expect(find.byKey(const Key('rotation-add')), findsNothing);
+      expect(find.byKey(const Key('rotation-unavailable')), findsOneWidget);
+
+      await pump(tester, const AddRotationScreen(roomId: roomId));
+      expect(
+        find.textContaining('not registered with the protocol'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('rotation-add-sign')))
+            .onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('a room without its dues rules is told rules come first', (
+      tester,
+    ) async {
+      rulesGranted = false;
+      await pump(
+        tester,
+        const RotationScreen(roomId: roomId, roomName: 'Chama'),
+      );
+      expect(find.byKey(const Key('rotation-needs-rules')), findsOneWidget);
+      expect(find.byKey(const Key('rotation-add')), findsNothing);
     });
   });
 
@@ -509,6 +722,89 @@ void main() {
             .single
             .includeDues,
         isTrue,
+      );
+    });
+
+    testWidgets('my contribution is exactly pay_now: prefilled, and any '
+        'other amount is blocked', (tester) async {
+      final cycle = running();
+      cycle.members[1].payNow = finance.Money(
+        assetId: 'USDC.146',
+        amount: '10500000',
+      );
+      cycles = [cycle];
+      await pump(
+        tester,
+        const RotationScreen(roomId: roomId, roomName: 'Chama'),
+      );
+      expect(find.text('You pay 10.50 USDC now'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('rotation-pay')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ContributeScreen), findsOneWidget);
+      expect(find.byKey(const Key('contribute-exact')), findsOneWidget);
+      TextField amount() =>
+          tester.widget<TextField>(find.byKey(const Key('contribute-amount')));
+      FilledButton submit() => tester.widget<FilledButton>(
+        find.byKey(const Key('contribute-submit')),
+      );
+      expect(amount().controller!.text, '10.5');
+      expect(submit().onPressed, isNotNull);
+
+      await tester.enterText(find.byKey(const Key('contribute-amount')), '10');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Pay exactly 10.50 USDC'), findsOneWidget);
+      expect(submit().onPressed, isNull, reason: 'blocked, not just warned');
+
+      await tester.enterText(
+        find.byKey(const Key('contribute-amount')),
+        '10.50',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('contribute-exact-problem')), findsNothing);
+      expect(submit().onPressed, isNotNull);
+    });
+
+    testWidgets('paid up for the period: nothing to pay', (tester) async {
+      final cycle = running();
+      cycle.members[1].payNow = finance.Money(assetId: 'USDC.146', amount: '0');
+      cycles = [cycle];
+      await pump(
+        tester,
+        const RotationScreen(roomId: roomId, roomName: 'Chama'),
+      );
+      expect(find.text('You are paid up for this period'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('rotation-pay')))
+            .onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('a rotation contribution whose exact amount cannot be read '
+        'is not paid', (tester) async {
+      cycles = [running()];
+      await pump(
+        tester,
+        const ContributeScreen(
+          roomId: roomId,
+          roomName: 'Chama',
+          rotation: true,
+        ),
+      );
+      await tester.enterText(find.byKey(const Key('contribute-amount')), '10');
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining(
+          'exact contribution to the rotation could not be read',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('contribute-submit')))
+            .onPressed,
+        isNull,
       );
     });
 

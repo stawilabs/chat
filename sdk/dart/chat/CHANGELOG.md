@@ -1,3 +1,7 @@
+## 2.1.0
+
+- Add `ChatService.LookupContactGuardianKeys` (`LookupContactGuardianKeysRequest`: `roomId`, `profileId`; `LookupContactGuardianKeysResponse`: `profileId`, `keys`, `blockNumber`; `ContactGuardianKey`: `key`, `account`, `registeredAt`): the guardian keys a contact registered with Stawi, relayed from settlement's directory, for a contact who is another active member of a room the caller shares (a DM included) and who has started the DM or written in the room. Every other case is `PERMISSION_DENIED`; a settlement outage is `UNAVAILABLE`. It shares `GetDirectPartnerAccount`'s limit of 60 lookups a minute per person (`RESOURCE_EXHAUSTED` beyond) and its permission, `direct_partner_account_view`.
+
 ## 2.0.0
 
 - **Breaking:** generated with `protocolbuffers/dart` v25.1.0 and `connectrpc/dart` v2.0.0. The package now requires `protobuf ^6.1.0`, `connectrpc ^2.0.0`, `antinvestor_api_common ^2.0.0` and Dart `^3.7.0`.

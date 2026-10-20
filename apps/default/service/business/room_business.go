@@ -54,7 +54,11 @@ type roomBusiness struct {
 	// profileAccounts answers GetDirectPartnerAccount's settlement lookup;
 	// nil answers every entitled lookup Unavailable.
 	profileAccounts stawi.ProfileAccounts
-	// partnerLookups limits each person's GetDirectPartnerAccount calls.
+	// guardianKeys answers LookupContactGuardianKeys' settlement lookup; nil
+	// answers every entitled lookup Unavailable.
+	guardianKeys stawi.GuardianKeys
+	// partnerLookups limits each person's GetDirectPartnerAccount and
+	// LookupContactGuardianKeys calls, together.
 	partnerLookups *callerLimiter
 }
 

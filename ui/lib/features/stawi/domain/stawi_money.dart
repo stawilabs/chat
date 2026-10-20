@@ -134,6 +134,18 @@ String parseAmountInput(String input, StawiAsset asset) {
   return amount.units.toString();
 }
 
+/// [units] of [asset] as a person types them: "10", "12.5" (what
+/// [parseAmountInput] reads back).
+String plainUnits(BigInt units, StawiAsset asset) {
+  if (asset.decimals == 0) return units.toString();
+  final scale = BigInt.from(10).pow(asset.decimals);
+  final frac = (units % scale)
+      .toString()
+      .padLeft(asset.decimals, '0')
+      .replaceFirst(RegExp(r'0+$'), '');
+  return frac.isEmpty ? '${units ~/ scale}' : '${units ~/ scale}.$frac';
+}
+
 /// Basis points as a percentage: 300 → "3%", 250 → "2.5%", 5 → "0.05%".
 String formatBps(int bps) {
   final whole = bps ~/ 100;

@@ -93,8 +93,8 @@ dependencies:
   shared_preferences: ^2.5.5
   sim_card_code: ^0.2.0
   sqlite3: ^3.7.0
-  stawi_api: ^0.9.0
-  stawi_api_chat: ^2.0.0
+  stawi_api: ^0.10.0
+  stawi_api_chat: ^2.1.0
   stawi_finance_sdk: ^0.8.0
   url_launcher: ^6.3.2
   uuid: ^4.5.3
@@ -181,3 +181,7 @@ flutter:
 dependency_overrides:
   sentry_flutter:
     path: third_party/sentry_flutter
+  # stawi_api_chat 2.1.0 (LookupContactGuardianKeys) is built from this
+  # repository's proto; drop the override once it is on pub.dev.
+  stawi_api_chat:
+    path: ../sdk/dart/chat

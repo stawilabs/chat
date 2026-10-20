@@ -64,19 +64,28 @@ Future<void> showGroupDecisionsSheet(
               onTap: () => Navigator.of(context).pop(d),
             ),
           Consumer(
-            builder: (context, ref, _) =>
-                ref.watch(rotationEligibilityProvider(roomId)).asData?.value ==
-                    RotationEligibility.ready
-                ? ListTile(
-                    key: const Key('decision-rotation'),
-                    leading: const Icon(Icons.autorenew),
-                    title: const Text('Start a rotation'),
-                    subtitle: const Text(
-                      'Members take turns receiving the pot',
-                    ),
-                    onTap: () => Navigator.of(context).pop(#rotation),
-                  )
-                : const SizedBox.shrink(),
+            builder: (context, ref, _) => switch (ref
+                .watch(rotationEligibilityProvider(roomId))
+                .asData
+                ?.value) {
+              RotationEligibility.ready => ListTile(
+                key: const Key('decision-rotation'),
+                leading: const Icon(Icons.autorenew),
+                title: const Text('Start a rotation'),
+                subtitle: const Text('Members take turns receiving the pot'),
+                onTap: () => Navigator.of(context).pop(#rotation),
+              ),
+              RotationEligibility.notGranted => ListTile(
+                key: const Key('decision-add-rotation'),
+                leading: const Icon(Icons.autorenew),
+                title: const Text('Add a rotation to this group'),
+                subtitle: const Text(
+                  'The group votes to turn on rotation payouts',
+                ),
+                onTap: () => Navigator.of(context).pop(#addRotation),
+              ),
+              _ => const SizedBox.shrink(),
+            },
           ),
           const Divider(),
           ListTile(
@@ -93,6 +102,12 @@ Future<void> showGroupDecisionsSheet(
   if (!context.mounted) return;
   if (choice == #advanced) {
     await showGovernanceSheet(context, roomId: roomId);
+  } else if (choice == #addRotation) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AddRotationScreen(roomId: roomId),
+      ),
+    );
   } else if (choice == #rotation) {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(

@@ -285,12 +285,14 @@ func stawiOptions(cfg aconfig.ChatConfig, chain *business.StawiChain) []frame.Op
 // setupSettlement connects to settlement's RoomService and AccountService as
 // chat's service principal (workload identity, OAuth2 and retries from cfg).
 // An empty endpoint is a development posture: Stawi room acts and DM partner
-// account lookups are then refused as unavailable, while bound rooms stay
-// guarded and facts are applied.
-func setupSettlement(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, stawi.ProfileAccounts, error) {
+// account and contact guardian key lookups are then refused as unavailable,
+// while bound rooms stay guarded and facts are applied.
+func setupSettlement(
+	ctx context.Context, cfg aconfig.ChatConfig,
+) (stawi.Rooms, stawi.ProfileAccounts, stawi.GuardianKeys, error) {
 	if cfg.SettlementServiceURI == "" {
 		util.Log(ctx).Warn("main -- no settlement endpoint; Stawi room acts are refused")
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	target := common.ServiceTarget{
 		Endpoint:              cfg.SettlementServiceURI,
@@ -299,13 +301,14 @@ func setupSettlement(ctx context.Context, cfg aconfig.ChatConfig) (stawi.Rooms, 
 	}
 	roomsCli, err := connection.NewServiceClient(ctx, &cfg, target, settlementv1connect.NewRoomServiceClient)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	accountsCli, err := connection.NewServiceClient(ctx, &cfg, target, settlementv1connect.NewAccountServiceClient)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return settlement.NewRooms(roomsCli), settlement.NewProfileAccounts(accountsCli), nil
+	return settlement.NewRooms(roomsCli), settlement.NewProfileAccounts(accountsCli),
+		settlement.NewGuardianKeys(accountsCli), nil
 }
 
 // setupStawi wires Stawi rooms: settlement relays room acts and answers DM
@@ -320,7 +323,7 @@ func setupStawi(
 	profileCli profilev1connect.ProfileServiceClient,
 	authzMiddleware authz.Middleware,
 ) (*business.StawiChain, []handlers.ServerOption) {
-	rooms, profileAccounts, err := setupSettlement(ctx, *cfg)
+	rooms, profileAccounts, guardianKeys, err := setupSettlement(ctx, *cfg)
 	if err != nil {
 		util.Log(ctx).WithError(err).Fatal("main -- could not set up the settlement client")
 	}
@@ -329,6 +332,7 @@ func setupStawi(
 	return chain, []handlers.ServerOption{
 		handlers.WithStawi(rooms, accountResolver),
 		handlers.WithProfileAccounts(profileAccounts),
+		handlers.WithGuardianKeys(guardianKeys),
 	}
 }
 
