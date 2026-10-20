@@ -144,6 +144,25 @@ class StawiGuardianService {
     );
   }
 
+  /// The person's own registered guardian keys, each with whether it still
+  /// counts at the head (settlement ListGuardianKeys).
+  Future<List<settlement.GuardianKeyStatus>> myGuardianKeys() async =>
+      (await _accounts.listGuardianKeys(settlement.ListGuardianKeysRequest()))
+          .keys;
+
+  /// The guardian keys the contact [profileId] registered that still count,
+  /// as settlement answers a person who shares the Stawi room [chatRoomId]
+  /// with them (settlement LookupGuardianKeys). No key travels as chat text.
+  Future<List<settlement.GuardianKey>> lookupGuardianKeys({
+    required String profileId,
+    required String chatRoomId,
+  }) async => (await _accounts.lookupGuardianKeys(
+    settlement.LookupGuardianKeysRequest(
+      profileId: profileId,
+      chatRoomId: chatRoomId,
+    ),
+  )).keys;
+
   /// The accounts this person guards, read at the head.
   Future<List<settlement.GuardedAccount>> guarded() async =>
       (await _accounts.listGuardedAccounts(
@@ -251,4 +270,10 @@ final stawiGuardianKeyStatusProvider =
 final stawiGuardedAccountsProvider =
     FutureProvider.autoDispose<List<settlement.GuardedAccount>>(
       (ref) => ref.watch(stawiGuardianServiceProvider).guarded(),
+    );
+
+/// The person's own registered guardian keys.
+final stawiMyGuardianKeysProvider =
+    FutureProvider.autoDispose<List<settlement.GuardianKeyStatus>>(
+      (ref) => ref.watch(stawiGuardianServiceProvider).myGuardianKeys(),
     );

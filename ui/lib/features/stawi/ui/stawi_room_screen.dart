@@ -9,6 +9,7 @@ import 'pending_reveals_card.dart';
 import 'protocol_fee_line.dart';
 import 'room_money_screen.dart';
 import 'room_setup_card.dart';
+import 'rotation_screen.dart';
 import 'statement_screen.dart';
 import 'stawi_account_screen.dart';
 import 'stawi_feedback.dart';
@@ -50,6 +51,11 @@ class StawiRoomScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: RoomSetupCard(roomId: roomId, roomName: roomName),
+              ),
+            if (phase == StawiRoomPhase.active)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: RotationCard(roomId: roomId, roomName: roomName),
               ),
             const Divider(height: 32),
             ListTile(

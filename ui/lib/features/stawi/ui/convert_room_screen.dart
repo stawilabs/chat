@@ -378,21 +378,40 @@ class _RuleFieldState extends State<_RuleField> {
     final rule = widget.rule;
     if (rule.kind == TemplateRuleKind.choice) {
       final current = widget.controller.text;
-      return DropdownButtonFormField<String>(
-        initialValue: current.isEmpty ? null : current,
-        decoration: InputDecoration(
-          labelText: rule.label,
-          helperText: rule.help,
-        ),
-        items: [
-          const DropdownMenuItem(value: '', child: Text('Template default')),
-          for (final c in rule.choices)
-            DropdownMenuItem(value: c, child: Text(c)),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: current.isEmpty ? null : current,
+            decoration: InputDecoration(
+              labelText: rule.label,
+              helperText: rule.help,
+            ),
+            items: [
+              const DropdownMenuItem(
+                value: '',
+                child: Text('Template default'),
+              ),
+              for (final c in rule.choices)
+                DropdownMenuItem(
+                  value: c,
+                  child: Text(
+                    c == rotationTemplate ? '$c (merry-go-round)' : c,
+                  ),
+                ),
+            ],
+            onChanged: (v) {
+              widget.onTyped();
+              setState(() => widget.controller.text = v ?? '');
+            },
+          ),
+          if (rule.key == 'rules_template' && current == rotationTemplate)
+            const Padding(
+              key: Key('convert-rotation-note'),
+              padding: EdgeInsets.only(top: 8),
+              child: Text(rotationTemplateNote),
+            ),
         ],
-        onChanged: (v) {
-          widget.onTyped();
-          setState(() => widget.controller.text = v ?? '');
-        },
       );
     }
     return TextField(

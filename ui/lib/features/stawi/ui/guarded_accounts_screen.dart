@@ -5,13 +5,10 @@ import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../../profile/data/profile_providers.dart';
-import '../data/guardian_contacts.dart';
 import '../data/stawi_account_service.dart'
     show deviceNotAKeyMessage, parseKeyAddress;
-import '../data/stawi_counterparty.dart';
 import '../data/stawi_guardian_service.dart';
 import '../domain/guardian_acts.dart';
-import '../domain/guardian_contacts.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import 'money_review_sheet.dart';
 import 'stawi_feedback.dart';
@@ -40,26 +37,11 @@ class _GuardedAccountsScreenState extends ConsumerState<GuardedAccountsScreen> {
       success: 'This phone is your guardian key',
     );
     if (!mounted) return;
+    if (done != null) ref.invalidate(stawiMyGuardianKeysProvider);
     setState(() {
       _busy = false;
       _registered = _registered || done != null;
     });
-  }
-
-  Future<void> _share(Uint8List key) async {
-    final room = await showModalBottomSheet<DirectRoomRef>(
-      context: context,
-      builder: (_) => const SafeArea(child: _ChatChooser()),
-    );
-    if (room == null || !mounted) return;
-    await runStawiAction(
-      context,
-      () => ref.read(guardianMessageSenderProvider)(
-        room.roomId,
-        guardianKeyMessage(key),
-      ),
-      success: 'Guardian key shared with ${room.name}',
-    );
   }
 
   Future<void> _act(
@@ -156,6 +138,12 @@ class _GuardedAccountsScreenState extends ConsumerState<GuardedAccountsScreen> {
   ) {
     final hex = bytesToHex0x(s.key).toLowerCase();
     final inUse = guarded?.any((a) => bytesEqual(a.guardian, s.key)) ?? false;
+    final mine = ref
+        .watch(stawiMyGuardianKeysProvider)
+        .asData
+        ?.value
+        .where((k) => bytesEqual(k.guardianKey.key, s.key))
+        .firstOrNull;
     switch (s.state) {
       case GuardianKeyState.noAccount:
         return const Card(
@@ -188,7 +176,11 @@ class _GuardedAccountsScreenState extends ConsumerState<GuardedAccountsScreen> {
           ),
         );
       case GuardianKeyState.ready:
-        final registered = _registered || inUse;
+        // Settlement's record of the person's guardian keys says whether
+        // this phone is registered and still counts.
+        final registered =
+            (mine?.active ?? false) || inUse || (mine == null && _registered);
+        final lapsed = mine != null && !mine.active && !inUse;
         return Card(
           key: const Key('guardian-key-card'),
           child: Padding(
@@ -216,10 +208,14 @@ class _GuardedAccountsScreenState extends ConsumerState<GuardedAccountsScreen> {
                 ),
                 Text(
                   registered
-                      ? 'Registered: share it with someone who wants you as '
-                            'their guardian.'
+                      ? 'Registered: members of your Stawi groups can now '
+                            'choose you as their guardian.'
+                      : lapsed
+                      ? 'Registered, but it no longer counts: '
+                            '${mine.inactiveReason.isEmpty ? 'register it again' : mine.inactiveReason}.'
                       : 'Register it to guard someone: your phone signs a '
                             'proof that it holds this key.',
+                  key: const Key('guardian-registration'),
                 ),
                 const SizedBox(height: 8),
                 if (!registered)
@@ -228,13 +224,6 @@ class _GuardedAccountsScreenState extends ConsumerState<GuardedAccountsScreen> {
                     onPressed: _busy ? null : _register,
                     icon: const Icon(Icons.verified_user_outlined),
                     label: const Text('Register this phone as a guardian key'),
-                  )
-                else
-                  OutlinedButton.icon(
-                    key: const Key('guardian-share'),
-                    onPressed: _busy ? null : () => _share(s.key),
-                    icon: const Icon(Icons.share_outlined),
-                    label: const Text('Share my guardian key in a chat'),
                   ),
               ],
             ),
@@ -310,53 +299,6 @@ class _GuardedCard extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// The person's DMs, to share a guardian key into one.
-class _ChatChooser extends ConsumerWidget {
-  const _ChatChooser();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final rooms = ref.watch(directRoomsProvider);
-    return Column(
-      key: const Key('guardian-share-chats'),
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            'Share with',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-        ),
-        Flexible(
-          child: rooms.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text(stawiErrorMessage(e)),
-            data: (list) => list.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('Start a direct message with them first.'),
-                  )
-                : ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final r in list)
-                        ListTile(
-                          key: Key('guardian-share-${r.roomId}'),
-                          leading: const Icon(Icons.person_outline),
-                          title: Text(r.name),
-                          onTap: () => Navigator.of(context).pop(r),
-                        ),
-                    ],
-                  ),
-          ),
-        ),
-      ],
     );
   }
 }

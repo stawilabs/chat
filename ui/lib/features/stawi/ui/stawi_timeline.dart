@@ -17,6 +17,7 @@ import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart' show LoanRef;
+import '../domain/rotation.dart' show RotationCards;
 import '../domain/stawi_money.dart';
 import '../domain/stawi_payloads.dart';
 import 'genesis_review_dialog.dart';
@@ -26,6 +27,7 @@ import 'loan_vote.dart';
 import 'my_money_screen.dart';
 import 'room_money_screen.dart';
 import 'room_setup_card.dart';
+import 'rotation_screen.dart';
 import 'stawi_feedback.dart';
 
 /// The timeline widget for a Stawi event.
@@ -551,6 +553,13 @@ class FinanceCardBubble extends ConsumerWidget {
                     roomName: _roomName(ref, event.roomId),
                   ),
                 ],
+                if (RotationCards.all.contains(card.kind))
+                  RotationCardDetails(
+                    roomId: event.roomId,
+                    roomName: _roomName(ref, event.roomId),
+                    kind: card.kind,
+                    data: card.data,
+                  ),
                 if (moneyCardAction(card) case final action?) ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
@@ -664,6 +673,11 @@ IconData iconForCard(String kind) => switch (kind) {
   'MONEY_RECEIVED' => Icons.call_received,
   'DEPOSIT' => Icons.savings_outlined,
   roomSetupCardKind => Icons.construction_outlined,
+  RotationCards.started => Icons.autorenew,
+  RotationCards.turn => Icons.redeem_outlined,
+  RotationCards.late => Icons.hourglass_bottom,
+  RotationCards.skipped => Icons.skip_next_outlined,
+  RotationCards.payout => Icons.payments_outlined,
   _ when kind.startsWith('LOAN') => Icons.request_quote_outlined,
   _ => Icons.account_balance_outlined,
 };
@@ -703,8 +717,12 @@ MoneyCardAction? moneyCardAction(FinanceCardView card) =>
 
 /// Whether a card's kind is shown in the error colour: something went wrong
 /// with the person's money.
-bool alarmingCard(String kind) =>
-    const {'LOAN_LATE', 'LOAN_DEFAULTED', 'CONTRIBUTION_FAILED'}.contains(kind);
+bool alarmingCard(String kind) => const {
+  'LOAN_LATE',
+  'LOAN_DEFAULTED',
+  'CONTRIBUTION_FAILED',
+  RotationCards.late,
+}.contains(kind);
 
 /// A card's title as shown: finance's, except a missed contribution, which
 /// reads "Contribution missed".

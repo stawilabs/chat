@@ -78,8 +78,10 @@ void main() {
       ..on(
         finance.GovernanceService.listProposals,
         (req) => finance.ListProposalsResponse(
+          // Finance counts every undecided proposal over all pages.
+          openCount: Int64(undecided.length),
           proposals: req.states.isNotEmpty
-              ? undecided
+              ? undecided.take(1).toList()
               : [
                   finance.Proposal(
                     onchainProposalId: Int64(7),

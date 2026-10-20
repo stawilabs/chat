@@ -112,6 +112,10 @@ void main() {
       ],
     ),
     stawiMembersProvider.overrideWith((ref, id) async => onChain),
+    // Not a merry-go-round: no rotation offered.
+    stawiRoomSetupProvider.overrideWith(
+      (ref, id) async => settlement.RoomSetup(),
+    ),
     stawiRolesProvider.overrideWith(
       (ref, roomId) async => [
         finance.RoleCapabilities(

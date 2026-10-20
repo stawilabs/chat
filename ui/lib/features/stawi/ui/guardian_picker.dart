@@ -6,17 +6,17 @@ import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' show bytesToHex0x;
 
 import '../data/guardian_contacts.dart';
 import '../data/stawi_account_service.dart' show parseKeyAddress;
-import '../domain/guardian_contacts.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import 'stawi_feedback.dart';
 
-/// A guardian the person chose: a contact's shared key, or a pasted one.
+/// A guardian the person chose: a contact's registered key, or a pasted one.
 typedef GuardianChoice = ({Uint8List key, String? name});
 
-/// Lets the person choose a guardian: one of their contacts who shared a
-/// guardian key in their DM, or (to ask one who has not) a message asking
-/// them to. Pasting a raw key is the advanced fallback. Keys in [exclude]
-/// (the current guardians) are not offered. Null when dismissed.
+/// Lets the person choose a guardian: a contact from the Stawi rooms they
+/// share, whose registered guardian key settlement's directory answers
+/// (LookupGuardianKeys); no key travels as chat text. Pasting a raw key is
+/// the advanced fallback. Keys in [exclude] (the current guardians) are not
+/// offered. Null when dismissed.
 Future<GuardianChoice?> showGuardianPicker(
   BuildContext context, {
   List<Uint8List> exclude = const [],
@@ -26,25 +26,15 @@ Future<GuardianChoice?> showGuardianPicker(
   builder: (_) => SafeArea(child: GuardianPicker(exclude: exclude)),
 );
 
+/// How to become someone's guardian, for a contact who has not registered.
+const String guardianRegisterHint =
+    'Has not registered a guardian key. Ask them to open Stawi account, '
+    'People I guard, and register their phone.';
+
 class GuardianPicker extends ConsumerWidget {
   const GuardianPicker({this.exclude = const [], super.key});
 
   final List<Uint8List> exclude;
-
-  Future<void> _ask(
-    BuildContext context,
-    WidgetRef ref,
-    GuardianKeyOffer o,
-  ) async {
-    await runStawiAction(
-      context,
-      () =>
-          ref.read(guardianMessageSenderProvider)(o.roomId, guardianAskMessage),
-      success:
-          'Asked ${o.name}. Once they share their guardian key in your '
-          'chat, choose them here.',
-    );
-  }
 
   Future<void> _paste(BuildContext context) async {
     final navigator = Navigator.of(context);
@@ -57,7 +47,7 @@ class GuardianPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final offers = ref.watch(guardianKeyOffersProvider);
+    final contacts = ref.watch(guardianContactsProvider);
     final theme = Theme.of(context);
     return Column(
       key: const Key('guardian-picker'),
@@ -71,12 +61,12 @@ class GuardianPicker extends ConsumerWidget {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Someone you trust who uses Stawi. They register their phone as '
-            'a guardian key and share it with you in your chat.',
+            'Someone you trust from one of your Stawi groups who registered '
+            'their phone as a guardian key.',
           ),
         ),
         Flexible(
-          child: offers.when(
+          child: contacts.when(
             loading: () => const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
@@ -87,15 +77,20 @@ class GuardianPicker extends ConsumerWidget {
             ),
             data: (list) => list.isEmpty
                 ? const Padding(
+                    key: Key('guardian-no-contacts'),
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      'Start a direct message with someone to ask them to be '
-                      'your guardian.',
+                      'Your guardian is chosen from the members of your '
+                      'Stawi groups. Join one with them first, or paste their '
+                      'key below.',
                     ),
                   )
                 : ListView(
                     shrinkWrap: true,
-                    children: [for (final o in list) _tile(context, ref, o)],
+                    children: [
+                      for (final c in list)
+                        _ContactTile(contact: c, exclude: exclude),
+                    ],
                   ),
           ),
         ),
@@ -110,38 +105,81 @@ class GuardianPicker extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _tile(BuildContext context, WidgetRef ref, GuardianKeyOffer o) {
-    final key = o.key;
-    final already = key != null && exclude.any((g) => bytesEqual(g, key));
-    if (key == null) {
-      return ListTile(
-        key: Key('guardian-offer-${o.roomId}'),
+/// One contact: their registered guardian keys as the directory answers
+/// them, each one tap to choose.
+class _ContactTile extends ConsumerWidget {
+  const _ContactTile({required this.contact, required this.exclude});
+
+  final GuardianContact contact;
+  final List<Uint8List> exclude;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final keys = ref.watch(guardianKeysOfProvider(contact.lookup));
+    final c = contact;
+    return keys.when(
+      loading: () => ListTile(
+        key: Key('guardian-offer-${c.profileId}'),
         leading: const Icon(Icons.person_outline),
-        title: Text(o.name),
-        subtitle: const Text('Has not shared a guardian key'),
-        trailing: TextButton(
-          key: Key('guardian-ask-${o.roomId}'),
-          onPressed: () => _ask(context, ref, o),
-          child: const Text('Ask'),
-        ),
-      );
-    }
+        title: Text(c.name),
+        subtitle: const Text('Looking up their guardian key…'),
+      ),
+      error: (e, _) => ListTile(
+        key: Key('guardian-offer-${c.profileId}'),
+        enabled: false,
+        leading: const Icon(Icons.person_outline),
+        title: Text(c.name),
+        subtitle: Text(stawiErrorMessage(e)),
+      ),
+      data: (list) {
+        if (list.isEmpty) {
+          return ListTile(
+            key: Key('guardian-offer-${c.profileId}'),
+            enabled: false,
+            leading: const Icon(Icons.person_outline),
+            title: Text(c.name),
+            subtitle: const Text(guardianRegisterHint),
+            isThreeLine: true,
+          );
+        }
+        return Column(
+          children: [
+            for (final k in list)
+              _keyTile(
+                context,
+                Uint8List.fromList(k.key),
+                multiple: list.length > 1,
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _keyTile(
+    BuildContext context,
+    Uint8List key, {
+    required bool multiple,
+  }) {
+    final already = exclude.any((g) => bytesEqual(g, key));
+    final hex = bytesToHex0x(key).toLowerCase();
     return ListTile(
-      key: Key('guardian-offer-${o.roomId}'),
+      key: multiple
+          ? Key('guardian-offer-${contact.profileId}-$hex')
+          : Key('guardian-offer-${contact.profileId}'),
       enabled: !already,
       leading: const Icon(Icons.shield_outlined),
-      title: Text(o.name),
+      title: Text(contact.name),
       subtitle: Text(
-        already
-            ? 'Already your guardian'
-            : 'Guardian key ${shortHex(bytesToHex0x(key).toLowerCase())}',
+        already ? 'Already your guardian' : 'Guardian key ${shortHex(hex)}',
       ),
       onTap: already
           ? null
           : () =>
                 Navigator.of(context)
-                    .pop<GuardianChoice>((key: key, name: o.name)),
+                    .pop<GuardianChoice>((key: key, name: contact.name)),
     );
   }
 }

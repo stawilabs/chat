@@ -84,12 +84,7 @@ class DuesSoonCard extends ConsumerWidget {
           style: TextStyle(color: scheme.onTertiaryContainer),
         ),
         subtitle: Text(
-          [
-            for (final p in soon)
-              '${productLabel(p.name, p.productId)}: '
-                  '${formatMoney(p.owedAtNextDue, assets)} by '
-                  '${_day.format(p.nextDueAt.toDateTime().add(tz))}',
-          ].join('\n'),
+          [for (final p in soon) _soonLine(p, assets, tz)].join('\n'),
           style: TextStyle(color: scheme.onTertiaryContainer),
         ),
         trailing: TextButton(
@@ -106,3 +101,13 @@ class DuesSoonCard extends ConsumerWidget {
     );
   }
 }
+
+/// "shares: 2.00 USDC by Thu 22 Oct", the date in the room's time zone.
+String _soonLine(
+  finance.MemberProductDues p,
+  StawiAssets assets,
+  Duration tz,
+) =>
+    '${productLabel(p.name, p.productId)}: '
+    '${formatMoney(p.owedAtNextDue, assets)} by '
+    '${DuesSoonCard._day.format(p.nextDueAt.toDateTime().add(tz))}';

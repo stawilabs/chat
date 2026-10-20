@@ -5,9 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/profile/data/profile_providers.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
-import 'package:stawi/features/stawi/data/guardian_contacts.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
-import 'package:stawi/features/stawi/data/stawi_counterparty.dart';
 import 'package:stawi/features/stawi/data/stawi_guardian_service.dart';
 import 'package:stawi/features/stawi/data/stawi_identity.dart';
 import 'package:stawi/features/stawi/domain/guardian_acts.dart';
@@ -29,7 +27,7 @@ void main() {
   late settlement.DeviceKeyAlgorithm algorithm;
   late List<settlement.GuardedAccount> guarded;
   late GoGuardianActVector act;
-  late List<(String, String)> sent;
+  late List<settlement.GuardianKeyStatus> registered;
   settlement.PrepareAccountCallResponse? preparedOverride;
 
   setUp(() async {
@@ -37,7 +35,7 @@ void main() {
     gate = RecordingSigningGate();
     algorithm = settlement.DeviceKeyAlgorithm.DEVICE_KEY_ALGORITHM_SECP256K1;
     guarded = [];
-    sent = [];
+    registered = [];
     preparedOverride = null;
     act = GoGovernanceVectors.guardianAct('request_recovery');
     transport = FakeConnectTransport()
@@ -57,14 +55,16 @@ void main() {
           ),
         ),
       )
+      ..on(settlement.AccountService.registerGuardianKey, (req) {
+        final key = settlement.GuardianKey(key: req.key, account: req.account);
+        registered = [
+          settlement.GuardianKeyStatus(guardianKey: key, active: true),
+        ];
+        return settlement.RegisterGuardianKeyResponse(guardianKey: key);
+      })
       ..on(
-        settlement.AccountService.registerGuardianKey,
-        (req) => settlement.RegisterGuardianKeyResponse(
-          guardianKey: settlement.GuardianKey(
-            key: req.key,
-            account: req.account,
-          ),
-        ),
+        settlement.AccountService.listGuardianKeys,
+        (req) => settlement.ListGuardianKeysResponse(keys: registered),
       )
       ..on(
         settlement.AccountService.listGuardedAccounts,
@@ -119,12 +119,6 @@ void main() {
             ),
           ),
           profileByIdProvider.overrideWith((ref, id) async => null),
-          directRoomsProvider.overrideWith(
-            (ref) async => const [DirectRoomRef(roomId: 'dm-ana', name: 'Ana')],
-          ),
-          guardianMessageSenderProvider.overrideWithValue(
-            (roomId, text) async => sent.add((roomId, text)),
-          ),
         ],
         child: const MaterialApp(home: GuardedAccountsScreen()),
       ),
@@ -154,8 +148,14 @@ void main() {
   String hex(List<int> a) => bytesToHex0x(a).toLowerCase();
 
   testWidgets('registers this phone as a guardian key with a proof signed '
-      'behind the lock, then shares it in a chat', (tester) async {
+      'behind the lock; settlement\'s directory then says Registered', (
+    tester,
+  ) async {
     await open(tester);
+    expect(
+      transport.requestsTo(settlement.AccountService.listGuardianKeys),
+      isNotEmpty,
+    );
     expect(find.byKey(const Key('guarded-none')), findsOneWidget);
     expect(find.text(hex(device)), findsOneWidget);
     await tester.tap(find.byKey(const Key('guardian-register')));
@@ -181,12 +181,49 @@ void main() {
     );
     expect(gate.reasons, ['Register this phone as a guardian key']);
 
-    await tester.tap(find.byKey(const Key('guardian-share')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('guardian-share-dm-ana')));
-    await tester.pumpAndSettle();
-    expect(sent.single.$1, 'dm-ana');
-    expect(sent.single.$2, contains('My Stawi guardian key: ${hex(device)}'));
+    expect(
+      find.textContaining('Registered: members of your Stawi'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('guardian-register')), findsNothing);
+    // No key is shared as chat text any more.
+    expect(find.byKey(const Key('guardian-share')), findsNothing);
+  });
+
+  testWidgets('a key settlement already lists as registered shows Registered '
+      'without registering again', (tester) async {
+    registered = [
+      settlement.GuardianKeyStatus(
+        guardianKey: settlement.GuardianKey(key: device, account: mine),
+        active: true,
+      ),
+    ];
+    await open(tester);
+    expect(
+      find.textContaining('Registered: members of your Stawi'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('guardian-register')), findsNothing);
+    expect(
+      transport.requestsTo(settlement.AccountService.registerGuardianKey),
+      isEmpty,
+    );
+  });
+
+  testWidgets('a registered key that no longer counts says why and offers '
+      'registering again', (tester) async {
+    registered = [
+      settlement.GuardianKeyStatus(
+        guardianKey: settlement.GuardianKey(key: device, account: mine),
+        inactiveReason: 'the account is no longer the caller\'s',
+      ),
+    ];
+    await open(tester);
+    expect(
+      find.textContaining('it no longer counts: the account is no longer'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('guardian-register')), findsOneWidget);
   });
 
   testWidgets('a passkey phone is told it cannot guard', (tester) async {

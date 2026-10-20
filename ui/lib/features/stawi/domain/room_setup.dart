@@ -1,7 +1,8 @@
 /// A room's lending setup, as the device checks and the room shows it. Once
 /// a room is on chain settlement proposes three votes from a founder's own
-/// signatures: the RulesEngine's grant, the LoanBook's grant and the rules
-/// template the founders chose. The founder signs them beside the genesis
+/// signatures: the RulesEngine's grant, the LoanBook's grant (for a
+/// merry-go-round, the RotationModule's instead) and the rules template the
+/// founders chose. The founder signs them beside the genesis
 /// (or later, when settlement asks), and every member votes on them.
 library;
 
@@ -20,6 +21,8 @@ const Map<settlement.RoomSetupStepKind, int> setupStepProposalKinds = {
   settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_RULES_ENGINE:
       capabilityGrantProposalKind,
   settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE:
+      capabilityGrantProposalKind,
+  settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION:
       capabilityGrantProposalKind,
   settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE:
       scheduleProposalKind,
@@ -141,7 +144,15 @@ List<Uint8List> checkedSetupDigests({
       engines[settlement
           .RoomSetupStepKind
           .ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE];
-  if (rules != null && loans != null && bytesEqual(rules, loans)) {
+  final rotation =
+      engines[settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION];
+  if (loans != null && rotation != null) {
+    throw const SigningRefused(
+      'a setup grants both the loan book and the rotation',
+    );
+  }
+  final second = loans ?? rotation;
+  if (rules != null && second != null && bytesEqual(rules, second)) {
     throw const SigningRefused('both setup grants grant the same engine');
   }
   final t = template;
@@ -154,6 +165,14 @@ List<Uint8List> checkedSetupDigests({
   }
   return out;
 }
+
+/// Whether a room's setup runs a rotation (a merry_go_round_weekly room:
+/// its second grant is the RotationModule's).
+bool setupRunsRotation(settlement.RoomSetup setup) => setup.steps.any(
+  (s) =>
+      s.step ==
+      settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION,
+);
 
 /// A chain id as the protos carry it.
 BigInt chainIdOf(Int64 id) => BigInt.parse(id.toStringUnsigned());
@@ -192,23 +211,30 @@ final class RoomSetupProgress {
   /// "Setting up lending: vote 1 of 3, closes in 2 days".
   String headline(DateTime now) {
     final total = setup.steps.length;
+    final rotation = setupRunsRotation(setup);
+    final what = rotation ? 'the rotation' : 'lending';
     switch (state) {
       case settlement.RoomSetupState.ROOM_SETUP_STATE_READY:
-        return 'Lending is set up: the room takes dues and lends';
+        return rotation
+            ? 'The rotation is set up: the room takes dues and can start a '
+                  'rotation'
+            : 'Lending is set up: the room takes dues and lends';
       case settlement.RoomSetupState.ROOM_SETUP_STATE_STALLED:
         final why = setup.failureReason;
         return why.isEmpty
-            ? 'Setting up lending stopped: a vote did not pass'
-            : 'Setting up lending stopped: $why';
+            ? 'Setting up $what stopped: a vote did not pass'
+            : 'Setting up $what stopped: $why';
       case settlement.RoomSetupState.ROOM_SETUP_STATE_AWAITING_GENESIS:
-        return 'Lending is set up once the room is on chain';
+        return rotation
+            ? 'The rotation is set up once the room is on chain'
+            : 'Lending is set up once the room is on chain';
       case settlement.RoomSetupState.ROOM_SETUP_STATE_AWAITING_SIGNATURE:
-        return 'Setting up lending: a founder needs to sign the setup';
+        return 'Setting up $what: a founder needs to sign the setup';
       case settlement.RoomSetupState.ROOM_SETUP_STATE_APPLYING:
         final at = setup.hasReadyAt() ? setup.readyAt.toDateTime() : null;
         return at == null
-            ? 'Setting up lending: every vote passed, applying the rules'
-            : 'Setting up lending: every vote passed, ready in '
+            ? 'Setting up $what: every vote passed, applying the rules'
+            : 'Setting up $what: every vote passed, ready in '
                   '${durationWords(at.difference(now))}';
       default:
     }
@@ -220,7 +246,7 @@ final class RoomSetupProgress {
         final closes = s.hasVotingClosesAt()
             ? ', closes in ${durationWords(s.votingClosesAt.toDateTime().difference(now))}'
             : '';
-        return 'Setting up lending: vote ${i + 1} of $total$closes';
+        return 'Setting up $what: vote ${i + 1} of $total$closes';
       }
     }
     for (var i = 0; i < steps.length; i++) {
@@ -232,10 +258,10 @@ final class RoomSetupProgress {
         final opens = s.hasVotingClosesAt() && setup.votingPeriodSeconds > 0
             ? ', opens in ${durationWords(s.votingClosesAt.toDateTime().subtract(Duration(seconds: setup.votingPeriodSeconds.toInt())).difference(now))}'
             : '';
-        return 'Setting up lending: vote ${i + 1} of $total$opens';
+        return 'Setting up $what: vote ${i + 1} of $total$opens';
       }
     }
-    return 'Setting up lending';
+    return 'Setting up $what';
   }
 }
 
@@ -272,6 +298,8 @@ String setupStepTitle(settlement.RoomSetupStep s) {
       'Turn on the rules engine',
     settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_LOAN_ENGINE =>
       'Turn on the loan book',
+    settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_GRANT_ROTATION =>
+      'Turn on the rotation payouts',
     settlement.RoomSetupStepKind.ROOM_SETUP_STEP_KIND_RULES_TEMPLATE =>
       'Adopt the room\'s dues and loan rules',
     _ => 'Setup step',
