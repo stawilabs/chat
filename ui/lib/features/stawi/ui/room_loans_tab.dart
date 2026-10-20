@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -12,11 +13,13 @@ import '../data/stawi_finance_service.dart';
 import '../data/stawi_identity.dart';
 import '../data/stawi_loan_service.dart';
 import '../data/stawi_room_engines.dart';
+import '../data/stawi_room_service.dart';
 import '../data/stawi_timeline_providers.dart';
 import '../domain/account_engine_calls.dart';
+import '../domain/governance_requests.dart';
 import '../domain/loan_view.dart';
 import '../domain/personal_calls.dart' show LoanRef;
-import '../domain/signing_checks.dart' show bytesEqual;
+import '../domain/signing_checks.dart' show SigningRefused, bytesEqual;
 import '../domain/stawi_money.dart';
 import 'group_loan_request_screen.dart';
 import 'loan_vote.dart';
@@ -138,13 +141,20 @@ class RoomLoansTab extends ConsumerWidget {
                 const _Heading('All loans'),
                 section('loans-all', 'No other loans', [
                   for (final l in others)
-                    ListTile(
+                    Column(
                       key: Key('room-loan-${l.onchainLoanId}'),
-                      title: Text(
-                        '${_borrowerName(ref, roomId, l)} · '
-                        '${formatMoney(l.requested, watchRoomAssets(ref, roomId))}',
-                      ),
-                      trailing: Text(LoanView(l, mine: mine).stateLabel),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListTile(
+                          title: Text(
+                            '${_borrowerName(ref, roomId, l)} · '
+                            '${formatMoney(l.requested, watchRoomAssets(ref, roomId))}',
+                          ),
+                          trailing: Text(LoanView(l, mine: mine).stateLabel),
+                        ),
+                        if (l.state == finance.LoanState.LOAN_STATE_DEFAULTED)
+                          _DefaultedLoanActions(roomId: roomId, loan: l),
+                      ],
                     ),
                 ]),
                 const SizedBox(height: 24),
@@ -332,9 +342,26 @@ class _LoanVote extends ConsumerWidget {
           data: (proposal) {
             final number = proposal?.onchainProposalId.toInt() ?? 0;
             if (proposal == null || number <= 0) {
-              return Text(
-                "The vote hasn't opened yet",
-                key: Key('loan-$id-vote-pending'),
+              return Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  Text(
+                    "The vote hasn't opened yet",
+                    key: Key('loan-$id-vote-pending'),
+                  ),
+                  _ProposeButton(
+                    key: Key('loan-$id-open-vote'),
+                    roomId: roomId,
+                    label: 'Open the vote',
+                    icon: Icons.how_to_vote_outlined,
+                    request: () => openLoanVoteRequest(
+                      loan,
+                      borrower: _borrowerName(ref, roomId, loan),
+                    ),
+                    onDone: () => ref.invalidate(stawiLoanVoteProvider(key)),
+                  ),
+                ],
               );
             }
             return Align(
@@ -351,6 +378,257 @@ class _LoanVote extends ConsumerWidget {
           },
         );
   }
+}
+
+/// Whether a loan of [product] for [loan]'s amount is decided by the room's
+/// vote: the form names no officers and the amount is above what it
+/// approves by itself (rules.DecidedByVote).
+bool _byVote(finance.RoomLoanProduct product, finance.Loan loan) {
+  if (product.officerApprovals != 0) return false;
+  final below = BigInt.tryParse(product.autoApproveBelow.amount) ?? BigInt.zero;
+  final amount = BigInt.tryParse(loan.requested.amount) ?? BigInt.zero;
+  return amount > below;
+}
+
+bool _decidedByVote(WidgetRef ref, String roomId, finance.Loan loan) {
+  final product = ref
+      .watch(roomProductsProvider(roomId))
+      .asData
+      ?.value
+      .loanProducts
+      .where((p) => bytesEqual(p.productId, loan.productId))
+      .firstOrNull;
+  return product != null && _byVote(product, loan);
+}
+
+/// A signed proposal from the loans tab: prepared with settlement, checked
+/// on the device against the room's contracts, reviewed, then signed.
+class _ProposeButton extends ConsumerStatefulWidget {
+  const _ProposeButton({
+    required this.roomId,
+    required this.label,
+    required this.icon,
+    required this.request,
+    this.onDone,
+    this.outlined = false,
+    super.key,
+  });
+
+  final String roomId;
+  final String label;
+  final IconData icon;
+
+  /// The act, built when tapped (null: the person cancelled choosing it).
+  final FutureOr<GovernanceRequest?> Function() request;
+  final VoidCallback? onDone;
+  final bool outlined;
+
+  @override
+  ConsumerState<_ProposeButton> createState() => _ProposeButtonState();
+}
+
+class _ProposeButtonState extends ConsumerState<_ProposeButton> {
+  bool _busy = false;
+
+  Future<void> _go() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final sent = await proposeFromLoans(
+        context,
+        ref,
+        roomId: widget.roomId,
+        request: widget.request,
+      );
+      if (sent) widget.onDone?.call();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.outlined
+      ? OutlinedButton.icon(
+          icon: Icon(widget.icon),
+          label: Text(widget.label),
+          onPressed: _busy ? null : _go,
+        )
+      : FilledButton.tonalIcon(
+          icon: Icon(widget.icon),
+          label: Text(widget.label),
+          onPressed: _busy ? null : _go,
+        );
+}
+
+/// Prepares, checks, reviews and signs the proposal [request] builds; true
+/// once it was sent.
+Future<bool> proposeFromLoans(
+  BuildContext context,
+  WidgetRef ref, {
+  required String roomId,
+  required FutureOr<GovernanceRequest?> Function() request,
+}) async {
+  final service = ref.read(stawiRoomServiceProvider);
+  final GovernanceRequest? chosen;
+  try {
+    chosen = await request();
+  } on SigningRefused catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.maybeOf(context)
+          ?.showSnackBar(SnackBar(content: Text(e.reason)));
+    }
+    return false;
+  }
+  if (chosen == null || !context.mounted) return false;
+  final prepared = await runStawiAction(
+    context,
+    () => service.prepareAct(roomId: roomId, request: chosen!),
+  );
+  if (prepared == null || !context.mounted) return false;
+  if (!await showMoneyReview(context, prepared.review) || !context.mounted) {
+    return false;
+  }
+  final sent = await runStawiAction(
+    context,
+    () => service.submitAct(prepared),
+    success: prepared.review.done,
+  );
+  return sent != null;
+}
+
+/// A loan in default: any member of the room on chain may propose writing it
+/// off or restructuring it; the room votes, and settlement applies it.
+class _DefaultedLoanActions extends ConsumerWidget {
+  const _DefaultedLoanActions({required this.roomId, required this.loan});
+
+  final String roomId;
+  final finance.Loan loan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final who = _approver(ref, roomId);
+    if (who != _Approver.member && who != _Approver.officer) {
+      return const SizedBox.shrink();
+    }
+    final id = loan.onchainLoanId;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          _ProposeButton(
+            key: Key('loan-$id-write-off'),
+            roomId: roomId,
+            label: 'Propose a write-off',
+            icon: Icons.delete_sweep_outlined,
+            outlined: true,
+            request: () => writeOffRequest(loan),
+          ),
+          _ProposeButton(
+            key: Key('loan-$id-restructure'),
+            roomId: roomId,
+            label: 'Propose a restructure',
+            icon: Icons.event_repeat_outlined,
+            outlined: true,
+            request: () => _askRestructure(context, loan),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Asks how a defaulted loan is to be repaid from now: instalments and the
+/// interest per instalment. Null when cancelled.
+Future<GovernanceRequest?> _askRestructure(
+  BuildContext context,
+  finance.Loan loan,
+) async {
+  final terms = await showDialog<({int instalments, int rateBps})>(
+    context: context,
+    builder: (_) => _RestructureDialog(loan: loan),
+  );
+  if (terms == null) return null;
+  return restructureRequest(
+    loan,
+    instalments: terms.instalments,
+    rateBps: terms.rateBps,
+  );
+}
+
+class _RestructureDialog extends StatefulWidget {
+  const _RestructureDialog({required this.loan});
+
+  final finance.Loan loan;
+
+  @override
+  State<_RestructureDialog> createState() => _RestructureDialogState();
+}
+
+class _RestructureDialogState extends State<_RestructureDialog> {
+  late final _instalments = TextEditingController(
+    text: widget.loan.instalments > 0 ? '${widget.loan.instalments}' : '',
+  );
+  final _rate = TextEditingController(text: '0');
+  String? _error;
+
+  @override
+  void dispose() {
+    _instalments.dispose();
+    _rate.dispose();
+    super.dispose();
+  }
+
+  void _review() {
+    final n = int.tryParse(_instalments.text.trim());
+    final bps = int.tryParse(_rate.text.trim());
+    if (n == null || n < 1 || n > 65535 || bps == null || bps < 0) {
+      setState(
+        () => _error =
+            'Enter whole instalments (1 or more) and a rate of 0 or more',
+      );
+      return;
+    }
+    Navigator.of(context).pop((instalments: n, rateBps: bps));
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text('Restructure loan #${widget.loan.onchainLoanId}'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          key: const Key('restructure-instalments'),
+          controller: _instalments,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Instalments from now'),
+        ),
+        TextField(
+          key: const Key('restructure-rate'),
+          controller: _rate,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Interest per instalment (basis points)',
+            helperText: '100 basis points is 1%',
+            errorText: _error,
+          ),
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        key: const Key('restructure-review'),
+        onPressed: _review,
+        child: const Text('Review'),
+      ),
+    ],
+  );
 }
 
 /// Runs an engine call on [loan] (approve, pledge, cancel) through the
@@ -511,7 +789,7 @@ class _PendingLoanState extends ConsumerState<_PendingLoan> {
         .loanProducts
         .where((p) => bytesEqual(p.productId, loan.productId))
         .firstOrNull;
-    final byVote = product != null && product.officerApprovals == 0;
+    final byVote = product != null && _byVote(product, loan);
     final approver = _approver(ref, widget.roomId);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -752,6 +1030,12 @@ class _MyGroupLoanState extends ConsumerState<_MyGroupLoan> {
               ),
             ),
             if (_settling) const _Settling(key: Key('loan-settling')),
+            if (_pending(loan) && _decidedByVote(ref, widget.roomId, loan))
+              _LoanVote(
+                roomId: widget.roomId,
+                roomName: widget.roomName,
+                loan: loan,
+              ),
             Wrap(
               spacing: 8,
               children: [

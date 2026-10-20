@@ -95,9 +95,11 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
           ),
         ),
       ),
-      // "Create group" FAB — visible when 2+ contacts selected
-      floatingActionButton: _selectedContacts.length >= 2
+      // "Create group" FAB: a group can be just the person and one contact
+      // (a two-person Stawi room); one contact also offers a direct chat.
+      floatingActionButton: _selectedContacts.isNotEmpty
           ? FloatingActionButton.extended(
+              key: const Key('new-chat-create-group'),
               onPressed: _navigateToGroupDetails,
               backgroundColor: AppTheme.brightGreen,
               foregroundColor: Colors.white,

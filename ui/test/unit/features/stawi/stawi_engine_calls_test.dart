@@ -4,11 +4,13 @@ import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 import 'package:stawi/features/stawi/data/device_key_store.dart';
 import 'package:stawi/features/stawi/data/signing_gate.dart';
 import 'package:stawi/features/stawi/data/stawi_account_service.dart';
 import 'package:stawi/features/stawi/domain/account_engine_calls.dart';
 import 'package:stawi/features/stawi/domain/intent_bridge.dart';
+import 'package:stawi/features/stawi/domain/proposal_documents.dart';
 import 'package:stawi/features/stawi/domain/secret_ballot.dart';
 import 'package:stawi/features/stawi/domain/signing_checks.dart';
 import 'package:stawi_api/finance_v1.dart' as finance;
@@ -199,6 +201,149 @@ void main() {
           reason: entry.key,
         );
       }
+    });
+
+    group('a loan the room decides by vote', () {
+      final v = GoEngineCallVector.load().firstWhere(
+        (v) => v.name == 'loan_request',
+      );
+      final governance = Uint8List(20)..[19] = 0x6a;
+      final room = RoomContracts(
+        governance: governance,
+        custody: v.room,
+        chainId: BigInt.from(146),
+      );
+      final now = DateTime.utc(2026, 10, 20);
+      final request = AccountEngineRequest(
+        call: AccountEngineCall.loanRequest,
+        custody: v.room,
+        amount: v.json['amount'] as String,
+        productId: hexToBytes(v.json['product_id'] as String),
+        instalments: v.json['instalments'] as int,
+      );
+
+      /// The borrower's proposal of the LOAN vote as settlement renders it.
+      settlement.LoanVoteProposal proposal({BigInt? amount, int nonce = 2}) {
+        final payload = payloadHashOf(
+          loanApprovalDocument(
+            loanBook: v.engines().loanBook,
+            custody: v.room,
+            loanId: BigInt.from(4),
+            borrower: v.account,
+            amount: amount ?? BigInt.parse(request.amount),
+            instalments: request.instalments,
+          ),
+        );
+        const deadline = 1900000000;
+        final typed = roomCallTypedHash(
+          SignedCallKind.propose,
+          verifier: governance,
+          chainId: room.chainId,
+          member: v.account,
+          nonce: BigInt.from(nonce),
+          deadline: BigInt.from(deadline),
+          params: [...bigIntToBytes(BigInt.from(4), 32), ...payload],
+        );
+        return settlement.LoanVoteProposal(
+          loanId: Int64(4),
+          governance: governance,
+          nonce: Int64(nonce),
+          deadline: Timestamp(seconds: Int64(deadline)),
+          typedHash: typed,
+          digest: accountWrappedHash(v.account, room.chainId, typed),
+          payloadHash: payload,
+        );
+      }
+
+      void serves(settlement.LoanVoteProposal vote) => transport
+        ..on(
+          settlement.AccountService.prepareAccountCall,
+          (req) => v.prepared(req.kind)..voteProposal = vote,
+        )
+        ..on(
+          settlement.AccountService.submitAccountCall,
+          (req) => settlement.SubmitAccountCallResponse(
+            call: settlement.AccountCall(callId: req.callId),
+          ),
+        );
+
+      test(
+        'signs the vote proposal with the request, under one unlock',
+        () async {
+          await serveDeployedAccount(transport, v.devicePrivateKey);
+          final vote = proposal();
+          serves(vote);
+          final gate = RecordingSigningGate();
+          final keys = DeviceKeyStore(
+            vaultWith('p1', v.devicePrivateKey),
+            gate: gate,
+          );
+          final s = StawiAccountService(
+            roomAssets: testRoomAssets,
+            accounts: settlement.AccountServiceClient(transport),
+            keys: keys,
+            proofs: refusingSessionProofs,
+            identity: () async => identityWith('p1', v.account),
+          );
+          final prepared = await s.prepareEngineCall(
+            request,
+            engines: v.engines(),
+            room: room,
+            now: () => now,
+          );
+          expect(prepared.voteProposalDigest, vote.digest);
+          expect(prepared.review.notes, contains(loanVoteOpensNote));
+          await s.submit(prepared);
+          expect(gate.reasons, hasLength(1));
+          final submit = transport
+              .requestsTo(settlement.AccountService.submitAccountCall)
+              .single;
+          expect(bytesToHex0x(submit.authorization), v.signature);
+          final key = (await keys.load('p1'))!;
+          expect(
+            recoverDeviceAddress(vote.digest, submit.voteProposalSignature),
+            key.address,
+          );
+        },
+      );
+
+      test('a proposal for another amount is not signed; the request still '
+          'is', () async {
+        await serveDeployedAccount(transport, v.devicePrivateKey);
+        serves(proposal(amount: BigInt.one));
+        final s = service(v);
+        final prepared = await s.prepareEngineCall(
+          request,
+          engines: v.engines(),
+          room: room,
+          now: () => now,
+        );
+        expect(prepared.voteProposalDigest, isNull);
+        expect(
+          prepared.review.notes.single,
+          loanVoteByHandNote('the loan\'s vote is not on this request'),
+        );
+        await s.submit(prepared);
+        final submit = transport
+            .requestsTo(settlement.AccountService.submitAccountCall)
+            .single;
+        expect(submit.voteProposalSignature, isEmpty);
+      });
+
+      test(
+        'without the room\'s contracts the vote is left to a member',
+        () async {
+          await serveDeployedAccount(transport, v.devicePrivateKey);
+          serves(proposal());
+          final prepared = await service(v)
+              .prepareEngineCall(request, engines: v.engines(), now: () => now);
+          expect(prepared.voteProposalDigest, isNull);
+          expect(
+            prepared.review.notes.single,
+            startsWith('The room decides this loan by vote.'),
+          );
+        },
+      );
     });
 
     test('a room call prepared for another amount than asked is refused', () {

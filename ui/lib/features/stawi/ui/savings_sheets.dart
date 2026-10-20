@@ -8,11 +8,13 @@ import 'package:stawi_api/settlement_v1.dart' as settlement;
 import 'package:stawi_finance_sdk/stawi_finance_sdk.dart' as sdk;
 
 import '../data/stawi_account_service.dart';
+import '../data/stawi_finance_service.dart';
 import '../data/stawi_identity.dart';
 import '../data/stawi_vault_service.dart';
 import '../domain/personal_calls.dart';
 import '../domain/signing_checks.dart' show bytesEqual;
 import '../domain/stawi_money.dart';
+import '../domain/withdrawal_fee.dart';
 import 'dm_partner_picker.dart';
 import 'loan_widgets.dart' show moneyProviders, settleThenRefresh;
 import 'money_review_sheet.dart';
@@ -204,14 +206,21 @@ Future<void> withdrawSavings(
     note: 'Back to your wallet',
   );
   if (amount == null || !context.mounted) return;
-  final call = await runMoneyAction(
-    context,
-    ref,
-    () async => service.preparePersonal(
+  final quotes = ref.read(stawiFinanceServiceProvider);
+  final call = await runMoneyAction(context, ref, () async {
+    final prepared = await service.preparePersonal(
       PersonalRequest.withdraw(pocket: pocketId(pocket), amount: amount),
       pocketName: name,
-    ),
-  );
+    );
+    final fee = withdrawalFeeReview(
+      await quotes.quoteWithdrawal(
+        finance.WithdrawalKind.WITHDRAWAL_KIND_PERSONAL_SAVINGS,
+        amount: prepared.call?.amount.toString() ?? amount.toString(),
+      ),
+      (m) => formatUnits(BigInt.tryParse(m.amount) ?? BigInt.zero, asset),
+    );
+    return prepared.withReviewAdded(lines: fee.lines, notes: fee.notes);
+  });
   if (call != null) await settleAndRefresh(container, service, call);
 }
 

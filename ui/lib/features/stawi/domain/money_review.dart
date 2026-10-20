@@ -167,6 +167,7 @@ final class MoneyReview {
     sdk.EngineCall call, {
     String? feeLine,
     List<(String, String)> quoteLines = const [],
+    List<String> notes = const [],
   }) {
     final asset = r.asset;
     final amount = call.amount > BigInt.zero
@@ -191,6 +192,7 @@ final class MoneyReview {
         if (feeLine != null) ('Stawi fee', feeLine),
         ...quoteLines,
       ],
+      notes: notes,
       signLabel: _sign,
       done: 'Done: ${r.summary}',
     );

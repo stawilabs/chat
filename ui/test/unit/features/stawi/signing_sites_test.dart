@@ -19,8 +19,12 @@ const Set<String> deviceSignSites = {
   // Money and ADD_KEY: every prepared and checked call (loans, savings,
   // wallet, another device's key), signed once and submitted as signed.
   'lib/features/stawi/data/stawi_account_service.dart signCall',
-  // Room genesis.
+  // Room genesis, with the founder's setup proposals under the same unlock.
   'lib/features/stawi/data/stawi_room_service.dart submitGenesisSignature',
+  // A room's setup proposals a founder signs later, checked first.
+  'lib/features/stawi/data/stawi_room_service.dart submitSetupSignatures',
+  // A dues plan's standing grant or revoke, checked and reviewed first.
+  'lib/features/stawi/data/stawi_dues_plan_service.dart authorize',
   // Every room call (governance acts, votes, secret-ballot commits and
   // reveals): checked against the act chosen and the room's contracts
   // (verifyRoomCall), and reviewed first.

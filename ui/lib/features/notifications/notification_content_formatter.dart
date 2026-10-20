@@ -44,6 +44,13 @@ String financeCardNotificationTitle(String kind) => switch (kind) {
   'LOAN_REPAID' => 'Loan repaid',
   'LOAN_CLOSED' || 'LOAN_CLOSED_UNACCEPTED' => 'Loan closed',
   'CONTRIBUTION_FAILED' => 'Contribution missed',
+  'CONTRIBUTION' => 'Contribution received',
+  'DUES_DUE' => 'Dues due',
+  'WITHDRAWAL' => 'Withdrawal',
+  'SHARE_OUT_COLLECTED' => 'Share-out collected',
+  'MONEY_RECEIVED' => 'Money received',
+  'DEPOSIT' => 'Money saved',
+  'ROOM_SETUP' => 'Lending setup',
   _ => 'Stawi update',
 };
 

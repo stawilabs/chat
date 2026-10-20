@@ -142,6 +142,29 @@ final List<TemplateRule> templateRules = [
     max: BigInt.from(200),
   ),
   TemplateRule(
+    key: 'minimum_active_members',
+    label: 'Minimum active members',
+    help: 'Fewer active members than this and the room goes inactive',
+    kind: TemplateRuleKind.number,
+    min: BigInt.one,
+    max: BigInt.from(200),
+  ),
+  const TemplateRule(
+    key: 'rules_template',
+    label: 'Lending rules',
+    help: 'The dues and loan rules the room votes in once it is on chain',
+    kind: TemplateRuleKind.choice,
+    choices: lendingTemplates,
+  ),
+  const TemplateRule(
+    key: 'loan_vote_above',
+    label: 'Loans decided by vote above',
+    help:
+        'Loans above this amount (asset minor units) are decided by a room '
+        'vote',
+    kind: TemplateRuleKind.number,
+  ),
+  TemplateRule(
     key: 'max_members',
     label: 'Maximum members',
     help: 'Most members the room admits',
@@ -150,6 +173,39 @@ final List<TemplateRule> templateRules = [
     max: BigInt.from(10000),
   ),
 ];
+
+/// The lending rules templates settlement sets a room up with (pkg/rules
+/// TemplateNames); "none" sets up no lending. Unset is vsla_52_weeks.
+const List<String> lendingTemplates = [
+  'vsla_52_weeks',
+  'merry_go_round_weekly',
+  'asca_monthly',
+  'grameen_221',
+  'investment_club',
+  'welfare_levy',
+  'none',
+];
+
+/// What a rule is pre-filled with for a room of [founders] founders: the
+/// founding quorum and the minimum active members are at most the founders
+/// (settlement's own default for the minimum), so a two-person room can sign
+/// its genesis and does not go inactive at once. Null leaves the rule to the
+/// template.
+String? prefilledRule(
+  String key, {
+  required int founders,
+  required int templateFoundingQuorum,
+  required int templateMinimumActive,
+}) {
+  if (founders < 1) return null;
+  int atMostFounders(int templateValue) =>
+      templateValue <= 0 || templateValue > founders ? founders : templateValue;
+  return switch (key) {
+    'founding_quorum' => '${atMostFounders(templateFoundingQuorum)}',
+    'minimum_active_members' => '${atMostFounders(templateMinimumActive)}',
+    _ => null,
+  };
+}
 
 /// The values to send: the non-empty ones, keyed by rule name. Throws
 /// [FormatException] naming the first bad value.

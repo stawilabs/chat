@@ -535,6 +535,139 @@ void main() {
     });
   });
 
+  group('money cards', () {
+    RoomEvent moneyCard(
+      String kind,
+      String title,
+      Map<String, String> data, {
+      String body = '',
+    }) => RoomEvent(
+      id: 'card-$kind',
+      roomId: roomId,
+      senderId: '',
+      type: RoomEventType.financeCard,
+      createdAt: 0,
+      content: {
+        'cardId': 'k-$kind',
+        'kind': kind,
+        'title': title,
+        'body': body,
+        'data': data,
+      },
+    );
+
+    Future<void> show(WidgetTester tester, RoomEvent card) async {
+      await tester.pumpWidget(
+        host(StawiTimelineItem(event: card, isMe: false)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    final cases = <(String, String, Map<String, String>, IconData, String)>[
+      (
+        'DUES_DUE',
+        'Dues due 27 Oct',
+        {
+          'due_at': '2026-10-27T00:00:00Z',
+          'total': '1250',
+          'action': 'open_dues',
+        },
+        Icons.event_note_outlined,
+        'See my dues',
+      ),
+      (
+        'WITHDRAWAL',
+        'Withdrawal: 50.00 USDC',
+        {'amount': '50000000', 'withdrawal_fee': '0', 'action': 'open_money'},
+        Icons.outbox_outlined,
+        "Open the room's money",
+      ),
+      (
+        'SHARE_OUT_COLLECTED',
+        'Share-out collected: 12.00 USDC',
+        {'amount': '12000000', 'action': 'open_money'},
+        Icons.redeem_outlined,
+        "Open the room's money",
+      ),
+      (
+        'DEPOSIT',
+        'Saved: 5.00 USDC',
+        {'amount': '5000000', 'action': 'open_savings'},
+        Icons.savings_outlined,
+        'Open my savings',
+      ),
+      (
+        'MONEY_RECEIVED',
+        'Money sent: 7.00 USDC',
+        {'amount': '7000000', 'action': 'open_wallet'},
+        Icons.call_received,
+        'Open my wallet',
+      ),
+    ];
+
+    for (final (kind, title, data, icon, button) in cases) {
+      testWidgets('$kind shows its title, icon and where it leads', (
+        tester,
+      ) async {
+        await show(tester, moneyCard(kind, title, data));
+        expect(find.text(title), findsOneWidget);
+        expect(
+          tester.widget<Icon>(find.byKey(const Key('finance-card-icon'))).icon,
+          icon,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('finance-card-open-money')),
+            matching: find.text(button),
+          ),
+          findsOneWidget,
+        );
+        // Raw minor units and the fee marker are for the app, not shown.
+        expect(find.textContaining('000000'), findsNothing);
+      });
+    }
+
+    test('the room\'s money opens in the room; savings and the wallet in My '
+        'money', () {
+      FinanceCardView card(String action) => FinanceCardView.fromContent({
+        'kind': 'X',
+        'data': {'action': action},
+      });
+      expect(moneyCardAction(card('open_dues'))!.roomMoney, isTrue);
+      expect(moneyCardAction(card('open_money'))!.roomMoney, isTrue);
+      expect(moneyCardAction(card('open_savings'))!.roomMoney, isFalse);
+      expect(moneyCardAction(card('open_wallet'))!.roomMoney, isFalse);
+      expect(moneyCardAction(card('open_loan')), isNull);
+    });
+
+    testWidgets('a room setup card shows how far the setup is', (tester) async {
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(
+            event: moneyCard(roomSetupCardKind, 'Setting up lending', const {}),
+            isMe: false,
+          ),
+          overrides: [
+            stawiRoomSetupProvider.overrideWith(
+              (ref, id) async => settlement.RoomSetup(
+                state: settlement.RoomSetupState.ROOM_SETUP_STATE_APPLYING,
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Setting up lending: every vote passed, applying the rules'),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<Icon>(find.byKey(const Key('finance-card-icon'))).icon,
+        Icons.construction_outlined,
+      );
+    });
+  });
+
   group('GenesisCard', () {
     // Carol is the agent; the genesis was hashed with her account, and the
     // device recomputes that hash before the founder sees the review.
@@ -620,6 +753,54 @@ void main() {
         ),
       ),
     ];
+
+    testWidgets('a founder signs the lending setup with the genesis', (
+      tester,
+    ) async {
+      final governance = Uint8List(20)..[19] = 0x60;
+      final custody = Uint8List(20)..[19] = 0x61;
+      final digests = setupDigestsFor(
+        account: account,
+        governance: governance,
+        custody: custody,
+        chainId: BigInt.parse(roomGenesis.chainId.toStringUnsigned()),
+        deadline: DateTime.now().toUtc().add(const Duration(days: 14)),
+      );
+      transport
+        ..on(settlement.RoomService.getRoomGenesis, (req) {
+          final g = roomGenesis.deepCopy()
+            ..genesisId = req.genesisId
+            ..setup = settlement.RoomSetup(
+              governance: governance,
+              custody: custody,
+            );
+          g.founders[1].setupDigests.addAll(digests);
+          return settlement.GetRoomGenesisResponse(genesis: g);
+        })
+        ..on(
+          settlement.RoomService.submitRoomSetupSignatures,
+          (req) => settlement.SubmitRoomSetupSignaturesResponse(),
+        );
+      await tester.pumpWidget(
+        host(
+          StawiTimelineItem(event: card(), isMe: false),
+          overrides: overrides(profileId: 'p1'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('genesis-open-review')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('genesis-review-setup')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('genesis-sign')));
+      await tester.pumpAndSettle();
+
+      final setup = transport
+          .requestsTo(settlement.RoomService.submitRoomSetupSignatures)
+          .single;
+      expect(setup.signatures, hasLength(3));
+      expect(sender.sent.single.type, RoomEventType.stawiGenesisSignature);
+      expect(find.text('Genesis and lending setup signed'), findsOneWidget);
+    });
 
     testWidgets('a founder reviews the agent and the fee, then signs', (
       tester,

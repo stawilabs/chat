@@ -9,6 +9,7 @@ import 'account_engine_calls.dart';
 import 'intent_bridge.dart';
 import 'loan_terms.dart';
 import 'personal_calls.dart';
+import 'proposal_documents.dart';
 import 'stawi_payloads.dart';
 
 /// Settlement builds every digest a device signs. Before the device signs one,
@@ -927,4 +928,74 @@ bool bytesEqual(List<int> a, List<int> b) {
     diff |= a[i] ^ b[i];
   }
   return diff == 0;
+}
+
+/// The digest to sign for a by-vote loan request's [proposal]: the
+/// borrower's own GovernanceModule.proposeBySig of the room's LOAN vote on
+/// the loan the request will take, rebuilt on the device. The payload is
+/// LoanBook's approval document for that loan id, of [borrower], for the
+/// checked [amount] over [instalments], on the room's custody and the
+/// room's LoanBook ([loanBook], finance's Room.engines); the proposal goes
+/// to the room's GovernanceModule as finance knows it ([room]) at the
+/// proposal's nonce and deadline, wrapped for the borrower's account.
+Uint8List checkedLoanVoteProposal({
+  required settlement.LoanVoteProposal proposal,
+  required RoomContracts room,
+  required List<int> loanBook,
+  required Uint8List borrower,
+  required BigInt amount,
+  required int instalments,
+  required DateTime now,
+}) {
+  final governance = room.governance;
+  final custody = room.custody;
+  if (governance == null || custody == null) {
+    throw const SigningRefused(roomContractsUnknownReason);
+  }
+  if (!bytesEqual(proposal.governance, governance)) {
+    throw const SigningRefused(
+      'the loan\'s vote is not on this room\'s governance',
+    );
+  }
+  if (proposal.loanId <= Int64.ZERO) {
+    throw const SigningRefused('the loan\'s vote names no loan');
+  }
+  final payload = payloadHashOf(
+    loanApprovalDocument(
+      loanBook: loanBook,
+      custody: custody,
+      loanId: _u64(proposal.loanId),
+      borrower: borrower,
+      amount: amount,
+      instalments: instalments,
+    ),
+  );
+  if (!bytesEqual(payload, proposal.payloadHash)) {
+    throw const SigningRefused('the loan\'s vote is not on this request');
+  }
+  final deadline = BigInt.from(proposal.deadline.seconds.toInt());
+  if (deadline <= BigInt.from(now.toUtc().millisecondsSinceEpoch ~/ 1000)) {
+    throw const SigningRefused('the loan\'s vote proposal has expired');
+  }
+  final typed = roomCallTypedHash(
+    SignedCallKind.propose,
+    verifier: governance,
+    chainId: room.chainId,
+    member: borrower,
+    nonce: _u64(proposal.nonce),
+    deadline: deadline,
+    params: [...bigIntToBytes(BigInt.from(ProposalKinds.loan), 32), ...payload],
+  );
+  if (!bytesEqual(typed, proposal.typedHash)) {
+    throw const SigningRefused(
+      'the loan\'s vote proposal is not the proposal it describes',
+    );
+  }
+  final digest = accountWrappedHash(borrower, room.chainId, typed);
+  if (!bytesEqual(digest, proposal.digest)) {
+    throw const SigningRefused(
+      'the loan\'s vote digest is not your account wrapping of it',
+    );
+  }
+  return digest;
 }

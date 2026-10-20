@@ -468,6 +468,7 @@ void main() {
       WidgetTester tester, {
       finance.ListMemberBalancesResponse? balances,
       finance.ListRoomProductsResponse? products,
+      RoomEngineTargets? engines,
     }) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -568,7 +569,7 @@ void main() {
             ),
             roomCustodyProvider.overrideWith((ref, id) async => custody),
             roomEnginesProvider.overrideWith(
-              (ref, id) async => payoff.engines(),
+              (ref, id) async => engines ?? payoff.engines(),
             ),
             stawiAccountServiceProvider.overrideWithValue(
               StawiAccountService(
@@ -914,6 +915,57 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Not signed'), findsOneWidget);
       expect(find.byKey(const Key('money-review')), findsNothing);
+    });
+
+    testWidgets('a group withdrawal\'s review says it carries no fee', (
+      tester,
+    ) async {
+      final withdraw = GoEngineCallVector.load().firstWhere(
+        (v) => v.name == 'withdraw_credit',
+      );
+      await serveDeployedAccount(transport, withdraw.devicePrivateKey);
+      transport
+        ..on(
+          settlement.AccountService.prepareAccountCall,
+          (req) => withdraw.prepared(req.kind),
+        )
+        ..on(
+          finance.TreasuryService.quoteWithdrawal,
+          (req) => finance.QuoteWithdrawalResponse(
+            kind: req.kind,
+            net: finance.Money(assetId: 'USDC.146', amount: req.amount),
+            basis: 'Group withdrawals carry no fee',
+          ),
+        );
+      await pump(tester, engines: withdraw.engines());
+      await tester.tap(find.text('Savings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('engine-withdrawCredit')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('engine-amount')),
+        '0.000001',
+      );
+      await tester.tap(find.byKey(const Key('engine-review')));
+      await tester.pumpAndSettle();
+      final quote = transport
+          .requestsTo(finance.TreasuryService.quoteWithdrawal)
+          .single;
+      expect(quote.kind, finance.WithdrawalKind.WITHDRAWAL_KIND_MEMBER_CREDIT);
+      expect(quote.amount, '1');
+      expect(quote.roomId, roomId);
+      final review = find.byKey(const Key('money-review'));
+      expect(
+        find.descendant(
+          of: review,
+          matching: find.text('Group withdrawals carry no fee'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: review, matching: find.text('Withdrawal fee')),
+        findsNothing,
+      );
     });
 
     testWidgets('lists members with their balances and books', (tester) async {
