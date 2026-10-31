@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../messages/domain/room_event.dart';
+import '../data/pool_membership.dart';
 import '../data/socialtrader_api.dart';
 import '../domain/pool_card.dart';
 import '../domain/pool_models.dart';
@@ -265,12 +266,9 @@ class _Card extends StatelessWidget {
             ),
           ),
         ];
-      case LeavePromptCard(:final shares, :final valueQuote):
+      case LeavePromptCard():
         return [
-          Text(
-            'You hold $shares shares, worth about $valueQuote.',
-            style: theme.textTheme.bodyMedium,
-          ),
+          _OwnPosition(pool: pool.address),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
@@ -323,5 +321,36 @@ class _Card extends StatelessWidget {
           ),
         ];
     }
+  }
+}
+
+/// The viewer's own stake, fetched through the authenticated GetMembership
+/// call: a room card never carries a member's position.
+class _OwnPosition extends ConsumerWidget {
+  const _OwnPosition({required this.pool});
+
+  final String pool;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final membership = ref.watch(myMembershipProvider(pool));
+    return switch (membership) {
+      AsyncData(:final value) when value.holdsShares => Text(
+        'You hold ${value.shares} shares, worth about ${value.valueQuote}.',
+        key: const Key('pool-card-own-position'),
+        style: theme.textTheme.bodyMedium,
+      ),
+      AsyncData() => Text(
+        'Connect your wallet to see your shares.',
+        key: const Key('pool-card-own-position'),
+        style: theme.textTheme.bodyMedium,
+      ),
+      AsyncError() => Text(
+        "Your shares couldn't be read right now.",
+        style: theme.textTheme.bodySmall,
+      ),
+      _ => const LinearProgressIndicator(),
+    };
   }
 }

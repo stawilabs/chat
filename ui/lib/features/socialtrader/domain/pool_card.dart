@@ -10,11 +10,18 @@ import 'package:flutter/foundation.dart';
 /// a transaction the member's wallet signs after a tap.
 @immutable
 sealed class PoolCard {
-  const PoolCard({required this.pool, required this.version});
+  const PoolCard({
+    required this.pool,
+    required this.version,
+    this.roomRef = '',
+  });
 
   /// The pool the card is about, lowercase hex.
   final String pool;
   final int version;
+
+  /// The room the pool was created for, when the card names it.
+  final String roomRef;
 
   /// The discriminator kind of this card.
   String get kind;
@@ -39,27 +46,34 @@ sealed class PoolCard {
     final pool = _string(card['pool']).toLowerCase();
     if (kind is! String || pool.isEmpty) return null;
     final version = _int(card['v'], fallback: 1);
+    final roomRef = _string(card['room_ref']);
     return switch (kind) {
       JoinPromptCard.kindName => JoinPromptCard(
         pool: pool,
         version: version,
+        roomRef: roomRef,
         marketSymbol: _string(card['market_symbol']),
         navPerShare: _string(card['nav_per_share']),
         memberCount: _int(card['member_count']),
         suggestedAssets: _string(card['suggested_assets']),
-        walletLinked: card['wallet_linked'] == true,
+        walletLinked: switch (card['wallet_linked']) {
+          final bool linked => linked,
+          _ => null,
+        },
         depositPath: _string(card['deposit_path']),
       ),
       LeavePromptCard.kindName => LeavePromptCard(
         pool: pool,
         version: version,
-        shares: _string(card['shares']),
-        valueQuote: _string(card['value_quote']),
+        roomRef: roomRef,
+        shares: _optional(card['shares']),
+        valueQuote: _optional(card['value_quote']),
         redeemPath: _string(card['redeem_path']),
       ),
       NavCard.kindName => NavCard(
         pool: pool,
         version: version,
+        roomRef: roomRef,
         nav: _string(card['nav']),
         navPerShare: _string(card['nav_per_share']),
         returnBps: _int(card['return_bps']),
@@ -69,6 +83,7 @@ sealed class PoolCard {
       FillCard.kindName => FillCard(
         pool: pool,
         version: version,
+        roomRef: roomRef,
         side: _string(card['side']),
         price: _string(card['price']),
         baseAmount: _string(card['base_amount']),
@@ -78,6 +93,12 @@ sealed class PoolCard {
       ),
       _ => null,
     };
+  }
+
+  /// A field the card may omit: null when absent or empty.
+  static String? _optional(Object? value) {
+    final text = _string(value);
+    return text.isEmpty ? null : text;
   }
 
   static String _string(Object? value) => switch (value) {
@@ -101,11 +122,12 @@ class JoinPromptCard extends PoolCard {
   const JoinPromptCard({
     required super.pool,
     required super.version,
+    super.roomRef,
     this.marketSymbol = '',
     this.navPerShare = '',
     this.memberCount = 0,
     this.suggestedAssets = '',
-    this.walletLinked = false,
+    this.walletLinked,
     this.depositPath = '',
   });
 
@@ -117,7 +139,11 @@ class JoinPromptCard extends PoolCard {
 
   /// An amount the service suggests; empty lets the app use its default.
   final String suggestedAssets;
-  final bool walletLinked;
+
+  /// Whether the service knows the member's wallet; null when the card does
+  /// not say (a room card reveals nothing about a member). The app asks the
+  /// authenticated service itself.
+  final bool? walletLinked;
   final String depositPath;
 
   @override
@@ -132,15 +158,19 @@ class LeavePromptCard extends PoolCard {
   const LeavePromptCard({
     required super.pool,
     required super.version,
-    this.shares = '',
-    this.valueQuote = '',
+    super.roomRef,
+    this.shares,
+    this.valueQuote,
     this.redeemPath = '',
   });
 
   static const kindName = 'pool_leave_prompt';
 
-  final String shares;
-  final String valueQuote;
+  /// The member's position, when an older card carried it. A room card must
+  /// not reveal a member's position, so these are normally null and the app
+  /// asks GetMembership for the viewer's own.
+  final String? shares;
+  final String? valueQuote;
   final String redeemPath;
 
   @override
@@ -155,6 +185,7 @@ class NavCard extends PoolCard {
   const NavCard({
     required super.pool,
     required super.version,
+    super.roomRef,
     this.nav = '',
     this.navPerShare = '',
     this.returnBps = 0,
@@ -187,6 +218,7 @@ class FillCard extends PoolCard {
   const FillCard({
     required super.pool,
     required super.version,
+    super.roomRef,
     this.side = '',
     this.price = '',
     this.baseAmount = '',

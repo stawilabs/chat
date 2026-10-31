@@ -23,12 +23,14 @@ void main() {
 
       final leave = PoolCard.tryParse(
         '{"socialtrader":{"kind":"pool_leave_prompt","v":1,"pool":"$pool",'
-        '"shares":"12.5","value_quote":"13.1","redeem_path":"/x"}}',
+        '"room_ref":"room-1","redeem_path":"/x"}}',
       );
       expect(leave, isA<LeavePromptCard>());
       final l = leave! as LeavePromptCard;
-      expect(l.shares, '12.5');
-      expect(l.valueQuote, '13.1');
+      expect(l.roomRef, 'room-1');
+      expect(l.redeemPath, '/x');
+      expect(l.shares, isNull, reason: 'a room card carries no position');
+      expect(l.valueQuote, isNull);
 
       final nav = PoolCard.tryParse(
         '{"socialtrader":{"kind":"pool_nav","v":1,"pool":"$pool",'
@@ -96,7 +98,7 @@ void main() {
               as JoinPromptCard;
       expect(join.pool, pool, reason: 'addresses are lowercased');
       expect(join.memberCount, 0);
-      expect(join.walletLinked, isFalse);
+      expect(join.walletLinked, isNull, reason: 'the card does not say');
     });
 
     test('poolCard_summaryIsPlainWords', () {

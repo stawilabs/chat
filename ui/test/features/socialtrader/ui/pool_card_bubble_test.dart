@@ -40,7 +40,9 @@ const fillBody =
 
 const leaveBody =
     '{"socialtrader":{"kind":"pool_leave_prompt","v":1,"pool":"$knownPool",'
-    '"shares":"12.5","value_quote":"13.1"}}';
+    '"room_ref":"$roomId","redeem_path":"/v1/pools/$knownPool/prepare-redeem"}}';
+
+const viewerWallet = '0x3333333333333333333333333333333333333333';
 
 const knownPoolInfo = PoolInfo(
   address: knownPool,
@@ -97,7 +99,15 @@ void main() {
     expect(committed, isA<JoinPromptCard>());
   });
 
-  testWidgets('cardBubble_leavePromptShowsRedeem', (tester) async {
+  testWidgets('cardBubble_leavePromptLoadsOwnPosition', (tester) async {
+    api.linked = const LinkedWallet(wallet: viewerWallet);
+    api.memberships['$knownPool:$viewerWallet'] = const PoolMembership(
+      pool: knownPool,
+      wallet: viewerWallet,
+      shares: '12.5',
+      shareBps: '1250',
+      valueQuote: '13.1',
+    );
     PoolCard? redeemed;
     await tester.pumpWidget(
       host(
@@ -110,10 +120,28 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('12.5'), findsOneWidget);
+
+    expect(find.text('Redeem your shares'), findsOneWidget);
+    expect(
+      find.textContaining('12.5'),
+      findsOneWidget,
+      reason: 'the position comes from the authenticated GetMembership',
+    );
+    expect(find.textContaining('13.1'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Redeem'));
     await tester.pump();
     expect(redeemed, isA<LeavePromptCard>());
+  });
+
+  testWidgets('cardBubble_leavePromptWithoutWalletAsksToConnect', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      host(PoolCardBubble(event: cardEvent(leaveBody), isMe: false), api: api),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Connect your wallet'), findsOneWidget);
+    expect(find.textContaining('12.5'), findsNothing);
   });
 
   testWidgets('cardBubble_navBadgeGreenOnlyWhenFinalized', (tester) async {
