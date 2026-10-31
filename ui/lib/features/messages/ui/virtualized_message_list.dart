@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../forms/ui/form_message_card.dart';
+import '../../socialtrader/ui/pool_card_bubble.dart';
 import '../../stawi/ui/stawi_timeline.dart';
 import '../data/message_forwarding_service.dart';
 import '../data/message_sending_service.dart';
@@ -640,6 +641,10 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
         // Group call lifecycle events shown as system messages
         return SystemEventBubble(event: widget.message);
       default:
+        if (PoolCardBubble.cardOf(widget.message) != null) {
+          // The commit and redeem sheets are wired by the join/leave flow.
+          return PoolCardBubble(event: widget.message, isMe: isMe);
+        }
         return MessageBubble(
           message: widget.message,
           isMe: isMe,

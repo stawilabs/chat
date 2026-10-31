@@ -6,6 +6,7 @@ import '../../features/contacts/data/roster_repository.dart';
 import '../../features/messages/data/message_providers.dart';
 import '../../features/messages/domain/room_event.dart';
 import '../../features/rooms/data/room_subscription_service.dart';
+import '../../features/socialtrader/ui/pool_card_bubble.dart';
 
 /// Quoted parent message preview with colored left bar (WhatsApp reply style).
 ///
@@ -139,7 +140,9 @@ class MessageReplyPreview extends ConsumerWidget {
   String _getPreviewText(RoomEvent event) {
     switch (event.type) {
       case RoomEventType.text:
-        return event.content['text'] as String? ?? '';
+        return PoolCardBubble.cardOf(event)?.summary ??
+            event.content['text'] as String? ??
+            '';
       case RoomEventType.image:
         return '📷 Photo';
       case RoomEventType.video:

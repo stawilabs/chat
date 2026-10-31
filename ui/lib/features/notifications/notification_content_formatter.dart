@@ -1,5 +1,6 @@
 import '../../core/logging/app_logger.dart';
 import '../messages/domain/room_event.dart';
+import '../socialtrader/domain/pool_card.dart';
 import '../stawi/domain/stawi_payloads.dart';
 
 /// Maximum length for notification text preview
@@ -303,6 +304,11 @@ class NotificationContentFormatter {
   /// Format text message with truncation
   String _formatTextMessage(Map<String, dynamic> content) {
     final text = content['text'] as String? ?? '';
+    final format = content['format'];
+    if (format == null || format == 'json') {
+      final card = PoolCard.tryParse(text);
+      if (card != null) return card.summary;
+    }
     return _truncate(text, maxNotificationTextLength);
   }
 

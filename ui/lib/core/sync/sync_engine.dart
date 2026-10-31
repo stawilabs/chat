@@ -865,6 +865,11 @@ class SyncEngine with WidgetsBindingObserver {
         }
         if (!isRoomKeyEvent) {
           content = {'text': textBody};
+          // A pool card is a JSON-format text; the format tells the timeline
+          // to parse it before showing plain text.
+          if (payload.text.format.isNotEmpty) {
+            content['format'] = payload.text.format;
+          }
         }
       } else if (payload.hasAttachment()) {
         final contentUrl = FilesConfigService.buildContentUrlFrom(

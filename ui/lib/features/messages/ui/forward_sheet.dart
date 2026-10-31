@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../socialtrader/ui/pool_card_bubble.dart';
 import '../data/message_forwarding_service.dart';
 import '../domain/room_event.dart';
 import 'room_picker.dart';
@@ -202,7 +203,9 @@ class _MessagePreview extends StatelessWidget {
 
     switch (message.type) {
       case RoomEventType.text:
-        previewText = message.content['text'] as String? ?? '';
+        final card = PoolCardBubble.cardOf(message);
+        previewText = card?.summary ?? message.content['text'] as String? ?? '';
+        if (card != null) previewIcon = Icons.show_chart;
         break;
       case RoomEventType.image:
         previewText = message.content['caption'] as String? ?? 'Photo';
