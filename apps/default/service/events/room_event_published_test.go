@@ -299,3 +299,67 @@ func (s *RoomEventPublishedTestSuite) TestRoomChangeAndFormFactsCarryDraftFields
 		require.Equal(t, "source-1", form.FormSubmissionResult.SourceEventID)
 	})
 }
+
+// TestFactPublisher_PoolIDOptsRoomIn: a room carrying only
+// socialtrader.pool_id publishes one fact whose group_id is the pool address
+// and whose domain names the socialtrader module.
+func (s *RoomEventPublishedTestSuite) TestFactPublisher_PoolIDOptsRoomIn() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		h := s.newHarness(ctx, svc)
+
+		pool := "0x00000000000000000000000000000000000000a1"
+		room := h.seedRoom(ctx, t, data.JSONMap{events.SocialTraderPoolMetadataKey: pool})
+		eventID := h.seedEvent(ctx, t, room, votePayload("motion-7", "yes"))
+
+		require.NoError(t, h.relay.Drain(ctx))
+
+		require.Len(t, h.publisher.published, 1)
+		fact := h.publisher.published[0]
+		require.Equal(t, eventID, fact.EventID)
+		require.Equal(t, pool, fact.GroupID)
+		require.Equal(t, events.FactDomainSocialTrader, fact.Domain)
+	})
+}
+
+// TestFactPublisher_BothKeysPublishOnceWithStawiPrecedence: a room carrying
+// both keys publishes exactly one fact, with the stawi group as group_id.
+func (s *RoomEventPublishedTestSuite) TestFactPublisher_BothKeysPublishOnceWithStawiPrecedence() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		h := s.newHarness(ctx, svc)
+
+		groupID := util.IDString()
+		room := h.seedRoom(ctx, t, data.JSONMap{
+			events.GroupMetadataKey:            groupID,
+			events.SocialTraderPoolMetadataKey: "0x00000000000000000000000000000000000000b2",
+		})
+		h.seedEvent(ctx, t, room, votePayload("motion-8", "no"))
+
+		require.NoError(t, h.relay.Drain(ctx))
+		require.NoError(t, h.relay.Drain(ctx))
+
+		require.Len(t, h.publisher.published, 1, "never two facts for one event")
+		fact := h.publisher.published[0]
+		require.Equal(t, groupID, fact.GroupID)
+		require.Equal(t, events.FactDomainStawi, fact.Domain)
+	})
+}
+
+// TestFactPublisher_StawiRoomCarriesStawiDomain: the existing opt-in gains
+// the domain field without changing group_id.
+func (s *RoomEventPublishedTestSuite) TestFactPublisher_StawiRoomCarriesStawiDomain() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		h := s.newHarness(ctx, svc)
+
+		room := h.seedRoom(ctx, t, data.JSONMap{events.GroupMetadataKey: "grp-9"})
+		h.seedEvent(ctx, t, room, votePayload("motion-9", "yes"))
+
+		require.NoError(t, h.relay.Drain(ctx))
+
+		require.Len(t, h.publisher.published, 1)
+		require.Equal(t, "grp-9", h.publisher.published[0].GroupID)
+		require.Equal(t, events.FactDomainStawi, h.publisher.published[0].Domain)
+	})
+}

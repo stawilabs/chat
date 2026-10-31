@@ -24,8 +24,20 @@ const (
 	RoomEventPublishedFactName = "chat.room.event.published"
 
 	// GroupMetadataKey is the room metadata key that opts a room into the
-	// fact. A room without it publishes nothing.
+	// fact for the Stawi finance module. A room without it (and without
+	// SocialTraderPoolMetadataKey) publishes nothing.
 	GroupMetadataKey = "stawi.group_id"
+
+	// SocialTraderPoolMetadataKey opts a room into the fact for the
+	// socialtrader module; its value is the pool address (lowercase hex) and
+	// travels as the fact's group_id. When a room carries both keys the
+	// Stawi key wins and exactly one fact is published.
+	SocialTraderPoolMetadataKey = "socialtrader.pool_id"
+
+	// FactDomainStawi and FactDomainSocialTrader name the module a fact was
+	// published for, in the fact's domain field.
+	FactDomainStawi        = "stawi"
+	FactDomainSocialTrader = "socialtrader"
 
 	// maxFactPayloadBytes caps the verbatim payload carried by a fact. A
 	// larger payload (a full form schema, say) is dropped and flagged rather
@@ -44,6 +56,7 @@ type RoomEventPublishedFact struct {
 	EventID        string `json:"event_id"`
 	RoomID         string `json:"room_id"`
 	GroupID        string `json:"group_id"`
+	Domain         string `json:"domain"`
 	SubscriptionID string `json:"subscription_id"`
 	ProfileID      string `json:"profile_id,omitempty"`
 	ParentID       string `json:"parent_id,omitempty"`
@@ -147,7 +160,7 @@ func (p *RoomEventFactPublisher) Publish(ctx context.Context, link *eventsv1.Lin
 		return nil
 	}
 
-	groupID, err := p.groupOf(ctx, link.GetRoomId())
+	groupID, domain, err := p.groupOf(ctx, link.GetRoomId())
 	if err != nil || groupID == "" {
 		return err
 	}
@@ -168,47 +181,64 @@ func (p *RoomEventFactPublisher) Publish(ctx context.Context, link *eventsv1.Lin
 	if err != nil {
 		return err
 	}
-	return topic.Publish(ctx, p.buildFact(link, groupID, payload),
+	return topic.Publish(ctx, p.buildFact(link, groupID, domain, payload),
 		map[string]string{frevents.EventHeaderName: RoomEventPublishedFactName})
 }
 
-// groupOf returns the room's opted-in group id, or "" when the room did not
-// opt in.
-func (p *RoomEventFactPublisher) groupOf(ctx context.Context, roomID string) (string, error) {
+// groupOf returns the room's opted-in group id and the module domain it
+// belongs to, or "" when the room did not opt in.
+func (p *RoomEventFactPublisher) groupOf(ctx context.Context, roomID string) (string, string, error) {
 	room, err := p.roomRepo.GetByID(ctx, roomID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return groupIDFromProperties(room), nil
+	groupID, domain := groupIDFromProperties(room)
+	return groupID, domain, nil
 }
 
-// groupIDFromProperties reads GroupMetadataKey from room metadata, accepting
-// both the flat key ("stawi.group_id") and the nested form
-// ({"stawi": {"group_id": ...}}) a client may have written.
-func groupIDFromProperties(room *models.Room) string {
+// groupIDFromProperties reads the opt-in key from room metadata: the Stawi
+// group first (flat "stawi.group_id" or nested {"stawi": {"group_id": ...}}),
+// then the socialtrader pool (flat "socialtrader.pool_id" or nested
+// {"socialtrader": {"pool_id": ...}}). It returns the id and its domain, or
+// two empty strings when the room did not opt in.
+func groupIDFromProperties(room *models.Room) (string, string) {
 	if room == nil || room.Properties == nil {
-		return ""
+		return "", ""
 	}
-	if value, ok := room.Properties[GroupMetadataKey].(string); ok {
+	if value := metadataValue(room.Properties, GroupMetadataKey, "stawi", "group_id"); value != "" {
+		return value, FactDomainStawi
+	}
+	if value := metadataValue(room.Properties, SocialTraderPoolMetadataKey, "socialtrader", "pool_id"); value != "" {
+		return value, FactDomainSocialTrader
+	}
+	return "", ""
+}
+
+// metadataValue reads flatKey from properties, falling back to the nested
+// form properties[parent][child].
+func metadataValue(properties map[string]any, flatKey, parent, child string) string {
+	if value, ok := properties[flatKey].(string); ok && value != "" {
 		return value
 	}
-	nested, ok := room.Properties["stawi"].(map[string]any)
+	nested, ok := properties[parent].(map[string]any)
 	if !ok {
 		return ""
 	}
-	value, _ := nested["group_id"].(string)
+	value, _ := nested[child].(string)
 	return value
 }
 
 func (p *RoomEventFactPublisher) buildFact(
 	link *eventsv1.Link,
 	groupID string,
+	domain string,
 	payload *chatv1.Payload,
 ) *RoomEventPublishedFact {
 	fact := &RoomEventPublishedFact{
 		EventID:        link.GetEventId(),
 		RoomID:         link.GetRoomId(),
 		GroupID:        groupID,
+		Domain:         domain,
 		SubscriptionID: link.GetSource().GetSubscriptionId(),
 		ProfileID:      link.GetSource().GetContactLink().GetProfileId(),
 		ParentID:       link.GetParentId(),
