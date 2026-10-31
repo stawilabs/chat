@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/navigation/navigation_helper.dart';
 import '../../messages/domain/room_event.dart';
 import '../../notifications/mute_service.dart';
+import '../../socialtrader/domain/pool_binding.dart';
+import '../../socialtrader/ui/pool_tab.dart';
 import '../data/detail_panel_providers.dart';
 import '../data/room_providers.dart';
 import '../data/room_service.dart';
@@ -42,6 +44,19 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
     _tabController = TabController(length: 2, vsync: this);
   }
 
+  /// Keeps the controller's length in step with the tabs shown: two, plus
+  /// Pool for a trading group.
+  void _syncTabs(int length) {
+    if (_tabController.length == length) return;
+    final index = _tabController.index.clamp(0, length - 1);
+    _tabController.dispose();
+    _tabController = TabController(
+      length: length,
+      vsync: this,
+      initialIndex: index,
+    );
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -53,6 +68,9 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
     final theme = Theme.of(context);
     // Kept loaded: the settings sheet offers group actions by its type.
     ref.watch(roomByIdProvider(widget.roomId));
+    final isPoolRoom =
+        ref.watch(poolBindingProvider(widget.roomId)).asData?.value != null;
+    _syncTabs(isPoolRoom ? 3 : 2);
 
     return Scaffold(
       appBar: AppBar(
@@ -79,15 +97,25 @@ class _RoomDetailPanelState extends ConsumerState<RoomDetailPanel>
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          tabs: const [
-            Tab(text: 'Info', icon: Icon(Icons.info_outline, size: 18)),
-            Tab(text: 'Media', icon: Icon(Icons.photo_library, size: 18)),
+          tabs: [
+            const Tab(text: 'Info', icon: Icon(Icons.info_outline, size: 18)),
+            const Tab(text: 'Media', icon: Icon(Icons.photo_library, size: 18)),
+            if (isPoolRoom)
+              const Tab(
+                key: Key('room-detail-pool-tab'),
+                text: 'Pool',
+                icon: Icon(Icons.show_chart, size: 18),
+              ),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildInfoTab(), _buildMediaTab()],
+        children: [
+          _buildInfoTab(),
+          _buildMediaTab(),
+          if (isPoolRoom) PoolTab(roomId: widget.roomId),
+        ],
       ),
     );
   }

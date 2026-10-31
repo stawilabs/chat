@@ -30,6 +30,7 @@ import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/storage_settings_screen.dart';
 import '../features/settings/ui/theme_settings_screen.dart';
 import '../features/settings/ui/two_factor_setup_screen.dart';
+import '../features/socialtrader/ui/pool_tab.dart';
 import '../features/stawi/ui/loan_detail_screen.dart';
 import '../features/stawi/ui/my_money_screen.dart';
 import '../features/stawi/ui/stawi_account_screen.dart';
@@ -229,6 +230,14 @@ GoRouter router(Ref ref) {
           final roomId = state.pathParameters['roomId']!;
           final roomName = state.uri.queryParameters['name'] ?? 'Room Details';
           return RoomDetailScreen(roomId: roomId, roomName: roomName);
+        },
+      ),
+      GoRoute(
+        path: '/room/:roomId/pool',
+        builder: (context, state) {
+          final roomId = state.pathParameters['roomId']!;
+          final roomName = state.uri.queryParameters['name'] ?? 'Pool';
+          return PoolScreen(roomId: roomId, roomName: roomName);
         },
       ),
       GoRoute(

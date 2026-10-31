@@ -96,7 +96,7 @@ final class WalletControllerProvider
   }
 }
 
-String _$walletControllerHash() => r'7ec2cdb8d478fbde9b53e13861c8ad87a35344ba';
+String _$walletControllerHash() => r'767412c09aaa8cca17de32ed9029bacb6c96fea3';
 
 /// The wallet the trading group module signs with. Connecting asks the
 /// platform signer for an account; a pasted address reads only. Nothing is
