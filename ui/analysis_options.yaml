@@ -17,6 +17,8 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.pb.dart"
     - "**/*.freezed.dart"
+    # Vendored socialtrader protos (buf generate output, not hand-written).
+    - "lib/features/socialtrader/data/gen/**"
     - "e2e_test/**"
     - "third_party/sentry_flutter/**"
     - build/**

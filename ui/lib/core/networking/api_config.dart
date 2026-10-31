@@ -84,6 +84,14 @@ class ApiConfig {
     defaultValue: 'https://finance.stawi.org',
   );
 
+  /// Socialtrader: the trading-group read model (pools, memberships, NAV
+  /// series, order books) and the prepared calldata the wallet signs. Chat
+  /// rooms carrying `socialtrader.pool_id` are its trading groups.
+  static const String socialtraderBaseUrl = String.fromEnvironment(
+    'SOCIALTRADER_URL',
+    defaultValue: 'https://socialtrader.stawi.org',
+  );
+
   /// The chain the Stawi deployment is on (Sonic testnet by default). A key
   /// change the device signs is checked against it, never against the chain
   /// a prepared intent names.

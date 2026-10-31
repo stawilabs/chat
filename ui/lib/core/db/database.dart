@@ -451,6 +451,39 @@ class UnconfirmedMoneyCalls extends Table {
   Set<Column> get primaryKey => {profileId};
 }
 
+/// A profile's trading-group preferences (the socialtrader module): the
+/// commitment amount a join sheet pre-fills, in the pool's quote asset.
+/// Pre-filling never commits anything; every commitment is signed by the
+/// connected wallet after a tap.
+class TradingSettings extends Table {
+  /// The signed-in profile the preference belongs to.
+  TextColumn get profileId => text()();
+
+  /// The default commitment, a decimal string in the quote asset.
+  TextColumn get defaultCommitmentQuote => text()();
+
+  /// Whether the person asked for the amount to be remembered.
+  BoolColumn get remember => boolean().withDefault(const Constant(true))();
+
+  /// Last update timestamp (milliseconds since epoch).
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {profileId};
+}
+
+/// Trading-group rooms whose first-visit join prompt was dismissed, so the
+/// sheet is offered once per room; the pool_join_prompt card remains.
+class PoolPromptDismissals extends Table {
+  TextColumn get roomId => text()();
+
+  /// When it was dismissed (milliseconds since epoch).
+  IntColumn get dismissedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {roomId};
+}
+
 /// Draft messages persistence table
 ///
 /// Stores unsent message drafts for each room, allowing users to continue
@@ -847,6 +880,8 @@ class CallHistory extends Table {
     Transactions,
     SyncMetadata,
     UserSettings,
+    TradingSettings,
+    PoolPromptDismissals,
     Drafts,
     FormMessageDrafts,
     ReadReceipts,
@@ -869,7 +904,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -898,6 +933,11 @@ class AppDatabase extends _$AppDatabase {
             // The local-only invite links had no backend and are gone.
             await m.deleteTable('invite_link_joins');
             await m.deleteTable('invite_links');
+          case 5:
+            // Trading groups (socialtrader): the default commitment and the
+            // once-per-room join prompt flag.
+            await m.createTable(tradingSettings);
+            await m.createTable(poolPromptDismissals);
         }
       }
     },

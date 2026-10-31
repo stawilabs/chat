@@ -6062,6 +6062,574 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   }
 }
 
+class $TradingSettingsTable extends TradingSettings
+    with TableInfo<$TradingSettingsTable, TradingSetting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TradingSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _defaultCommitmentQuoteMeta =
+      const VerificationMeta('defaultCommitmentQuote');
+  @override
+  late final GeneratedColumn<String> defaultCommitmentQuote =
+      GeneratedColumn<String>(
+        'default_commitment_quote',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _rememberMeta = const VerificationMeta(
+    'remember',
+  );
+  @override
+  late final GeneratedColumn<bool> remember = GeneratedColumn<bool>(
+    'remember',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("remember" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    profileId,
+    defaultCommitmentQuote,
+    remember,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'trading_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TradingSetting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('default_commitment_quote')) {
+      context.handle(
+        _defaultCommitmentQuoteMeta,
+        defaultCommitmentQuote.isAcceptableOrUnknown(
+          data['default_commitment_quote']!,
+          _defaultCommitmentQuoteMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_defaultCommitmentQuoteMeta);
+    }
+    if (data.containsKey('remember')) {
+      context.handle(
+        _rememberMeta,
+        remember.isAcceptableOrUnknown(data['remember']!, _rememberMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId};
+  @override
+  TradingSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TradingSetting(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      defaultCommitmentQuote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_commitment_quote'],
+      )!,
+      remember: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}remember'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TradingSettingsTable createAlias(String alias) {
+    return $TradingSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class TradingSetting extends DataClass implements Insertable<TradingSetting> {
+  /// The signed-in profile the preference belongs to.
+  final String profileId;
+
+  /// The default commitment, a decimal string in the quote asset.
+  final String defaultCommitmentQuote;
+
+  /// Whether the person asked for the amount to be remembered.
+  final bool remember;
+
+  /// Last update timestamp (milliseconds since epoch).
+  final int updatedAt;
+  const TradingSetting({
+    required this.profileId,
+    required this.defaultCommitmentQuote,
+    required this.remember,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['default_commitment_quote'] = Variable<String>(defaultCommitmentQuote);
+    map['remember'] = Variable<bool>(remember);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  TradingSettingsCompanion toCompanion(bool nullToAbsent) {
+    return TradingSettingsCompanion(
+      profileId: Value(profileId),
+      defaultCommitmentQuote: Value(defaultCommitmentQuote),
+      remember: Value(remember),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory TradingSetting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TradingSetting(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      defaultCommitmentQuote: serializer.fromJson<String>(
+        json['defaultCommitmentQuote'],
+      ),
+      remember: serializer.fromJson<bool>(json['remember']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'defaultCommitmentQuote': serializer.toJson<String>(
+        defaultCommitmentQuote,
+      ),
+      'remember': serializer.toJson<bool>(remember),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  TradingSetting copyWith({
+    String? profileId,
+    String? defaultCommitmentQuote,
+    bool? remember,
+    int? updatedAt,
+  }) => TradingSetting(
+    profileId: profileId ?? this.profileId,
+    defaultCommitmentQuote:
+        defaultCommitmentQuote ?? this.defaultCommitmentQuote,
+    remember: remember ?? this.remember,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  TradingSetting copyWithCompanion(TradingSettingsCompanion data) {
+    return TradingSetting(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      defaultCommitmentQuote: data.defaultCommitmentQuote.present
+          ? data.defaultCommitmentQuote.value
+          : this.defaultCommitmentQuote,
+      remember: data.remember.present ? data.remember.value : this.remember,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TradingSetting(')
+          ..write('profileId: $profileId, ')
+          ..write('defaultCommitmentQuote: $defaultCommitmentQuote, ')
+          ..write('remember: $remember, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(profileId, defaultCommitmentQuote, remember, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TradingSetting &&
+          other.profileId == this.profileId &&
+          other.defaultCommitmentQuote == this.defaultCommitmentQuote &&
+          other.remember == this.remember &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TradingSettingsCompanion extends UpdateCompanion<TradingSetting> {
+  final Value<String> profileId;
+  final Value<String> defaultCommitmentQuote;
+  final Value<bool> remember;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const TradingSettingsCompanion({
+    this.profileId = const Value.absent(),
+    this.defaultCommitmentQuote = const Value.absent(),
+    this.remember = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TradingSettingsCompanion.insert({
+    required String profileId,
+    required String defaultCommitmentQuote,
+    this.remember = const Value.absent(),
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       defaultCommitmentQuote = Value(defaultCommitmentQuote),
+       updatedAt = Value(updatedAt);
+  static Insertable<TradingSetting> custom({
+    Expression<String>? profileId,
+    Expression<String>? defaultCommitmentQuote,
+    Expression<bool>? remember,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (defaultCommitmentQuote != null)
+        'default_commitment_quote': defaultCommitmentQuote,
+      if (remember != null) 'remember': remember,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TradingSettingsCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? defaultCommitmentQuote,
+    Value<bool>? remember,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return TradingSettingsCompanion(
+      profileId: profileId ?? this.profileId,
+      defaultCommitmentQuote:
+          defaultCommitmentQuote ?? this.defaultCommitmentQuote,
+      remember: remember ?? this.remember,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (defaultCommitmentQuote.present) {
+      map['default_commitment_quote'] = Variable<String>(
+        defaultCommitmentQuote.value,
+      );
+    }
+    if (remember.present) {
+      map['remember'] = Variable<bool>(remember.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TradingSettingsCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('defaultCommitmentQuote: $defaultCommitmentQuote, ')
+          ..write('remember: $remember, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PoolPromptDismissalsTable extends PoolPromptDismissals
+    with TableInfo<$PoolPromptDismissalsTable, PoolPromptDismissal> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PoolPromptDismissalsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _roomIdMeta = const VerificationMeta('roomId');
+  @override
+  late final GeneratedColumn<String> roomId = GeneratedColumn<String>(
+    'room_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dismissedAtMeta = const VerificationMeta(
+    'dismissedAt',
+  );
+  @override
+  late final GeneratedColumn<int> dismissedAt = GeneratedColumn<int>(
+    'dismissed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [roomId, dismissedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pool_prompt_dismissals';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PoolPromptDismissal> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('room_id')) {
+      context.handle(
+        _roomIdMeta,
+        roomId.isAcceptableOrUnknown(data['room_id']!, _roomIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roomIdMeta);
+    }
+    if (data.containsKey('dismissed_at')) {
+      context.handle(
+        _dismissedAtMeta,
+        dismissedAt.isAcceptableOrUnknown(
+          data['dismissed_at']!,
+          _dismissedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dismissedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {roomId};
+  @override
+  PoolPromptDismissal map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PoolPromptDismissal(
+      roomId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}room_id'],
+      )!,
+      dismissedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}dismissed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PoolPromptDismissalsTable createAlias(String alias) {
+    return $PoolPromptDismissalsTable(attachedDatabase, alias);
+  }
+}
+
+class PoolPromptDismissal extends DataClass
+    implements Insertable<PoolPromptDismissal> {
+  final String roomId;
+
+  /// When it was dismissed (milliseconds since epoch).
+  final int dismissedAt;
+  const PoolPromptDismissal({required this.roomId, required this.dismissedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['room_id'] = Variable<String>(roomId);
+    map['dismissed_at'] = Variable<int>(dismissedAt);
+    return map;
+  }
+
+  PoolPromptDismissalsCompanion toCompanion(bool nullToAbsent) {
+    return PoolPromptDismissalsCompanion(
+      roomId: Value(roomId),
+      dismissedAt: Value(dismissedAt),
+    );
+  }
+
+  factory PoolPromptDismissal.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PoolPromptDismissal(
+      roomId: serializer.fromJson<String>(json['roomId']),
+      dismissedAt: serializer.fromJson<int>(json['dismissedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'roomId': serializer.toJson<String>(roomId),
+      'dismissedAt': serializer.toJson<int>(dismissedAt),
+    };
+  }
+
+  PoolPromptDismissal copyWith({String? roomId, int? dismissedAt}) =>
+      PoolPromptDismissal(
+        roomId: roomId ?? this.roomId,
+        dismissedAt: dismissedAt ?? this.dismissedAt,
+      );
+  PoolPromptDismissal copyWithCompanion(PoolPromptDismissalsCompanion data) {
+    return PoolPromptDismissal(
+      roomId: data.roomId.present ? data.roomId.value : this.roomId,
+      dismissedAt: data.dismissedAt.present
+          ? data.dismissedAt.value
+          : this.dismissedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PoolPromptDismissal(')
+          ..write('roomId: $roomId, ')
+          ..write('dismissedAt: $dismissedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(roomId, dismissedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PoolPromptDismissal &&
+          other.roomId == this.roomId &&
+          other.dismissedAt == this.dismissedAt);
+}
+
+class PoolPromptDismissalsCompanion
+    extends UpdateCompanion<PoolPromptDismissal> {
+  final Value<String> roomId;
+  final Value<int> dismissedAt;
+  final Value<int> rowid;
+  const PoolPromptDismissalsCompanion({
+    this.roomId = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PoolPromptDismissalsCompanion.insert({
+    required String roomId,
+    required int dismissedAt,
+    this.rowid = const Value.absent(),
+  }) : roomId = Value(roomId),
+       dismissedAt = Value(dismissedAt);
+  static Insertable<PoolPromptDismissal> custom({
+    Expression<String>? roomId,
+    Expression<int>? dismissedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (roomId != null) 'room_id': roomId,
+      if (dismissedAt != null) 'dismissed_at': dismissedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PoolPromptDismissalsCompanion copyWith({
+    Value<String>? roomId,
+    Value<int>? dismissedAt,
+    Value<int>? rowid,
+  }) {
+    return PoolPromptDismissalsCompanion(
+      roomId: roomId ?? this.roomId,
+      dismissedAt: dismissedAt ?? this.dismissedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (roomId.present) {
+      map['room_id'] = Variable<String>(roomId.value);
+    }
+    if (dismissedAt.present) {
+      map['dismissed_at'] = Variable<int>(dismissedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PoolPromptDismissalsCompanion(')
+          ..write('roomId: $roomId, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $DraftsTable extends Drafts with TableInfo<$DraftsTable, Draft> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -11616,6 +12184,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
+  late final $TradingSettingsTable tradingSettings = $TradingSettingsTable(
+    this,
+  );
+  late final $PoolPromptDismissalsTable poolPromptDismissals =
+      $PoolPromptDismissalsTable(this);
   late final $DraftsTable drafts = $DraftsTable(this);
   late final $FormMessageDraftsTable formMessageDrafts =
       $FormMessageDraftsTable(this);
@@ -11646,6 +12219,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactions,
     syncMetadata,
     userSettings,
+    tradingSettings,
+    poolPromptDismissals,
     drafts,
     formMessageDrafts,
     readReceipts,
@@ -15289,6 +15864,376 @@ typedef $$UserSettingsTableProcessedTableManager =
       UserSetting,
       PrefetchHooks Function()
     >;
+typedef $$TradingSettingsTableCreateCompanionBuilder =
+    TradingSettingsCompanion Function({
+      required String profileId,
+      required String defaultCommitmentQuote,
+      Value<bool> remember,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TradingSettingsTableUpdateCompanionBuilder =
+    TradingSettingsCompanion Function({
+      Value<String> profileId,
+      Value<String> defaultCommitmentQuote,
+      Value<bool> remember,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$TradingSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $TradingSettingsTable> {
+  $$TradingSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultCommitmentQuote => $composableBuilder(
+    column: $table.defaultCommitmentQuote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get remember => $composableBuilder(
+    column: $table.remember,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TradingSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TradingSettingsTable> {
+  $$TradingSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultCommitmentQuote => $composableBuilder(
+    column: $table.defaultCommitmentQuote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get remember => $composableBuilder(
+    column: $table.remember,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TradingSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TradingSettingsTable> {
+  $$TradingSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultCommitmentQuote => $composableBuilder(
+    column: $table.defaultCommitmentQuote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get remember =>
+      $composableBuilder(column: $table.remember, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TradingSettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TradingSettingsTable,
+          TradingSetting,
+          $$TradingSettingsTableFilterComposer,
+          $$TradingSettingsTableOrderingComposer,
+          $$TradingSettingsTableAnnotationComposer,
+          $$TradingSettingsTableCreateCompanionBuilder,
+          $$TradingSettingsTableUpdateCompanionBuilder,
+          (
+            TradingSetting,
+            BaseReferences<
+              _$AppDatabase,
+              $TradingSettingsTable,
+              TradingSetting
+            >,
+          ),
+          TradingSetting,
+          PrefetchHooks Function()
+        > {
+  $$TradingSettingsTableTableManager(
+    _$AppDatabase db,
+    $TradingSettingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TradingSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TradingSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TradingSettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> defaultCommitmentQuote = const Value.absent(),
+                Value<bool> remember = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TradingSettingsCompanion(
+                profileId: profileId,
+                defaultCommitmentQuote: defaultCommitmentQuote,
+                remember: remember,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String defaultCommitmentQuote,
+                Value<bool> remember = const Value.absent(),
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => TradingSettingsCompanion.insert(
+                profileId: profileId,
+                defaultCommitmentQuote: defaultCommitmentQuote,
+                remember: remember,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TradingSettingsTable, TradingSetting>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $TradingSettingsTable,
+                    TradingSetting
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TradingSettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TradingSettingsTable,
+      TradingSetting,
+      $$TradingSettingsTableFilterComposer,
+      $$TradingSettingsTableOrderingComposer,
+      $$TradingSettingsTableAnnotationComposer,
+      $$TradingSettingsTableCreateCompanionBuilder,
+      $$TradingSettingsTableUpdateCompanionBuilder,
+      (
+        TradingSetting,
+        BaseReferences<_$AppDatabase, $TradingSettingsTable, TradingSetting>,
+      ),
+      TradingSetting,
+      PrefetchHooks Function()
+    >;
+typedef $$PoolPromptDismissalsTableCreateCompanionBuilder =
+    PoolPromptDismissalsCompanion Function({
+      required String roomId,
+      required int dismissedAt,
+      Value<int> rowid,
+    });
+typedef $$PoolPromptDismissalsTableUpdateCompanionBuilder =
+    PoolPromptDismissalsCompanion Function({
+      Value<String> roomId,
+      Value<int> dismissedAt,
+      Value<int> rowid,
+    });
+
+class $$PoolPromptDismissalsTableFilterComposer
+    extends Composer<_$AppDatabase, $PoolPromptDismissalsTable> {
+  $$PoolPromptDismissalsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get roomId => $composableBuilder(
+    column: $table.roomId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PoolPromptDismissalsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PoolPromptDismissalsTable> {
+  $$PoolPromptDismissalsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get roomId => $composableBuilder(
+    column: $table.roomId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PoolPromptDismissalsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PoolPromptDismissalsTable> {
+  $$PoolPromptDismissalsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get roomId =>
+      $composableBuilder(column: $table.roomId, builder: (column) => column);
+
+  GeneratedColumn<int> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$PoolPromptDismissalsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PoolPromptDismissalsTable,
+          PoolPromptDismissal,
+          $$PoolPromptDismissalsTableFilterComposer,
+          $$PoolPromptDismissalsTableOrderingComposer,
+          $$PoolPromptDismissalsTableAnnotationComposer,
+          $$PoolPromptDismissalsTableCreateCompanionBuilder,
+          $$PoolPromptDismissalsTableUpdateCompanionBuilder,
+          (
+            PoolPromptDismissal,
+            BaseReferences<
+              _$AppDatabase,
+              $PoolPromptDismissalsTable,
+              PoolPromptDismissal
+            >,
+          ),
+          PoolPromptDismissal,
+          PrefetchHooks Function()
+        > {
+  $$PoolPromptDismissalsTableTableManager(
+    _$AppDatabase db,
+    $PoolPromptDismissalsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PoolPromptDismissalsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PoolPromptDismissalsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PoolPromptDismissalsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> roomId = const Value.absent(),
+                Value<int> dismissedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PoolPromptDismissalsCompanion(
+                roomId: roomId,
+                dismissedAt: dismissedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String roomId,
+                required int dismissedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PoolPromptDismissalsCompanion.insert(
+                roomId: roomId,
+                dismissedAt: dismissedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PoolPromptDismissalsTable, PoolPromptDismissal>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $PoolPromptDismissalsTable,
+                    PoolPromptDismissal
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PoolPromptDismissalsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PoolPromptDismissalsTable,
+      PoolPromptDismissal,
+      $$PoolPromptDismissalsTableFilterComposer,
+      $$PoolPromptDismissalsTableOrderingComposer,
+      $$PoolPromptDismissalsTableAnnotationComposer,
+      $$PoolPromptDismissalsTableCreateCompanionBuilder,
+      $$PoolPromptDismissalsTableUpdateCompanionBuilder,
+      (
+        PoolPromptDismissal,
+        BaseReferences<
+          _$AppDatabase,
+          $PoolPromptDismissalsTable,
+          PoolPromptDismissal
+        >,
+      ),
+      PoolPromptDismissal,
+      PrefetchHooks Function()
+    >;
 typedef $$DraftsTableCreateCompanionBuilder = DraftsCompanion Function({
   required String roomId,
   required String content,
@@ -18120,6 +19065,10 @@ class $AppDatabaseManager {
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
   $$UserSettingsTableTableManager get userSettings =>
       $$UserSettingsTableTableManager(_db, _db.userSettings);
+  $$TradingSettingsTableTableManager get tradingSettings =>
+      $$TradingSettingsTableTableManager(_db, _db.tradingSettings);
+  $$PoolPromptDismissalsTableTableManager get poolPromptDismissals =>
+      $$PoolPromptDismissalsTableTableManager(_db, _db.poolPromptDismissals);
   $$DraftsTableTableManager get drafts =>
       $$DraftsTableTableManager(_db, _db.drafts);
   $$FormMessageDraftsTableTableManager get formMessageDrafts =>

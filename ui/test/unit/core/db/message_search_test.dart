@@ -259,10 +259,12 @@ void main() {
         expect(db, isNotNull);
       });
 
-      test('schema version is 3', () {
+      test('schema version is 5', () {
         // Version 2: added pending_jobs dedup index.
         // Version 3: added unconfirmed_money_calls.
-        expect(db.schemaVersion, equals(4));
+        // Version 4: dropped the local-only invite links.
+        // Version 5: added trading_settings and pool_prompt_dismissals.
+        expect(db.schemaVersion, equals(5));
       });
     });
 
