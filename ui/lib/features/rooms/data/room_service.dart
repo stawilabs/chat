@@ -60,8 +60,11 @@ class RoomService {
     List<String> contactIds =
         const [], // All member contact IDs - server handles routing
     Map<String, dynamic>? metadata,
+    // A room id chosen beforehand (a trading group's pool is created for
+    // the room id first); the server accepts ids it could have minted.
+    String? id,
   }) async {
-    final roomId = Xid().toString();
+    final roomId = id ?? Xid().toString();
 
     final room = domain.Room(
       id: roomId,

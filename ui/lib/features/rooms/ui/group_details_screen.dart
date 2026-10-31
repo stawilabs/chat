@@ -8,7 +8,10 @@ import '../../../core/logging/app_logger.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../contacts/data/roster_repository.dart';
 import '../../contacts/ui/widgets/contact_avatar.dart';
-import '../data/room_service.dart';
+import '../../socialtrader/data/socialtrader_api.dart';
+import '../../socialtrader/domain/pool_binding.dart';
+import '../../socialtrader/ui/trading_group_section.dart';
+import '../data/group_room_creator.dart';
 import 'group_avatar_picker.dart';
 
 /// Step 2 of group creation: enter group name, description, and avatar
@@ -28,6 +31,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
   late final String _tempRoomId;
   String? _avatarUrl;
   bool _isCreating = false;
+  TradingGroupDraft _trading = const TradingGroupDraft();
 
   @override
   void initState() {
@@ -57,6 +61,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
         title: const Text('New group'),
         actions: [
           IconButton(
+            key: const Key('create-group'),
             onPressed: _isCreating || groupName.isEmpty ? null : _createGroup,
             icon: _isCreating
                 ? const SizedBox(
@@ -94,6 +99,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
 
             // Group name input
             TextField(
+              key: const Key('group-name'),
               controller: _nameController,
               focusNode: _nameFocusNode,
               decoration: InputDecoration(
@@ -125,6 +131,12 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
               minLines: 1,
             ),
             const SizedBox(height: 24),
+
+            // Trading group: shown only when the service can create pools.
+            TradingGroupSection(
+              draft: _trading,
+              onChanged: (draft) => setState(() => _trading = draft),
+            ),
 
             const Divider(),
             const SizedBox(height: 16),
@@ -183,10 +195,16 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
+    if (_trading.problem case final problem?) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(problem)));
+      return;
+    }
+
     setState(() => _isCreating = true);
 
     try {
-      final roomService = await ref.read(roomServiceProvider.future);
+      final createRoom = ref.read(createGroupRoomProvider);
       final contactIds = widget.selectedContacts
           .map(_getContactIdentifier)
           .toList();
@@ -205,12 +223,31 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
       final metadata = <String, dynamic>{};
       if (_avatarUrl != null) metadata['avatarUrl'] = _avatarUrl;
 
-      final room = await roomService.createRoom(
-        name: name,
-        type: 'group',
-        description: description.isNotEmpty ? description : null,
-        contactIds: contactIds,
-        metadata: metadata.isNotEmpty ? metadata : null,
+      // A trading group's pool is created first, for this room's id, by the
+      // service with its pool-creator key; the room then binds to it. The
+      // server accepts the binding only from the pool's leader, which is the
+      // caller's linked wallet, the leader CreatePool recorded.
+      if (_trading.enabled) {
+        final created = await ref
+            .read(socialTraderApiProvider)
+            .createPool(
+              roomRef: _tempRoomId,
+              marketId: _trading.marketId,
+              performanceFeeBps: _trading.feeBps ?? 0,
+              minLeaderSkinBps: _trading.minLeaderSkinBps ?? 0,
+              maxTvlQuote: _trading.maxTvlQuote,
+            );
+        metadata[poolIdMetadataKey] = created.pool;
+      }
+
+      final room = await createRoom(
+        GroupRoomRequest(
+          id: _tempRoomId,
+          name: name,
+          description: description.isNotEmpty ? description : null,
+          contactIds: contactIds,
+          metadata: metadata.isNotEmpty ? metadata : null,
+        ),
       );
 
       if (mounted) {
