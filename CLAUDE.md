@@ -73,12 +73,15 @@ apps/default/
 │   ├── business/        # Business logic layer
 │   │   ├── message_business.go     # Message operations
 │   │   ├── room_business.go        # Room operations
+│   │   ├── socialtrader_rooms.go   # Pool bindings validated against the pool leader
+│   │   ├── stawi_service_cards.go  # Service-posted cards (stawi_card_post, socialtrader_card_post)
 │   │   └── subscription_business.go # Subscription operations
 │   ├── handlers/        # gRPC/Connect API handlers
 │   │   └── chat_server.go          # ChatService implementation
 │   ├── repository/      # Data access layer
 │   │   ├── message_repository.go   # Message CRUD
 │   │   ├── room_repository.go      # Room CRUD
+│   │   ├── socialtrader.go         # socialtrader_room_bindings (room -> pool)
 │   │   └── outbox_repository.go    # Outbox pattern
 │   ├── events/          # Event handlers (async processing)
 │   │   ├── outbox_relay.go         # Sole publisher draining room_outbox
@@ -88,6 +91,11 @@ apps/default/
 │   ├── queues/          # Queue subscribers
 │   │   ├── online_delivery.go      # Device-level message routing
 │   │   └── offline_delivery.go     # Offline device handling
+│   ├── socialtrader/    # Chat's view of the socialtrader service
+│   │   ├── pools.go                # Pools, WalletLinks interfaces
+│   │   ├── client/                 # Connect adapters (PoolService, LinkService)
+│   │   └── socialtradertest/       # In-memory fakes
+│   ├── stawi/           # Chat's view of Stawi settlement
 │   └── models/          # Domain models and DB entities
 │       └── models.go               # RoomEvent, Room, Subscription
 └── tests/               # Integration tests
@@ -263,7 +271,8 @@ GRPC_PORT=50051
 2. Default Service validates and saves the event with its outbox row in one transaction
    ↓
 3. OutboxRelay drains room_outbox and emits "room.outbox.logging.event"
-   (and "chat.room.event.published" for rooms marked with stawi.group_id)
+   (and "chat.room.event.published" for rooms marked with stawi.group_id or
+   bound to a socialtrader pool; the fact's domain names the module)
    ↓
 4. RoomOutboxLoggingQueue pages room subscribers and emits "room.message.fanout.event"
    ↓
@@ -609,3 +618,16 @@ Proprietary - Antinvestor
 ## Support
 
 For issues, questions, or feature requests, contact the Antinvestor platform team.
+
+## Flutter modules (`ui/lib/features`)
+
+- `stawi/` — the Stawi finance module (loans, dues, governance; settlement signs).
+- `socialtrader/` — the trading-group module: `data/` (generated socialtrader
+  clients under `data/gen`, `SocialTraderApi`, `WalletController`,
+  `CommitmentSettings`, capabilities), `domain/` (`PoolCard` codec,
+  `PoolBinding`, pool models), `ui/` (header chip, join/leave sheets, pool
+  tab, leader trade sheet, trading settings, trading-group toggle). Plug
+  points: `app/router.dart`, `messages/ui/chat_screen.dart`,
+  `messages/ui/virtualized_message_list.dart`,
+  `rooms/ui/room_detail_panel.dart`, `rooms/ui/group_details_screen.dart`,
+  `settings/ui/settings_screen.dart`. See `ui/docs/socialtrader.md`.

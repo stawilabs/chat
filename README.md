@@ -128,16 +128,19 @@ The chat service implements a scalable, queue-based architecture for real-time m
 
 ### Durable room fact: `chat.room.event.published`
 
-Rooms opt in by carrying `stawi.group_id` in their room metadata; rooms without
-that key publish nothing. For a marked room the outbox relay publishes one JSON
-fact per durable, non-encrypted event, in outbox order and at least once
-(consumers must be idempotent on `event_id`). Encrypted payloads are never
+Rooms opt in by carrying `stawi.group_id` in their room metadata, or by being
+bound to a socialtrader pool (see "Trading groups" below); rooms with neither
+publish nothing. For a marked room the outbox relay publishes one JSON fact per
+durable, non-encrypted event, in outbox order and at least once (consumers must
+be idempotent on `event_id`). The fact's `domain` is `stawi` or `socialtrader`
+and says which module `group_id` belongs to; a room with both publishes one
+fact, for the Stawi group. Encrypted payloads are never
 projected, and the fact carries no role, claim, token, permission or signature:
 it is a signal a consumer may render or draft from, never an authorization.
 
 ```json
 {
-  "event_id": "...", "room_id": "...", "group_id": "...",
+  "event_id": "...", "room_id": "...", "group_id": "...", "domain": "stawi",
   "subscription_id": "...", "profile_id": "...", "parent_id": "...",
   "room_event_type": "ROOM_EVENT_TYPE_EVENT",
   "payload_type": "PAYLOAD_TYPE_VOTE",
@@ -231,6 +234,45 @@ human role grants it.
 
 Only settlement's NATS credentials may publish on
 `svc.stawi.settlement.events`.
+
+### Trading groups (socialtrader module)
+
+A trading group is a chat room bound to a socialtrader strategy pool
+(spec: socialtrader `docs/superpowers/specs/2026-11-01-group-pool-trading-design.md`
+§7). The socialtrader service indexes the pool and prepares the calldata
+members sign; chat only knows which room belongs to which pool and who may
+bind them.
+
+- **Binding.** `CreateRoom`/`UpdateRoom` with `socialtrader.pool_id` (a pool
+  address) in the metadata asks the socialtrader service whether the pool
+  exists, was created for this room, and is led by the caller's linked wallet;
+  only then is a row written to `socialtrader_room_bindings`, which is what
+  the fact publisher and the card path trust. The metadata key stays a display
+  hint for clients; anyone can write it, nobody is believed for it. Without
+  `SOCIALTRADER_SERVICE_URI` every binding is refused (`FailedPrecondition`).
+- **Facts.** A bound room publishes `chat.room.event.published` with
+  `domain: "socialtrader"` and the pool address as `group_id`; the socialtrader
+  service consumes member joins and leaves from it.
+- **Cards.** The socialtrader service principal (holding
+  `socialtrader_card_post` on chat's functional namespace) posts pool cards as
+  `TEXT` messages in the `json` format whose body is
+  `{"socialtrader": {"kind": "pool_join_prompt" | "pool_leave_prompt" | "pool_nav" | "pool_fill", "v": 1, "pool": "0x…", ...}}`.
+  A pool card goes only into a room bound to that very pool, and carries no
+  member's position (the app asks `GetMembership` for the viewer's own). The
+  app renders a card only for a pool the service lists; anything else stays
+  plain text.
+- **App.** `ui/lib/features/socialtrader`: header chip, first-visit join
+  sheet, leave sheet, Pool tab, leader trading sheet, trading settings. Every
+  deposit, redeem and leader order is calldata prepared by the service and
+  signed by the connected wallet after a tap; the app never holds a key. See
+  `ui/docs/socialtrader.md`.
+
+**Configuration**
+
+| Variable | Default | Notes |
+|---|---|---|
+| `SOCIALTRADER_SERVICE_URI` | empty | socialtrader's PoolService and LinkService (`socialtrader.v1`, vendored under `gen/go/socialtrader` until published to the BSR); empty refuses pool bindings |
+| `SOCIALTRADER_SERVICE_WORKLOAD_API_TARGET_PATH` | `/ns/socialtrader/sa/service-socialtrader` | |
 
 ### Gateway Service
 
