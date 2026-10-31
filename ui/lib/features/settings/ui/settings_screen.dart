@@ -89,6 +89,13 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 _buildSettingsItem(
                   context,
+                  icon: Icons.show_chart,
+                  title: 'Trading',
+                  subtitle: 'Wallet link, default commitment',
+                  onTap: () => context.go('/settings/trading'),
+                ),
+                _buildSettingsItem(
+                  context,
                   icon: Icons.palette_outlined,
                   title: 'Appearance',
                   subtitle: 'Theme, dark mode, accent color',

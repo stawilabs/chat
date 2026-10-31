@@ -31,6 +31,7 @@ import '../features/settings/ui/storage_settings_screen.dart';
 import '../features/settings/ui/theme_settings_screen.dart';
 import '../features/settings/ui/two_factor_setup_screen.dart';
 import '../features/socialtrader/ui/pool_tab.dart';
+import '../features/socialtrader/ui/trading_settings_screen.dart';
 import '../features/stawi/ui/loan_detail_screen.dart';
 import '../features/stawi/ui/my_money_screen.dart';
 import '../features/stawi/ui/stawi_account_screen.dart';
@@ -199,6 +200,10 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/settings/theme',
         builder: (context, state) => const ThemeSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/trading',
+        builder: (context, state) => const TradingSettingsScreen(),
       ),
       GoRoute(
         path: '/settings/stawi',
