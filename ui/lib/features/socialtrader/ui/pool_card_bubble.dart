@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../messages/domain/room_event.dart';
 import '../data/pool_membership.dart';
 import '../data/socialtrader_api.dart';
+import '../domain/pool_binding.dart';
 import '../domain/pool_card.dart';
 import '../domain/pool_models.dart';
 
@@ -28,9 +29,12 @@ class PoolCardBubble extends ConsumerWidget {
   final PoolCardAction? onCommit;
   final PoolCardAction? onRedeem;
 
-  /// The card body of [event], or null when the event is not a pool card.
+  /// The card body of [event], or null when the event is not a pool card
+  /// posted by the socialtrader service. A member's message in the card's
+  /// shape (which the server refuses anyway) is never a card.
   static PoolCard? cardOf(RoomEvent event) {
     if (event.type != RoomEventType.text) return null;
+    if (event.content['posted_by_service'] != true) return null;
     final format = event.content['format'];
     if (format != null && format != 'json') return null;
     final body = event.content['text'];
@@ -42,6 +46,10 @@ class PoolCardBubble extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final card = cardOf(event);
     if (card == null) return _Fallback(event: event);
+    // Only a card about the room's own bound pool is a card here.
+    final binding = ref.watch(poolBindingProvider(event.roomId));
+    if (binding is! AsyncData) return const _Loading();
+    if (binding.value?.poolId != card.pool) return _Fallback(event: event);
     final pool = ref.watch(poolByAddressProvider(card.pool));
     return switch (pool) {
       AsyncData(value: null) => _Fallback(event: event),

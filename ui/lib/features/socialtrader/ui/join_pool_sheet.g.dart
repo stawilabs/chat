@@ -65,7 +65,7 @@ final class JoinPoolControllerProvider
 }
 
 String _$joinPoolControllerHash() =>
-    r'c84a661b7f27832ec035680f5d0961f7aeab884d';
+    r'e2491967ec4a411d91c5edb82ea80363d1554667';
 
 /// Commits funds to a pool: asks the service for the deposit calldata, then
 /// the wallet to sign and send it.

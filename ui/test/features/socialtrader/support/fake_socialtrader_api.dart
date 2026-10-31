@@ -21,6 +21,9 @@ class FakeSocialTraderApi implements SocialTraderApi {
   );
   Exception? failWith;
 
+  /// Fails only getLinkedWallet (an outage of the link lookup alone).
+  Exception? linkFailWith;
+
   final deposits = <({String pool, String assets, String receiver})>[];
   final redeems = <({String pool, String shares, String receiver})>[];
   final leaderOrders = <LeaderOrder>[];
@@ -135,6 +138,7 @@ class FakeSocialTraderApi implements SocialTraderApi {
   @override
   Future<LinkedWallet?> getLinkedWallet() async {
     _maybeFail();
+    if (linkFailWith case final e?) throw e;
     return linked;
   }
 

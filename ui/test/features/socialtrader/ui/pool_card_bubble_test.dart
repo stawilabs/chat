@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/messages/domain/room_event.dart';
+import 'package:stawi/features/rooms/data/room_providers.dart';
+import 'package:stawi/features/rooms/domain/room.dart';
 import 'package:stawi/features/socialtrader/data/socialtrader_api.dart';
 import 'package:stawi/features/socialtrader/domain/pool_card.dart';
 import 'package:stawi/features/socialtrader/domain/pool_models.dart';
@@ -14,14 +16,29 @@ const roomId = 'room00000000000000aa';
 const knownPool = '0x00000000000000000000000000000000000000a1';
 const unknownPool = '0x00000000000000000000000000000000000000ff';
 
-RoomEvent cardEvent(String body, {String id = 'card-1'}) => RoomEvent(
+RoomEvent cardEvent(
+  String body, {
+  String id = 'card-1',
+  bool postedByService = true,
+}) => RoomEvent(
   id: id,
   roomId: roomId,
-  senderId: '',
+  senderId: postedByService ? '' : 'sub-member',
   type: RoomEventType.text,
   createdAt: 1,
   status: EventStatus.delivered,
-  content: {'text': body, 'format': 'json'},
+  content: {
+    'text': body,
+    'format': 'json',
+    if (postedByService) 'posted_by_service': true,
+  },
+);
+
+const boundRoom = Room(
+  id: roomId,
+  name: 'Traders',
+  type: 'group',
+  metadata: {'socialtrader.pool_id': knownPool},
 );
 
 String joinBody(String pool) =>
@@ -58,7 +75,10 @@ const knownPoolInfo = PoolInfo(
 );
 
 Widget host(Widget child, {required FakeSocialTraderApi api}) => ProviderScope(
-  overrides: <Override>[socialTraderApiProvider.overrideWithValue(api)],
+  overrides: <Override>[
+    socialTraderApiProvider.overrideWithValue(api),
+    roomByIdProvider.overrideWith((ref, id) async => boundRoom),
+  ],
   child: MaterialApp(
     home: Scaffold(body: SingleChildScrollView(child: child)),
   ),
@@ -223,5 +243,41 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Retry'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(FilledButton, 'Commit'), findsOneWidget);
+  });
+
+  testWidgets('cardBubble_ignoresCardsNotPostedByService', (tester) async {
+    final member = cardEvent(navBody('finalized'), postedByService: false);
+    expect(PoolCardBubble.cardOf(member), isNull);
+    await tester.pumpWidget(
+      host(PoolCardBubble(event: member, isMe: false), api: api),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TierBadge), findsNothing);
+    expect(find.byKey(const Key('pool-card-fallback-card-1')), findsOneWidget);
+    expect(find.textContaining('pool_nav'), findsOneWidget);
+  });
+
+  testWidgets('cardBubble_ignoresCardForOtherPool', (tester) async {
+    const other = '0x00000000000000000000000000000000000000b7';
+    api.pools.add(
+      const PoolInfo(
+        address: other,
+        marketId: '0x01',
+        leader: '0x1111111111111111111111111111111111111111',
+      ),
+    );
+    await tester.pumpWidget(
+      host(
+        PoolCardBubble(event: cardEvent(joinBody(other)), isMe: false),
+        api: api,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(FilledButton), findsNothing);
+    expect(
+      find.byKey(const Key('pool-card-fallback-card-1')),
+      findsOneWidget,
+      reason: 'a known pool that is not this room\'s stays plain text',
+    );
   });
 }

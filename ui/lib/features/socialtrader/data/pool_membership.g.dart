@@ -10,21 +10,24 @@ part of 'pool_membership.dart';
 // ignore_for_file: type=lint, type=warning
 /// The wallet whose pool stake the app shows: the connected (or pasted)
 /// wallet when there is one, else the wallet linked to the profile. Null when
-/// neither is known.
+/// neither is known. A failed lookup is an error, never "no wallet": reading
+/// it as none would make a shareholder look like a newcomer.
 
 @ProviderFor(memberWallet)
 final memberWalletProvider = MemberWalletProvider._();
 
 /// The wallet whose pool stake the app shows: the connected (or pasted)
 /// wallet when there is one, else the wallet linked to the profile. Null when
-/// neither is known.
+/// neither is known. A failed lookup is an error, never "no wallet": reading
+/// it as none would make a shareholder look like a newcomer.
 
 final class MemberWalletProvider
     extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
     with $FutureModifier<String?>, $FutureProvider<String?> {
   /// The wallet whose pool stake the app shows: the connected (or pasted)
   /// wallet when there is one, else the wallet linked to the profile. Null when
-  /// neither is known.
+  /// neither is known. A failed lookup is an error, never "no wallet": reading
+  /// it as none would make a shareholder look like a newcomer.
   MemberWalletProvider._()
     : super(
         from: null,
@@ -50,7 +53,7 @@ final class MemberWalletProvider
   }
 }
 
-String _$memberWalletHash() => r'2ccee1fa5cb485b3f3e415b2a49722f499d8c380';
+String _$memberWalletHash() => r'183a8ae9c622368b51cc25f21817a612e34b52d5';
 
 /// The signed-in person's stake in [pool]: none when no wallet is known.
 

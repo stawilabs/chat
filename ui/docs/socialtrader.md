@@ -52,7 +52,11 @@ leader.
 A card is a `TEXT` message in the `json` format: `{"socialtrader": {"kind":
 "pool_join_prompt" | "pool_leave_prompt" | "pool_nav" | "pool_fill", "v": 1,
 "pool": "0x…", ...}}` (`PoolCard.tryParse`). `PoolCardBubble` renders a card
-only for a pool in `ListPools`; an unknown pool's card is shown as plain text.
+only when the event was posted by the service (it has no sending
+subscription; the server refuses member messages in a card's shape), names
+the room's bound pool, and that pool is in `ListPools`; anything else is shown
+as plain text. The Pool tab's fills are the service-posted fill cards about the
+bound pool (the service API has no fills call yet).
 Forward, reply and notification previews use the card's summary.
 
 ## Environment

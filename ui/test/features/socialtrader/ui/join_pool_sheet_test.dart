@@ -36,15 +36,40 @@ const boundRoom = Room(
   metadata: {'socialtrader.pool_id': poolAddress},
 );
 
+/// Settings whose save fails, as a full disk or closed database would.
+class FailingCommitmentSettings extends MemoryCommitmentSettings {
+  @override
+  Future<void> save(String profileId, String amount) async =>
+      throw Exception('disk full');
+}
+
+/// Dismissals that record when the flag was set relative to the sheet.
+class RecordingDismissals extends MemoryPoolPromptDismissals {
+  bool dismissedBeforeSheet = false;
+  bool Function()? sheetIsOpen;
+
+  @override
+  Future<void> dismiss(String roomId) async {
+    dismissedBeforeSheet = !(sheetIsOpen?.call() ?? false);
+    await super.dismiss(roomId);
+  }
+}
+
 class Harness {
-  Harness({WalletPlatform? platform, this.room = boundRoom})
-    : platform = platform ?? FakeWalletPlatform();
+  Harness({
+    WalletPlatform? platform,
+    this.room = boundRoom,
+    CommitmentSettings? settings,
+    PoolPromptDismissals? dismissals,
+  }) : platform = platform ?? FakeWalletPlatform(),
+       settings = settings ?? MemoryCommitmentSettings(),
+       dismissals = dismissals ?? MemoryPoolPromptDismissals();
 
   final Room room;
 
   final api = FakeSocialTraderApi()..pools.add(pool);
-  final settings = MemoryCommitmentSettings();
-  final dismissals = MemoryPoolPromptDismissals();
+  final CommitmentSettings settings;
+  final PoolPromptDismissals dismissals;
   final WalletPlatform platform;
 
   List<Override> get overrides => [
@@ -261,5 +286,82 @@ void main() {
       await pumpGate(tester, h);
       expect(find.byType(JoinPoolSheet), findsNothing);
     });
+  });
+
+  testWidgets('joinSheet_rememberFailureStillShowsDone', (tester) async {
+    final h = Harness(settings: FailingCommitmentSettings());
+    await tester.pumpWidget(
+      h.host(const JoinPoolSheet(roomId: roomId, pool: pool)),
+    );
+    await connectWallet(tester);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('join-pool-amount')), '75');
+    await tester.tap(find.byKey(const Key('join-pool-remember')));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Commit'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('0xhash1'),
+      findsOneWidget,
+      reason: 'the deposit was sent; a failed remember never hides that',
+    );
+    expect(
+      find.widgetWithText(FilledButton, 'Commit'),
+      findsNothing,
+      reason: 'no second commit is offered',
+    );
+    expect(find.byKey(const Key('join-pool-error')), findsNothing);
+    expect((h.platform as FakeWalletPlatform).sent, hasLength(1));
+  });
+
+  testWidgets('joinGate_hiddenWhenWalletLookupFails', (tester) async {
+    final h = Harness();
+    h.api.linkFailWith = Exception('link service down');
+    // No connected wallet: the gate must ask the service for the linked one.
+    await tester.pumpWidget(
+      h.host(
+        const Column(
+          children: [
+            PoolJoinPromptGate(roomId: roomId),
+            Text('timeline'),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byType(JoinPoolSheet),
+      findsNothing,
+      reason: 'an outage is not "no shares"',
+    );
+    expect(await h.dismissals.dismissed(roomId), isFalse);
+  });
+
+  testWidgets('joinGate_dismissRecordedBeforeSheetOpens', (tester) async {
+    final dismissals = RecordingDismissals();
+    final h = Harness(dismissals: dismissals);
+    dismissals.sheetIsOpen = () =>
+        find.byType(JoinPoolSheet).evaluate().isNotEmpty;
+    await tester.pumpWidget(
+      h.host(
+        const Column(
+          children: [
+            PoolJoinPromptGate(roomId: roomId),
+            Text('timeline'),
+          ],
+        ),
+      ),
+    );
+    await connectWallet(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(JoinPoolSheet), findsOneWidget);
+    expect(
+      await dismissals.dismissed(roomId),
+      isTrue,
+      reason: 'recorded while the sheet is still open',
+    );
+    expect(dismissals.dismissedBeforeSheet, isTrue);
   });
 }

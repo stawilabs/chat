@@ -92,14 +92,18 @@ final class PoolPerformanceFamily extends $Family
   String toString() => r'poolPerformanceProvider';
 }
 
-/// The pool's recent fills, from the fill cards in the room's timeline,
-/// newest first.
+/// The pool's recent fills, newest first: the fill cards the socialtrader
+/// service posted into the room (the server lets only its principal post
+/// them), about the room's bound pool. The vendored service API has no fills
+/// call yet; when it gains one this reads it instead.
 
 @ProviderFor(recentFills)
 final recentFillsProvider = RecentFillsFamily._();
 
-/// The pool's recent fills, from the fill cards in the room's timeline,
-/// newest first.
+/// The pool's recent fills, newest first: the fill cards the socialtrader
+/// service posted into the room (the server lets only its principal post
+/// them), about the room's bound pool. The vendored service API has no fills
+/// call yet; when it gains one this reads it instead.
 
 final class RecentFillsProvider
     extends
@@ -109,8 +113,10 @@ final class RecentFillsProvider
           AsyncValue<List<(RoomEvent, FillCard)>>
         >
     with $Provider<AsyncValue<List<(RoomEvent, FillCard)>>> {
-  /// The pool's recent fills, from the fill cards in the room's timeline,
-  /// newest first.
+  /// The pool's recent fills, newest first: the fill cards the socialtrader
+  /// service posted into the room (the server lets only its principal post
+  /// them), about the room's bound pool. The vendored service API has no fills
+  /// call yet; when it gains one this reads it instead.
   RecentFillsProvider._({
     required RecentFillsFamily super.from,
     required String super.argument,
@@ -164,10 +170,12 @@ final class RecentFillsProvider
   }
 }
 
-String _$recentFillsHash() => r'9aa0cdc4cbef5e2f4046b4d0476141fb924bddb0';
+String _$recentFillsHash() => r'0c3601cb48ed88f50c542eca5d69973a3abd7b10';
 
-/// The pool's recent fills, from the fill cards in the room's timeline,
-/// newest first.
+/// The pool's recent fills, newest first: the fill cards the socialtrader
+/// service posted into the room (the server lets only its principal post
+/// them), about the room's bound pool. The vendored service API has no fills
+/// call yet; when it gains one this reads it instead.
 
 final class RecentFillsFamily extends $Family
     with
@@ -184,8 +192,10 @@ final class RecentFillsFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// The pool's recent fills, from the fill cards in the room's timeline,
-  /// newest first.
+  /// The pool's recent fills, newest first: the fill cards the socialtrader
+  /// service posted into the room (the server lets only its principal post
+  /// them), about the room's bound pool. The vendored service API has no fills
+  /// call yet; when it gains one this reads it instead.
 
   RecentFillsProvider call(String roomId) =>
       RecentFillsProvider._(argument: roomId, from: this);

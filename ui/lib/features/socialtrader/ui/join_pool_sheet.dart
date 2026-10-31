@@ -68,18 +68,28 @@ class JoinPoolController extends _$JoinPoolController {
           .read(walletControllerProvider.notifier)
           .sendPrepared(tx);
       if (!ref.mounted) return;
-      if (remember) {
-        final profileId = await ref.read(currentProfileIdProvider.future);
-        if (profileId != null) {
-          await ref.read(commitmentSettingsProvider).save(profileId, assets);
-        }
-      }
-      if (!ref.mounted) return;
-      ref.invalidate(myMembershipProvider(pool));
+      // The deposit is sent once the wallet returned a hash: whatever happens
+      // after that (remembering the amount) must never report it as failed,
+      // or the person would commit twice.
       state = CommitDone(hash);
+      ref.invalidate(myMembershipProvider(pool));
+      if (remember) await _remember(assets);
     } on Exception catch (e) {
       if (!ref.mounted) return;
       state = CommitIdle(error: _describe(e));
+    }
+  }
+
+  /// Saves the default; a failure here is logged by being ignored: the
+  /// commitment already happened and the amount is only a convenience.
+  Future<void> _remember(String assets) async {
+    try {
+      final profileId = await ref.read(currentProfileIdProvider.future);
+      if (profileId != null) {
+        await ref.read(commitmentSettingsProvider).save(profileId, assets);
+      }
+    } on Exception {
+      // The commitment stands; the default simply was not saved.
     }
   }
 
@@ -410,6 +420,10 @@ class _PoolJoinPromptGateState extends ConsumerState<PoolJoinPromptGate> {
   Future<void> _offer(PoolInfo pool) async {
     final dismissals = ref.read(poolPromptDismissalsProvider);
     if (await dismissals.dismissed(widget.roomId) || !mounted) return;
+    // Recorded before the sheet opens: leaving the room mid-sheet, or the app
+    // dying, still counts as the one offer.
+    await dismissals.dismiss(widget.roomId);
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -421,6 +435,5 @@ class _PoolJoinPromptGateState extends ConsumerState<PoolJoinPromptGate> {
         ),
       ),
     );
-    await dismissals.dismiss(widget.roomId);
   }
 }

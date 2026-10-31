@@ -50,6 +50,7 @@ RoomEvent fillEvent(String id, String side, String price, String size) =>
       status: EventStatus.delivered,
       content: {
         'format': 'json',
+        'posted_by_service': true,
         'text':
             '{"socialtrader":{"kind":"pool_fill","v":1,"pool":"$poolAddress",'
             '"side":"$side","price":"$price","base_amount":"$size"}}',

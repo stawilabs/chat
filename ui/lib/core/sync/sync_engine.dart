@@ -870,6 +870,12 @@ class SyncEngine with WidgetsBindingObserver {
           if (payload.text.format.isNotEmpty) {
             content['format'] = payload.text.format;
           }
+          // A service principal posts from no room subscription (it is not a
+          // member); members always post from theirs. The timeline renders a
+          // pool card only for a service-posted text.
+          if (!event.hasSubscriptionId() || event.subscriptionId.isEmpty) {
+            content['posted_by_service'] = true;
+          }
         }
       } else if (payload.hasAttachment()) {
         final contentUrl = FilesConfigService.buildContentUrlFrom(

@@ -258,9 +258,14 @@ bind them.
   `TEXT` messages in the `json` format whose body is
   `{"socialtrader": {"kind": "pool_join_prompt" | "pool_leave_prompt" | "pool_nav" | "pool_fill", "v": 1, "pool": "0x…", ...}}`.
   A pool card goes only into a room bound to that very pool, and carries no
-  member's position (the app asks `GetMembership` for the viewer's own). The
-  app renders a card only for a pool the service lists; anything else stays
-  plain text.
+  member's position (the app asks `GetMembership` for the viewer's own). A
+  member's own message in a card's shape is refused on the send path, and a
+  stored card is stamped `posted_by_service`. The app renders a card only when
+  it was posted by the service (no sending subscription), is about the room's
+  bound pool, and the pool is one the service lists; anything else stays plain
+  text.
+- **Unbinding.** The leader who bound a room clears `socialtrader.pool_id` to
+  unbind it (the row is deleted); nobody else may change or clear a binding.
 - **App.** `ui/lib/features/socialtrader`: header chip, first-visit join
   sheet, leave sheet, Pool tab, leader trading sheet, trading settings. Every
   deposit, redeem and leader order is calldata prepared by the service and

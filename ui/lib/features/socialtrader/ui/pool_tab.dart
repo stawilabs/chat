@@ -23,24 +23,31 @@ const int _fillScanLimit = 200;
 Future<PoolPerformance> poolPerformance(Ref ref, String pool) =>
     ref.watch(socialTraderApiProvider).getPerformance(pool);
 
-/// The pool's recent fills, from the fill cards in the room's timeline,
-/// newest first.
+/// The pool's recent fills, newest first: the fill cards the socialtrader
+/// service posted into the room (the server lets only its principal post
+/// them), about the room's bound pool. The vendored service API has no fills
+/// call yet; when it gains one this reads it instead.
 @riverpod
-AsyncValue<List<(RoomEvent, FillCard)>> recentFills(Ref ref, String roomId) =>
-    ref
-        .watch(
-          paginatedMessagesStreamProvider((
-            roomId: roomId,
-            limit: _fillScanLimit,
-          )),
-        )
-        .whenData(
-          (events) => [
-            for (final event in events)
-              if (PoolCardBubble.cardOf(event) case final FillCard card)
-                (event, card),
-          ],
-        );
+AsyncValue<List<(RoomEvent, FillCard)>> recentFills(Ref ref, String roomId) {
+  final binding = ref.watch(poolBindingProvider(roomId));
+  final bound = binding.asData?.value?.poolId;
+  if (bound == null) return const AsyncData([]);
+  return ref
+      .watch(
+        paginatedMessagesStreamProvider((
+          roomId: roomId,
+          limit: _fillScanLimit,
+        )),
+      )
+      .whenData(
+        (events) => [
+          for (final event in events)
+            if (PoolCardBubble.cardOf(event) case final FillCard card
+                when card.pool == bound)
+              (event, card),
+        ],
+      );
+}
 
 /// The Pool tab as its own page (/room/:roomId/pool), from the header chip.
 class PoolScreen extends StatelessWidget {
