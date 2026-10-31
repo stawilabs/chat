@@ -2,6 +2,7 @@ package business
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/pkg/chatutil"
@@ -27,6 +29,14 @@ const (
 	// PermissionStawiCardPost lets a service principal post display-only
 	// cards into a Stawi room it is not a member of.
 	PermissionStawiCardPost = "stawi_card_post"
+	// PermissionSocialTraderCardPost lets the socialtrader service principal
+	// post pool cards (JSON text carrying the socialtrader discriminator)
+	// into a room bound to a pool.
+	PermissionSocialTraderCardPost = "socialtrader_card_post"
+	// PermissionSocialTraderRoomBind is the permit a socialtrader principal
+	// holds to bind rooms to pools on a leader's behalf; v1 adds no RPC for
+	// it, the permit is declared so the OPL and the service agree on its name.
+	PermissionSocialTraderRoomBind = "socialtrader_room_bind"
 )
 
 // FunctionPermissionChecker checks a functional permission of the caller in
@@ -50,12 +60,25 @@ func WithServiceCards(checker FunctionPermissionChecker) MessageBusinessOption {
 func (mb *messageBusiness) SendServiceEvents(
 	ctx context.Context, req *chatv1.SendEventRequest,
 ) ([]*chatv1.AckEvent, error) {
-	caller, err := mb.authorizeServiceCaller(ctx)
+	caller, err := authorizeServicePrincipal(ctx, mb.cardChecker)
 	if err != nil {
 		return nil, err
 	}
 	if len(req.GetEvent()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "at least one event must be provided")
+	}
+	// Each card needs the permit of the module it belongs to; a batch is
+	// refused whole when the principal lacks any permit it would need.
+	checked := map[string]bool{}
+	for _, reqEvt := range req.GetEvent() {
+		permission := cardPermissionFor(reqEvt.GetPayload())
+		if checked[permission] {
+			continue
+		}
+		if err = checkServicePermission(ctx, mb.cardChecker, permission); err != nil {
+			return nil, err
+		}
+		checked[permission] = true
 	}
 
 	acks := make([]*chatv1.AckEvent, len(req.GetEvent()))
@@ -104,10 +127,33 @@ type serviceCaller struct {
 	partitions  []string
 }
 
-// authorizeServiceCaller returns the service principal, or why the caller may
-// not post cards.
-func (mb *messageBusiness) authorizeServiceCaller(ctx context.Context) (*serviceCaller, error) {
-	return authorizeService(ctx, mb.cardChecker, PermissionStawiCardPost)
+// cardPermissionFor names the functional permission a service needs to post
+// payload: socialtrader_card_post for a pool card (JSON text whose body is a
+// socialtrader card), stawi_card_post for everything else.
+func cardPermissionFor(payload *chatv1.Payload) string {
+	if isSocialTraderCard(payload) {
+		return PermissionSocialTraderCardPost
+	}
+	return PermissionStawiCardPost
+}
+
+// isSocialTraderCard reports whether payload is a pool card: TEXT in the
+// "json" format whose body is an object carrying a "socialtrader" object
+// with a kind. The card body is otherwise opaque to chat.
+func isSocialTraderCard(payload *chatv1.Payload) bool {
+	text := payload.GetText()
+	if text == nil || text.GetFormat() != "json" {
+		return false
+	}
+	var body struct {
+		SocialTrader *struct {
+			Kind string `json:"kind"`
+		} `json:"socialtrader"`
+	}
+	if err := json.Unmarshal([]byte(text.GetBody()), &body); err != nil {
+		return false
+	}
+	return body.SocialTrader != nil && body.SocialTrader.Kind != ""
 }
 
 // authorizeService returns the service principal in ctx holding permission
@@ -116,26 +162,34 @@ func (mb *messageBusiness) authorizeServiceCaller(ctx context.Context) (*service
 func authorizeService(
 	ctx context.Context, checker FunctionPermissionChecker, permission string,
 ) (*serviceCaller, error) {
+	caller, err := authorizeServicePrincipal(ctx, checker)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkServicePermission(ctx, checker, permission); err != nil {
+		return nil, err
+	}
+	return caller, nil
+}
+
+// authorizeServicePrincipal returns the service principal in ctx, or why it
+// may not act at all: a person, or a principal without a tenancy, is refused.
+// The functional permission is checked separately, per card module.
+func authorizeServicePrincipal(ctx context.Context, checker FunctionPermissionChecker) (*serviceCaller, error) {
 	claims := security.ClaimsFromContext(ctx)
 	if claims == nil || claims.GetProfileID() == "" {
 		return nil, connect.NewError(connect.CodeUnauthenticated, "request needs to be authenticated")
 	}
 	if !claims.IsInternalSystem() {
-		return nil, connect.Errorf(connect.CodePermissionDenied,
-			"only a service principal may use %s", permission)
+		return nil, connect.NewError(connect.CodePermissionDenied,
+			"only a service principal may post service cards")
 	}
 	if claims.GetTenantID() == "" || claims.GetPartitionID() == "" {
 		return nil, connect.NewError(connect.CodePermissionDenied,
 			"a service principal acts only within its own tenant and partition")
 	}
 	if checker == nil {
-		return nil, connect.Errorf(connect.CodePermissionDenied, "%s is not enabled", permission)
-	}
-	// The functional permission is checked at the caller's own
-	// tenant/partition; the room must then be in that tenancy too.
-	if err := checker.Check(ctx, permission); err != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied,
-			fmt.Errorf("the caller does not hold %s: %w", permission, err).Error())
+		return nil, connect.NewError(connect.CodePermissionDenied, "service cards are not enabled")
 	}
 	return &serviceCaller{
 		profileID:   claims.GetProfileID(),
@@ -144,6 +198,16 @@ func authorizeService(
 		accessID:    claims.GetAccessID(),
 		partitions:  claims.GetPartitionIDs(),
 	}, nil
+}
+
+// checkServicePermission checks the functional permission at the caller's
+// own tenant/partition; the room must then be in that tenancy too.
+func checkServicePermission(ctx context.Context, checker FunctionPermissionChecker, permission string) error {
+	if err := checker.Check(ctx, permission); err != nil {
+		return connect.NewError(connect.CodePermissionDenied,
+			fmt.Errorf("the caller does not hold %s: %w", permission, err).Error())
+	}
+	return nil
 }
 
 // owns reports whether a room lies in the caller's tenant and partitions.
@@ -224,7 +288,12 @@ func (mb *messageBusiness) prepareServiceCard(
 			"the room is outside the caller's tenant and partition")
 	}
 
-	if err = refuseUnlessCardRoom(ctx, mb.stawi.bindings, room, caller); err != nil {
+	if isSocialTraderCard(reqEvt.GetPayload()) {
+		err = refuseUnlessPoolRoom(room)
+	} else {
+		err = refuseUnlessCardRoom(ctx, mb.stawi.bindings, room, caller)
+	}
+	if err != nil {
 		return nil, err
 	}
 
@@ -275,6 +344,18 @@ func refuseUnlessCardRoom(
 			"service cards are posted only into Stawi rooms that are on chain and people's personal rooms")
 	}
 	return nil
+}
+
+// refuseUnlessPoolRoom refuses a pool card for a room that is not bound to a
+// pool through its socialtrader.pool_id metadata.
+func refuseUnlessPoolRoom(room *models.Room) error {
+	if room.Properties != nil {
+		if pool, ok := room.Properties[events.SocialTraderPoolMetadataKey].(string); ok && pool != "" {
+			return nil
+		}
+	}
+	return connect.NewError(connect.CodeFailedPrecondition,
+		"pool cards are posted only into rooms bound to a socialtrader pool")
 }
 
 // serviceCardLink is the outbox link of a service-posted event: no sending

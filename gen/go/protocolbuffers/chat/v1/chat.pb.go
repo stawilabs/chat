@@ -3817,7 +3817,7 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x0eProposalAction\x12\x1f\n" +
 	"\x1bPROPOSAL_ACTION_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17PROPOSAL_ACTION_APPROVE\x10\x01\x12\x1a\n" +
-	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xc6@\n" +
+	"\x16PROPOSAL_ACTION_REJECT\x10\x022\xa6A\n" +
 	"\vChatService\x12\xa1\x02\n" +
 	"\tSendEvent\x12\x19.chat.v1.SendEventRequest\x1a\x1a.chat.v1.SendEventResponse\"\xdc\x01\xbaG\xc8\x01\n" +
 	"\bMessages\x12\x17Send an event to a room\x1a\x97\x01Sends one or more events to chat rooms. Supports text, attachments, reactions, and system messages. Idempotent when idempotency_key header is provided.*\tsendEvent\x82\xb5\x18\f\n" +
@@ -3899,10 +3899,10 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"\x10ListReplayEvents\x12 .chat.v1.ListReplayEventsRequest\x1a!.chat.v1.ListReplayEventsResponse\"\x8d\x02\xbaG\xf6\x01\n" +
 	"\rDevice Replay\x12!List replay events after a cursor\x1a\xaf\x01Returns a paginated list of replay events for a device starting after a given cursor up to an upper bound. Used by the gateway to stream missed events to reconnecting clients.*\x10listReplayEvents\x82\xb5\x18\f\n" +
 	"\n" +
-	"event_view\x90\x02\x01\x1a\xb7\b\x82\xb5\x18\xb2\b\n" +
+	"event_view\x90\x02\x01\x1a\x97\t\x82\xb5\x18\x92\t\n" +
 	"\fservice_chat\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x12\x12stawi_room_resolve\x12\x1bdirect_partner_account_view\x1a\xb1\x01\b\x01\x12\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x12\x12stawi_room_resolve\x12\x16socialtrader_card_post\x12\x16socialtrader_room_bind\x12\x1bdirect_partner_account_view\x1a\xb1\x01\b\x01\x12\n" +
 	"event_view\x12\n" +
 	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x1bdirect_partner_account_view\x1a\xa4\x01\b\x02\x12\n" +
 	"event_view\x12\n" +
@@ -3911,9 +3911,9 @@ const file_chat_v1_chat_proto_rawDesc = "" +
 	"event_send\x12\troom_view\x12\x11subscription_view\x12\rproposal_view\x12\x1bdirect_partner_account_view\x1aX\b\x04\x12\n" +
 	"event_view\x12\troom_view\x12\x11subscription_view\x12\rproposal_view\x12\x1bdirect_partner_account_view\x1aw\b\x05\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\x11subscription_view\x12\x13subscription_manage\x12\x1bdirect_partner_account_view\x1a\xb9\x01\b\x06\x12\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\x11subscription_view\x12\x13subscription_manage\x12\x1bdirect_partner_account_view\x1a\xe9\x01\b\x06\x12\n" +
 	"event_view\x12\n" +
-	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x12\x12stawi_room_resolveB\xd1\x06\xbaG\xb9\x05\x12\x8d\x05\n" +
+	"event_send\x12\troom_view\x12\vroom_create\x12\vroom_update\x12\vroom_delete\x12\x11subscription_view\x12\x13subscription_manage\x12\rproposal_view\x12\x0fproposal_manage\x12\x0fstawi_card_post\x12\x12stawi_room_resolve\x12\x16socialtrader_card_post\x12\x16socialtrader_room_bindB\xd1\x06\xbaG\xb9\x05\x12\x8d\x05\n" +
 	"\fChat Service\x12\xe8\x03The Chat Service provides endpoints for real-time, secure messaging between users and devices. It supports sending, receiving, and synchronizing messages across rooms, direct chats, and group conversations, with optional end-to-end encryption. The service is designed for mobile, desktop, and web clients, supporting both streaming and standard request-response operations. APIs are consistent, well-structured, and optimized for low-latency delivery, even on limited network connections.\"?\n" +
 	"\n" +
 	"Stawi Labs\x12!https://github.com/stawilabs/chat\x1a\x0einfo@stawi.org*I\n" +

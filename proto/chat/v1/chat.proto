@@ -96,6 +96,14 @@ service ChatService {
       // room with one person, without being a member (CreateRoom with type
       // DIRECT or BOT). Service principals only.
       "stawi_room_resolve",
+      // Post pool cards (TEXT in the "json" format carrying the socialtrader
+      // discriminator) into a room bound to a socialtrader pool, without
+      // being a member. Service principals only.
+      "socialtrader_card_post",
+      // Bind a room to a socialtrader pool on the pool leader's behalf.
+      // Service principals only; v1 adds no RPC for it, the permit names
+      // the grant the socialtrader service principal holds.
+      "socialtrader_room_bind",
       // Read the Stawi account of the other person in one's own DM, or the
       // guardian keys of a person one shares a room with. Whether the caller
       // may is decided by the room: only an active member of a DIRECT room of
@@ -186,7 +194,9 @@ service ChatService {
           "proposal_view",
           "proposal_manage",
           "stawi_card_post",
-          "stawi_room_resolve"
+          "stawi_room_resolve",
+          "socialtrader_card_post",
+          "socialtrader_room_bind"
         ]
       }
     ]
