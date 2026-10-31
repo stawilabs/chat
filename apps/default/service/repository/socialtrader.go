@@ -21,6 +21,8 @@ type SocialTraderRoomRepository interface {
 	GetByRoomID(ctx context.Context, roomID string) (*models.SocialTraderRoomBinding, error)
 	// Upsert records the binding, replacing the room's earlier one.
 	Upsert(ctx context.Context, binding *models.SocialTraderRoomBinding) error
+	// DeleteByRoomID removes the room's binding; no error when there is none.
+	DeleteByRoomID(ctx context.Context, roomID string) error
 }
 
 type socialTraderRoomRepository struct {
@@ -61,4 +63,8 @@ func (r *socialTraderRoomRepository) Upsert(ctx context.Context, binding *models
 		Columns:   []clause.Column{{Name: "room_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"pool_id", "leader_profile_id", "bound_at", "modified_at"}),
 	}).Create(binding).Error
+}
+
+func (r *socialTraderRoomRepository) DeleteByRoomID(ctx context.Context, roomID string) error {
+	return r.Pool().DB(ctx, false).Where("room_id = ?", roomID).Delete(&models.SocialTraderRoomBinding{}).Error
 }

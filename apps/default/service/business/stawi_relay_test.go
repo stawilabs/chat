@@ -39,6 +39,7 @@ type stawiFixture struct {
 	calls     repository.StawiRoomCallRepository
 	// poolBindings records trading-group (socialtrader) room bindings.
 	poolBindings repository.SocialTraderRoomRepository
+	eventRepo    repository.RoomEventRepository
 	subRepo      repository.RoomSubscriptionRepository
 	roomRepo     repository.RoomRepository
 	dbPool       pool.Pool
@@ -95,6 +96,7 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 	f.subRepo = repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	f.bindings = repository.NewStawiRoomRepository(ctx, dbPool, workMan)
 	f.poolBindings = repository.NewSocialTraderRoomRepository(ctx, dbPool, workMan)
+	f.eventRepo = eventRepo
 	f.calls = repository.NewStawiRoomCallRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, f.subRepo)

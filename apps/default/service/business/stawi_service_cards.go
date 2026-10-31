@@ -321,10 +321,15 @@ func (mb *messageBusiness) prepareServiceCard(
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to convert event: %w", err).Error())
 	}
 	event := &models.RoomEvent{
-		RoomID:     room.GetID(),
-		EventType:  int32(reqEvt.GetType()),
-		Content:    content,
-		Properties: map[string]any{"posted_by_service": caller.profileID},
+		RoomID:    room.GetID(),
+		EventType: int32(reqEvt.GetType()),
+		Content:   content,
+		// The stamp clients and audits rely on: the event came through the
+		// service path, from this principal, and from no room subscription.
+		Properties: map[string]any{
+			"posted_by_service":         true,
+			"posted_by_service_profile": caller.profileID,
+		},
 	}
 	event.ID = reqEvt.GetId()
 	// The event belongs to the room's tenancy, not the posting service's.

@@ -401,6 +401,15 @@ func (mb *messageBusiness) prepareEventForInsert(
 		return nil, ackEventError(reqEvt.GetId(), stawiErr)
 	}
 
+	// A pool card (JSON text carrying the socialtrader discriminator) is the
+	// socialtrader service's to post, through SendServiceEvents with its
+	// permit; a member's message in that shape is refused so no member can
+	// forge a NAV, fill or prompt card.
+	if isSocialTraderCard(reqEvt.GetPayload()) {
+		return nil, ackEventError(reqEvt.GetId(), connect.NewError(connect.CodePermissionDenied,
+			"pool cards are posted by the socialtrader service, not by members"))
+	}
+
 	if govErr := mb.refuseChatNativeGovernance(ctx, reqEvt); govErr != nil {
 		return nil, ackEventError(reqEvt.GetId(), govErr)
 	}

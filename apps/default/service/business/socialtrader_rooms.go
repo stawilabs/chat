@@ -43,21 +43,25 @@ func WithSocialTrader(
 var errSocialTraderNotConfigured = connect.NewError(connect.CodeFailedPrecondition,
 	"trading groups are not enabled: the socialtrader service is not configured")
 
-// requestedPoolBinding returns the pool a metadata change asks to bind the
-// room to (flat socialtrader.pool_id or nested socialtrader.pool_id), or ""
-// when it asks none.
-func requestedPoolBinding(metadata map[string]any) string {
+// requestedPoolBinding reads what a metadata change asks about the room's
+// pool binding. The second result is false when it says nothing; otherwise
+// the first is the pool to bind (flat socialtrader.pool_id or nested
+// socialtrader.pool_id) or "" when the key is cleared, which asks to unbind.
+func requestedPoolBinding(metadata map[string]any) (string, bool) {
 	if metadata == nil {
-		return ""
+		return "", false
 	}
-	if value, ok := metadata[events.SocialTraderPoolMetadataKey].(string); ok && value != "" {
-		return value
+	if raw, ok := metadata[events.SocialTraderPoolMetadataKey]; ok {
+		value, _ := raw.(string)
+		return value, true
 	}
-	if nested, ok := metadata["socialtrader"].(map[string]any); ok {
-		value, _ := nested["pool_id"].(string)
-		return value
+	if nested, isMap := metadata["socialtrader"].(map[string]any); isMap {
+		if raw, ok := nested["pool_id"]; ok {
+			value, _ := raw.(string)
+			return value, true
+		}
 	}
-	return ""
+	return "", false
 }
 
 // touchesStawiMetadata reports whether a metadata change writes the Stawi
@@ -85,6 +89,14 @@ func (s *socialTraderRooms) ValidateBinding(
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			"socialtrader.pool_id must be a pool address (0x followed by 40 hex digits)")
+	}
+	existing, err := s.bindings.GetByRoomID(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read the room's pool binding: %w", err)
+	}
+	if existing != nil && existing.LeaderProfileID != callerProfileID {
+		return nil, connect.NewError(connect.CodePermissionDenied,
+			"the room is bound by another leader; only they can change its pool")
 	}
 	pool, err := s.pools.GetPool(ctx, address)
 	if err != nil {
@@ -129,31 +141,82 @@ func (s *socialTraderRooms) record(
 	return nil
 }
 
+// bindingChange is what a validated metadata change does to the room's pool
+// binding once the room is saved: bind to pool, or unbind.
+type bindingChange struct {
+	pool   *socialtrader.Pool
+	unbind bool
+}
+
 // prepareSocialTraderBinding validates a metadata change that asks to bind
-// the room to a pool and returns the pool to record once the room is saved;
-// nil when the change asks no binding. It never consults room metadata as
-// truth: a key present without a validated binding is refused.
+// the room to a pool (or to unbind it, by clearing the key) and returns what
+// to record once the room is saved; nil when the change says nothing about
+// the binding. It never consults room metadata as truth: a key present
+// without a validated binding is refused, and only the bound leader unbinds.
 func (rb *roomBusiness) prepareSocialTraderBinding(
 	ctx context.Context, callerProfileID, roomID string, metadata map[string]any,
-) (*socialtrader.Pool, error) {
-	poolID := requestedPoolBinding(metadata)
-	if poolID == "" {
-		return nil, nil //nolint:nilnil // no binding requested
+) (*bindingChange, error) {
+	poolID, present := requestedPoolBinding(metadata)
+	if !present {
+		return nil, nil //nolint:nilnil // the change says nothing about the binding
 	}
 	if rb.socialtrader == nil {
 		return nil, errSocialTraderNotConfigured
 	}
-	return rb.socialtrader.ValidateBinding(ctx, callerProfileID, roomID, poolID)
+	if poolID == "" {
+		if err := rb.socialtrader.validateUnbind(ctx, callerProfileID, roomID); err != nil {
+			return nil, err
+		}
+		return &bindingChange{unbind: true}, nil
+	}
+	pool, err := rb.socialtrader.ValidateBinding(ctx, callerProfileID, roomID, poolID)
+	if err != nil {
+		return nil, err
+	}
+	return &bindingChange{pool: pool}, nil
 }
 
-// recordSocialTraderBinding writes the binding prepared for a saved room.
-func (rb *roomBusiness) recordSocialTraderBinding(
-	ctx context.Context, roomID string, pool *socialtrader.Pool, leaderProfileID string,
-) error {
-	if pool == nil {
-		return nil
+// validateUnbind decides whether caller may clear the room's binding: only
+// the leader who bound it. A room with no binding has nothing to clear.
+func (s *socialTraderRooms) validateUnbind(ctx context.Context, callerProfileID, roomID string) error {
+	existing, err := s.bindings.GetByRoomID(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to read the room's pool binding: %w", err)
 	}
-	return rb.socialtrader.record(ctx, roomID, pool, leaderProfileID)
+	if existing != nil && existing.LeaderProfileID != callerProfileID {
+		return connect.NewError(connect.CodePermissionDenied,
+			"only the leader who bound the room can unbind it")
+	}
+	return nil
+}
+
+// recordSocialTraderBinding applies a prepared binding change for a saved
+// room: writes the binding row or deletes it.
+func (rb *roomBusiness) recordSocialTraderBinding(
+	ctx context.Context, roomID string, change *bindingChange, leaderProfileID string,
+) error {
+	switch {
+	case change == nil:
+		return nil
+	case change.unbind:
+		if err := rb.socialtrader.bindings.DeleteByRoomID(ctx, roomID); err != nil {
+			return fmt.Errorf("failed to remove the pool binding: %w", err)
+		}
+		return nil
+	default:
+		return rb.socialtrader.record(ctx, roomID, change.pool, leaderProfileID)
+	}
+}
+
+// clearPoolHint removes the pool metadata hint from a room that was unbound.
+func clearPoolHint(properties map[string]any) {
+	delete(properties, events.SocialTraderPoolMetadataKey)
+	if nested, ok := properties["socialtrader"].(map[string]any); ok {
+		delete(nested, "pool_id")
+		if len(nested) == 0 {
+			delete(properties, "socialtrader")
+		}
+	}
 }
 
 // refuseStawiMetadataOnStawiRoom refuses a metadata change writing stawi.*

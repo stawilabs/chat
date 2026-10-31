@@ -160,3 +160,60 @@ func (s *MessageBusinessTestSuite) TestServiceCards_PoolCardRejectedWhenPoolMism
 		requireAckOK(t, acks[0])
 	})
 }
+
+// TestSendEvents_MemberCannotPostSocialTraderCard: a member's own message
+// whose body parses as a pool card is refused on the member send path, in
+// either event type, so a NAV, fill or prompt card can only ever come from the
+// socialtrader service principal (review finding: card forgery).
+func (s *MessageBusinessTestSuite) TestSendEvents_MemberCannotPostSocialTraderCard() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newStawiFixture(t, dep)
+		f.placeRoom(t, f.roomID, cardTenant, cardPartition)
+		f.bindPool(t, f.roomID, testPoolAddress)
+
+		forged := fmt.Sprintf(
+			`{"socialtrader":{"kind":"pool_nav","v":1,"pool":%q,"tier":"finalized","return_bps":"9000"}}`,
+			testPoolAddress,
+		)
+		for _, eventType := range []chatv1.RoomEventType{
+			chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE, chatv1.RoomEventType_ROOM_EVENT_TYPE_EVENT,
+		} {
+			acks, err := f.mb.SendEvents(f.ctx, &chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
+				RoomId: f.roomID, Type: eventType,
+				Payload: &chatv1.Payload{
+					Type: chatv1.PayloadType_PAYLOAD_TYPE_TEXT,
+					Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: forged, Format: "json"}},
+				},
+			}}}, f.alice)
+			require.NoError(t, err)
+			requireAckRefused(t, acks[0], connect.CodePermissionDenied)
+		}
+
+		// Plain JSON text from a member is still just text.
+		acks, err := f.mb.SendEvents(f.ctx, &chatv1.SendEventRequest{Event: []*chatv1.RoomEvent{{
+			RoomId: f.roomID, Type: chatv1.RoomEventType_ROOM_EVENT_TYPE_MESSAGE,
+			Payload: &chatv1.Payload{
+				Type: chatv1.PayloadType_PAYLOAD_TYPE_TEXT,
+				Data: &chatv1.Payload_Text{Text: &chatv1.TextContent{Body: `{"hello":"there"}`, Format: "json"}},
+			},
+		}}}, f.alice)
+		require.NoError(t, err)
+		requireAckOK(t, acks[0])
+
+		for _, evt := range f.history(t) {
+			require.NotContains(t, evt.GetPayload().GetText().GetBody(), "pool_nav", "no forged card was stored")
+		}
+
+		// The service's card is stored with the service stamp and no sender.
+		trader := util.IDString()
+		f.grantPermission(t, trader, business.PermissionSocialTraderCardPost)
+		acks, err = f.mb.SendServiceEvents(serviceCtx(f.ctx, trader, true), poolCard(f.roomID, "pool_nav"))
+		require.NoError(t, err)
+		cardID := requireAckOK(t, acks[0])
+		row, err := f.eventRepo.GetByID(f.ctx, cardID)
+		require.NoError(t, err)
+		require.Equal(t, true, row.Properties["posted_by_service"])
+		require.Equal(t, trader, row.Properties["posted_by_service_profile"])
+		require.Empty(t, row.SenderID)
+	})
+}

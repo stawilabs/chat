@@ -26,7 +26,6 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/authz"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
-	"github.com/stawilabs/chat/apps/default/service/socialtrader"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	chattel "github.com/stawilabs/chat/pkg/telemetry"
@@ -229,13 +228,8 @@ func (rb *roomBusiness) CreateRoom(
 		createdRoom.ID = suppliedID
 	}
 	createdRoom.GenID(ctx)
-	var pool *socialtrader.Pool
-	pool, err = rb.prepareSocialTraderBinding(
-		ctx,
-		createdBy.GetProfileId(),
-		createdRoom.GetID(),
-		createdRoom.Properties,
-	)
+	var binding *bindingChange
+	binding, err = rb.prepareCreatedRoomBinding(ctx, createdRoom, createdBy)
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +240,9 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, err
 	}
 	if existingRoom != nil {
-		if !rb.mayAnswerExisting(ctx, existingRoom, createdBy) {
-			return nil, service.ErrRoomIDTaken
-		}
-		return rb.withStawiBinding(ctx, existingRoom.ToAPI())
+		return rb.answerExistingRoom(ctx, existingRoom, binding, createdBy)
 	}
-	if err = rb.recordSocialTraderBinding(ctx, createdRoom.GetID(), pool, createdBy.GetProfileId()); err != nil {
+	if err = rb.recordSocialTraderBinding(ctx, createdRoom.GetID(), binding, createdBy.GetProfileId()); err != nil {
 		return nil, err
 	}
 
@@ -275,6 +266,38 @@ func (rb *roomBusiness) CreateRoom(
 
 	// Return the created room as a proto
 	return createdRoom.ToAPI(), nil
+}
+
+// prepareCreatedRoomBinding validates the pool binding a new room's metadata
+// asks for (and drops the hint when it asks to unbind, which a new room
+// cannot be).
+func (rb *roomBusiness) prepareCreatedRoomBinding(
+	ctx context.Context, room *models.Room, createdBy *commonv1.ContactLink,
+) (*bindingChange, error) {
+	binding, err := rb.prepareSocialTraderBinding(ctx, createdBy.GetProfileId(), room.GetID(), room.Properties)
+	if err != nil {
+		return nil, err
+	}
+	if binding != nil && binding.unbind {
+		clearPoolHint(room.Properties)
+	}
+	return binding, nil
+}
+
+// answerExistingRoom answers a CreateRoom whose id a room already holds: the
+// creator (or a member) gets that room; a creator retrying after the room was
+// saved but before its binding was recorded gets the binding now, validated
+// for this very room.
+func (rb *roomBusiness) answerExistingRoom(
+	ctx context.Context, existing *models.Room, binding *bindingChange, createdBy *commonv1.ContactLink,
+) (*chatv1.Room, error) {
+	if !rb.mayAnswerExisting(ctx, existing, createdBy) {
+		return nil, service.ErrRoomIDTaken
+	}
+	if err := rb.recordSocialTraderBinding(ctx, existing.GetID(), binding, createdBy.GetProfileId()); err != nil {
+		return nil, err
+	}
+	return rb.withStawiBinding(ctx, existing.ToAPI())
 }
 
 // resolvePersonsDM answers a person's DM with other, WhatsApp-like: the
@@ -579,21 +602,23 @@ func (rb *roomBusiness) UpdateRoom(
 	if req.GetDescription() != "" {
 		room.Description = req.GetDescription()
 	}
-	var pool *socialtrader.Pool
+	var binding *bindingChange
 	if metadata := req.GetMetadata(); metadata != nil {
-		pool, err = rb.applyMetadataChange(ctx, room, metadata.AsMap(), updatedBy.GetProfileId())
+		binding, err = rb.applyMetadataChange(ctx, room, metadata.AsMap(), updatedBy.GetProfileId())
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Save the updated room
+	// The binding (the truth) is recorded before the metadata (the hint): a
+	// failure between the two leaves a bound room whose hint a retry fixes,
+	// never a hint without its binding.
+	if err = rb.recordSocialTraderBinding(ctx, room.GetID(), binding, updatedBy.GetProfileId()); err != nil {
+		return nil, err
+	}
 	_, err = rb.roomRepo.Update(ctx, room)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update room: %w", err)
-	}
-	if err = rb.recordSocialTraderBinding(ctx, room.GetID(), pool, updatedBy.GetProfileId()); err != nil {
-		return nil, err
 	}
 
 	// Send room updated event
@@ -609,15 +634,15 @@ func (rb *roomBusiness) UpdateRoom(
 
 // applyMetadataChange merges a metadata change into room after refusing what
 // the caller may not write: stawi.* keys on a Stawi room, and a pool binding
-// the caller is not entitled to. It returns the pool to record once the room
-// is saved, nil when none was requested.
+// the caller is not entitled to. It returns the binding change to record
+// once the room is saved, nil when the change says nothing about it.
 func (rb *roomBusiness) applyMetadataChange(
 	ctx context.Context, room *models.Room, changes map[string]any, callerProfileID string,
-) (*socialtrader.Pool, error) {
+) (*bindingChange, error) {
 	if err := rb.refuseStawiMetadataOnStawiRoom(ctx, room.GetID(), changes); err != nil {
 		return nil, err
 	}
-	pool, err := rb.prepareSocialTraderBinding(ctx, callerProfileID, room.GetID(), changes)
+	binding, err := rb.prepareSocialTraderBinding(ctx, callerProfileID, room.GetID(), changes)
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +650,10 @@ func (rb *roomBusiness) applyMetadataChange(
 		room.Properties = data.JSONMap{}
 	}
 	maps.Copy(room.Properties, changes)
-	return pool, nil
+	if binding != nil && binding.unbind {
+		clearPoolHint(room.Properties)
+	}
+	return binding, nil
 }
 
 func (rb *roomBusiness) DeleteRoom(

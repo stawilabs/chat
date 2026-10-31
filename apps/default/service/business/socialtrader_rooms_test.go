@@ -2,6 +2,7 @@ package business_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
@@ -35,8 +36,24 @@ type bindingFixture struct {
 	links    *socialtradertest.WalletLinks
 	bindings repository.SocialTraderRoomRepository
 	stawi    repository.StawiRoomRepository
+	subs     repository.RoomSubscriptionRepository
 	leader   *commonv1.ContactLink
 	member   *commonv1.ContactLink
+}
+
+// promote makes member an admin of roomID, as the owner would through
+// UpdateSubscriptionRole, so UpdateRoom reaches the binding checks.
+func (f *bindingFixture) promote(t *testing.T, roomID string, member *commonv1.ContactLink) error {
+	t.Helper()
+	subs, err := f.subs.GetByContactLinkAndRooms(f.ctx,
+		&commonv1.ContactLink{ProfileId: member.GetProfileId()}, roomID)
+	if err != nil {
+		return err
+	}
+	if len(subs) != 1 {
+		return fmt.Errorf("expected one subscription, got %d", len(subs))
+	}
+	return f.subs.UpdateRole(f.ctx, subs[0].GetID(), "admin")
 }
 
 // markStawiRoom makes the room a Stawi room (genesis prepared), as a
@@ -66,13 +83,15 @@ func (s *RoomBusinessTestSuite) newBindingFixture(
 	}
 	f.pools.Add(&socialtrader.Pool{Address: bindPool, Leader: bindLeaderWallet, MarketID: "0x01"})
 	f.links.Link(f.leader.GetProfileId(), bindLeaderWallet)
-	f.rb, f.bindings, f.stawi = s.setupBindingBusinessLayer(ctx, svc, f, configured)
+	f.rb, f.bindings, f.stawi, f.subs = s.setupBindingBusinessLayer(ctx, svc, f, configured)
 	return f
 }
 
 func (s *RoomBusinessTestSuite) setupBindingBusinessLayer(
 	ctx context.Context, svc *frame.Service, f *bindingFixture, configured bool,
-) (business.RoomBusiness, repository.SocialTraderRoomRepository, repository.StawiRoomRepository) {
+) (business.RoomBusiness, repository.SocialTraderRoomRepository, repository.StawiRoomRepository,
+	repository.RoomSubscriptionRepository,
+) {
 	workMan := svc.WorkManager()
 	evtsMan := svc.EventsManager()
 	dbPool := svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
@@ -94,7 +113,7 @@ func (s *RoomBusinessTestSuite) setupBindingBusinessLayer(
 	}
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
 		s.AuthzMiddleware, opts...)
-	return rb, bindings, stawiBindings
+	return rb, bindings, stawiBindings, subRepo
 }
 
 func poolMetadata(t *testing.T, pool string) *structpb.Struct {
@@ -251,5 +270,122 @@ func (s *RoomBusinessTestSuite) TestRoomBinding_StawiKeysAreNotWritableOnAStawiR
 		f.markStawiRoom(t, room.GetId())
 		_, err = f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{RoomId: room.GetId(), Metadata: stawiMeta}, f.leader)
 		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	})
+}
+
+// TestCreateRoom_RetryAfterBindingFailureBinds: a creator retrying CreateRoom
+// with the same id (the room exists, the binding does not) gets the room
+// bound; the existing-room answer re-validates and records the binding
+// (review finding: room and binding were not written together).
+func (s *RoomBusinessTestSuite) TestCreateRoom_RetryAfterBindingFailureBinds() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+		roomID := util.IDString()
+
+		plain, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Id: roomID, Name: "Traders"}, f.leader)
+		require.NoError(t, err)
+		require.Equal(t, roomID, plain.GetId())
+		binding, err := f.bindings.GetByRoomID(f.ctx, roomID)
+		require.NoError(t, err)
+		require.Nil(t, binding, "the first create asked for no pool")
+
+		again, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Id: roomID, Name: "Traders", Metadata: poolMetadata(t, bindPool),
+		}, f.leader)
+		require.NoError(t, err)
+		require.Equal(t, roomID, again.GetId())
+		binding, err = f.bindings.GetByRoomID(f.ctx, roomID)
+		require.NoError(t, err)
+		require.NotNil(t, binding, "the retry binds the existing room")
+		require.Equal(t, bindPool, binding.PoolID)
+
+		// A non-leader retrying with a pool is still refused.
+		_, err = f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Id: roomID, Name: "Traders", Metadata: poolMetadata(t, bindPool),
+		}, f.member)
+		require.Error(t, err)
+	})
+}
+
+// TestUpdateRoom_BindingFailureLeavesMetadataUnchanged: when the binding
+// cannot be validated or recorded, the room's metadata is not changed either.
+func (s *RoomBusinessTestSuite) TestUpdateRoom_BindingFailureLeavesMetadataUnchanged() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+		room, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{Name: "Traders"}, f.leader)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(f.ctx, f.svc, room.GetId(), f.leader.GetProfileId(), t)
+
+		f.pools.Refuse(connect.NewError(connect.CodeUnavailable, "indexer down"))
+		_, err = f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{
+			RoomId: room.GetId(), Name: "Renamed", Metadata: poolMetadata(t, bindPool),
+		}, f.leader)
+		require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err), "%v", err)
+
+		got, err := f.rb.GetRoom(f.ctx, room.GetId(), f.leader)
+		require.NoError(t, err)
+		require.Equal(t, "Traders", got.GetName(), "nothing of the update was saved")
+		require.Empty(t, got.GetMetadata().GetFields()[events.SocialTraderPoolMetadataKey].GetStringValue())
+		binding, err := f.bindings.GetByRoomID(f.ctx, room.GetId())
+		require.NoError(t, err)
+		require.Nil(t, binding)
+	})
+}
+
+// TestRoomBinding_RebindByOtherLeaderRefused: a room bound by one leader
+// cannot be re-bound to another pool by a different leader, even one who
+// leads that other pool (review finding: Upsert overwrote any binding).
+func (s *RoomBusinessTestSuite) TestRoomBinding_RebindByOtherLeaderRefused() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+		room, err := f.createBound(t, f.leader, bindPool)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(f.ctx, f.svc, room.GetId(), f.member.GetProfileId(), t)
+
+		otherPool := "0x00000000000000000000000000000000000000e6"
+		otherWallet := "0x0000000000000000000000000000000000000e6e"
+		f.pools.Add(&socialtrader.Pool{Address: otherPool, Leader: otherWallet, MarketID: "0x01"})
+		f.links.Link(f.member.GetProfileId(), otherWallet)
+		// The member is made an admin so UpdateRoom reaches the binding check.
+		require.NoError(t, f.promote(t, room.GetId(), f.member))
+
+		_, err = f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{
+			RoomId: room.GetId(), Metadata: poolMetadata(t, otherPool),
+		}, f.member)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+		binding, err := f.bindings.GetByRoomID(f.ctx, room.GetId())
+		require.NoError(t, err)
+		require.Equal(t, bindPool, binding.PoolID, "the original binding stands")
+		require.Equal(t, f.leader.GetProfileId(), binding.LeaderProfileID)
+	})
+}
+
+// TestRoomBinding_ClearingKeyUnbinds: the bound leader clears the key to
+// unbind (the row is deleted and the hint removed); anyone else clearing it
+// is refused and the binding stands.
+func (s *RoomBusinessTestSuite) TestRoomBinding_ClearingKeyUnbinds() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+		room, err := f.createBound(t, f.leader, bindPool)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(f.ctx, f.svc, room.GetId(), f.leader.GetProfileId(), t)
+		s.WaitForMemberSubscription(f.ctx, f.svc, room.GetId(), f.member.GetProfileId(), t)
+		require.NoError(t, f.promote(t, room.GetId(), f.member))
+
+		cleared, err := structpb.NewStruct(map[string]any{events.SocialTraderPoolMetadataKey: ""})
+		require.NoError(t, err)
+
+		_, err = f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{RoomId: room.GetId(), Metadata: cleared}, f.member)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+		binding, err := f.bindings.GetByRoomID(f.ctx, room.GetId())
+		require.NoError(t, err)
+		require.NotNil(t, binding, "a non-leader cannot unbind")
+
+		got, err := f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{RoomId: room.GetId(), Metadata: cleared}, f.leader)
+		require.NoError(t, err)
+		require.Empty(t, got.GetMetadata().GetFields()[events.SocialTraderPoolMetadataKey].GetStringValue())
+		binding, err = f.bindings.GetByRoomID(f.ctx, room.GetId())
+		require.NoError(t, err)
+		require.Nil(t, binding, "the leader unbound the room")
 	})
 }
