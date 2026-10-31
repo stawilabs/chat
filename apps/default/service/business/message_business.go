@@ -39,6 +39,7 @@ type messageBusiness struct {
 	callPolicy      *callPolicy
 	stawi           *stawiRelay
 	cardChecker     FunctionPermissionChecker
+	poolBindings    repository.SocialTraderRoomRepository
 
 	payloadConverter *models.PayloadConverter
 }

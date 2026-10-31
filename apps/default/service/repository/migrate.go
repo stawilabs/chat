@@ -32,5 +32,6 @@ func Migrate(ctx context.Context, dbManager datastore.Manager, migrationPath str
 		&models.StawiChainFact{},
 		&models.StawiRoomMember{},
 		&models.StawiKetoOp{},
+		&models.SocialTraderRoomBinding{},
 	)
 }

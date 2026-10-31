@@ -16,6 +16,8 @@ require (
 	buf.build/gen/go/stawi/chat/protocolbuffers/go v1.36.12-20261020134229-99e7af4fee39.2
 	buf.build/gen/go/stawi/finance/connectrpc/go/v2 v2.0.1-20261020124957-ee5fb6daabd4.1
 	buf.build/gen/go/stawi/finance/protocolbuffers/go v1.36.12-20261020124957-ee5fb6daabd4.2
+	buf.build/gen/go/stawi/socialtrader/connectrpc/go/v2 v2.0.0-00010101000000-000000000000
+	buf.build/gen/go/stawi/socialtrader/protocolbuffers/go v0.0.0-00010101000000-000000000000
 	buf.build/go/protovalidate v1.4.0
 	connectrpc.com/connect/v2 v2.0.1
 	connectrpc.com/otelconnect v0.12.0
@@ -166,4 +168,11 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.6.3 // indirect
+)
+
+// The socialtrader protos are vendored (gen/go/socialtrader), not yet
+// published to the BSR; a build outside the workspace resolves them here.
+replace (
+	buf.build/gen/go/stawi/socialtrader/connectrpc/go/v2 => ./gen/go/socialtrader/connectrpc
+	buf.build/gen/go/stawi/socialtrader/protocolbuffers/go => ./gen/go/socialtrader/protocolbuffers
 )

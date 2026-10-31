@@ -37,17 +37,19 @@ type stawiFixture struct {
 	guardians *stawitest.GuardianKeys
 	bindings  repository.StawiRoomRepository
 	calls     repository.StawiRoomCallRepository
-	subRepo   repository.RoomSubscriptionRepository
-	roomRepo  repository.RoomRepository
-	dbPool    pool.Pool
-	workMan   workerpool.Manager
-	authz     authz.Middleware
-	keto      security.Authorizer
-	roomID    string
-	alice     *commonv1.ContactLink
-	bob       *commonv1.ContactLink
-	aliceSub  string
-	bobSub    string
+	// poolBindings records trading-group (socialtrader) room bindings.
+	poolBindings repository.SocialTraderRoomRepository
+	subRepo      repository.RoomSubscriptionRepository
+	roomRepo     repository.RoomRepository
+	dbPool       pool.Pool
+	workMan      workerpool.Manager
+	authz        authz.Middleware
+	keto         security.Authorizer
+	roomID       string
+	alice        *commonv1.ContactLink
+	bob          *commonv1.ContactLink
+	aliceSub     string
+	bobSub       string
 }
 
 func (s *MessageBusinessTestSuite) newStawiFixture(t *testing.T, dep *definition.DependencyOption) *stawiFixture {
@@ -92,6 +94,7 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
 	f.subRepo = repository.NewRoomSubscriptionRepository(ctx, dbPool, workMan)
 	f.bindings = repository.NewStawiRoomRepository(ctx, dbPool, workMan)
+	f.poolBindings = repository.NewSocialTraderRoomRepository(ctx, dbPool, workMan)
 	f.calls = repository.NewStawiRoomCallRepository(ctx, dbPool, workMan)
 
 	subscriptionSvc := business.NewSubscriptionService(svc, f.subRepo)
@@ -99,7 +102,8 @@ func (s *MessageBusinessTestSuite) setupStawiBusinessLayer(
 		business.WithStawiRooms(business.StawiDeps{
 			Rooms: f.rooms, Accounts: f.accounts, RoomRepo: roomRepo, Bindings: f.bindings, CallRepo: f.calls,
 		}),
-		business.WithServiceCards(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)))
+		business.WithServiceCards(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)),
+		business.WithSocialTraderBindings(f.poolBindings))
 	rb := business.NewRoomBusiness(svc, roomRepo, eventRepo, f.subRepo, nil, subscriptionSvc, evtsMan, mb, nil,
 		s.AuthzMiddleware, business.WithStawiBindings(f.bindings),
 		business.WithPersonalRooms(authorizer.NewFunctionChecker(f.keto, business.ServiceNamespace)),

@@ -6,4 +6,6 @@ use (
 	.
 	./gen/go/connectrpc
 	./gen/go/protocolbuffers
+	./gen/go/socialtrader/connectrpc
+	./gen/go/socialtrader/protocolbuffers
 )

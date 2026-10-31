@@ -28,10 +28,13 @@ const (
 	// SocialTraderPoolMetadataKey) publishes nothing.
 	GroupMetadataKey = "stawi.group_id"
 
-	// SocialTraderPoolMetadataKey opts a room into the fact for the
-	// socialtrader module; its value is the pool address (lowercase hex) and
-	// travels as the fact's group_id. When a room carries both keys the
-	// Stawi key wins and exactly one fact is published.
+	// SocialTraderPoolMetadataKey is the room metadata key a client sets to
+	// ask for a room to be bound to a socialtrader pool, and shows as a hint.
+	// It is never what opts the room into the fact: that is the server-side
+	// binding (socialtrader_room_bindings) written only after the pool's
+	// leader was confirmed, whose pool id travels as the fact's group_id.
+	// A room with a Stawi group and a pool binding publishes exactly one
+	// fact, for the Stawi group.
 	SocialTraderPoolMetadataKey = "socialtrader.pool_id"
 
 	// FactDomainStawi and FactDomainSocialTrader name the module a fact was
@@ -106,6 +109,7 @@ type FormSubmissionResultFact struct {
 // deliver.
 type RoomEventFactPublisher struct {
 	roomRepo         repository.RoomRepository
+	poolBindings     repository.SocialTraderRoomRepository
 	eventRepo        repository.RoomEventRepository
 	payloadConverter *models.PayloadConverter
 	queueMan         queue.Manager
@@ -119,15 +123,18 @@ type RoomEventFactPublisher struct {
 }
 
 // NewRoomEventFactPublisher builds the publisher. An empty queueName disables
-// publication entirely (the deployment has no consumer configured).
+// publication entirely (the deployment has no consumer configured). A nil
+// poolBindings publishes no socialtrader facts.
 func NewRoomEventFactPublisher(
 	roomRepo repository.RoomRepository,
+	poolBindings repository.SocialTraderRoomRepository,
 	eventRepo repository.RoomEventRepository,
 	queueMan queue.Manager,
 	queueName string,
 ) *RoomEventFactPublisher {
 	return &RoomEventFactPublisher{
 		roomRepo:         roomRepo,
+		poolBindings:     poolBindings,
 		eventRepo:        eventRepo,
 		payloadConverter: models.NewPayloadConverter(),
 		queueMan:         queueMan,
@@ -186,45 +193,45 @@ func (p *RoomEventFactPublisher) Publish(ctx context.Context, link *eventsv1.Lin
 }
 
 // groupOf returns the room's opted-in group id and the module domain it
-// belongs to, or "" when the room did not opt in.
+// belongs to, or "" when the room did not opt in: the Stawi group from the
+// room's metadata first, else the pool from the room's server-side binding.
+// Pool metadata without a binding row opts nothing in.
 func (p *RoomEventFactPublisher) groupOf(ctx context.Context, roomID string) (string, string, error) {
 	room, err := p.roomRepo.GetByID(ctx, roomID)
 	if err != nil {
 		return "", "", err
 	}
-	groupID, domain := groupIDFromProperties(room)
-	return groupID, domain, nil
+	if groupID := groupIDFromProperties(room); groupID != "" {
+		return groupID, FactDomainStawi, nil
+	}
+	if p.poolBindings == nil {
+		return "", "", nil
+	}
+	binding, err := p.poolBindings.GetByRoomID(ctx, roomID)
+	if err != nil {
+		return "", "", err
+	}
+	if binding == nil || binding.PoolID == "" {
+		return "", "", nil
+	}
+	return binding.PoolID, FactDomainSocialTrader, nil
 }
 
-// groupIDFromProperties reads the opt-in key from room metadata: the Stawi
-// group first (flat "stawi.group_id" or nested {"stawi": {"group_id": ...}}),
-// then the socialtrader pool (flat "socialtrader.pool_id" or nested
-// {"socialtrader": {"pool_id": ...}}). It returns the id and its domain, or
-// two empty strings when the room did not opt in.
-func groupIDFromProperties(room *models.Room) (string, string) {
+// groupIDFromProperties reads GroupMetadataKey from room metadata, accepting
+// both the flat key ("stawi.group_id") and the nested form
+// ({"stawi": {"group_id": ...}}) a client may have written.
+func groupIDFromProperties(room *models.Room) string {
 	if room == nil || room.Properties == nil {
-		return "", ""
+		return ""
 	}
-	if value := metadataValue(room.Properties, GroupMetadataKey, "stawi", "group_id"); value != "" {
-		return value, FactDomainStawi
-	}
-	if value := metadataValue(room.Properties, SocialTraderPoolMetadataKey, "socialtrader", "pool_id"); value != "" {
-		return value, FactDomainSocialTrader
-	}
-	return "", ""
-}
-
-// metadataValue reads flatKey from properties, falling back to the nested
-// form properties[parent][child].
-func metadataValue(properties map[string]any, flatKey, parent, child string) string {
-	if value, ok := properties[flatKey].(string); ok && value != "" {
+	if value, ok := room.Properties[GroupMetadataKey].(string); ok {
 		return value
 	}
-	nested, ok := properties[parent].(map[string]any)
+	nested, ok := room.Properties["stawi"].(map[string]any)
 	if !ok {
 		return ""
 	}
-	value, _ := nested[child].(string)
+	value, _ := nested["group_id"].(string)
 	return value
 }
 

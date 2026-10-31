@@ -31,6 +31,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/business"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	"github.com/stawilabs/chat/apps/default/service/socialtrader"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/pkg/chatutil"
 	"github.com/stawilabs/chat/pkg/connectserver"
@@ -70,6 +71,19 @@ type serverOptions struct {
 	stawiAccounts   stawi.AccountResolver
 	profileAccounts stawi.ProfileAccounts
 	guardianKeys    stawi.GuardianKeys
+	pools           socialtrader.Pools
+	walletLinks     socialtrader.WalletLinks
+}
+
+// WithSocialTrader gives the server the socialtrader service's pool and
+// wallet-link lookups, enabling rooms to be bound to pools by their leader.
+// Without it (nil clients) every binding is refused; rooms bound earlier are
+// still recognised from their server-side binding.
+func WithSocialTrader(pools socialtrader.Pools, links socialtrader.WalletLinks) ServerOption {
+	return func(o *serverOptions) {
+		o.pools = pools
+		o.walletLinks = links
+	}
 }
 
 // WithStawi gives the server settlement's RoomService and the profile account
@@ -121,6 +135,7 @@ func NewChatServer(
 	proposalRepo := repository.NewProposalRepository(ctx, dbPool, workMan)
 	deviceReplayRepo := repository.NewDeviceReplayRepository(ctx, dbPool, workMan)
 	stawiBindings := repository.NewStawiRoomRepository(ctx, dbPool, workMan)
+	poolBindings := repository.NewSocialTraderRoomRepository(ctx, dbPool, workMan)
 
 	rawPresenceCache, ok := service.GetRawCache("presence")
 	if !ok {
@@ -150,7 +165,8 @@ func NewChatServer(
 			Bindings: stawiBindings,
 			CallRepo: repository.NewStawiRoomCallRepository(ctx, dbPool, workMan),
 		}),
-		business.WithServiceCards(serviceChecker), // stawi_card_post gate
+		business.WithServiceCards(serviceChecker), // stawi_card_post / socialtrader_card_post gate
+		business.WithSocialTraderBindings(poolBindings),
 	)
 	connectBusiness := business.NewConnectBusiness(
 		eventsMan, subRepo, eventRepo, subscriptionSvc, authzMiddleware, presenceCache,
@@ -170,6 +186,7 @@ func NewChatServer(
 		business.WithPersonalRooms(serviceChecker), // stawi_room_resolve gate
 		business.WithProfileAccounts(options.profileAccounts),
 		business.WithGuardianKeys(options.guardianKeys),
+		business.WithSocialTrader(options.pools, options.walletLinks, poolBindings),
 	)
 	proposalManagement := business.NewRoomProposalManagement(
 		proposalRepo,

@@ -94,6 +94,7 @@ type factHarness struct {
 	relay     *events.OutboxRelay
 	publisher *recordingPublisher
 	roomRepo  repository.RoomRepository
+	bindings  repository.SocialTraderRoomRepository
 	eventRepo repository.RoomEventRepository
 	outbox    repository.RoomOutboxRepository
 }
@@ -108,16 +109,18 @@ func (s *RoomEventPublishedTestSuite) newHarness(
 	roomRepo := repository.NewRoomRepository(ctx, dbPool, workMan)
 	eventRepo := repository.NewRoomEventRepository(ctx, dbPool, workMan)
 	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
+	bindings := repository.NewSocialTraderRoomRepository(ctx, dbPool, workMan)
 
 	publisher := &recordingPublisher{}
 	factPublisher := events.NewRoomEventFactPublisher(
-		roomRepo, eventRepo, &stubQueueManager{publisher: publisher}, factQueueName,
+		roomRepo, bindings, eventRepo, &stubQueueManager{publisher: publisher}, factQueueName,
 	)
 
 	return &factHarness{
 		relay:     events.NewOutboxRelay(outboxRepo, svc.EventsManager(), factPublisher),
 		publisher: publisher,
 		roomRepo:  roomRepo,
+		bindings:  bindings,
 		eventRepo: eventRepo,
 		outbox:    outboxRepo,
 	}
@@ -130,6 +133,15 @@ func (h *factHarness) seedRoom(ctx context.Context, t *testing.T, properties dat
 	room.GenID(ctx)
 	require.NoError(t, h.roomRepo.Create(ctx, room))
 	return room.GetID()
+}
+
+// bindPool records the server-side pool binding of a room, as a validated
+// CreateRoom/UpdateRoom by the pool leader would.
+func (h *factHarness) bindPool(ctx context.Context, t *testing.T, roomID, pool string) {
+	t.Helper()
+	require.NoError(t, h.bindings.Upsert(ctx, &models.SocialTraderRoomBinding{
+		RoomID: roomID, PoolID: pool, LeaderProfileID: "leader", BoundAt: time.Now(),
+	}))
 }
 
 // seedEvent persists a room event plus its outbox row, exactly as the message
@@ -300,9 +312,9 @@ func (s *RoomEventPublishedTestSuite) TestRoomChangeAndFormFactsCarryDraftFields
 	})
 }
 
-// TestFactPublisher_PoolIDOptsRoomIn: a room carrying only
-// socialtrader.pool_id publishes one fact whose group_id is the pool address
-// and whose domain names the socialtrader module.
+// TestFactPublisher_PoolIDOptsRoomIn: a room bound to a pool (binding row,
+// with the metadata hint) publishes one fact whose group_id is the pool
+// address and whose domain names the socialtrader module.
 func (s *RoomEventPublishedTestSuite) TestFactPublisher_PoolIDOptsRoomIn() {
 	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
 		ctx, svc := s.CreateService(t, dep)
@@ -310,6 +322,7 @@ func (s *RoomEventPublishedTestSuite) TestFactPublisher_PoolIDOptsRoomIn() {
 
 		pool := "0x00000000000000000000000000000000000000a1"
 		room := h.seedRoom(ctx, t, data.JSONMap{events.SocialTraderPoolMetadataKey: pool})
+		h.bindPool(ctx, t, room, pool)
 		eventID := h.seedEvent(ctx, t, room, votePayload("motion-7", "yes"))
 
 		require.NoError(t, h.relay.Drain(ctx))
@@ -330,10 +343,12 @@ func (s *RoomEventPublishedTestSuite) TestFactPublisher_BothKeysPublishOnceWithS
 		h := s.newHarness(ctx, svc)
 
 		groupID := util.IDString()
+		pool := "0x00000000000000000000000000000000000000b2"
 		room := h.seedRoom(ctx, t, data.JSONMap{
 			events.GroupMetadataKey:            groupID,
-			events.SocialTraderPoolMetadataKey: "0x00000000000000000000000000000000000000b2",
+			events.SocialTraderPoolMetadataKey: pool,
 		})
+		h.bindPool(ctx, t, room, pool)
 		h.seedEvent(ctx, t, room, votePayload("motion-8", "no"))
 
 		require.NoError(t, h.relay.Drain(ctx))
@@ -361,5 +376,33 @@ func (s *RoomEventPublishedTestSuite) TestFactPublisher_StawiRoomCarriesStawiDom
 		require.Len(t, h.publisher.published, 1)
 		require.Equal(t, "grp-9", h.publisher.published[0].GroupID)
 		require.Equal(t, events.FactDomainStawi, h.publisher.published[0].Domain)
+	})
+}
+
+// TestFactPublisher_SocialTraderGroupIDComesFromBindingTable: the pool id a
+// fact carries is the server-side binding's, never the room's metadata. A
+// room whose metadata names a pool without a binding row publishes nothing;
+// a bound room publishes the bound pool even when its metadata hint differs.
+func (s *RoomEventPublishedTestSuite) TestFactPublisher_SocialTraderGroupIDComesFromBindingTable() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		ctx, svc := s.CreateService(t, dep)
+		h := s.newHarness(ctx, svc)
+
+		claimed := "0x00000000000000000000000000000000000000c1"
+		bound := "0x00000000000000000000000000000000000000c2"
+		unbound := h.seedRoom(ctx, t, data.JSONMap{events.SocialTraderPoolMetadataKey: claimed})
+		h.seedEvent(ctx, t, unbound, votePayload("motion-10", "yes"))
+
+		mismatched := h.seedRoom(ctx, t, data.JSONMap{events.SocialTraderPoolMetadataKey: claimed})
+		h.bindPool(ctx, t, mismatched, bound)
+		eventID := h.seedEvent(ctx, t, mismatched, votePayload("motion-11", "yes"))
+
+		require.NoError(t, h.relay.Drain(ctx))
+
+		require.Len(t, h.publisher.published, 1, "metadata alone publishes nothing")
+		fact := h.publisher.published[0]
+		require.Equal(t, eventID, fact.EventID)
+		require.Equal(t, bound, fact.GroupID, "the binding row's pool, not the metadata's")
+		require.Equal(t, events.FactDomainSocialTrader, fact.Domain)
 	})
 }

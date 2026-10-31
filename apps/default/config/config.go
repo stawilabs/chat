@@ -26,6 +26,12 @@ type ChatConfig struct {
 	SettlementServiceURI                   string `envDefault:"" env:"SETTLEMENT_SERVICE_URI"`
 	SettlementServiceWorkloadAPITargetPath string `envDefault:"/ns/stawi/sa/service-settlement" env:"SETTLEMENT_SERVICE_WORKLOAD_API_TARGET_PATH"`
 
+	// Socialtrader is the trading-group service: chat asks it whether a pool
+	// exists and who leads it before binding a room to the pool. Empty
+	// disables bindings (development).
+	SocialTraderServiceURI                   string `envDefault:"" env:"SOCIALTRADER_SERVICE_URI"`
+	SocialTraderServiceWorkloadAPITargetPath string `envDefault:"/ns/socialtrader/sa/service-socialtrader" env:"SOCIALTRADER_SERVICE_WORKLOAD_API_TARGET_PATH"`
+
 	// Settlement's chain facts (finance.v1 events on svc.stawi.settlement.events)
 	// that chat's chain consumer applies to Stawi rooms.
 	QueueStawiFactsName string `envDefault:"stawi.settlement.facts"       env:"QUEUE_STAWI_FACTS_NAME"`

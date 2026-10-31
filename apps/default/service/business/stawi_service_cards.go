@@ -17,7 +17,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/stawilabs/chat/apps/default/service/events"
 	"github.com/stawilabs/chat/apps/default/service/models"
 	"github.com/stawilabs/chat/apps/default/service/repository"
 	"github.com/stawilabs/chat/pkg/chatutil"
@@ -48,6 +47,12 @@ type FunctionPermissionChecker interface {
 // WithServiceCards enables the service-caller card path, gated by checker.
 func WithServiceCards(checker FunctionPermissionChecker) MessageBusinessOption {
 	return func(mb *messageBusiness) { mb.cardChecker = checker }
+}
+
+// WithSocialTraderBindings lets the card path recognise trading-group rooms
+// from their server-side pool binding. Without it every pool card is refused.
+func WithSocialTraderBindings(bindings repository.SocialTraderRoomRepository) MessageBusinessOption {
+	return func(mb *messageBusiness) { mb.poolBindings = bindings }
 }
 
 // SendServiceEvents posts display-only cards (FINANCE_CARD) and TEXT into
@@ -137,23 +142,37 @@ func cardPermissionFor(payload *chatv1.Payload) string {
 	return PermissionStawiCardPost
 }
 
-// isSocialTraderCard reports whether payload is a pool card: TEXT in the
-// "json" format whose body is an object carrying a "socialtrader" object
-// with a kind. The card body is otherwise opaque to chat.
-func isSocialTraderCard(payload *chatv1.Payload) bool {
+// socialTraderCard is the part of a pool card chat reads: its kind and the
+// pool it is about. The body is otherwise opaque to chat.
+type socialTraderCard struct {
+	Kind string `json:"kind"`
+	Pool string `json:"pool"`
+}
+
+// parseSocialTraderCard returns the pool card in payload: TEXT in the "json"
+// format whose body is an object carrying a "socialtrader" object with a
+// kind. ok is false for anything else.
+func parseSocialTraderCard(payload *chatv1.Payload) (socialTraderCard, bool) {
 	text := payload.GetText()
 	if text == nil || text.GetFormat() != "json" {
-		return false
+		return socialTraderCard{}, false
 	}
 	var body struct {
-		SocialTrader *struct {
-			Kind string `json:"kind"`
-		} `json:"socialtrader"`
+		SocialTrader *socialTraderCard `json:"socialtrader"`
 	}
 	if err := json.Unmarshal([]byte(text.GetBody()), &body); err != nil {
-		return false
+		return socialTraderCard{}, false
 	}
-	return body.SocialTrader != nil && body.SocialTrader.Kind != ""
+	if body.SocialTrader == nil || body.SocialTrader.Kind == "" {
+		return socialTraderCard{}, false
+	}
+	return *body.SocialTrader, true
+}
+
+// isSocialTraderCard reports whether payload is a pool card.
+func isSocialTraderCard(payload *chatv1.Payload) bool {
+	_, ok := parseSocialTraderCard(payload)
+	return ok
 }
 
 // authorizeService returns the service principal in ctx holding permission
@@ -288,8 +307,8 @@ func (mb *messageBusiness) prepareServiceCard(
 			"the room is outside the caller's tenant and partition")
 	}
 
-	if isSocialTraderCard(reqEvt.GetPayload()) {
-		err = refuseUnlessPoolRoom(room)
+	if card, isPoolCard := parseSocialTraderCard(reqEvt.GetPayload()); isPoolCard {
+		err = refuseUnlessPoolRoom(ctx, mb.poolBindings, room, caller, card)
 	} else {
 		err = refuseUnlessCardRoom(ctx, mb.stawi.bindings, room, caller)
 	}
@@ -313,27 +332,39 @@ func (mb *messageBusiness) prepareServiceCard(
 	return event, nil
 }
 
+// refusePersonalRoom decides a card for a person's personal room: a DIRECT
+// room takes cards from any service of its tenancy holding the permit, not
+// only the one that resolved it; a bot room only from the service it belongs
+// to, the one its key names. The first result is false for a room that is
+// not personal, which the module's own binding then decides.
+func refusePersonalRoom(room *models.Room, caller *serviceCaller) (bool, error) {
+	if room.DirectKey == "" {
+		return false, nil
+	}
+	switch room.RoomType {
+	case models.RoomTypeDirect:
+		return true, nil
+	case models.RoomTypeBot:
+		if rest, isBot := strings.CutPrefix(room.DirectKey, "bot:"); isBot {
+			if owner, _, ok := strings.Cut(rest, ":"); ok && owner == caller.profileID {
+				return true, nil
+			}
+		}
+		return true, connect.NewError(connect.CodePermissionDenied,
+			"a bot room takes cards only from its own service")
+	default:
+		return false, nil
+	}
+}
+
 // refuseUnlessCardRoom refuses a card for a room (already known to be in the
 // caller's tenancy) that is neither a Stawi room on chain nor a person's
-// personal room. A DIRECT room takes cards from any service of its tenancy
-// holding stawi_card_post, not only the one that resolved it; a bot room only
-// from the service it belongs to, the one its key names.
+// personal room.
 func refuseUnlessCardRoom(
 	ctx context.Context, bindings repository.StawiRoomRepository, room *models.Room, caller *serviceCaller,
 ) error {
-	if room.DirectKey != "" {
-		switch room.RoomType {
-		case models.RoomTypeDirect:
-			return nil
-		case models.RoomTypeBot:
-			if rest, isBot := strings.CutPrefix(room.DirectKey, "bot:"); isBot {
-				if owner, _, ok := strings.Cut(rest, ":"); ok && owner == caller.profileID {
-					return nil
-				}
-			}
-			return connect.NewError(connect.CodePermissionDenied,
-				"a bot room takes cards only from its own service")
-		}
+	if handled, err := refusePersonalRoom(room, caller); handled {
+		return err
 	}
 	bound, err := bindings.IsBound(ctx, room.GetID())
 	if err != nil {
@@ -346,16 +377,34 @@ func refuseUnlessCardRoom(
 	return nil
 }
 
-// refuseUnlessPoolRoom refuses a pool card for a room that is not bound to a
-// pool through its socialtrader.pool_id metadata.
-func refuseUnlessPoolRoom(room *models.Room) error {
-	if room.Properties != nil {
-		if pool, ok := room.Properties[events.SocialTraderPoolMetadataKey].(string); ok && pool != "" {
-			return nil
-		}
+// refuseUnlessPoolRoom refuses a pool card for a room (already known to be in
+// the caller's tenancy) that is neither a trading group nor a person's
+// personal room. A trading group is a room with a server-side pool binding
+// (socialtrader_room_bindings), never one whose metadata merely names a pool,
+// and the card must be about the bound pool.
+func refuseUnlessPoolRoom(
+	ctx context.Context, bindings repository.SocialTraderRoomRepository,
+	room *models.Room, caller *serviceCaller, card socialTraderCard,
+) error {
+	if handled, err := refusePersonalRoom(room, caller); handled {
+		return err
 	}
-	return connect.NewError(connect.CodeFailedPrecondition,
-		"pool cards are posted only into rooms bound to a socialtrader pool")
+	if bindings == nil {
+		return connect.NewError(connect.CodeFailedPrecondition, "trading groups are not enabled")
+	}
+	binding, err := bindings.GetByRoomID(ctx, room.GetID())
+	if err != nil {
+		return fmt.Errorf("failed to check the room's pool binding: %w", err)
+	}
+	if binding == nil {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			"pool cards are posted only into rooms bound to a socialtrader pool")
+	}
+	if !strings.EqualFold(card.Pool, binding.PoolID) {
+		return connect.NewError(connect.CodePermissionDenied,
+			"the card is about a pool the room is not bound to")
+	}
+	return nil
 }
 
 // serviceCardLink is the outbox link of a service-posted event: no sending

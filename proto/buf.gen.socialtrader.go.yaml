@@ -1,0 +1,37 @@
+# Vendors the socialtrader.v1 Go modules into gen/go/socialtrader/
+# (protocolbuffers: messages; connectrpc: Connect clients), which go.work and
+# the replace directives in go.mod use in place of the not-yet-published
+# buf.build/gen/go/stawi/socialtrader modules. The protos live in the
+# socialtrader repository; run from this repository's root against a checkout
+# of its proto directory:
+#
+#   buf generate /home/j/code/stawilabs/socialtrader-service/proto \
+#     --template proto/buf.gen.socialtrader.go.yaml
+#
+# Managed mode maps the module and its dependencies onto the import paths of
+# the BSR Go modules, so the vendored modules stay interchangeable with the
+# published ones once the protos are pushed. Run goimports over the output
+# afterwards.
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      module: buf.build/stawi/socialtrader
+      value: buf.build/gen/go/stawi/socialtrader/protocolbuffers/go
+    - file_option: go_package_prefix
+      module: buf.build/antinvestor/common
+      value: buf.build/gen/go/antinvestor/common/protocolbuffers/go
+    - file_option: go_package_prefix
+      module: buf.build/bufbuild/protovalidate
+      value: buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go
+    - file_option: go_package_prefix
+      module: buf.build/gnostic/gnostic
+      value: buf.build/gen/go/gnostic/gnostic/protocolbuffers/go
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.36.12
+    out: gen/go/socialtrader/protocolbuffers
+    opt: paths=source_relative
+  - remote: buf.build/connectrpc/go:v2.0.0
+    out: gen/go/socialtrader/connectrpc
+    opt: paths=source_relative

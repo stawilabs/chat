@@ -15,6 +15,7 @@ import (
 	"buf.build/gen/go/stawi/chat/connectrpc/go/v2/chat/v1/chatv1connect"
 	chatpb "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"buf.build/gen/go/stawi/finance/connectrpc/go/v2/settlement/v1/settlementv1connect"
+	"buf.build/gen/go/stawi/socialtrader/connectrpc/go/v2/socialtrader/v1/socialtraderv1connect"
 	"connectrpc.com/connect/v2"
 	"github.com/antinvestor/common/v3"
 	"github.com/antinvestor/common/v3/connection"
@@ -41,6 +42,7 @@ import (
 	"github.com/stawilabs/chat/apps/default/service/health"
 	"github.com/stawilabs/chat/apps/default/service/queues"
 	"github.com/stawilabs/chat/apps/default/service/repository"
+	stclient "github.com/stawilabs/chat/apps/default/service/socialtrader/client"
 	"github.com/stawilabs/chat/apps/default/service/stawi"
 	"github.com/stawilabs/chat/apps/default/service/stawi/settlement"
 	"github.com/stawilabs/chat/pkg/connectserver"
@@ -125,6 +127,7 @@ func runService(ctx context.Context) error {
 	authzMiddleware := authz.NewMiddleware(auth)
 
 	stawiChain, stawiServerOpts := setupStawi(ctx, &cfg, dbPool, workMan, queueMan, profileCli, authzMiddleware)
+	stawiServerOpts = append(stawiServerOpts, setupSocialTrader(ctx, cfg))
 	connectHandler := setupConnectServer(ctx, svc, notificationCli, profileCli, authzMiddleware, stawiServerOpts...)
 	dlp := queues.NewDeadLetterPublisher(&cfg, queueMan)
 	deadLetterRepo := repository.NewDeadLetterRepository(ctx, dbPool, workMan)
@@ -207,6 +210,7 @@ func outboxRelayOption(
 	outboxRepo := repository.NewRoomOutboxRepository(ctx, dbPool, workMan)
 	factPublisher := events.NewRoomEventFactPublisher(
 		repository.NewRoomRepository(ctx, dbPool, workMan),
+		repository.NewSocialTraderRoomRepository(ctx, dbPool, workMan),
 		repository.NewRoomEventRepository(ctx, dbPool, workMan),
 		queueMan,
 		cfg.QueueRoomEventPublishedName,
@@ -309,6 +313,32 @@ func setupSettlement(
 	}
 	return settlement.NewRooms(roomsCli), settlement.NewProfileAccounts(accountsCli),
 		settlement.NewGuardianKeys(accountsCli), nil
+}
+
+// setupSocialTrader connects to the socialtrader service's PoolService (as
+// chat's service principal) and LinkService (without credentials of its own:
+// the adapter forwards the caller's session token, so the service answers the
+// caller's linked wallet). An empty endpoint is a development posture: no room
+// can then be bound to a pool, while rooms bound earlier stay recognised.
+func setupSocialTrader(ctx context.Context, cfg aconfig.ChatConfig) handlers.ServerOption {
+	if cfg.SocialTraderServiceURI == "" {
+		util.Log(ctx).Warn("main -- no socialtrader endpoint; trading-group bindings are refused")
+		return handlers.WithSocialTrader(nil, nil)
+	}
+	target := common.ServiceTarget{
+		Endpoint:              cfg.SocialTraderServiceURI,
+		WorkloadAPITargetPath: cfg.SocialTraderServiceWorkloadAPITargetPath,
+	}
+	poolsCli, err := connection.NewServiceClient(ctx, &cfg, target, socialtraderv1connect.NewPoolServiceClient)
+	if err != nil {
+		util.Log(ctx).WithError(err).Fatal("main -- could not set up the socialtrader pool client")
+	}
+	linksCli, err := connection.NewServiceClient(ctx, &cfg, target, socialtraderv1connect.NewLinkServiceClient,
+		common.WithoutAuthentication())
+	if err != nil {
+		util.Log(ctx).WithError(err).Fatal("main -- could not set up the socialtrader link client")
+	}
+	return handlers.WithSocialTrader(stclient.NewPools(poolsCli), stclient.NewWalletLinks(linksCli))
 }
 
 // setupStawi wires Stawi rooms: settlement relays room acts and answers DM
