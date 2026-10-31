@@ -2,75 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stawi/features/socialtrader/data/wallet_service.dart';
 
-/// A signer standing in for the browser's injected wallet.
-class FakeWalletPlatform implements WalletPlatform {
-  FakeWalletPlatform({this.address = _address, this.failWith});
-
-  static const _address = '0x1111111111111111111111111111111111111111';
-
-  final String address;
-  Exception? failWith;
-  final sent = <PreparedTx>[];
-  final signed = <String>[];
-
-  @override
-  bool get canSign => true;
-
-  @override
-  String get signerLabel => 'Fake wallet';
-
-  @override
-  Future<String> connect() async {
-    if (failWith case final e?) throw e;
-    return address;
-  }
-
-  @override
-  Future<String> sendTransaction({
-    required String from,
-    required PreparedTx tx,
-  }) async {
-    if (failWith case final e?) throw e;
-    sent.add(tx);
-    return '0xhash${sent.length}';
-  }
-
-  @override
-  Future<String> personalSign({
-    required String from,
-    required String message,
-  }) async {
-    if (failWith case final e?) throw e;
-    signed.add(message);
-    return '0xsig';
-  }
-}
-
-/// A platform that cannot sign (mobile without WalletConnect).
-class ReadOnlyPlatform implements WalletPlatform {
-  @override
-  bool get canSign => false;
-
-  @override
-  String get signerLabel => 'read-only';
-
-  @override
-  Future<String> connect() => throw const WalletUnavailableException(
-    'Connect on web to sign',
-  );
-
-  @override
-  Future<String> sendTransaction({
-    required String from,
-    required PreparedTx tx,
-  }) => throw const WalletUnavailableException('Connect on web to sign');
-
-  @override
-  Future<String> personalSign({
-    required String from,
-    required String message,
-  }) => throw const WalletUnavailableException('Connect on web to sign');
-}
+import '../support/fake_wallet_platform.dart';
 
 const tx = PreparedTx(
   to: '0x2222222222222222222222222222222222222222',
@@ -103,7 +35,7 @@ void main() {
 
     await wallet.connect();
     final state = container.read(walletControllerProvider);
-    expect(state.address, FakeWalletPlatform._address);
+    expect(state.address, FakeWalletPlatform.defaultAddress);
     expect(state.isConnected, isTrue);
     expect(state.canSign, isTrue);
     expect(state.shortAddress, '0x1111…1111');
@@ -114,7 +46,7 @@ void main() {
   });
 
   test('walletService_readOnlyCannotSend', () async {
-    final container = containerWith(ReadOnlyPlatform());
+    final container = containerWith(ReadOnlyWalletPlatform());
     final wallet = container.read(walletControllerProvider.notifier);
 
     wallet.setReadOnlyAddress('0x3333333333333333333333333333333333333333');
@@ -161,7 +93,9 @@ void main() {
   });
 
   test('walletService_connectFailureIsKeptAsError', () async {
-    final platform = FakeWalletPlatform(failWith: const WalletUnavailableException('No wallet'));
+    final platform = FakeWalletPlatform(
+      failWith: const WalletUnavailableException('No wallet'),
+    );
     final container = containerWith(platform);
     final wallet = container.read(walletControllerProvider.notifier);
 

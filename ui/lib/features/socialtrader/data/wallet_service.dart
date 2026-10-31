@@ -88,7 +88,10 @@ abstract interface class WalletPlatform {
   Future<String> connect();
 
   /// Asks the signer to sign and send [tx] from [from]; returns the hash.
-  Future<String> sendTransaction({required String from, required PreparedTx tx});
+  Future<String> sendTransaction({
+    required String from,
+    required PreparedTx tx,
+  });
 
   /// Asks the signer for an EIP-191 personal_sign of [message] by [from].
   Future<String> personalSign({required String from, required String message});
@@ -109,6 +112,7 @@ class WalletState {
     this.connecting = false,
     this.error,
     this.signerLabel = '',
+    this.signerAvailable = false,
   });
 
   /// The connected or pasted address, lowercase hex; null when none.
@@ -123,6 +127,10 @@ class WalletState {
 
   /// The signer's name, for the settings screen.
   final String signerLabel;
+
+  /// Whether this platform has a signer at all (an injected wallet on web);
+  /// false where only a pasted, read-only address is possible.
+  final bool signerAvailable;
 
   bool get isConnected => address != null && address!.isNotEmpty;
 
@@ -150,6 +158,7 @@ class WalletState {
     connecting: connecting ?? this.connecting,
     error: clearError ? null : (error ?? this.error),
     signerLabel: signerLabel ?? this.signerLabel,
+    signerAvailable: signerAvailable,
   );
 }
 
@@ -175,7 +184,10 @@ class WalletController extends _$WalletController {
   @override
   WalletState build() {
     final signer = ref.watch(walletPlatformProvider);
-    return WalletState(signerLabel: signer.signerLabel);
+    return WalletState(
+      signerLabel: signer.signerLabel,
+      signerAvailable: signer.canSign,
+    );
   }
 
   WalletPlatform get _platform => ref.read(walletPlatformProvider);
@@ -206,7 +218,10 @@ class WalletController extends _$WalletController {
 
   /// Forgets the address and any error.
   void disconnect() {
-    state = WalletState(signerLabel: state.signerLabel);
+    state = WalletState(
+      signerLabel: state.signerLabel,
+      signerAvailable: state.signerAvailable,
+    );
   }
 
   /// Uses a pasted address for portfolio views only: it can never sign, even

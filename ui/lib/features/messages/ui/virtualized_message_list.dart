@@ -7,6 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../forms/ui/form_message_card.dart';
+import '../../socialtrader/data/pool_membership.dart';
+import '../../socialtrader/data/socialtrader_api.dart';
+import '../../socialtrader/ui/join_pool_sheet.dart';
+import '../../socialtrader/ui/leave_pool_sheet.dart';
 import '../../socialtrader/ui/pool_card_bubble.dart';
 import '../../stawi/ui/stawi_timeline.dart';
 import '../data/message_forwarding_service.dart';
@@ -592,6 +596,21 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
     );
   }
 
+  /// Opens the commit sheet for a pool card; the sheet asks the wallet to
+  /// sign, nothing is sent from here.
+  Future<void> _openJoinSheet(String pool) async {
+    final info = await ref.read(poolByAddressProvider(pool).future);
+    if (!mounted || info == null) return;
+    await showJoinPoolSheet(context, roomId: widget.message.roomId, pool: info);
+  }
+
+  Future<void> _openLeaveSheet(String pool) async {
+    final info = await ref.read(poolByAddressProvider(pool).future);
+    final membership = await ref.read(myMembershipProvider(pool).future);
+    if (!mounted || info == null) return;
+    await showLeavePoolSheet(context, pool: info, membership: membership);
+  }
+
   Widget _buildMessageWidget(
     bool isMe,
     bool canEdit,
@@ -642,8 +661,12 @@ class _OptimizedMessageItemState extends ConsumerState<_OptimizedMessageItem>
         return SystemEventBubble(event: widget.message);
       default:
         if (PoolCardBubble.cardOf(widget.message) != null) {
-          // The commit and redeem sheets are wired by the join/leave flow.
-          return PoolCardBubble(event: widget.message, isMe: isMe);
+          return PoolCardBubble(
+            event: widget.message,
+            isMe: isMe,
+            onCommit: (card) => _openJoinSheet(card.pool),
+            onRedeem: (card) => _openLeaveSheet(card.pool),
+          );
         }
         return MessageBubble(
           message: widget.message,

@@ -23,10 +23,19 @@ abstract interface class CommitmentSettings {
 /// Parses a commitment amount, or throws [ArgumentError] when it is not a
 /// positive decimal.
 String normalizeCommitment(String amount) {
+  final normalized = tryNormalizeCommitment(amount);
+  if (normalized == null) {
+    throw ArgumentError.value(amount, 'amount', 'must be a positive amount');
+  }
+  return normalized;
+}
+
+/// Parses a commitment amount; null when it is not a positive decimal.
+String? tryNormalizeCommitment(String amount) {
   final trimmed = amount.trim();
   final value = double.tryParse(trimmed);
   if (value == null || value.isNaN || value.isInfinite || value <= 0) {
-    throw ArgumentError.value(amount, 'amount', 'must be a positive amount');
+    return null;
   }
   return trimmed;
 }

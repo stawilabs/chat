@@ -21,6 +21,8 @@ import '../../rooms/data/room_providers.dart';
 import '../../rooms/data/room_repository.dart';
 import '../../rooms/data/room_subscription_service.dart';
 import '../../settings/data/settings_providers.dart';
+import '../../socialtrader/ui/join_pool_sheet.dart';
+import '../../socialtrader/ui/pool_header_chip.dart';
 import '../../stawi/ui/dm_money_sheet.dart';
 import '../../stawi/ui/dues_soon_card.dart';
 import '../data/message_providers.dart';
@@ -501,6 +503,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             children: [
               if (isGroupChat)
                 DuesSoonCard(roomId: widget.roomId, roomName: widget.roomName),
+              // Offers the trading group's join sheet once to a member who
+              // holds no shares yet; renders nothing itself.
+              if (isGroupChat) PoolJoinPromptGate(roomId: widget.roomId),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -696,6 +701,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         onPressed: _toggleEncryption,
       ),
+      PoolHeaderChip(roomId: widget.roomId),
       ChatMoneyButton(roomId: widget.roomId, roomName: widget.roomName),
       IconButton(
         icon: const Icon(Icons.videocam_outlined),
