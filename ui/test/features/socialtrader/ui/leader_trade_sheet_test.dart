@@ -139,6 +139,7 @@ void main() {
       'Sell inventory for redeems',
     );
     expect(sell, findsOneWidget);
+    await tester.ensureVisible(sell);
     await tester.tap(sell);
     await tester.pumpAndSettle();
     expect(api.leaderOrders.single.kind, LeaderOrderKind.sellForRedeems);
@@ -150,5 +151,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('size'), findsWidgets);
     expect(api.leaderOrders, isEmpty);
+  });
+
+  testWidgets('leaderSheet_settleQueueSendsBatch', (tester) async {
+    final (api, platform) = await pumpSheet(tester);
+    await tester.ensureVisible(find.byKey(const Key('leader-settle-queue')));
+    await tester.tap(find.byKey(const Key('leader-settle-queue')));
+    await tester.pumpAndSettle();
+    expect(api.leaderOrders.single.kind, LeaderOrderKind.settleQueue);
+    expect(api.leaderOrders.single.maxLevels, settleQueueBatch);
+    expect(platform.sent, [api.preparedTx]);
   });
 }

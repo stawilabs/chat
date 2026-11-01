@@ -18,8 +18,10 @@ by itself. Members holding shares are not prompted.
 **Leave.** A member holding shares is removed → `pool_leave_prompt` card. The
 card names only the pool and the redeem path: a room card never reveals a
 member's position, so the bubble and `LeavePoolSheet` load the viewer's own
-shares and value through the authenticated `GetMembership` call. The sheet
-shows them with the performance-fee preview; "Redeem"
+shares and value through the authenticated `GetMembership` call, whose
+`preview_assets`/`preview_fee` give the exact payout and fee of redeeming now
+(the sheet falls back to the fee-rate note when the service has no preview);
+"Redeem"
 calls `PreparePoolRedeem` for all shares and signs. `queued_shares > 0` explains
 that queued shares settle when the leader sells inventory or quote arrives.
 
@@ -33,15 +35,17 @@ wallet is the pool's leader.
 from the book's best opposite level (`GetBook`), size, hint price from the same
 side for limit orders; cancel by id, claim filled orders, sell inventory for
 redeems (shown while shares are queued). Each button → `PrepareLeaderOrder` →
-sign. The contract enforces `onlyLeader`.
+sign. "Settle queue" (permissionless, `KIND_SETTLE_QUEUE`, ten items a call)
+pays queued redeems from free quote. The contract enforces `onlyLeader` on
+the leader-only calls.
 
 **Settings.** `/settings/trading`: connect or forget the wallet (read-only
 address on devices without a signer), link the wallet to the profile (SIWE:
 `IssueNonce` → `personal_sign` → `LinkWallet`), default commitment.
 
 **Creating a trading group.** `GroupDetailsScreen` shows a "Trading group"
-toggle only when the service announces `socialtrader_create_pool` in
-`GET /v1/system/capabilities`. On create the pool is made first for the room's
+toggle only when the service announces `socialtrader_create_pool` under
+`capabilities` in `GET /v1/system/capabilities`. On create the pool is made first for the room's
 id (`PoolService.CreatePool`, executed by the service with its pool-creator
 key, the leader being the caller's linked wallet), then the room is created
 with `socialtrader.pool_id`, which the chat server accepts only from the pool's

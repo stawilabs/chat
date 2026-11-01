@@ -96,12 +96,20 @@ class LeavePoolSheet extends ConsumerWidget {
             'of the pool), worth about ${membership.valueQuote}.',
           ),
           const SizedBox(height: 4),
-          Text(
-            'A ${feePercent % 1 == 0 ? feePercent.toInt() : feePercent}% '
-            'performance fee is taken only on gains above the pool\'s high '
-            'water mark, paid when you redeem.',
-            style: theme.textTheme.bodySmall,
-          ),
+          if (membership.hasRedeemPreview)
+            Text(
+              'Redeeming now pays ${membership.previewAssets} after a '
+              'performance fee of ${membership.previewFee.isEmpty ? '0' : membership.previewFee}.',
+              key: const Key('leave-pool-preview'),
+              style: theme.textTheme.bodySmall,
+            )
+          else
+            Text(
+              'A ${feePercent % 1 == 0 ? feePercent.toInt() : feePercent}% '
+              'performance fee is taken only on gains above the pool\'s high '
+              'water mark, paid when you redeem.',
+              style: theme.textTheme.bodySmall,
+            ),
           if (membership.hasQueuedRedeem) ...[
             const SizedBox(height: 8),
             Text(

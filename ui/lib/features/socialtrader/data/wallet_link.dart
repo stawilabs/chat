@@ -47,7 +47,7 @@ class WalletLinkController extends _$WalletLinkController {
     state = const LinkWorking('Asking the service…');
     try {
       final api = ref.read(socialTraderApiProvider);
-      final challenge = await api.issueNonce();
+      final challenge = await api.issueNonce(wallet: address);
       if (!ref.mounted) return;
       state = const LinkWorking('Waiting for your wallet…');
       final signature = await ref

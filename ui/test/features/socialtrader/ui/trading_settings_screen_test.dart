@@ -72,6 +72,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(h.api.nonceCalls, 1);
+    expect(h.api.nonceWallets, [
+      FakeWalletPlatform.defaultAddress,
+    ], reason: 'the nonce is issued for the wallet that will sign');
     expect(platform.signed, [
       h.api.challenge.message,
     ], reason: 'the wallet signs the SIWE message the service issued');

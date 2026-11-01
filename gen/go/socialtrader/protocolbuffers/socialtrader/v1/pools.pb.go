@@ -48,6 +48,8 @@ const (
 	PrepareLeaderOrderRequest_KIND_CANCEL           PrepareLeaderOrderRequest_Kind = 3
 	PrepareLeaderOrderRequest_KIND_CLAIM            PrepareLeaderOrderRequest_Kind = 4
 	PrepareLeaderOrderRequest_KIND_SELL_FOR_REDEEMS PrepareLeaderOrderRequest_Kind = 5
+	// settleQueue(maxItems) is permissionless; max_levels carries maxItems.
+	PrepareLeaderOrderRequest_KIND_SETTLE_QUEUE PrepareLeaderOrderRequest_Kind = 6
 )
 
 // Enum value maps for PrepareLeaderOrderRequest_Kind.
@@ -59,6 +61,7 @@ var (
 		3: "KIND_CANCEL",
 		4: "KIND_CLAIM",
 		5: "KIND_SELL_FOR_REDEEMS",
+		6: "KIND_SETTLE_QUEUE",
 	}
 	PrepareLeaderOrderRequest_Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":      0,
@@ -67,6 +70,7 @@ var (
 		"KIND_CANCEL":           3,
 		"KIND_CLAIM":            4,
 		"KIND_SELL_FOR_REDEEMS": 5,
+		"KIND_SETTLE_QUEUE":     6,
 	}
 )
 
@@ -415,13 +419,17 @@ func (x *GetPoolResponse) GetPool() *Pool {
 }
 
 type Membership struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pool          string                 `protobuf:"bytes,1,opt,name=pool,proto3" json:"pool,omitempty"`
-	Wallet        string                 `protobuf:"bytes,2,opt,name=wallet,proto3" json:"wallet,omitempty"`
-	Shares        string                 `protobuf:"bytes,3,opt,name=shares,proto3" json:"shares,omitempty"`
-	ShareBps      string                 `protobuf:"bytes,4,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
-	ValueQuote    string                 `protobuf:"bytes,5,opt,name=value_quote,json=valueQuote,proto3" json:"value_quote,omitempty"`
-	QueuedShares  string                 `protobuf:"bytes,6,opt,name=queued_shares,json=queuedShares,proto3" json:"queued_shares,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Pool         string                 `protobuf:"bytes,1,opt,name=pool,proto3" json:"pool,omitempty"`
+	Wallet       string                 `protobuf:"bytes,2,opt,name=wallet,proto3" json:"wallet,omitempty"`
+	Shares       string                 `protobuf:"bytes,3,opt,name=shares,proto3" json:"shares,omitempty"`
+	ShareBps     string                 `protobuf:"bytes,4,opt,name=share_bps,json=shareBps,proto3" json:"share_bps,omitempty"`
+	ValueQuote   string                 `protobuf:"bytes,5,opt,name=value_quote,json=valueQuote,proto3" json:"value_quote,omitempty"`
+	QueuedShares string                 `protobuf:"bytes,6,opt,name=queued_shares,json=queuedShares,proto3" json:"queued_shares,omitempty"`
+	// What redeeming the full share balance would pay now, from
+	// StrategyPool.previewRedeem at the latest block; empty when shares == 0.
+	PreviewAssets string `protobuf:"bytes,7,opt,name=preview_assets,json=previewAssets,proto3" json:"preview_assets,omitempty"`
+	PreviewFee    string `protobuf:"bytes,8,opt,name=preview_fee,json=previewFee,proto3" json:"preview_fee,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -494,6 +502,20 @@ func (x *Membership) GetValueQuote() string {
 func (x *Membership) GetQueuedShares() string {
 	if x != nil {
 		return x.QueuedShares
+	}
+	return ""
+}
+
+func (x *Membership) GetPreviewAssets() string {
+	if x != nil {
+		return x.PreviewAssets
+	}
+	return ""
+}
+
+func (x *Membership) GetPreviewFee() string {
+	if x != nil {
+		return x.PreviewFee
 	}
 	return ""
 }
@@ -1257,7 +1279,7 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\x0eGetPoolRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\"<\n" +
 	"\x0fGetPoolResponse\x12)\n" +
-	"\x04pool\x18\x01 \x01(\v2\x15.socialtrader.v1.PoolR\x04pool\"\xb3\x01\n" +
+	"\x04pool\x18\x01 \x01(\v2\x15.socialtrader.v1.PoolR\x04pool\"\xfb\x01\n" +
 	"\n" +
 	"Membership\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12\x16\n" +
@@ -1266,7 +1288,10 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\tshare_bps\x18\x04 \x01(\tR\bshareBps\x12\x1f\n" +
 	"\vvalue_quote\x18\x05 \x01(\tR\n" +
 	"valueQuote\x12#\n" +
-	"\rqueued_shares\x18\x06 \x01(\tR\fqueuedShares\"B\n" +
+	"\rqueued_shares\x18\x06 \x01(\tR\fqueuedShares\x12%\n" +
+	"\x0epreview_assets\x18\a \x01(\tR\rpreviewAssets\x12\x1f\n" +
+	"\vpreview_fee\x18\b \x01(\tR\n" +
+	"previewFee\"B\n" +
 	"\x14GetMembershipRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12\x16\n" +
 	"\x06wallet\x18\x02 \x01(\tR\x06wallet\"T\n" +
@@ -1305,7 +1330,7 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\x18PreparePoolRedeemRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12\x16\n" +
 	"\x06shares\x18\x02 \x01(\tR\x06shares\x12\x1a\n" +
-	"\breceiver\x18\x03 \x01(\tR\breceiver\"\x93\x03\n" +
+	"\breceiver\x18\x03 \x01(\tR\breceiver\"\xab\x03\n" +
 	"\x19PrepareLeaderOrderRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12C\n" +
 	"\x04kind\x18\x02 \x01(\x0e2/.socialtrader.v1.PrepareLeaderOrderRequest.KindR\x04kind\x12\x15\n" +
@@ -1317,7 +1342,7 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\n" +
 	"max_levels\x18\a \x01(\rR\tmaxLevels\x12\x1d\n" +
 	"\n" +
-	"hint_price\x18\b \x01(\tR\thintPrice\"v\n" +
+	"hint_price\x18\b \x01(\tR\thintPrice\"\x8d\x01\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -1326,7 +1351,8 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\vKIND_CANCEL\x10\x03\x12\x0e\n" +
 	"\n" +
 	"KIND_CLAIM\x10\x04\x12\x19\n" +
-	"\x15KIND_SELL_FOR_REDEEMS\x10\x05\"\xce\x01\n" +
+	"\x15KIND_SELL_FOR_REDEEMS\x10\x05\x12\x15\n" +
+	"\x11KIND_SETTLE_QUEUE\x10\x06\"\xce\x01\n" +
 	"\x11CreatePoolRequest\x12\x19\n" +
 	"\broom_ref\x18\x01 \x01(\tR\aroomRef\x12\x1b\n" +
 	"\tmarket_id\x18\x02 \x01(\tR\bmarketId\x12.\n" +

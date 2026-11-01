@@ -38,8 +38,9 @@ abstract interface class SocialTraderApi {
   /// Calldata for a leader-only call; the contract enforces onlyLeader.
   Future<PreparedTx> prepareLeaderOrder(LeaderOrder order);
 
-  /// The SIWE message the wallet signs to link itself to the profile.
-  Future<SiweChallenge> issueNonce();
+  /// The SIWE message [wallet] signs to link itself to the profile (EIP-4361
+  /// puts the address in the message).
+  Future<SiweChallenge> issueNonce({required String wallet});
   Future<LinkedWallet> linkWallet({
     required String wallet,
     required String signature,
@@ -98,6 +99,8 @@ class ConnectSocialTraderApi implements SocialTraderApi {
       shareBps: _orZero(m.shareBps),
       valueQuote: _orZero(m.valueQuote),
       queuedShares: _orZero(m.queuedShares),
+      previewAssets: m.previewAssets,
+      previewFee: m.previewFee,
     );
   }
 
@@ -201,6 +204,8 @@ class ConnectSocialTraderApi implements SocialTraderApi {
           LeaderOrderKind.claim => st.PrepareLeaderOrderRequest_Kind.KIND_CLAIM,
           LeaderOrderKind.sellForRedeems =>
             st.PrepareLeaderOrderRequest_Kind.KIND_SELL_FOR_REDEEMS,
+          LeaderOrderKind.settleQueue =>
+            st.PrepareLeaderOrderRequest_Kind.KIND_SETTLE_QUEUE,
         },
         isBid: order.isBid,
         price: order.price,
@@ -213,8 +218,8 @@ class ConnectSocialTraderApi implements SocialTraderApi {
   );
 
   @override
-  Future<SiweChallenge> issueNonce() async {
-    final resp = await _links.issueNonce(st.IssueNonceRequest());
+  Future<SiweChallenge> issueNonce({required String wallet}) async {
+    final resp = await _links.issueNonce(st.IssueNonceRequest(wallet: wallet));
     return SiweChallenge(
       nonce: resp.nonce,
       message: resp.message,

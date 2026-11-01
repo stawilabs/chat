@@ -60,13 +60,17 @@ class PoolMembership {
     this.shareBps = '0',
     this.valueQuote = '0',
     this.queuedShares = '0',
+    this.previewAssets = '',
+    this.previewFee = '',
   });
 
   const PoolMembership.none(this.pool, this.wallet)
     : shares = '0',
       shareBps = '0',
       valueQuote = '0',
-      queuedShares = '0';
+      queuedShares = '0',
+      previewAssets = '',
+      previewFee = '';
 
   final String pool;
   final String wallet;
@@ -78,6 +82,13 @@ class PoolMembership {
 
   /// Shares waiting in the redeem queue for free quote.
   final String queuedShares;
+
+  /// What redeeming every share pays out now and the performance fee taken,
+  /// as the service previews them (quote asset); empty when not previewed.
+  final String previewAssets;
+  final String previewFee;
+
+  bool get hasRedeemPreview => previewAssets.isNotEmpty;
 
   bool get holdsShares => _positive(shares);
   bool get hasQueuedRedeem => _positive(queuedShares);
@@ -172,7 +183,7 @@ class OrderBook {
 }
 
 /// A leader order kind, as PoolService.PrepareLeaderOrder names them.
-enum LeaderOrderKind { limit, ioc, cancel, claim, sellForRedeems }
+enum LeaderOrderKind { limit, ioc, cancel, claim, sellForRedeems, settleQueue }
 
 /// A leader's intent for PrepareLeaderOrder.
 @immutable
@@ -194,6 +205,8 @@ class LeaderOrder {
   final String price;
   final String baseAmount;
   final int orderId;
+
+  /// Book levels to sweep; for settleQueue the most queued items to settle.
   final int maxLevels;
   final String hintPrice;
 }

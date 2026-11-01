@@ -40,7 +40,9 @@ const (
 )
 
 type IssueNonceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The wallet that will sign; EIP-4361 puts the address in the message.
+	Wallet        string `protobuf:"bytes,1,opt,name=wallet,proto3" json:"wallet,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -73,6 +75,13 @@ func (x *IssueNonceRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use IssueNonceRequest.ProtoReflect.Descriptor instead.
 func (*IssueNonceRequest) Descriptor() ([]byte, []int) {
 	return file_socialtrader_v1_links_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *IssueNonceRequest) GetWallet() string {
+	if x != nil {
+		return x.Wallet
+	}
+	return ""
 }
 
 type IssueNonceResponse struct {
@@ -340,8 +349,9 @@ var File_socialtrader_v1_links_proto protoreflect.FileDescriptor
 
 const file_socialtrader_v1_links_proto_rawDesc = "" +
 	"\n" +
-	"\x1bsocialtrader/v1/links.proto\x12\x0fsocialtrader.v1\x1a\x1bcommon/v1/permissions.proto\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x13\n" +
-	"\x11IssueNonceRequest\"\x7f\n" +
+	"\x1bsocialtrader/v1/links.proto\x12\x0fsocialtrader.v1\x1a\x1bcommon/v1/permissions.proto\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"+\n" +
+	"\x11IssueNonceRequest\x12\x16\n" +
+	"\x06wallet\x18\x01 \x01(\tR\x06wallet\"\x7f\n" +
 	"\x12IssueNonceResponse\x12\x14\n" +
 	"\x05nonce\x18\x01 \x01(\tR\x05nonce\x129\n" +
 	"\n" +

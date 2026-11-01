@@ -29,6 +29,7 @@ class FakeSocialTraderApi implements SocialTraderApi {
   final leaderOrders = <LeaderOrder>[];
   final links = <({String wallet, String signature})>[];
   int nonceCalls = 0;
+  final nonceWallets = <String>[];
   final createPools =
       <({String roomRef, String marketId, int feeBps, int skinBps})>[];
 
@@ -115,9 +116,10 @@ class FakeSocialTraderApi implements SocialTraderApi {
   }
 
   @override
-  Future<SiweChallenge> issueNonce() async {
+  Future<SiweChallenge> issueNonce({required String wallet}) async {
     _maybeFail();
     nonceCalls++;
+    nonceWallets.add(wallet);
     return challenge;
   }
 

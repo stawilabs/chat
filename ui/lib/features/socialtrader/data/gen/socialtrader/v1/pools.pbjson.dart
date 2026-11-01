@@ -135,6 +135,8 @@ const Membership$json = {
     {'1': 'share_bps', '3': 4, '4': 1, '5': 9, '10': 'shareBps'},
     {'1': 'value_quote', '3': 5, '4': 1, '5': 9, '10': 'valueQuote'},
     {'1': 'queued_shares', '3': 6, '4': 1, '5': 9, '10': 'queuedShares'},
+    {'1': 'preview_assets', '3': 7, '4': 1, '5': 9, '10': 'previewAssets'},
+    {'1': 'preview_fee', '3': 8, '4': 1, '5': 9, '10': 'previewFee'},
   ],
 };
 
@@ -143,7 +145,8 @@ final $typed_data.Uint8List membershipDescriptor = $convert.base64Decode(
     'CgpNZW1iZXJzaGlwEhIKBHBvb2wYASABKAlSBHBvb2wSFgoGd2FsbGV0GAIgASgJUgZ3YWxsZX'
     'QSFgoGc2hhcmVzGAMgASgJUgZzaGFyZXMSGwoJc2hhcmVfYnBzGAQgASgJUghzaGFyZUJwcxIf'
     'Cgt2YWx1ZV9xdW90ZRgFIAEoCVIKdmFsdWVRdW90ZRIjCg1xdWV1ZWRfc2hhcmVzGAYgASgJUg'
-    'xxdWV1ZWRTaGFyZXM=');
+    'xxdWV1ZWRTaGFyZXMSJQoOcHJldmlld19hc3NldHMYByABKAlSDXByZXZpZXdBc3NldHMSHwoL'
+    'cHJldmlld19mZWUYCCABKAlSCnByZXZpZXdGZWU=');
 
 @$core.Deprecated('Use getMembershipRequestDescriptor instead')
 const GetMembershipRequest$json = {
@@ -336,6 +339,7 @@ const PrepareLeaderOrderRequest_Kind$json = {
     {'1': 'KIND_CANCEL', '2': 3},
     {'1': 'KIND_CLAIM', '2': 4},
     {'1': 'KIND_SELL_FOR_REDEEMS', '2': 5},
+    {'1': 'KIND_SETTLE_QUEUE', '2': 6},
   ],
 };
 
@@ -346,9 +350,9 @@ final $typed_data.Uint8List prepareLeaderOrderRequestDescriptor = $convert.base6
     'BGtpbmQSFQoGaXNfYmlkGAMgASgIUgVpc0JpZBIUCgVwcmljZRgEIAEoCVIFcHJpY2USHwoLYm'
     'FzZV9hbW91bnQYBSABKAlSCmJhc2VBbW91bnQSGQoIb3JkZXJfaWQYBiABKARSB29yZGVySWQS'
     'HQoKbWF4X2xldmVscxgHIAEoDVIJbWF4TGV2ZWxzEh0KCmhpbnRfcHJpY2UYCCABKAlSCWhpbn'
-    'RQcmljZSJ2CgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABIOCgpLSU5EX0xJTUlUEAESDAoI'
-    'S0lORF9JT0MQAhIPCgtLSU5EX0NBTkNFTBADEg4KCktJTkRfQ0xBSU0QBBIZChVLSU5EX1NFTE'
-    'xfRk9SX1JFREVFTVMQBQ==');
+    'RQcmljZSKNAQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASDgoKS0lORF9MSU1JVBABEgwK'
+    'CEtJTkRfSU9DEAISDwoLS0lORF9DQU5DRUwQAxIOCgpLSU5EX0NMQUlNEAQSGQoVS0lORF9TRU'
+    'xMX0ZPUl9SRURFRU1TEAUSFQoRS0lORF9TRVRUTEVfUVVFVUUQBg==');
 
 @$core.Deprecated('Use createPoolRequestDescriptor instead')
 const CreatePoolRequest$json = {

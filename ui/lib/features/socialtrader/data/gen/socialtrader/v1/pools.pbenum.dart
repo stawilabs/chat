@@ -30,6 +30,11 @@ class PrepareLeaderOrderRequest_Kind extends $pb.ProtobufEnum {
       PrepareLeaderOrderRequest_Kind._(
           5, _omitEnumNames ? '' : 'KIND_SELL_FOR_REDEEMS');
 
+  /// settleQueue(maxItems) is permissionless; max_levels carries maxItems.
+  static const PrepareLeaderOrderRequest_Kind KIND_SETTLE_QUEUE =
+      PrepareLeaderOrderRequest_Kind._(
+          6, _omitEnumNames ? '' : 'KIND_SETTLE_QUEUE');
+
   static const $core.List<PrepareLeaderOrderRequest_Kind> values =
       <PrepareLeaderOrderRequest_Kind>[
     KIND_UNSPECIFIED,
@@ -38,10 +43,11 @@ class PrepareLeaderOrderRequest_Kind extends $pb.ProtobufEnum {
     KIND_CANCEL,
     KIND_CLAIM,
     KIND_SELL_FOR_REDEEMS,
+    KIND_SETTLE_QUEUE,
   ];
 
   static final $core.List<PrepareLeaderOrderRequest_Kind?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 5);
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
   static PrepareLeaderOrderRequest_Kind? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

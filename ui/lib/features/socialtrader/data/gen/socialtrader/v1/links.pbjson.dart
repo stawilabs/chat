@@ -21,11 +21,14 @@ import 'package:protobuf/well_known_types/google/protobuf/timestamp.pbjson.dart'
 @$core.Deprecated('Use issueNonceRequestDescriptor instead')
 const IssueNonceRequest$json = {
   '1': 'IssueNonceRequest',
+  '2': [
+    {'1': 'wallet', '3': 1, '4': 1, '5': 9, '10': 'wallet'},
+  ],
 };
 
 /// Descriptor for `IssueNonceRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List issueNonceRequestDescriptor =
-    $convert.base64Decode('ChFJc3N1ZU5vbmNlUmVxdWVzdA==');
+final $typed_data.Uint8List issueNonceRequestDescriptor = $convert.base64Decode(
+    'ChFJc3N1ZU5vbmNlUmVxdWVzdBIWCgZ3YWxsZXQYASABKAlSBndhbGxldA==');
 
 @$core.Deprecated('Use issueNonceResponseDescriptor instead')
 const IssueNonceResponse$json = {

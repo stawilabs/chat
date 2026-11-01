@@ -11,9 +11,10 @@ part 'socialtrader_capabilities.g.dart';
 /// with its pool-creator key (PoolService.CreatePool).
 const String createPoolCapability = 'socialtrader_create_pool';
 
-/// Parses GET /v1/system/capabilities: an object of flags
-/// ({"socialtrader_create_pool": true}) or a list under "capabilities".
-/// Anything else is no capability at all.
+/// Parses GET /v1/system/capabilities. The service answers
+/// {"capabilities": {"socialtrader_create_pool": true, ...}, ...}; an object
+/// of flags at the top level or a list of names under "capabilities" are
+/// read too. Anything else is no capability at all.
 Set<String> parseCapabilities(String body) {
   if (body.isEmpty) return const {};
   Object? decoded;
@@ -30,8 +31,9 @@ Set<String> parseCapabilities(String body) {
         if (c is String) c,
     };
   }
+  final flags = listed is Map<String, dynamic> ? listed : decoded;
   return {
-    for (final entry in decoded.entries)
+    for (final entry in flags.entries)
       if (entry.value == true) entry.key,
   };
 }

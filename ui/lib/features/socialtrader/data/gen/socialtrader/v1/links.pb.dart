@@ -20,7 +20,13 @@ import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 class IssueNonceRequest extends $pb.GeneratedMessage {
-  factory IssueNonceRequest() => IssueNonceRequest._();
+  factory IssueNonceRequest({
+    $core.String? wallet,
+  }) {
+    final result = IssueNonceRequest._();
+    if (wallet != null) result.wallet = wallet;
+    return result;
+  }
 
   IssueNonceRequest._();
 
@@ -36,6 +42,7 @@ class IssueNonceRequest extends $pb.GeneratedMessage {
       package:
           const $pb.PackageName(_omitMessageNames ? '' : 'socialtrader.v1'),
       createEmptyInstance: IssueNonceRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'wallet')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -59,6 +66,16 @@ class IssueNonceRequest extends $pb.GeneratedMessage {
       _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<IssueNonceRequest>(
           IssueNonceRequest.$_createMessage);
   static IssueNonceRequest? _defaultInstance;
+
+  /// The wallet that will sign; EIP-4361 puts the address in the message.
+  @$pb.TagNumber(1)
+  $core.String get wallet => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set wallet($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasWallet() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearWallet() => $_clearField(1);
 }
 
 class IssueNonceResponse extends $pb.GeneratedMessage {

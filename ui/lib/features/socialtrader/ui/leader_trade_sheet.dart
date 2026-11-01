@@ -77,6 +77,10 @@ Future<void> showLeaderTradeSheet(
 
 enum _OrderKind { limit, ioc }
 
+/// How many queued redeems one "Settle queue" call settles (max_levels
+/// carries maxItems for KIND_SETTLE_QUEUE).
+const int settleQueueBatch = 10;
+
 /// The leader's order entry: limit or IOC, side, price pre-filled from the
 /// book's best opposite level, size, a hint price from the book for limit
 /// orders; plus cancel by id, claim to free, and selling inventory for queued
@@ -172,6 +176,21 @@ class _LeaderTradeSheetState extends ConsumerState<LeaderTradeSheet> {
             pool: widget.pool.address,
             kind: LeaderOrderKind.cancel,
             orderId: id,
+          ),
+        );
+  }
+
+  /// settleQueue(maxItems) is permissionless: it pays queued redeems from the
+  /// pool's free quote, up to [settleQueueBatch] items per call.
+  void _settleQueue() {
+    setState(() => _formError = null);
+    ref
+        .read(leaderOrderControllerProvider(widget.pool.address).notifier)
+        .send(
+          LeaderOrder(
+            pool: widget.pool.address,
+            kind: LeaderOrderKind.settleQueue,
+            maxLevels: settleQueueBatch,
           ),
         );
   }
@@ -337,6 +356,12 @@ class _LeaderTradeSheetState extends ConsumerState<LeaderTradeSheet> {
           OutlinedButton(
             onPressed: busy ? null : () => _simple(LeaderOrderKind.claim),
             child: const Text('Claim filled orders to free quote'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const Key('leader-settle-queue'),
+            onPressed: busy ? null : _settleQueue,
+            child: const Text('Settle queue'),
           ),
           if (_hasQueue) ...[
             const SizedBox(height: 8),

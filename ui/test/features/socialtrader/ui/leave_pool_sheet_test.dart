@@ -18,13 +18,19 @@ const pool = PoolInfo(
   performanceFeeBps: 1000,
 );
 
-PoolMembership membership({String queued = '0'}) => PoolMembership(
+PoolMembership membership({
+  String queued = '0',
+  String previewAssets = '',
+  String previewFee = '',
+}) => PoolMembership(
   pool: poolAddress,
   wallet: FakeWalletPlatform.defaultAddress,
   shares: '12.5',
   shareBps: '1250',
   valueQuote: '13.1',
   queuedShares: queued,
+  previewAssets: previewAssets,
+  previewFee: previewFee,
 );
 
 Future<(FakeSocialTraderApi, FakeWalletPlatform)> pumpSheet(
@@ -92,5 +98,22 @@ void main() {
     expect(find.textContaining('Rejected'), findsOneWidget);
     expect(api.redeems, hasLength(1));
     expect(find.widgetWithText(FilledButton, 'Redeem'), findsOneWidget);
+  });
+
+  testWidgets('leaveSheet_showsExactRedeemPreview', (tester) async {
+    await pumpSheet(
+      tester,
+      membership(previewAssets: '12.87', previewFee: '0.23'),
+    );
+    final preview = tester.widget<Text>(
+      find.byKey(const Key('leave-pool-preview')),
+    );
+    expect(preview.data, contains('12.87'));
+    expect(preview.data, contains('0.23'));
+    expect(
+      find.textContaining('10%'),
+      findsNothing,
+      reason: 'the exact figure replaces the estimate',
+    );
   });
 }

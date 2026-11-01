@@ -465,6 +465,8 @@ class Membership extends $pb.GeneratedMessage {
     $core.String? shareBps,
     $core.String? valueQuote,
     $core.String? queuedShares,
+    $core.String? previewAssets,
+    $core.String? previewFee,
   }) {
     final result = Membership._();
     if (pool != null) result.pool = pool;
@@ -473,6 +475,8 @@ class Membership extends $pb.GeneratedMessage {
     if (shareBps != null) result.shareBps = shareBps;
     if (valueQuote != null) result.valueQuote = valueQuote;
     if (queuedShares != null) result.queuedShares = queuedShares;
+    if (previewAssets != null) result.previewAssets = previewAssets;
+    if (previewFee != null) result.previewFee = previewFee;
     return result;
   }
 
@@ -496,6 +500,8 @@ class Membership extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'shareBps')
     ..aOS(5, _omitFieldNames ? '' : 'valueQuote')
     ..aOS(6, _omitFieldNames ? '' : 'queuedShares')
+    ..aOS(7, _omitFieldNames ? '' : 'previewAssets')
+    ..aOS(8, _omitFieldNames ? '' : 'previewFee')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -571,6 +577,26 @@ class Membership extends $pb.GeneratedMessage {
   $core.bool hasQueuedShares() => $_has(5);
   @$pb.TagNumber(6)
   void clearQueuedShares() => $_clearField(6);
+
+  /// What redeeming the full share balance would pay now, from
+  /// StrategyPool.previewRedeem at the latest block; empty when shares == 0.
+  @$pb.TagNumber(7)
+  $core.String get previewAssets => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set previewAssets($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPreviewAssets() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPreviewAssets() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get previewFee => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set previewFee($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPreviewFee() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPreviewFee() => $_clearField(8);
 }
 
 class GetMembershipRequest extends $pb.GeneratedMessage {
