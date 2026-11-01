@@ -42,6 +42,11 @@ class FakeWalletPlatform implements WalletPlatform {
     signed.add(message);
     return '0xsig';
   }
+
+  int disconnects = 0;
+
+  @override
+  Future<void> disconnect() async => disconnects++;
 }
 
 /// A platform that cannot sign (mobile without WalletConnect).
@@ -67,4 +72,7 @@ class ReadOnlyWalletPlatform implements WalletPlatform {
     required String from,
     required String message,
   }) => throw const WalletUnavailableException('Connect on web to sign');
+
+  @override
+  Future<void> disconnect() async {}
 }

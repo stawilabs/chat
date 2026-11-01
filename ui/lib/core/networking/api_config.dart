@@ -92,6 +92,30 @@ class ApiConfig {
     defaultValue: 'https://socialtrader.stawi.org',
   );
 
+  /// WalletConnect (Reown AppKit) project id for signing from a wallet app
+  /// on Android, iOS and desktop. Empty keeps those platforms read-only (a
+  /// pasted address only follows a pool); web signs through the injected
+  /// browser wallet either way. Never commit a project id: CI passes it with
+  /// `--dart-define=WALLETCONNECT_PROJECT_ID=...`.
+  static const String walletConnectProjectId = String.fromEnvironment(
+    'WALLETCONNECT_PROJECT_ID',
+  );
+
+  /// The deep link a wallet app returns to after approving a request.
+  static const String walletConnectRedirect = 'org.stawi.chat://wc';
+
+  /// The chain's public RPC and explorer, as a wallet app is told about the
+  /// chain when it has to add it (wallet_addEthereumChain). Sonic testnet by
+  /// default, like [stawiChainId].
+  static const String stawiRpcUrl = String.fromEnvironment(
+    'STAWI_RPC_URL',
+    defaultValue: 'https://rpc.testnet.soniclabs.com',
+  );
+  static const String stawiExplorerUrl = String.fromEnvironment(
+    'STAWI_EXPLORER_URL',
+    defaultValue: 'https://testnet.sonicscan.org',
+  );
+
   /// The chain the Stawi deployment is on (Sonic testnet by default). A key
   /// change the device signs is checked against it, never against the chain
   /// a prepared intent names.

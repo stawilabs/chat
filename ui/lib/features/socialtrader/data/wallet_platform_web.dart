@@ -64,6 +64,11 @@ class _InjectedWalletPlatform implements WalletPlatform {
     return (result! as JSString).toDart;
   }
 
+  @override
+  Future<void> disconnect() async {
+    // An injected provider keeps no session of ours to end.
+  }
+
   /// Asks the wallet to be on [chainId] before a transaction, so the signed
   /// call lands on the chain the service prepared it for.
   Future<void> _switchChain(int chainId) async {

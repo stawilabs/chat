@@ -30,6 +30,7 @@ import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/storage_settings_screen.dart';
 import '../features/settings/ui/theme_settings_screen.dart';
 import '../features/settings/ui/two_factor_setup_screen.dart';
+import '../features/socialtrader/data/walletconnect/reown_appkit_facade.dart';
 import '../features/socialtrader/ui/pool_tab.dart';
 import '../features/socialtrader/ui/trading_settings_screen.dart';
 import '../features/stawi/ui/loan_detail_screen.dart';
@@ -106,6 +107,8 @@ GoRouter router(Ref ref) {
   final refreshListenable = ref.watch(authRouterRefreshListenableProvider);
 
   return GoRouter(
+    // The WalletConnect modal is shown from this navigator.
+    navigatorKey: walletConnectNavigatorKey,
     initialLocation: '/',
     refreshListenable: refreshListenable,
     redirect: (context, state) {

@@ -95,7 +95,7 @@ final class WalletLinkControllerProvider
 }
 
 String _$walletLinkControllerHash() =>
-    r'e4f01a6b9f2259b4219b628df08b304662a60afc';
+    r'bb768427059760b316533cdca709eb0176dbd9be';
 
 /// Links the connected wallet to the profile with Sign-In with Ethereum: the
 /// service issues the message, the wallet signs it (personal_sign), the

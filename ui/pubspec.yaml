@@ -87,6 +87,7 @@ dependencies:
   protobuf: ^6.1.0
   qr_flutter: ^4.1.0
   record: ^7.1.2
+  reown_appkit: ^1.9.0
   riverpod_annotation: ^4.0.7
   sentry_flutter: ^9.16.0
   share_plus: ^13.3.1
@@ -179,5 +180,12 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 dependency_overrides:
+  # reown_appkit still pins cupertino_icons ^1.0.8 (an icon font only) and
+  # cached_network_image ^3; the app is on the next majors and the two
+  # coexist. reown_core pins package_info_plus <10, whose win32 ^5 clashes
+  # with share_plus's win32 ^6; the newer package_info_plus takes win32 6.
+  cached_network_image: ^4.0.4
+  cupertino_icons: ^2.0.0
+  package_info_plus: ^10.0.0
   sentry_flutter:
     path: third_party/sentry_flutter

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../../../core/networking/api_config.dart';
 
 import 'wallet_platform_stub.dart'
     if (dart.library.js_interop) 'wallet_platform_web.dart'
@@ -95,13 +99,14 @@ abstract interface class WalletPlatform {
 
   /// Asks the signer for an EIP-191 personal_sign of [message] by [from].
   Future<String> personalSign({required String from, required String message});
+
+  /// Ends the signer's session, if it keeps one (WalletConnect does).
+  Future<void> disconnect();
 }
 
 /// The WalletConnect project id, when a build is given one. Without it the
 /// non-web platforms stay read-only.
-const String walletConnectProjectId = String.fromEnvironment(
-  'WALLETCONNECT_PROJECT_ID',
-);
+const String walletConnectProjectId = ApiConfig.walletConnectProjectId;
 
 /// What the wallet looks like to the UI.
 @immutable
@@ -216,12 +221,13 @@ class WalletController extends _$WalletController {
     }
   }
 
-  /// Forgets the address and any error.
+  /// Forgets the address and any error, and ends the signer's session.
   void disconnect() {
     state = WalletState(
       signerLabel: state.signerLabel,
       signerAvailable: state.signerAvailable,
     );
+    unawaited(_platform.disconnect().catchError((Object _) {}));
   }
 
   /// Uses a pasted address for portfolio views only: it can never sign, even

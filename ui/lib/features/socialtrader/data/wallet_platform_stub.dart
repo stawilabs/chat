@@ -1,19 +1,33 @@
+import '../../../core/networking/api_config.dart';
 import 'wallet_service.dart';
+import 'walletconnect/reown_appkit_facade.dart';
+import 'walletconnect/wallet_connect_facade.dart';
+import 'walletconnect/wallet_connect_platform.dart';
 
-/// Non-web platforms: there is no injected provider, and the WalletConnect
-/// signer is not bundled in this build, so the wallet is read-only (a pasted
-/// address for portfolio views). The message tells the person where to sign.
-WalletPlatform createWalletPlatform() => const _ReadOnlyWalletPlatform();
+/// Builds the WalletConnect adapter for a project id; the real one is the
+/// Reown AppKit adapter, tests pass a fake.
+typedef WalletConnectFacadeBuilder = WalletConnectFacade Function(
+  String projectId,
+);
+
+/// Non-web platforms: with a WalletConnect project id the signer is a wallet
+/// app reached through the AppKit modal; without one the wallet is read-only
+/// (a pasted address for portfolio views) and the message says so.
+WalletPlatform createWalletPlatform({
+  String projectId = ApiConfig.walletConnectProjectId,
+  WalletConnectFacadeBuilder facadeBuilder = ReownAppKitFacade.new,
+}) {
+  if (projectId.isEmpty) return const _ReadOnlyWalletPlatform();
+  return WalletConnectPlatform(facadeBuilder(projectId));
+}
 
 class _ReadOnlyWalletPlatform implements WalletPlatform {
   const _ReadOnlyWalletPlatform();
 
-  static String get _message => walletConnectProjectId.isEmpty
-      ? 'Signing on this device needs WalletConnect, which this build does '
-            'not carry. Paste a wallet address to follow the pool, or open '
-            'the app on the web with a browser wallet to sign.'
-      : 'WalletConnect is configured but its signer is not bundled in this '
-            'build yet. Open the app on the web with a browser wallet to sign.';
+  static const _message =
+      'Signing on this device needs WalletConnect, which this build was not '
+      'given a project id for. Paste a wallet address to follow the pool, or '
+      'open the app on the web with a browser wallet to sign.';
 
   @override
   bool get canSign => false;
@@ -22,17 +36,21 @@ class _ReadOnlyWalletPlatform implements WalletPlatform {
   String get signerLabel => 'Read-only';
 
   @override
-  Future<String> connect() async => throw WalletUnavailableException(_message);
+  Future<String> connect() async =>
+      throw const WalletUnavailableException(_message);
 
   @override
   Future<String> sendTransaction({
     required String from,
     required PreparedTx tx,
-  }) async => throw WalletUnavailableException(_message);
+  }) async => throw const WalletUnavailableException(_message);
 
   @override
   Future<String> personalSign({
     required String from,
     required String message,
-  }) async => throw WalletUnavailableException(_message);
+  }) async => throw const WalletUnavailableException(_message);
+
+  @override
+  Future<void> disconnect() async {}
 }
