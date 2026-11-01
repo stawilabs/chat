@@ -270,7 +270,9 @@ bind them.
   sheet, leave sheet, Pool tab, leader trading sheet, trading settings. Every
   deposit, redeem and leader order is calldata prepared by the service and
   signed by the connected wallet after a tap; the app never holds a key. See
-  `ui/docs/socialtrader.md`.
+  `ui/docs/socialtrader.md`. On Android, iOS and desktop the signer is a
+  wallet app over WalletConnect (Reown AppKit) when the build carries
+  `WALLETCONNECT_PROJECT_ID`; without it those platforms are read-only.
 
 **Configuration**
 

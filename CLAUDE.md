@@ -624,7 +624,8 @@ For issues, questions, or feature requests, contact the Antinvestor platform tea
 - `stawi/` — the Stawi finance module (loans, dues, governance; settlement signs).
 - `socialtrader/` — the trading-group module: `data/` (generated socialtrader
   clients under `data/gen`, `SocialTraderApi`, `WalletController`,
-  `CommitmentSettings`, capabilities), `domain/` (`PoolCard` codec,
+  `CommitmentSettings`, capabilities, `walletconnect/` with the AppKit facade
+  and the `reown_appkit` adapter), `domain/` (`PoolCard` codec,
   `PoolBinding`, pool models), `ui/` (header chip, join/leave sheets, pool
   tab, leader trade sheet, trading settings, trading-group toggle). Plug
   points: `app/router.dart`, `messages/ui/chat_screen.dart`,

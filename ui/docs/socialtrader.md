@@ -68,10 +68,46 @@ Forward, reply and notification previews use the card's summary.
 | define | default | meaning |
 |---|---|---|
 | `SOCIALTRADER_URL` | `https://socialtrader.stawi.org` | the socialtrader service (PoolService, LinkService, MarketService, capabilities) |
-| `WALLETCONNECT_PROJECT_ID` | empty | read for the non-web signer. The WalletConnect SDK is not bundled yet: non-web builds stay read-only (paste an address to follow a pool) and say that signing needs the web build with a browser wallet |
+| `WALLETCONNECT_PROJECT_ID` | empty | Reown AppKit (WalletConnect v2) project id. Set: Android, iOS and desktop sign through a wallet app. Empty: those platforms stay read-only (paste an address to follow a pool) and say that signing needs the web build or a project id. Never commit it; CI passes it with `--dart-define` |
+| `STAWI_RPC_URL` / `STAWI_EXPLORER_URL` | Sonic testnet | what a wallet app is told when it has to add the chain (`wallet_addEthereumChain`) |
 
 Web signs through the injected EIP-1193 provider (`wallet_platform_web.dart`),
 switching the wallet to the prepared transaction's chain first.
+
+## WalletConnect (Android, iOS, desktop)
+
+`WalletPlatform` on non-web builds is `WalletConnectPlatform` over the
+`WalletConnectFacade` interface, implemented by `ReownAppKitFacade`
+(`reown_appkit`). `connect()` opens the AppKit modal from the app's root
+navigator (`walletConnectNavigatorKey`, installed by `app/router.dart`) and
+keeps the session (address, chain, topic); `sendPrepared` asks the wallet to
+switch (or add, then switch) to the prepared transaction's chain when the
+session is elsewhere, then sends `eth_sendTransaction`; the wallet-link flow
+signs the SIWE message with `personal_sign`; `disconnect()` ends the session.
+Keys never leave the wallet app. Tests drive `WalletConnectPlatform` against
+`FakeWalletConnectFacade` (`test/features/socialtrader/support`).
+
+Setup per platform:
+
+- **Android** (`android/app/src/main/AndroidManifest.xml`, done): a
+  `<queries>` block so the picker can detect installed wallets and open
+  `https` links, and an intent filter on the main activity for the redirect
+  `org.stawi.chat://wc`. If the build complains about the NDK, pin
+  `ndkVersion` to the version the package's README names.
+- **iOS** (`ios/Runner/Info.plist`, to apply when the iOS runner is generated):
+  `platform :ios, '13.0'` as the first line of `ios/Podfile`, then
+  `pod install`; add `CFBundleURLTypes` with `CFBundleURLSchemes` containing
+  `org.stawi.chat` (the redirect `org.stawi.chat://wc`), and
+  `LSApplicationQueriesSchemes` with the wallet schemes the picker may open
+  (`metamask`, `trust`, `safe`, `rainbow`, `zerion`, `ledgerlive`, at most 50
+  entries). The Reown project's dashboard must list the redirect
+  `org.stawi.chat://wc` as the app's native link.
+- **Desktop**: the modal shows a QR code; no platform setup.
+- **Web**: unaffected; the injected provider is used.
+
+The dependency overrides in `pubspec.yaml` (`cupertino_icons`,
+`cached_network_image`, `package_info_plus`) exist only because `reown_appkit`
+1.9 pins older majors than the app uses; drop them when it catches up.
 
 ## Generated clients
 
