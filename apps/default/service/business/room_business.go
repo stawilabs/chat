@@ -240,7 +240,7 @@ func (rb *roomBusiness) CreateRoom(
 		return nil, err
 	}
 	if existingRoom != nil {
-		return rb.answerExistingRoom(ctx, existingRoom, binding, createdBy)
+		return rb.answerExistingRoom(ctx, existingRoom, binding, createdRoom.Properties, createdBy)
 	}
 	if err = rb.recordSocialTraderBinding(ctx, createdRoom.GetID(), binding, createdBy.GetProfileId()); err != nil {
 		return nil, err
@@ -285,19 +285,54 @@ func (rb *roomBusiness) prepareCreatedRoomBinding(
 }
 
 // answerExistingRoom answers a CreateRoom whose id a room already holds: the
-// creator (or a member) gets that room; a creator retrying after the room was
-// saved but before its binding was recorded gets the binding now, validated
-// for this very room.
+// creator (or a member) gets that room. A binding hint in the retry is
+// honoured only for the room's creator or an admin, under the same approval
+// and Stawi checks as UpdateRoom; anyone else asking for one is refused, so
+// a retry can never bind a room its caller may not change.
 func (rb *roomBusiness) answerExistingRoom(
-	ctx context.Context, existing *models.Room, binding *bindingChange, createdBy *commonv1.ContactLink,
+	ctx context.Context, existing *models.Room, binding *bindingChange, changes map[string]any,
+	createdBy *commonv1.ContactLink,
 ) (*chatv1.Room, error) {
 	if !rb.mayAnswerExisting(ctx, existing, createdBy) {
 		return nil, service.ErrRoomIDTaken
 	}
-	if err := rb.recordSocialTraderBinding(ctx, existing.GetID(), binding, createdBy.GetProfileId()); err != nil {
-		return nil, err
+	if binding != nil {
+		if err := rb.mayChangeExistingRoom(ctx, existing, changes, createdBy); err != nil {
+			return nil, err
+		}
+		if err := rb.recordSocialTraderBinding(ctx, existing.GetID(), binding, createdBy.GetProfileId()); err != nil {
+			return nil, err
+		}
 	}
 	return rb.withStawiBinding(ctx, existing.ToAPI())
+}
+
+// mayChangeExistingRoom applies UpdateRoom's gates to a change asked through
+// a CreateRoom retry: the caller must be the room's creator or an admin, the
+// room must not require approval, and Stawi metadata of a Stawi room stays
+// the Stawi flow's.
+func (rb *roomBusiness) mayChangeExistingRoom(
+	ctx context.Context, existing *models.Room, changes map[string]any, caller *commonv1.ContactLink,
+) error {
+	if existing.CreatedBy == "" || existing.CreatedBy != caller.GetProfileId() {
+		admin, err := rb.subscriptionSvc.HasRole(ctx, caller, existing.GetID(), roleAdminLevel)
+		if err != nil {
+			return fmt.Errorf("failed to check admin status: %w", err)
+		}
+		if admin == nil {
+			return connect.NewError(connect.CodePermissionDenied,
+				"only the room's creator or an admin can bind an existing room")
+		}
+	}
+	needsApproval, err := rb.requiresApproval(ctx, existing.GetID())
+	if err != nil {
+		return fmt.Errorf("failed to check approval: %w", err)
+	}
+	if needsApproval {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			"this room's changes need approval; ask through UpdateRoom")
+	}
+	return rb.refuseStawiMetadataOnStawiRoom(ctx, existing.GetID(), changes)
 }
 
 // resolvePersonsDM answers a person's DM with other, WhatsApp-like: the

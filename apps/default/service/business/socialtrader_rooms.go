@@ -2,6 +2,7 @@ package business
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -95,8 +96,7 @@ func (s *socialTraderRooms) ValidateBinding(
 		return nil, fmt.Errorf("failed to read the room's pool binding: %w", err)
 	}
 	if existing != nil && existing.LeaderProfileID != callerProfileID {
-		return nil, connect.NewError(connect.CodePermissionDenied,
-			"the room is bound by another leader; only they can change its pool")
+		return nil, errBindingOwnedByAnother
 	}
 	pool, err := s.pools.GetPool(ctx, address)
 	if err != nil {
@@ -136,10 +136,19 @@ func (s *socialTraderRooms) record(
 		BoundAt:         s.now().UTC(),
 	}
 	if err := s.bindings.Upsert(ctx, binding); err != nil {
+		if errors.Is(err, repository.ErrBindingOwnedByAnother) {
+			return errBindingOwnedByAnother
+		}
 		return fmt.Errorf("failed to record the pool binding: %w", err)
 	}
 	return nil
 }
+
+// errBindingOwnedByAnother refuses a change to a binding another leader holds;
+// the repository enforces it in the write, so a race cannot slip past the
+// read in ValidateBinding.
+var errBindingOwnedByAnother = connect.NewError(connect.CodePermissionDenied,
+	"the room is bound by another leader; only they can change its pool")
 
 // bindingChange is what a validated metadata change does to the room's pool
 // binding once the room is saved: bind to pool, or unbind.
@@ -199,7 +208,10 @@ func (rb *roomBusiness) recordSocialTraderBinding(
 	case change == nil:
 		return nil
 	case change.unbind:
-		if err := rb.socialtrader.bindings.DeleteByRoomID(ctx, roomID); err != nil {
+		if err := rb.socialtrader.bindings.DeleteByRoomID(ctx, roomID, leaderProfileID); err != nil {
+			if errors.Is(err, repository.ErrBindingOwnedByAnother) {
+				return errBindingOwnedByAnother
+			}
 			return fmt.Errorf("failed to remove the pool binding: %w", err)
 		}
 		return nil
