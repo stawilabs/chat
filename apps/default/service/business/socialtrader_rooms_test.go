@@ -49,6 +49,14 @@ type bindingFixture struct {
 // through UpdateSubscriptionRole, so UpdateRoom reaches the binding checks.
 func (f *bindingFixture) promote(t *testing.T, roomID string, member *commonv1.ContactLink) error {
 	t.Helper()
+	return f.setRole(t, roomID, member, "admin", f.leader)
+}
+
+// setRole gives member the role in roomID, acting as by.
+func (f *bindingFixture) setRole(
+	t *testing.T, roomID string, member *commonv1.ContactLink, role string, by *commonv1.ContactLink,
+) error {
+	t.Helper()
 	subs, err := f.subs.GetByContactLinkAndRooms(f.ctx,
 		&commonv1.ContactLink{ProfileId: member.GetProfileId()}, roomID)
 	if err != nil {
@@ -58,8 +66,8 @@ func (f *bindingFixture) promote(t *testing.T, roomID string, member *commonv1.C
 		return fmt.Errorf("expected one subscription, got %d", len(subs))
 	}
 	return f.rb.UpdateSubscriptionRole(f.ctx, &chatv1.UpdateSubscriptionRoleRequest{
-		RoomId: roomID, SubscriptionId: subs[0].GetID(), Roles: []string{"admin"},
-	}, f.leader)
+		RoomId: roomID, SubscriptionId: subs[0].GetID(), Roles: []string{role},
+	}, by)
 }
 
 // markStawiRoom makes the room a Stawi room (genesis prepared), as a
@@ -395,6 +403,43 @@ func (s *RoomBusinessTestSuite) TestRoomBinding_ClearingKeyUnbinds() {
 		binding, err = f.bindings.GetByRoomID(f.ctx, room.GetId())
 		require.NoError(t, err)
 		require.Nil(t, binding, "the leader unbound the room")
+	})
+}
+
+// TestRoomBinding_RoomAuthorityUnbindsOnceTheLeaderLostIt: a binding is the
+// leader's while they still administer the room, but it must never outlive
+// their authority. Once the leader is demoted below admin, the room's owner
+// can clear it (security review: unrevocable binding).
+func (s *RoomBusinessTestSuite) TestRoomBinding_RoomAuthorityUnbindsOnceTheLeaderLostIt() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+		room, err := f.createBound(t, f.leader, bindPool)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(f.ctx, f.svc, room.GetId(), f.leader.GetProfileId(), t)
+		s.WaitForMemberSubscription(f.ctx, f.svc, room.GetId(), f.member.GetProfileId(), t)
+		require.NoError(t, f.setRole(t, room.GetId(), f.member, "owner", f.leader))
+
+		cleared, err := structpb.NewStruct(map[string]any{events.SocialTraderPoolMetadataKey: ""})
+		require.NoError(t, err)
+
+		// The leader is still an owner: even another owner cannot take the binding away.
+		_, err = f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{RoomId: room.GetId(), Metadata: cleared}, f.member)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+
+		// The leader steps down to a plain member; the binding no longer has an administrator behind it.
+		require.NoError(t, f.setRole(t, room.GetId(), f.leader, "member", f.member))
+		got, err := f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{RoomId: room.GetId(), Metadata: cleared}, f.member)
+		require.NoError(t, err, "the room's owner unbinds a pool whose leader lost admin authority")
+		require.Empty(t, got.GetMetadata().GetFields()[events.SocialTraderPoolMetadataKey].GetStringValue())
+		binding, err := f.bindings.GetByRoomID(f.ctx, room.GetId())
+		require.NoError(t, err)
+		require.Nil(t, binding)
+
+		// The demoted leader cannot bind the room again from below admin.
+		bind, err := structpb.NewStruct(map[string]any{events.SocialTraderPoolMetadataKey: bindPool})
+		require.NoError(t, err)
+		_, err = f.rb.UpdateRoom(f.ctx, &chatv1.UpdateRoomRequest{RoomId: room.GetId(), Metadata: bind}, f.leader)
+		require.Error(t, err)
 	})
 }
 

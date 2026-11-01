@@ -155,6 +155,11 @@ var errBindingOwnedByAnother = connect.NewError(connect.CodePermissionDenied,
 type bindingChange struct {
 	pool   *socialtrader.Pool
 	unbind bool
+	// unbindAs is the profile the binding row belongs to, when an unbind was
+	// authorised for a caller other than that leader (who lost room authority).
+	// The delete still names the leader, so a binding that changed hands in
+	// between is left alone.
+	unbindAs string
 }
 
 // prepareSocialTraderBinding validates a metadata change that asks to bind
@@ -173,10 +178,14 @@ func (rb *roomBusiness) prepareSocialTraderBinding(
 		return nil, errSocialTraderNotConfigured
 	}
 	if poolID == "" {
-		if err := rb.socialtrader.validateUnbind(ctx, callerProfileID, roomID); err != nil {
+		leaderAdministers := func(ctx context.Context, leaderProfileID string) (bool, error) {
+			return rb.subscriptionSvc.ProfileHasRole(ctx, leaderProfileID, roomID, roleAdminLevel)
+		}
+		boundLeader, err := rb.socialtrader.validateUnbind(ctx, callerProfileID, roomID, leaderAdministers)
+		if err != nil {
 			return nil, err
 		}
-		return &bindingChange{unbind: true}, nil
+		return &bindingChange{unbind: true, unbindAs: boundLeader}, nil
 	}
 	pool, err := rb.socialtrader.ValidateBinding(ctx, callerProfileID, roomID, poolID)
 	if err != nil {
@@ -185,18 +194,36 @@ func (rb *roomBusiness) prepareSocialTraderBinding(
 	return &bindingChange{pool: pool}, nil
 }
 
-// validateUnbind decides whether caller may clear the room's binding: only
-// the leader who bound it. A room with no binding has nothing to clear.
-func (s *socialTraderRooms) validateUnbind(ctx context.Context, callerProfileID, roomID string) error {
+// validateUnbind decides whether caller may clear the room's binding. The
+// caller is already a room admin (UpdateRoom checked). The binding stays the
+// leader's while they administer the room; once they no longer hold admin
+// authority there (demoted or removed), the room's administrators may clear
+// it, so a binding never outlives the authority that made it. A room with no
+// binding has nothing to clear. It returns the profile the binding belongs
+// to (empty when there is none), which the delete is issued as.
+func (s *socialTraderRooms) validateUnbind(
+	ctx context.Context, callerProfileID, roomID string,
+	leaderAdministers func(ctx context.Context, leaderProfileID string) (bool, error),
+) (string, error) {
 	existing, err := s.bindings.GetByRoomID(ctx, roomID)
 	if err != nil {
-		return fmt.Errorf("failed to read the room's pool binding: %w", err)
+		return "", fmt.Errorf("failed to read the room's pool binding: %w", err)
 	}
-	if existing != nil && existing.LeaderProfileID != callerProfileID {
-		return connect.NewError(connect.CodePermissionDenied,
-			"only the leader who bound the room can unbind it")
+	if existing == nil {
+		return "", nil
 	}
-	return nil
+	if existing.LeaderProfileID == callerProfileID {
+		return existing.LeaderProfileID, nil
+	}
+	administers, err := leaderAdministers(ctx, existing.LeaderProfileID)
+	if err != nil {
+		return "", fmt.Errorf("failed to check the binding leader's role: %w", err)
+	}
+	if administers {
+		return "", connect.NewError(connect.CodePermissionDenied,
+			"only the leader who bound the room can unbind it while they administer the room")
+	}
+	return existing.LeaderProfileID, nil
 }
 
 // recordSocialTraderBinding applies a prepared binding change for a saved
@@ -208,7 +235,11 @@ func (rb *roomBusiness) recordSocialTraderBinding(
 	case change == nil:
 		return nil
 	case change.unbind:
-		if err := rb.socialtrader.bindings.DeleteByRoomID(ctx, roomID, leaderProfileID); err != nil {
+		as := leaderProfileID
+		if change.unbindAs != "" {
+			as = change.unbindAs
+		}
+		if err := rb.socialtrader.bindings.DeleteByRoomID(ctx, roomID, as); err != nil {
 			if errors.Is(err, repository.ErrBindingOwnedByAnother) {
 				return errBindingOwnedByAnother
 			}

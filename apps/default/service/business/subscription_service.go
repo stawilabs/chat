@@ -66,6 +66,11 @@ type SubscriptionService interface {
 		roleLvl roleLevel,
 	) (*models.RoomSubscription, error)
 
+	// ProfileHasRole reports whether the profile holds roleLvl or higher in
+	// the room through an active subscription. It takes a bare profile id, for
+	// checks about members other than the caller (no contact link at hand).
+	ProfileHasRole(ctx context.Context, profileID, roomID string, roleLvl roleLevel) (bool, error)
+
 	// CanMembersManage checks if a user can add/remove members from a room
 	CanMembersManage(
 		ctx context.Context,
@@ -215,6 +220,25 @@ func (ss *subscriptionService) HasRole(
 	}).Debug("HasRole check")
 
 	return nil, nil //nolint:nilnil // nil,nil means no matching subscription at the required role level
+}
+
+// ProfileHasRole reports whether profileID holds roleLvl or higher in roomID.
+func (ss *subscriptionService) ProfileHasRole(
+	ctx context.Context, profileID, roomID string, roleLvl roleLevel,
+) (bool, error) {
+	if profileID == "" || roomID == "" {
+		return false, nil
+	}
+	subs, err := ss.subRepo.GetByContactLinkAndRooms(ctx, &commonv1.ContactLink{ProfileId: profileID}, roomID)
+	if err != nil {
+		return false, fmt.Errorf("failed to check subscription: %w", err)
+	}
+	for _, sub := range subs {
+		if sub.IsActive() && ss.hasMinimumRole(roleLvl, strings.Split(sub.Role, ",")...) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (ss *subscriptionService) CanMembersManage(
