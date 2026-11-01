@@ -99,6 +99,23 @@ extension type PoolServiceClient(connect.Transport _transport) {
     );
   }
 
+  Future<socialtraderv1trading.PreparedTx> preparePoolApproval(
+    socialtraderv1pools.PreparePoolApprovalRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.PoolService.preparePoolApproval,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
   Future<socialtraderv1trading.PreparedTx> preparePoolRedeem(
     socialtraderv1pools.PreparePoolRedeemRequest input, {
     connect.Headers? headers,

@@ -55,6 +55,13 @@ abstract final class PoolService {
     socialtraderv1trading.PreparedTx.new,
   );
 
+  static const preparePoolApproval = connect.Spec(
+    '/$name/PreparePoolApproval',
+    connect.StreamType.unary,
+    socialtraderv1pools.PreparePoolApprovalRequest.new,
+    socialtraderv1trading.PreparedTx.new,
+  );
+
   static const preparePoolRedeem = connect.Spec(
     '/$name/PreparePoolRedeem',
     connect.StreamType.unary,

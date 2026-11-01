@@ -22,12 +22,22 @@ abstract interface class SocialTraderApi {
 
   /// Calldata for a deposit of [assets] (quote asset, decimal string) into
   /// [pool], minting at least [minShares] (empty = no floor) to [receiver].
-  /// The wallet signs it.
+  /// The wallet signs it. With [owner] (the sending wallet) the service
+  /// answers FAILED_PRECONDITION until that wallet's allowance to the pool
+  /// covers [assets]; see [prepareApproval].
   Future<PreparedTx> prepareDeposit({
     required String pool,
     required String assets,
     required String receiver,
     String minShares = '',
+    String owner = '',
+  });
+
+  /// Calldata for the quote-token approval a deposit needs:
+  /// `approve(pool, assets)`, sent before the first deposit.
+  Future<PreparedTx> prepareApproval({
+    required String pool,
+    required String assets,
   });
 
   /// Calldata for redeeming [shares] of [pool] to [receiver], paying at least
@@ -171,6 +181,7 @@ class ConnectSocialTraderApi implements SocialTraderApi {
     required String assets,
     required String receiver,
     String minShares = '',
+    String owner = '',
   }) async => _tx(
     await _pools.preparePoolDeposit(
       st.PreparePoolDepositRequest(
@@ -178,7 +189,18 @@ class ConnectSocialTraderApi implements SocialTraderApi {
         assets: assets,
         receiver: receiver,
         minShares: minShares,
+        owner: owner,
       ),
+    ),
+  );
+
+  @override
+  Future<PreparedTx> prepareApproval({
+    required String pool,
+    required String assets,
+  }) async => _tx(
+    await _pools.preparePoolApproval(
+      st.PreparePoolApprovalRequest(pool: pool, assets: assets),
     ),
   );
 

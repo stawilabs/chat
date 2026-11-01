@@ -1,3 +1,4 @@
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -34,13 +35,21 @@ class CommitSigning extends CommitState {
   const CommitSigning();
 }
 
+/// The approval is sent; the deposit is prepared once the chain shows it.
+class CommitWaitingApproval extends CommitState {
+  const CommitWaitingApproval(this.approvalHash);
+  final String approvalHash;
+}
+
 class CommitDone extends CommitState {
   const CommitDone(this.txHash);
   final String txHash;
 }
 
-/// Commits funds to a pool: asks the service for the deposit calldata, then
-/// the wallet to sign and send it.
+/// Commits funds to a pool in two signatures: the quote-token approval the
+/// pool needs, then the deposit. The service refuses to prepare the deposit
+/// until the approval is mined, so the deposit can never revert on allowance;
+/// the controller waits for that moment instead of sending the person away.
 @riverpod
 class JoinPoolController extends _$JoinPoolController {
   @override
@@ -50,6 +59,8 @@ class JoinPoolController extends _$JoinPoolController {
     required String amount,
     required bool remember,
     PoolInfo? poolInfo,
+    Duration allowancePoll = const Duration(seconds: 2),
+    Duration allowanceTimeout = const Duration(minutes: 2),
   }) async {
     final assets = tryNormalizeCommitment(amount);
     if (assets == null) {
@@ -73,14 +84,28 @@ class JoinPoolController extends _$JoinPoolController {
               nav: poolInfo.nav,
               totalShares: poolInfo.totalShares,
             );
-      final tx = await ref
-          .read(socialTraderApiProvider)
-          .prepareDeposit(
-            pool: pool,
-            assets: assets,
-            receiver: receiver,
-            minShares: previewed == null ? '' : minimumWithSlippage(previewed),
-          );
+      final api = ref.read(socialTraderApiProvider);
+      final approval = await api.prepareApproval(pool: pool, assets: assets);
+      if (!ref.mounted) return;
+      state = const CommitSigning();
+      final approvalHash = await ref
+          .read(walletControllerProvider.notifier)
+          .sendPrepared(approval);
+      if (!ref.mounted) return;
+      state = CommitWaitingApproval(approvalHash);
+      final minShares = previewed == null ? '' : minimumWithSlippage(previewed);
+      final tx = await _awaitAllowance(
+        () => api.prepareDeposit(
+          pool: pool,
+          assets: assets,
+          receiver: receiver,
+          minShares: minShares,
+          owner: receiver,
+        ),
+        approvalHash: approvalHash,
+        poll: allowancePoll,
+        timeout: allowanceTimeout,
+      );
       if (!ref.mounted) return;
       state = const CommitSigning();
       final hash = await ref
@@ -112,12 +137,48 @@ class JoinPoolController extends _$JoinPoolController {
     }
   }
 
+  /// Re-prepares the deposit until the service stops answering
+  /// FAILED_PRECONDITION (the approval is mined) or [timeout] passes.
+  Future<PreparedTx> _awaitAllowance(
+    Future<PreparedTx> Function() prepare, {
+    required String approvalHash,
+    required Duration poll,
+    required Duration timeout,
+  }) async {
+    final started = DateTime.now();
+    while (true) {
+      try {
+        return await prepare();
+      } on connect.ConnectException catch (e) {
+        if (e.code != connect.Code.failedPrecondition) rethrow;
+        if (DateTime.now().difference(started) >= timeout) {
+          throw ApprovalPendingException(approvalHash);
+        }
+        await Future<void>.delayed(poll);
+      }
+    }
+  }
+
   static String _describe(Exception e) => switch (e) {
     WalletReadOnlyException(:final message) => message,
     WalletNotConnectedException(:final message) => message,
     WalletUnavailableException(:final message) => message,
+    ApprovalPendingException(:final message) => message,
     _ => 'Could not commit: $e',
   };
+}
+
+/// The approval was sent but had not been mined when we stopped waiting.
+class ApprovalPendingException implements Exception {
+  const ApprovalPendingException(this.approvalHash);
+  final String approvalHash;
+
+  String get message =>
+      'Your approval ($approvalHash) is still pending. Nothing was deposited; '
+      'tap Commit again once it is confirmed.';
+
+  @override
+  String toString() => message;
 }
 
 /// Opens the join sheet for [pool] in [roomId].
@@ -144,11 +205,18 @@ class JoinPoolSheet extends ConsumerStatefulWidget {
     required this.roomId,
     required this.pool,
     this.onDismiss,
+    this.allowancePoll = const Duration(seconds: 2),
+    this.allowanceTimeout = const Duration(minutes: 2),
     super.key,
   });
 
   final String roomId;
   final PoolInfo pool;
+
+  /// How often, and for how long, the deposit is re-prepared while the
+  /// approval is pending.
+  final Duration allowancePoll;
+  final Duration allowanceTimeout;
 
   /// Called when the person chooses "Not now" (the first-visit prompt).
   final VoidCallback? onDismiss;
@@ -227,6 +295,8 @@ class _JoinPoolSheetState extends ConsumerState<JoinPoolSheet> {
                     amount: _amount.text,
                     remember: _remember,
                     poolInfo: pool,
+                    allowancePoll: widget.allowancePoll,
+                    allowanceTimeout: widget.allowanceTimeout,
                   ),
             ),
           },
@@ -266,7 +336,10 @@ class _Form extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final busy = state is CommitPreparing || state is CommitSigning;
+    final busy =
+        state is CommitPreparing ||
+        state is CommitSigning ||
+        state is CommitWaitingApproval;
     final error = switch (state) {
       CommitIdle(:final error) => error,
       _ => null,
@@ -308,6 +381,8 @@ class _Form extends StatelessWidget {
             child: Text(switch (state) {
               CommitPreparing() => 'Preparing…',
               CommitSigning() => 'Waiting for your wallet…',
+              CommitWaitingApproval() =>
+                'Approval sent, waiting for it to confirm…',
               _ => 'Commit',
             }),
           ),

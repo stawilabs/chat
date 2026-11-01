@@ -1,3 +1,4 @@
+import 'package:connectrpc/connect.dart' as connect;
 import 'package:stawi/features/socialtrader/data/socialtrader_api.dart';
 import 'package:stawi/features/socialtrader/data/wallet_service.dart';
 import 'package:stawi/features/socialtrader/domain/pool_models.dart';
@@ -25,7 +26,15 @@ class FakeSocialTraderApi implements SocialTraderApi {
   Exception? linkFailWith;
 
   final deposits =
-      <({String pool, String assets, String receiver, String minShares})>[];
+      <
+        ({
+          String pool,
+          String assets,
+          String receiver,
+          String minShares,
+          String owner,
+        })
+      >[];
   final redeems =
       <({String pool, String shares, String receiver, String minAssets})>[];
   final leaderOrders = <LeaderOrder>[];
@@ -88,12 +97,37 @@ class FakeSocialTraderApi implements SocialTraderApi {
     return books[marketId] ?? const OrderBook();
   }
 
+  final approvals = <({String pool, String assets})>[];
+
+  /// prepareDeposit calls that answer FAILED_PRECONDITION (approval not mined
+  /// yet) before one succeeds.
+  int depositGateRefusals = 0;
+
+  @override
+  Future<PreparedTx> prepareApproval({
+    required String pool,
+    required String assets,
+  }) async {
+    _maybeFail();
+    approvals.add((pool: pool, assets: assets));
+    return approvalTx;
+  }
+
+  PreparedTx approvalTx = const PreparedTx(
+    to: '0xusdc',
+    data: '0xapprove',
+    value: '0',
+    chainId: 14601,
+    description: 'Approve pool room-1 to pull 250 USDC',
+  );
+
   @override
   Future<PreparedTx> prepareDeposit({
     required String pool,
     required String assets,
     required String receiver,
     String minShares = '',
+    String owner = '',
   }) async {
     _maybeFail();
     deposits.add((
@@ -101,7 +135,15 @@ class FakeSocialTraderApi implements SocialTraderApi {
       assets: assets,
       receiver: receiver,
       minShares: minShares,
+      owner: owner,
     ));
+    if (depositGateRefusals > 0) {
+      depositGateRefusals--;
+      throw connect.ConnectException(
+        connect.Code.failedPrecondition,
+        'allowance 0 USDC is below the 250 committed; approve the pool first',
+      );
+    }
     return preparedTx;
   }
 

@@ -133,15 +133,80 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Commit'));
     await tester.pumpAndSettle();
 
+    // Joining is approve-then-deposit: the approval goes first, the deposit
+    // names the sender so the service can refuse it until the approval lands.
+    expect(h.api.approvals, [(pool: poolAddress, assets: '250')]);
     expect(h.api.deposits, hasLength(1));
     expect(h.api.deposits.single.pool, poolAddress);
     expect(h.api.deposits.single.assets, '250');
     expect(h.api.deposits.single.receiver, FakeWalletPlatform.defaultAddress);
+    expect(h.api.deposits.single.owner, FakeWalletPlatform.defaultAddress);
     // 250 quote at 1000/800 previews 200 shares; the floor is 99% of that.
     expect(h.api.deposits.single.minShares, '198');
-    expect(platform.sent, [h.api.preparedTx]);
-    expect(find.textContaining('0xhash1'), findsOneWidget);
+    expect(platform.sent, [h.api.approvalTx, h.api.preparedTx]);
+    expect(find.textContaining('0xhash2'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Commit'), findsNothing);
+  });
+
+  testWidgets('joinSheet_waitsForTheApprovalBeforeDepositing', (tester) async {
+    final h = Harness();
+    h.api.depositGateRefusals = 2;
+    await h.settings.save(profileId, '250');
+    await tester.pumpWidget(
+      h.host(
+        const JoinPoolSheet(
+          roomId: roomId,
+          pool: pool,
+          allowancePoll: Duration.zero,
+        ),
+      ),
+    );
+    await connectWallet(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Commit'));
+    await tester.pumpAndSettle();
+
+    final platform = h.platform as FakeWalletPlatform;
+    expect(
+      h.api.deposits,
+      hasLength(3),
+      reason: 'refused twice while pending, prepared on the third try',
+    );
+    expect(platform.sent, [h.api.approvalTx, h.api.preparedTx]);
+    expect(find.textContaining('0xhash2'), findsOneWidget);
+  });
+
+  testWidgets('joinSheet_explainsWhenTheApprovalNeverLands', (tester) async {
+    final h = Harness();
+    h.api.depositGateRefusals = 1000;
+    await h.settings.save(profileId, '250');
+    await tester.pumpWidget(
+      h.host(
+        const JoinPoolSheet(
+          roomId: roomId,
+          pool: pool,
+          allowancePoll: Duration.zero,
+          allowanceTimeout: Duration.zero,
+        ),
+      ),
+    );
+    await connectWallet(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Commit'));
+    await tester.pumpAndSettle();
+
+    final platform = h.platform as FakeWalletPlatform;
+    expect(platform.sent, [
+      h.api.approvalTx,
+    ], reason: 'the deposit was never sent');
+    expect(find.textContaining('approval'), findsOneWidget);
+    expect(
+      find.widgetWithText(FilledButton, 'Commit'),
+      findsOneWidget,
+      reason: 'the person can try again',
+    );
   });
 
   testWidgets('joinSheet_rememberSavesTheAmount', (tester) async {
@@ -196,7 +261,8 @@ void main() {
       find.byKey(const Key('join-pool-amount')),
     );
     expect(field.controller!.text, '120', reason: 'the amount is kept');
-    expect(h.api.deposits, hasLength(1), reason: 'exactly one attempt');
+    expect(h.api.approvals, hasLength(1), reason: 'exactly one attempt');
+    expect(h.api.deposits, isEmpty, reason: 'the approval never left the wallet');
     expect(platform.sent, isEmpty);
     expect(
       find.widgetWithText(FilledButton, 'Commit'),
@@ -204,7 +270,7 @@ void main() {
       reason: 'the person may try again; nothing retries by itself',
     );
     await tester.pump(const Duration(seconds: 5));
-    expect(h.api.deposits, hasLength(1), reason: 'no retry loop');
+    expect(h.api.approvals, hasLength(1), reason: 'no retry loop');
   });
 
   testWidgets('joinSheet_readOnlyWalletExplains', (tester) async {
@@ -306,7 +372,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('0xhash1'),
+      find.textContaining('0xhash2'),
       findsOneWidget,
       reason: 'the deposit was sent; a failed remember never hides that',
     );
@@ -316,7 +382,7 @@ void main() {
       reason: 'no second commit is offered',
     );
     expect(find.byKey(const Key('join-pool-error')), findsNothing);
-    expect((h.platform as FakeWalletPlatform).sent, hasLength(1));
+    expect((h.platform as FakeWalletPlatform).sent, hasLength(2));
   });
 
   testWidgets('joinGate_hiddenWhenWalletLookupFails', (tester) async {

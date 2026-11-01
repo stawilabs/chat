@@ -1149,6 +1149,7 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
     $core.String? receiver,
     Permit? permit,
     $core.String? minShares,
+    $core.String? owner,
   }) {
     final result = PreparePoolDepositRequest._();
     if (pool != null) result.pool = pool;
@@ -1156,6 +1157,7 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
     if (receiver != null) result.receiver = receiver;
     if (permit != null) result.permit = permit;
     if (minShares != null) result.minShares = minShares;
+    if (owner != null) result.owner = owner;
     return result;
   }
 
@@ -1179,6 +1181,7 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
     ..aOM<Permit>(4, _omitFieldNames ? '' : 'permit',
         subBuilder: Permit.$_createMessage)
     ..aOS(5, _omitFieldNames ? '' : 'minShares')
+    ..aOS(6, _omitFieldNames ? '' : 'owner')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1254,6 +1257,95 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
   $core.bool hasMinShares() => $_has(4);
   @$pb.TagNumber(5)
   void clearMinShares() => $_clearField(5);
+
+  /// Wallet that will send the deposit. When set and no permit is given, the
+  /// service checks owner's allowance to the pool and answers
+  /// FAILED_PRECONDITION until it covers assets, so clients can send the
+  /// approval first and retry until it is mined.
+  @$pb.TagNumber(6)
+  $core.String get owner => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set owner($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasOwner() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearOwner() => $_clearField(6);
+}
+
+class PreparePoolApprovalRequest extends $pb.GeneratedMessage {
+  factory PreparePoolApprovalRequest({
+    $core.String? pool,
+    $core.String? assets,
+  }) {
+    final result = PreparePoolApprovalRequest._();
+    if (pool != null) result.pool = pool;
+    if (assets != null) result.assets = assets;
+    return result;
+  }
+
+  PreparePoolApprovalRequest._();
+
+  factory PreparePoolApprovalRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PreparePoolApprovalRequest()..mergeFromBuffer(data, registry);
+  factory PreparePoolApprovalRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PreparePoolApprovalRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PreparePoolApprovalRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'socialtrader.v1'),
+      createEmptyInstance: PreparePoolApprovalRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'pool')
+    ..aOS(2, _omitFieldNames ? '' : 'assets')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PreparePoolApprovalRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PreparePoolApprovalRequest copyWith(
+          void Function(PreparePoolApprovalRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as PreparePoolApprovalRequest))
+          as PreparePoolApprovalRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use PreparePoolApprovalRequest() / PreparePoolApprovalRequest.new instead')
+  static PreparePoolApprovalRequest create() => PreparePoolApprovalRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      PreparePoolApprovalRequest._();
+  @$core.override
+  PreparePoolApprovalRequest createEmptyInstance() =>
+      PreparePoolApprovalRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PreparePoolApprovalRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PreparePoolApprovalRequest>(
+          PreparePoolApprovalRequest.$_createMessage);
+  static PreparePoolApprovalRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get pool => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set pool($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPool() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPool() => $_clearField(1);
+
+  /// Amount of the quote asset (raw units) the pool may pull.
+  @$pb.TagNumber(2)
+  $core.String get assets => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set assets($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAssets() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAssets() => $_clearField(2);
 }
 
 class PreparePoolRedeemRequest extends $pb.GeneratedMessage {
@@ -1709,6 +1801,10 @@ class PoolServiceApi {
           $pb.ClientContext? ctx, PreparePoolDepositRequest request) =>
       _client.invoke<$1.PreparedTx>(
           ctx, 'PoolService', 'PreparePoolDeposit', request, $1.PreparedTx());
+  $async.Future<$1.PreparedTx> preparePoolApproval(
+          $pb.ClientContext? ctx, PreparePoolApprovalRequest request) =>
+      _client.invoke<$1.PreparedTx>(
+          ctx, 'PoolService', 'PreparePoolApproval', request, $1.PreparedTx());
   $async.Future<$1.PreparedTx> preparePoolRedeem(
           $pb.ClientContext? ctx, PreparePoolRedeemRequest request) =>
       _client.invoke<$1.PreparedTx>(
