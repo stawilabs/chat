@@ -307,21 +307,33 @@ func (rb *roomBusiness) answerExistingRoom(
 	return rb.withStawiBinding(ctx, existing.ToAPI())
 }
 
+// freshRoomGrace is how long after a room's creation its creator may still
+// bind it on a retry before the asynchronous owner subscription has landed.
+const freshRoomGrace = 5 * time.Minute
+
 // mayChangeExistingRoom applies UpdateRoom's gates to a change asked through
-// a CreateRoom retry: the caller must be the room's creator or an admin, the
-// room must not require approval, and Stawi metadata of a Stawi room stays
-// the Stawi flow's.
+// a CreateRoom retry: the caller must hold an admin role in the room now (a
+// creator since removed or demoted holds none), the room must not require
+// approval, and Stawi metadata of a Stawi room stays the Stawi flow's. The
+// one exception is the creator retrying a room so new that no subscription
+// has landed yet: its owner subscription is written asynchronously, so a
+// room created within freshRoomGrace with no active subscription is answered
+// to its creator.
 func (rb *roomBusiness) mayChangeExistingRoom(
 	ctx context.Context, existing *models.Room, changes map[string]any, caller *commonv1.ContactLink,
 ) error {
-	if existing.CreatedBy == "" || existing.CreatedBy != caller.GetProfileId() {
-		admin, err := rb.subscriptionSvc.HasRole(ctx, caller, existing.GetID(), roleAdminLevel)
-		if err != nil {
-			return fmt.Errorf("failed to check admin status: %w", err)
+	admin, err := rb.subscriptionSvc.HasRole(ctx, caller, existing.GetID(), roleAdminLevel)
+	if err != nil {
+		return fmt.Errorf("failed to check admin status: %w", err)
+	}
+	if admin == nil {
+		fresh, freshErr := rb.isFreshRoomOfCreator(ctx, existing, caller)
+		if freshErr != nil {
+			return freshErr
 		}
-		if admin == nil {
+		if !fresh {
 			return connect.NewError(connect.CodePermissionDenied,
-				"only the room's creator or an admin can bind an existing room")
+				"only a current admin of the room can bind an existing room")
 		}
 	}
 	needsApproval, err := rb.requiresApproval(ctx, existing.GetID())
@@ -333,6 +345,27 @@ func (rb *roomBusiness) mayChangeExistingRoom(
 			"this room's changes need approval; ask through UpdateRoom")
 	}
 	return rb.refuseStawiMetadataOnStawiRoom(ctx, existing.GetID(), changes)
+}
+
+// isFreshRoomOfCreator reports whether existing was created by caller within
+// freshRoomGrace and has no active subscription yet.
+func (rb *roomBusiness) isFreshRoomOfCreator(
+	ctx context.Context, existing *models.Room, caller *commonv1.ContactLink,
+) (bool, error) {
+	if existing.CreatedBy == "" || existing.CreatedBy != caller.GetProfileId() ||
+		time.Since(existing.CreatedAt) > freshRoomGrace {
+		return false, nil
+	}
+	subs, err := rb.subscriptionRepo.GetByRoomID(ctx, existing.GetID(), nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to list the room's subscriptions: %w", err)
+	}
+	for _, sub := range subs {
+		if sub.IsActive() {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // resolvePersonsDM answers a person's DM with other, WhatsApp-like: the

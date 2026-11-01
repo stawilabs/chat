@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	commonv1 "buf.build/gen/go/antinvestor/common/protocolbuffers/go/common/v1"
 	chatv1 "buf.build/gen/go/stawi/chat/protocolbuffers/go/chat/v1"
 	"connectrpc.com/connect/v2"
 	"github.com/pitabwire/frame/v3"
 	"github.com/pitabwire/frame/v3/datastore"
+	"github.com/pitabwire/frame/v3/datastore/pool"
 	"github.com/pitabwire/frame/v3/frametests/definition"
 	"github.com/pitabwire/util"
 	"github.com/stretchr/testify/require"
@@ -37,6 +39,8 @@ type bindingFixture struct {
 	bindings repository.SocialTraderRoomRepository
 	stawi    repository.StawiRoomRepository
 	subs     repository.RoomSubscriptionRepository
+	rooms    repository.RoomRepository
+	dbPool   pool.Pool
 	leader   *commonv1.ContactLink
 	member   *commonv1.ContactLink
 }
@@ -86,6 +90,8 @@ func (s *RoomBusinessTestSuite) newBindingFixture(
 	f.pools.Add(&socialtrader.Pool{Address: bindPool, Leader: bindLeaderWallet, MarketID: "0x01"})
 	f.links.Link(f.leader.GetProfileId(), bindLeaderWallet)
 	f.rb, f.bindings, f.stawi, f.subs = s.setupBindingBusinessLayer(ctx, svc, f, configured)
+	f.dbPool = svc.DatastoreManager().GetPool(ctx, datastore.DefaultPoolName)
+	f.rooms = repository.NewRoomRepository(ctx, f.dbPool, svc.WorkManager())
 	return f
 }
 
@@ -458,5 +464,83 @@ func (s *RoomBusinessTestSuite) TestRoomBinding_UnbindThenRebindWorks() {
 		require.NoError(t, err)
 		require.NotNil(t, binding)
 		require.Equal(t, bindPool, binding.PoolID)
+	})
+}
+
+// TestCreateRoom_RetryByRemovedCreatorCannotBind: the creator exception is
+// no exception once the room has members: a creator whose subscription is no
+// longer active holds no role and cannot bind the room on a retry.
+func (s *RoomBusinessTestSuite) TestCreateRoom_RetryByRemovedCreatorCannotBind() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+		roomID := util.IDString()
+		_, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Id: roomID, Name: "Traders", Members: []*commonv1.ContactLink{f.member},
+		}, f.leader)
+		require.NoError(t, err)
+		s.WaitForMemberSubscription(f.ctx, f.svc, roomID, f.leader.GetProfileId(), t)
+		s.WaitForMemberSubscription(f.ctx, f.svc, roomID, f.member.GetProfileId(), t)
+
+		// The creator is removed: their subscription is blocked.
+		subs, err := f.subs.GetByContactLinkAndRooms(f.ctx,
+			&commonv1.ContactLink{ProfileId: f.leader.GetProfileId()}, roomID)
+		require.NoError(t, err)
+		require.Len(t, subs, 1)
+		subs[0].SubscriptionState = models.RoomSubscriptionStateBlocked
+		_, err = f.subs.Update(f.ctx, subs[0])
+		require.NoError(t, err)
+
+		// Refused either as a stranger to the room's id (no active subscription,
+		// AlreadyExists) or, were the id answered, as a non-admin
+		// (PermissionDenied); never bound.
+		_, err = f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Id: roomID, Name: "Traders", Metadata: poolMetadata(t, bindPool),
+		}, f.leader)
+		require.Error(t, err)
+		require.Contains(t, []connect.Code{connect.CodePermissionDenied, connect.CodeAlreadyExists},
+			connect.CodeOf(err), "%v", err)
+		binding, err := f.bindings.GetByRoomID(f.ctx, roomID)
+		require.NoError(t, err)
+		require.Nil(t, binding, "a removed creator binds nothing")
+	})
+}
+
+// TestCreateRoom_RetryBeforeOwnerSubscriptionLandsBinds: a creator retrying
+// a room so new that its asynchronous owner subscription has not landed yet
+// (no active subscription, created within five minutes) gets the binding;
+// the same room older than that does not.
+func (s *RoomBusinessTestSuite) TestCreateRoom_RetryBeforeOwnerSubscriptionLandsBinds() {
+	s.WithTestDependencies(s.T(), func(t *testing.T, dep *definition.DependencyOption) {
+		f := s.newBindingFixture(t, dep, true)
+
+		fresh := &models.Room{RoomType: models.RoomTypeGroup, Name: "Traders"}
+		fresh.ID = util.IDString()
+		fresh.CreatedBy = f.leader.GetProfileId()
+		require.NoError(t, f.rooms.Create(f.ctx, fresh))
+
+		got, err := f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Id: fresh.GetID(), Name: "Traders", Metadata: poolMetadata(t, bindPool),
+		}, f.leader)
+		require.NoError(t, err)
+		require.Equal(t, fresh.GetID(), got.GetId())
+		binding, err := f.bindings.GetByRoomID(f.ctx, fresh.GetID())
+		require.NoError(t, err)
+		require.NotNil(t, binding, "the creator's retry binds the fresh room")
+		require.Equal(t, bindPool, binding.PoolID)
+
+		stale := &models.Room{RoomType: models.RoomTypeGroup, Name: "Old"}
+		stale.ID = util.IDString()
+		stale.CreatedBy = f.leader.GetProfileId()
+		require.NoError(t, f.rooms.Create(f.ctx, stale))
+		require.NoError(t, f.dbPool.DB(f.ctx, false).Table("rooms").Where("id = ?", stale.GetID()).
+			Update("created_at", time.Now().Add(-10*time.Minute)).Error)
+
+		_, err = f.rb.CreateRoom(f.ctx, &chatv1.CreateRoomRequest{
+			Id: stale.GetID(), Name: "Old", Metadata: poolMetadata(t, bindPool),
+		}, f.leader)
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+		binding, err = f.bindings.GetByRoomID(f.ctx, stale.GetID())
+		require.NoError(t, err)
+		require.Nil(t, binding, "past the grace period only a current admin binds")
 	})
 }
