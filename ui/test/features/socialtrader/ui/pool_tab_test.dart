@@ -31,6 +31,7 @@ const pool = PoolInfo(
   memberCount: 3,
   performanceFeeBps: 1000,
   tier: 'finalized',
+  mark: '2000.5',
 );
 
 const boundRoom = Room(
@@ -133,6 +134,10 @@ void main() {
     );
     expect(find.textContaining('1000'), findsWidgets, reason: 'pool value');
     expect(find.textContaining('+5.00%'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('pool-nav-line'))).data,
+      contains('mark 2000.5'),
+    );
     expect(find.byType(NavSparkline), findsOneWidget);
     expect(find.textContaining('3 members'), findsOneWidget);
     expect(find.textContaining('12.5%'), findsOneWidget, reason: 'my share');
@@ -182,5 +187,50 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining("couldn't"), findsOneWidget);
     expect(find.widgetWithText(TextButton, 'Retry'), findsOneWidget);
+  });
+
+  testWidgets('poolTab_cancelForRedeemsWhenQueued', (tester) async {
+    final api = await pumpTab(
+      tester,
+      wallet: otherWallet,
+      membership: const PoolMembership(
+        pool: poolAddress,
+        wallet: otherWallet,
+        shares: '10',
+        shareBps: '1250',
+        valueQuote: '10.5',
+        queuedShares: '2',
+      ),
+    );
+    final card = find.byKey(const Key('pool-cancel-for-redeems'));
+    expect(
+      card,
+      findsOneWidget,
+      reason: 'offered to a member with queued redeems',
+    );
+    await tester.ensureVisible(card);
+    await tester.enterText(find.byKey(const Key('pool-cancel-order-id')), '42');
+    await tester.tap(
+      find.widgetWithText(OutlinedButton, 'Cancel pool order for redeems'),
+    );
+    await tester.pumpAndSettle();
+    expect(api.leaderOrders.single.kind, LeaderOrderKind.cancelForRedeems);
+    expect(api.leaderOrders.single.orderId, 42);
+    expect(find.textContaining('Sent: 0xhash1'), findsOneWidget);
+  });
+
+  testWidgets('poolTab_noCancelForRedeemsWithoutQueue', (tester) async {
+    await pumpTab(
+      tester,
+      wallet: otherWallet,
+      membership: const PoolMembership(
+        pool: poolAddress,
+        wallet: otherWallet,
+        shares: '10',
+        shareBps: '1250',
+        valueQuote: '10.5',
+      ),
+    );
+    expect(find.byKey(const Key('pool-cancel-for-redeems')), findsNothing);
   });
 }

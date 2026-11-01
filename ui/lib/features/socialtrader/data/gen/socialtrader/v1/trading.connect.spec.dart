@@ -4,6 +4,7 @@
 //
 
 import "package:connectrpc/connect.dart" as connect;
+
 import "trading.pb.dart" as socialtraderv1trading;
 
 /// TradingService prepares vault and order calldata for a wallet to sign and

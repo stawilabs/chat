@@ -24,7 +24,9 @@ const pool = PoolInfo(
   marketId: '0x01',
   leader: '0x9999999999999999999999999999999999999999',
   roomRef: roomId,
-  navPerShare: '1.05',
+  nav: '1000',
+  totalShares: '800',
+  navPerShare: '1.25',
   memberCount: 3,
   performanceFeeBps: 1000,
 );
@@ -108,7 +110,7 @@ void main() {
       find.byKey(const Key('join-pool-amount')),
     );
     expect(field.controller!.text, '250');
-    expect(find.textContaining('1.05'), findsOneWidget);
+    expect(find.textContaining('1.25'), findsOneWidget);
   });
 
   testWidgets('joinSheet_requiresTapToSign', (tester) async {
@@ -135,6 +137,8 @@ void main() {
     expect(h.api.deposits.single.pool, poolAddress);
     expect(h.api.deposits.single.assets, '250');
     expect(h.api.deposits.single.receiver, FakeWalletPlatform.defaultAddress);
+    // 250 quote at 1000/800 previews 200 shares; the floor is 99% of that.
+    expect(h.api.deposits.single.minShares, '198');
     expect(platform.sent, [h.api.preparedTx]);
     expect(find.textContaining('0xhash1'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Commit'), findsNothing);

@@ -4,13 +4,14 @@
 //
 
 import "package:connectrpc/connect.dart" as connect;
+
 import "links.pb.dart" as socialtraderv1links;
 import "links.connect.spec.dart" as specs;
 
 /// LinkService binds a wallet to the caller's profile with a Sign-In with
 /// Ethereum (EIP-4361) signature over a server nonce. Authenticated only: the
 /// profile comes from the caller's claims.
-extension type LinkServiceClient (connect.Transport _transport) {
+extension type LinkServiceClient(connect.Transport _transport) {
   Future<socialtraderv1links.IssueNonceResponse> issueNonce(
     socialtraderv1links.IssueNonceRequest input, {
     connect.Headers? headers,

@@ -11,8 +11,11 @@ private key and never submits anything without a tap.
 `pool_join_prompt` card → on the member's first visit the room offers
 `JoinPoolSheet` once (`PoolJoinPromptGate`, flag in `pool_prompt_dismissals`);
 the card stays. The amount is pre-filled from `CommitmentSettings`; "Commit"
-calls `PreparePoolDeposit(pool, assets, receiver: wallet)` and asks the wallet
-to sign and send the calldata. A wallet error keeps the amount; nothing retries
+calls `PreparePoolDeposit(pool, assets, receiver: wallet, min_shares)` and asks
+the wallet to sign and send the calldata; `min_shares` is 99% of the shares the
+pool's current NAV previews (`assets * totalShares / nav`, exact decimal
+arithmetic in `domain/slippage.dart`), so a NAV move before inclusion cannot
+mint far fewer than shown. A wallet error keeps the amount; nothing retries
 by itself. Members holding shares are not prompted.
 
 **Leave.** A member holding shares is removed → `pool_leave_prompt` card. The
@@ -22,13 +25,17 @@ shares and value through the authenticated `GetMembership` call, whose
 `preview_assets`/`preview_fee` give the exact payout and fee of redeeming now
 (the sheet falls back to the fee-rate note when the service has no preview);
 "Redeem"
-calls `PreparePoolRedeem` for all shares and signs. `queued_shares > 0` explains
+calls `PreparePoolRedeem` for all shares with `min_assets` at 99% of
+`preview_assets` and signs. `queued_shares > 0` explains
 that queued shares settle when the leader sells inventory or quote arrives.
 
 **Pool tab.** `/room/:roomId/pool` (header chip) and the room detail panel's
-third tab: value, NAV series (`GetPoolPerformance`, tier badge green only for
-`finalized`), members and the person's stake, recent fills (from `pool_fill`
-cards), queued redeems; "Leader actions" only when the connected or linked
+third tab: value, NAV per share with the pool's mark price, NAV series
+(`GetPoolPerformance`, tier badge green only for `finalized`), members and the
+person's stake, recent fills (from `pool_fill` cards), queued redeems with
+"Cancel pool order for redeems" (permissionless `KIND_CANCEL_FOR_REDEEMS`, any
+member with queued redeems, by order id; `KIND_CRYSTALLIZE_FEE` is never called
+from the app); "Leader actions" only when the connected or linked
 wallet is the pool's leader.
 
 **Leader trading.** `LeaderTradeSheet`: Limit/IOC, Buy/Sell, price pre-filled

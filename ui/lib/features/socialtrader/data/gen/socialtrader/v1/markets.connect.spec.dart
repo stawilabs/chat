@@ -4,6 +4,7 @@
 //
 
 import "package:connectrpc/connect.dart" as connect;
+
 import "markets.pb.dart" as socialtraderv1markets;
 
 /// MarketService lists the spot markets and reads their order books.

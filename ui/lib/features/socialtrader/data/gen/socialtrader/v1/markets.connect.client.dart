@@ -4,11 +4,12 @@
 //
 
 import "package:connectrpc/connect.dart" as connect;
+
 import "markets.pb.dart" as socialtraderv1markets;
 import "markets.connect.spec.dart" as specs;
 
 /// MarketService lists the spot markets and reads their order books.
-extension type MarketServiceClient (connect.Transport _transport) {
+extension type MarketServiceClient(connect.Transport _transport) {
   /// Lists the active markets. Public: market data is read by wallets that have no profile.
   Future<socialtraderv1markets.ListMarketsResponse> listMarkets(
     socialtraderv1markets.ListMarketsRequest input, {

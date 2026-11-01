@@ -86,6 +86,7 @@ void main() {
     expect(api.redeems.single.pool, poolAddress);
     expect(api.redeems.single.shares, '12.5');
     expect(api.redeems.single.receiver, FakeWalletPlatform.defaultAddress);
+    expect(api.redeems.single.minAssets, '', reason: 'no preview, no floor');
     expect(platform.sent, [api.preparedTx]);
     expect(find.textContaining('0xhash1'), findsOneWidget);
   });
@@ -115,5 +116,17 @@ void main() {
       findsNothing,
       reason: 'the exact figure replaces the estimate',
     );
+  });
+
+  testWidgets('leaveSheet_redeemFloorsAtNinetyNinePercentOfPreview', (
+    tester,
+  ) async {
+    final (api, _) = await pumpSheet(
+      tester,
+      membership(previewAssets: '12.87', previewFee: '0.23'),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Redeem'));
+    await tester.pumpAndSettle();
+    expect(api.redeems.single.minAssets, '12.7413');
   });
 }

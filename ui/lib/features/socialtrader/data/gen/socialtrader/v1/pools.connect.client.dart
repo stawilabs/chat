@@ -4,6 +4,7 @@
 //
 
 import "package:connectrpc/connect.dart" as connect;
+
 import "pools.pb.dart" as socialtraderv1pools;
 import "pools.connect.spec.dart" as specs;
 import "trading.pb.dart" as socialtraderv1trading;
@@ -12,7 +13,7 @@ import "trading.pb.dart" as socialtraderv1trading;
 /// members and leaders sign. Reads and prepares are public: the wallet
 /// signature is the authority. CreatePool is the one write the service
 /// performs itself, with its pool-creator key, for an authenticated caller.
-extension type PoolServiceClient (connect.Transport _transport) {
+extension type PoolServiceClient(connect.Transport _transport) {
   Future<socialtraderv1pools.ListPoolsResponse> listPools(
     socialtraderv1pools.ListPoolsRequest input, {
     connect.Headers? headers,

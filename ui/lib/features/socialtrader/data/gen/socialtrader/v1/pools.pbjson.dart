@@ -50,6 +50,7 @@ const Pool$json = {
     {'1': 'paused', '3': 12, '4': 1, '5': 8, '10': 'paused'},
     {'1': 'as_of_block', '3': 13, '4': 1, '5': 4, '10': 'asOfBlock'},
     {'1': 'tier', '3': 14, '4': 1, '5': 9, '10': 'tier'},
+    {'1': 'mark', '3': 15, '4': 1, '5': 9, '10': 'mark'},
   ],
 };
 
@@ -62,7 +63,8 @@ final $typed_data.Uint8List poolDescriptor = $convert.base64Decode(
     'DVILbWVtYmVyQ291bnQSLgoTcGVyZm9ybWFuY2VfZmVlX2JwcxgJIAEoDVIRcGVyZm9ybWFuY2'
     'VGZWVCcHMSLQoTbWluX2xlYWRlcl9za2luX2JwcxgKIAEoDVIQbWluTGVhZGVyU2tpbkJwcxIi'
     'Cg1tYXhfdHZsX3F1b3RlGAsgASgJUgttYXhUdmxRdW90ZRIWCgZwYXVzZWQYDCABKAhSBnBhdX'
-    'NlZBIeCgthc19vZl9ibG9jaxgNIAEoBFIJYXNPZkJsb2NrEhIKBHRpZXIYDiABKAlSBHRpZXI=');
+    'NlZBIeCgthc19vZl9ibG9jaxgNIAEoBFIJYXNPZkJsb2NrEhIKBHRpZXIYDiABKAlSBHRpZXIS'
+    'EgoEbWFyaxgPIAEoCVIEbWFyaw==');
 
 @$core.Deprecated('Use listPoolsRequestDescriptor instead')
 const ListPoolsRequest$json = {
@@ -281,6 +283,7 @@ const PreparePoolDepositRequest$json = {
       '6': '.socialtrader.v1.Permit',
       '10': 'permit'
     },
+    {'1': 'min_shares', '3': 5, '4': 1, '5': 9, '10': 'minShares'},
   ],
 };
 
@@ -288,7 +291,8 @@ const PreparePoolDepositRequest$json = {
 final $typed_data.Uint8List preparePoolDepositRequestDescriptor = $convert.base64Decode(
     'ChlQcmVwYXJlUG9vbERlcG9zaXRSZXF1ZXN0EhIKBHBvb2wYASABKAlSBHBvb2wSFgoGYXNzZX'
     'RzGAIgASgJUgZhc3NldHMSGgoIcmVjZWl2ZXIYAyABKAlSCHJlY2VpdmVyEi8KBnBlcm1pdBgE'
-    'IAEoCzIXLnNvY2lhbHRyYWRlci52MS5QZXJtaXRSBnBlcm1pdA==');
+    'IAEoCzIXLnNvY2lhbHRyYWRlci52MS5QZXJtaXRSBnBlcm1pdBIdCgptaW5fc2hhcmVzGAUgAS'
+    'gJUgltaW5TaGFyZXM=');
 
 @$core.Deprecated('Use preparePoolRedeemRequestDescriptor instead')
 const PreparePoolRedeemRequest$json = {
@@ -297,14 +301,15 @@ const PreparePoolRedeemRequest$json = {
     {'1': 'pool', '3': 1, '4': 1, '5': 9, '10': 'pool'},
     {'1': 'shares', '3': 2, '4': 1, '5': 9, '10': 'shares'},
     {'1': 'receiver', '3': 3, '4': 1, '5': 9, '10': 'receiver'},
+    {'1': 'min_assets', '3': 4, '4': 1, '5': 9, '10': 'minAssets'},
   ],
 };
 
 /// Descriptor for `PreparePoolRedeemRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List preparePoolRedeemRequestDescriptor =
-    $convert.base64Decode(
-        'ChhQcmVwYXJlUG9vbFJlZGVlbVJlcXVlc3QSEgoEcG9vbBgBIAEoCVIEcG9vbBIWCgZzaGFyZX'
-        'MYAiABKAlSBnNoYXJlcxIaCghyZWNlaXZlchgDIAEoCVIIcmVjZWl2ZXI=');
+final $typed_data.Uint8List preparePoolRedeemRequestDescriptor = $convert.base64Decode(
+    'ChhQcmVwYXJlUG9vbFJlZGVlbVJlcXVlc3QSEgoEcG9vbBgBIAEoCVIEcG9vbBIWCgZzaGFyZX'
+    'MYAiABKAlSBnNoYXJlcxIaCghyZWNlaXZlchgDIAEoCVIIcmVjZWl2ZXISHQoKbWluX2Fzc2V0'
+    'cxgEIAEoCVIJbWluQXNzZXRz');
 
 @$core.Deprecated('Use prepareLeaderOrderRequestDescriptor instead')
 const PrepareLeaderOrderRequest$json = {
@@ -340,6 +345,8 @@ const PrepareLeaderOrderRequest_Kind$json = {
     {'1': 'KIND_CLAIM', '2': 4},
     {'1': 'KIND_SELL_FOR_REDEEMS', '2': 5},
     {'1': 'KIND_SETTLE_QUEUE', '2': 6},
+    {'1': 'KIND_CANCEL_FOR_REDEEMS', '2': 7},
+    {'1': 'KIND_CRYSTALLIZE_FEE', '2': 8},
   ],
 };
 
@@ -350,9 +357,10 @@ final $typed_data.Uint8List prepareLeaderOrderRequestDescriptor = $convert.base6
     'BGtpbmQSFQoGaXNfYmlkGAMgASgIUgVpc0JpZBIUCgVwcmljZRgEIAEoCVIFcHJpY2USHwoLYm'
     'FzZV9hbW91bnQYBSABKAlSCmJhc2VBbW91bnQSGQoIb3JkZXJfaWQYBiABKARSB29yZGVySWQS'
     'HQoKbWF4X2xldmVscxgHIAEoDVIJbWF4TGV2ZWxzEh0KCmhpbnRfcHJpY2UYCCABKAlSCWhpbn'
-    'RQcmljZSKNAQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASDgoKS0lORF9MSU1JVBABEgwK'
+    'RQcmljZSLEAQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASDgoKS0lORF9MSU1JVBABEgwK'
     'CEtJTkRfSU9DEAISDwoLS0lORF9DQU5DRUwQAxIOCgpLSU5EX0NMQUlNEAQSGQoVS0lORF9TRU'
-    'xMX0ZPUl9SRURFRU1TEAUSFQoRS0lORF9TRVRUTEVfUVVFVUUQBg==');
+    'xMX0ZPUl9SRURFRU1TEAUSFQoRS0lORF9TRVRUTEVfUVVFVUUQBhIbChdLSU5EX0NBTkNFTF9G'
+    'T1JfUkVERUVNUxAHEhgKFEtJTkRfQ1JZU1RBTExJWkVfRkVFEAg=');
 
 @$core.Deprecated('Use createPoolRequestDescriptor instead')
 const CreatePoolRequest$json = {

@@ -10,6 +10,7 @@ import '../data/socialtrader_api.dart';
 import '../data/wallet_service.dart';
 import '../domain/pool_binding.dart';
 import '../domain/pool_models.dart';
+import '../domain/slippage.dart';
 
 part 'join_pool_sheet.g.dart';
 
@@ -45,7 +46,11 @@ class JoinPoolController extends _$JoinPoolController {
   @override
   CommitState build(String pool) => const CommitIdle();
 
-  Future<void> commit({required String amount, required bool remember}) async {
+  Future<void> commit({
+    required String amount,
+    required bool remember,
+    PoolInfo? poolInfo,
+  }) async {
     final assets = tryNormalizeCommitment(amount);
     if (assets == null) {
       state = const CommitIdle(error: 'Enter a positive amount to commit.');
@@ -59,9 +64,23 @@ class JoinPoolController extends _$JoinPoolController {
     }
     state = const CommitPreparing();
     try {
+      // The floor: 99% of the shares the pool's current NAV previews, so a
+      // NAV move before inclusion cannot mint far fewer than shown.
+      final previewed = poolInfo == null
+          ? null
+          : previewShares(
+              assets: assets,
+              nav: poolInfo.nav,
+              totalShares: poolInfo.totalShares,
+            );
       final tx = await ref
           .read(socialTraderApiProvider)
-          .prepareDeposit(pool: pool, assets: assets, receiver: receiver);
+          .prepareDeposit(
+            pool: pool,
+            assets: assets,
+            receiver: receiver,
+            minShares: previewed == null ? '' : minimumWithSlippage(previewed),
+          );
       if (!ref.mounted) return;
       state = const CommitSigning();
       final hash = await ref
@@ -204,7 +223,11 @@ class _JoinPoolSheetState extends ConsumerState<JoinPoolSheet> {
                   ref.read(walletControllerProvider.notifier).connect(),
               onCommit: () => ref
                   .read(joinPoolControllerProvider(pool.address).notifier)
-                  .commit(amount: _amount.text, remember: _remember),
+                  .commit(
+                    amount: _amount.text,
+                    remember: _remember,
+                    poolInfo: pool,
+                  ),
             ),
           },
           if (widget.onDismiss != null && state is! CommitDone)

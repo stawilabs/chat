@@ -9,6 +9,8 @@ import '../data/socialtrader_api.dart';
 import '../domain/pool_binding.dart';
 import '../domain/pool_card.dart';
 import '../domain/pool_models.dart';
+import 'join_pool_sheet.dart'
+    show CommitDone, CommitIdle, CommitPreparing, CommitSigning;
 import 'leader_trade_sheet.dart';
 import 'leave_pool_sheet.dart';
 import 'pool_card_bubble.dart';
@@ -163,7 +165,9 @@ class _Details extends ConsumerWidget {
             Text(pool.nav, style: theme.textTheme.headlineMedium),
             const SizedBox(width: 12),
             Text(
-              'NAV/share ${pool.navPerShare}',
+              'NAV/share ${pool.navPerShare}'
+              '${pool.mark.isEmpty ? '' : ' · mark ${pool.mark}'}',
+              key: const Key('pool-nav-line'),
               style: theme.textTheme.bodyMedium,
             ),
             const Spacer(),
@@ -187,6 +191,10 @@ class _Details extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         _MyStake(pool: pool, membership: membership),
+        if (mine != null && mine.hasQueuedRedeem) ...[
+          const SizedBox(height: 8),
+          _CancelForRedeems(pool: pool),
+        ],
         const SizedBox(height: 16),
         Text('Recent fills', style: theme.textTheme.labelLarge),
         switch (fills) {
@@ -321,6 +329,106 @@ class _MyStake extends StatelessWidget {
       ),
       _ => const LinearProgressIndicator(),
     };
+  }
+}
+
+/// Lets any member with queued redeems free quote for the queue by cancelling
+/// one of the pool's resting orders (cancelForRedeems is permissionless; the
+/// contract checks that redeems are queued). The order id comes from the
+/// leader's fills or the book; the wallet signs the call.
+class _CancelForRedeems extends ConsumerStatefulWidget {
+  const _CancelForRedeems({required this.pool});
+
+  final PoolInfo pool;
+
+  @override
+  ConsumerState<_CancelForRedeems> createState() => _CancelForRedeemsState();
+}
+
+class _CancelForRedeemsState extends ConsumerState<_CancelForRedeems> {
+  final _orderId = TextEditingController();
+  String? _problem;
+
+  @override
+  void dispose() {
+    _orderId.dispose();
+    super.dispose();
+  }
+
+  void _cancel() {
+    final id = int.tryParse(_orderId.text.trim());
+    if (id == null || id <= 0) {
+      setState(() => _problem = 'Enter the id of a resting pool order.');
+      return;
+    }
+    setState(() => _problem = null);
+    ref
+        .read(leaderOrderControllerProvider(widget.pool.address).notifier)
+        .send(
+          LeaderOrder(
+            pool: widget.pool.address,
+            kind: LeaderOrderKind.cancelForRedeems,
+            orderId: id,
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = ref.watch(leaderOrderControllerProvider(widget.pool.address));
+    final busy = state is CommitPreparing || state is CommitSigning;
+    final error =
+        _problem ??
+        switch (state) {
+          CommitIdle(:final error) => error,
+          _ => null,
+        };
+    return Card(
+      key: const Key('pool-cancel-for-redeems'),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Redeems are queued. Any member may cancel one of the pool\'s '
+              'resting orders to free quote for the queue.',
+              style: theme.textTheme.bodySmall,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('pool-cancel-order-id'),
+                    controller: _orderId,
+                    enabled: !busy,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Order id'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: busy ? null : _cancel,
+                  child: const Text('Cancel pool order for redeems'),
+                ),
+              ],
+            ),
+            switch (state) {
+              CommitDone(:final txHash) => Text(
+                'Sent: $txHash',
+                style: theme.textTheme.bodySmall,
+              ),
+              _ when error != null => Text(
+                error,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+              _ => const SizedBox.shrink(),
+            },
+          ],
+        ),
+      ),
+    );
   }
 }
 

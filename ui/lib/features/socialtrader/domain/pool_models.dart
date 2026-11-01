@@ -19,6 +19,7 @@ class PoolInfo {
     this.paused = false,
     this.asOfBlock = 0,
     this.tier = '',
+    this.mark = '',
   });
 
   /// Pool contract, lowercase hex.
@@ -42,6 +43,9 @@ class PoolInfo {
 
   /// The verification tier of the NAV ("finalized" is the only verified one).
   final String tier;
+
+  /// The mark price the NAV values inventory at (quote per base).
+  final String mark;
 
   /// Whether [wallet] (any case) is the pool's leader.
   bool isLeader(String? wallet) =>
@@ -183,7 +187,19 @@ class OrderBook {
 }
 
 /// A leader order kind, as PoolService.PrepareLeaderOrder names them.
-enum LeaderOrderKind { limit, ioc, cancel, claim, sellForRedeems, settleQueue }
+/// Pool calls the service prepares. cancelForRedeems and crystallizeFee are
+/// permissionless; the app offers cancelForRedeems to members with queued
+/// redeems and never calls crystallizeFee (the indexer's and leader's concern).
+enum LeaderOrderKind {
+  limit,
+  ioc,
+  cancel,
+  claim,
+  sellForRedeems,
+  settleQueue,
+  cancelForRedeems,
+  crystallizeFee,
+}
 
 /// A leader's intent for PrepareLeaderOrder.
 @immutable

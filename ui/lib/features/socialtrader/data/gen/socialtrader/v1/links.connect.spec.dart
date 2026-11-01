@@ -4,6 +4,7 @@
 //
 
 import "package:connectrpc/connect.dart" as connect;
+
 import "links.pb.dart" as socialtraderv1links;
 
 /// LinkService binds a wallet to the caller's profile with a Sign-In with

@@ -50,6 +50,10 @@ const (
 	PrepareLeaderOrderRequest_KIND_SELL_FOR_REDEEMS PrepareLeaderOrderRequest_Kind = 5
 	// settleQueue(maxItems) is permissionless; max_levels carries maxItems.
 	PrepareLeaderOrderRequest_KIND_SETTLE_QUEUE PrepareLeaderOrderRequest_Kind = 6
+	// cancelForRedeems(orderId) is permissionless while redeems are queued.
+	PrepareLeaderOrderRequest_KIND_CANCEL_FOR_REDEEMS PrepareLeaderOrderRequest_Kind = 7
+	// crystallizeFee() is permissionless.
+	PrepareLeaderOrderRequest_KIND_CRYSTALLIZE_FEE PrepareLeaderOrderRequest_Kind = 8
 )
 
 // Enum value maps for PrepareLeaderOrderRequest_Kind.
@@ -62,15 +66,19 @@ var (
 		4: "KIND_CLAIM",
 		5: "KIND_SELL_FOR_REDEEMS",
 		6: "KIND_SETTLE_QUEUE",
+		7: "KIND_CANCEL_FOR_REDEEMS",
+		8: "KIND_CRYSTALLIZE_FEE",
 	}
 	PrepareLeaderOrderRequest_Kind_value = map[string]int32{
-		"KIND_UNSPECIFIED":      0,
-		"KIND_LIMIT":            1,
-		"KIND_IOC":              2,
-		"KIND_CANCEL":           3,
-		"KIND_CLAIM":            4,
-		"KIND_SELL_FOR_REDEEMS": 5,
-		"KIND_SETTLE_QUEUE":     6,
+		"KIND_UNSPECIFIED":        0,
+		"KIND_LIMIT":              1,
+		"KIND_IOC":                2,
+		"KIND_CANCEL":             3,
+		"KIND_CLAIM":              4,
+		"KIND_SELL_FOR_REDEEMS":   5,
+		"KIND_SETTLE_QUEUE":       6,
+		"KIND_CANCEL_FOR_REDEEMS": 7,
+		"KIND_CRYSTALLIZE_FEE":    8,
 	}
 )
 
@@ -117,8 +125,10 @@ type Pool struct {
 	Paused            bool                   `protobuf:"varint,12,opt,name=paused,proto3" json:"paused,omitempty"`
 	AsOfBlock         uint64                 `protobuf:"varint,13,opt,name=as_of_block,json=asOfBlock,proto3" json:"as_of_block,omitempty"`
 	Tier              string                 `protobuf:"bytes,14,opt,name=tier,proto3" json:"tier,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The pool's bounded mark (quote per 1e18 base) at the latest snapshot.
+	Mark          string `protobuf:"bytes,15,opt,name=mark,proto3" json:"mark,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Pool) Reset() {
@@ -245,6 +255,13 @@ func (x *Pool) GetAsOfBlock() uint64 {
 func (x *Pool) GetTier() string {
 	if x != nil {
 		return x.Tier
+	}
+	return ""
+}
+
+func (x *Pool) GetMark() string {
+	if x != nil {
+		return x.Mark
 	}
 	return ""
 }
@@ -897,11 +914,13 @@ func (x *Permit) GetS() string {
 }
 
 type PreparePoolDepositRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pool          string                 `protobuf:"bytes,1,opt,name=pool,proto3" json:"pool,omitempty"`
-	Assets        string                 `protobuf:"bytes,2,opt,name=assets,proto3" json:"assets,omitempty"`
-	Receiver      string                 `protobuf:"bytes,3,opt,name=receiver,proto3" json:"receiver,omitempty"`
-	Permit        *Permit                `protobuf:"bytes,4,opt,name=permit,proto3" json:"permit,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Pool     string                 `protobuf:"bytes,1,opt,name=pool,proto3" json:"pool,omitempty"`
+	Assets   string                 `protobuf:"bytes,2,opt,name=assets,proto3" json:"assets,omitempty"`
+	Receiver string                 `protobuf:"bytes,3,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	Permit   *Permit                `protobuf:"bytes,4,opt,name=permit,proto3" json:"permit,omitempty"`
+	// Slippage floor: the deposit reverts if it would mint fewer shares. Default "0".
+	MinShares     string `protobuf:"bytes,5,opt,name=min_shares,json=minShares,proto3" json:"min_shares,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -964,11 +983,20 @@ func (x *PreparePoolDepositRequest) GetPermit() *Permit {
 	return nil
 }
 
+func (x *PreparePoolDepositRequest) GetMinShares() string {
+	if x != nil {
+		return x.MinShares
+	}
+	return ""
+}
+
 type PreparePoolRedeemRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pool          string                 `protobuf:"bytes,1,opt,name=pool,proto3" json:"pool,omitempty"`
-	Shares        string                 `protobuf:"bytes,2,opt,name=shares,proto3" json:"shares,omitempty"`
-	Receiver      string                 `protobuf:"bytes,3,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Pool     string                 `protobuf:"bytes,1,opt,name=pool,proto3" json:"pool,omitempty"`
+	Shares   string                 `protobuf:"bytes,2,opt,name=shares,proto3" json:"shares,omitempty"`
+	Receiver string                 `protobuf:"bytes,3,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	// Slippage floor: the redeem reverts if it would pay fewer assets. Default "0".
+	MinAssets     string `protobuf:"bytes,4,opt,name=min_assets,json=minAssets,proto3" json:"min_assets,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1020,6 +1048,13 @@ func (x *PreparePoolRedeemRequest) GetShares() string {
 func (x *PreparePoolRedeemRequest) GetReceiver() string {
 	if x != nil {
 		return x.Receiver
+	}
+	return ""
+}
+
+func (x *PreparePoolRedeemRequest) GetMinAssets() string {
+	if x != nil {
+		return x.MinAssets
 	}
 	return ""
 }
@@ -1256,7 +1291,7 @@ var File_socialtrader_v1_pools_proto protoreflect.FileDescriptor
 
 const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\n" +
-	"\x1bsocialtrader/v1/pools.proto\x12\x0fsocialtrader.v1\x1a\x1bcommon/v1/permissions.proto\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dsocialtrader/v1/trading.proto\"\xbb\x03\n" +
+	"\x1bsocialtrader/v1/pools.proto\x12\x0fsocialtrader.v1\x1a\x1bcommon/v1/permissions.proto\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dsocialtrader/v1/trading.proto\"\xcf\x03\n" +
 	"\x04Pool\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x1b\n" +
 	"\tmarket_id\x18\x02 \x01(\tR\bmarketId\x12\x16\n" +
@@ -1272,7 +1307,8 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\rmax_tvl_quote\x18\v \x01(\tR\vmaxTvlQuote\x12\x16\n" +
 	"\x06paused\x18\f \x01(\bR\x06paused\x12\x1e\n" +
 	"\vas_of_block\x18\r \x01(\x04R\tasOfBlock\x12\x12\n" +
-	"\x04tier\x18\x0e \x01(\tR\x04tier\"\x12\n" +
+	"\x04tier\x18\x0e \x01(\tR\x04tier\x12\x12\n" +
+	"\x04mark\x18\x0f \x01(\tR\x04mark\"\x12\n" +
 	"\x10ListPoolsRequest\"@\n" +
 	"\x11ListPoolsResponse\x12+\n" +
 	"\x05pools\x18\x01 \x03(\v2\x15.socialtrader.v1.PoolR\x05pools\"$\n" +
@@ -1321,16 +1357,20 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\bdeadline\x18\x01 \x01(\tR\bdeadline\x12\f\n" +
 	"\x01v\x18\x02 \x01(\rR\x01v\x12\f\n" +
 	"\x01r\x18\x03 \x01(\tR\x01r\x12\f\n" +
-	"\x01s\x18\x04 \x01(\tR\x01s\"\x94\x01\n" +
+	"\x01s\x18\x04 \x01(\tR\x01s\"\xb3\x01\n" +
 	"\x19PreparePoolDepositRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12\x16\n" +
 	"\x06assets\x18\x02 \x01(\tR\x06assets\x12\x1a\n" +
 	"\breceiver\x18\x03 \x01(\tR\breceiver\x12/\n" +
-	"\x06permit\x18\x04 \x01(\v2\x17.socialtrader.v1.PermitR\x06permit\"b\n" +
+	"\x06permit\x18\x04 \x01(\v2\x17.socialtrader.v1.PermitR\x06permit\x12\x1d\n" +
+	"\n" +
+	"min_shares\x18\x05 \x01(\tR\tminShares\"\x81\x01\n" +
 	"\x18PreparePoolRedeemRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12\x16\n" +
 	"\x06shares\x18\x02 \x01(\tR\x06shares\x12\x1a\n" +
-	"\breceiver\x18\x03 \x01(\tR\breceiver\"\xab\x03\n" +
+	"\breceiver\x18\x03 \x01(\tR\breceiver\x12\x1d\n" +
+	"\n" +
+	"min_assets\x18\x04 \x01(\tR\tminAssets\"\xe2\x03\n" +
 	"\x19PrepareLeaderOrderRequest\x12\x12\n" +
 	"\x04pool\x18\x01 \x01(\tR\x04pool\x12C\n" +
 	"\x04kind\x18\x02 \x01(\x0e2/.socialtrader.v1.PrepareLeaderOrderRequest.KindR\x04kind\x12\x15\n" +
@@ -1342,7 +1382,7 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\n" +
 	"max_levels\x18\a \x01(\rR\tmaxLevels\x12\x1d\n" +
 	"\n" +
-	"hint_price\x18\b \x01(\tR\thintPrice\"\x8d\x01\n" +
+	"hint_price\x18\b \x01(\tR\thintPrice\"\xc4\x01\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -1352,7 +1392,9 @@ const file_socialtrader_v1_pools_proto_rawDesc = "" +
 	"\n" +
 	"KIND_CLAIM\x10\x04\x12\x19\n" +
 	"\x15KIND_SELL_FOR_REDEEMS\x10\x05\x12\x15\n" +
-	"\x11KIND_SETTLE_QUEUE\x10\x06\"\xce\x01\n" +
+	"\x11KIND_SETTLE_QUEUE\x10\x06\x12\x1b\n" +
+	"\x17KIND_CANCEL_FOR_REDEEMS\x10\a\x12\x18\n" +
+	"\x14KIND_CRYSTALLIZE_FEE\x10\b\"\xce\x01\n" +
 	"\x11CreatePoolRequest\x12\x19\n" +
 	"\broom_ref\x18\x01 \x01(\tR\aroomRef\x12\x1b\n" +
 	"\tmarket_id\x18\x02 \x01(\tR\bmarketId\x12.\n" +

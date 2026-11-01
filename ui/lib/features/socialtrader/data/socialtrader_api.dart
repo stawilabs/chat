@@ -21,18 +21,22 @@ abstract interface class SocialTraderApi {
   Future<OrderBook> getBook(String marketId, {int depth = 5});
 
   /// Calldata for a deposit of [assets] (quote asset, decimal string) into
-  /// [pool], minting shares to [receiver]. The wallet signs it.
+  /// [pool], minting at least [minShares] (empty = no floor) to [receiver].
+  /// The wallet signs it.
   Future<PreparedTx> prepareDeposit({
     required String pool,
     required String assets,
     required String receiver,
+    String minShares = '',
   });
 
-  /// Calldata for redeeming [shares] of [pool] to [receiver].
+  /// Calldata for redeeming [shares] of [pool] to [receiver], paying at least
+  /// [minAssets] (empty = no floor).
   Future<PreparedTx> prepareRedeem({
     required String pool,
     required String shares,
     required String receiver,
+    String minAssets = '',
   });
 
   /// Calldata for a leader-only call; the contract enforces onlyLeader.
@@ -166,12 +170,14 @@ class ConnectSocialTraderApi implements SocialTraderApi {
     required String pool,
     required String assets,
     required String receiver,
+    String minShares = '',
   }) async => _tx(
     await _pools.preparePoolDeposit(
       st.PreparePoolDepositRequest(
         pool: pool,
         assets: assets,
         receiver: receiver,
+        minShares: minShares,
       ),
     ),
   );
@@ -181,12 +187,14 @@ class ConnectSocialTraderApi implements SocialTraderApi {
     required String pool,
     required String shares,
     required String receiver,
+    String minAssets = '',
   }) async => _tx(
     await _pools.preparePoolRedeem(
       st.PreparePoolRedeemRequest(
         pool: pool,
         shares: shares,
         receiver: receiver,
+        minAssets: minAssets,
       ),
     ),
   );
@@ -206,6 +214,10 @@ class ConnectSocialTraderApi implements SocialTraderApi {
             st.PrepareLeaderOrderRequest_Kind.KIND_SELL_FOR_REDEEMS,
           LeaderOrderKind.settleQueue =>
             st.PrepareLeaderOrderRequest_Kind.KIND_SETTLE_QUEUE,
+          LeaderOrderKind.cancelForRedeems =>
+            st.PrepareLeaderOrderRequest_Kind.KIND_CANCEL_FOR_REDEEMS,
+          LeaderOrderKind.crystallizeFee =>
+            st.PrepareLeaderOrderRequest_Kind.KIND_CRYSTALLIZE_FEE,
         },
         isBid: order.isBid,
         price: order.price,
@@ -286,6 +298,7 @@ class ConnectSocialTraderApi implements SocialTraderApi {
     paused: p.paused,
     asOfBlock: p.asOfBlock.toInt(),
     tier: p.tier,
+    mark: p.mark,
   );
 
   static PreparedTx _tx(st.PreparedTx tx) => PreparedTx(

@@ -24,8 +24,10 @@ class FakeSocialTraderApi implements SocialTraderApi {
   /// Fails only getLinkedWallet (an outage of the link lookup alone).
   Exception? linkFailWith;
 
-  final deposits = <({String pool, String assets, String receiver})>[];
-  final redeems = <({String pool, String shares, String receiver})>[];
+  final deposits =
+      <({String pool, String assets, String receiver, String minShares})>[];
+  final redeems =
+      <({String pool, String shares, String receiver, String minAssets})>[];
   final leaderOrders = <LeaderOrder>[];
   final links = <({String wallet, String signature})>[];
   int nonceCalls = 0;
@@ -91,9 +93,15 @@ class FakeSocialTraderApi implements SocialTraderApi {
     required String pool,
     required String assets,
     required String receiver,
+    String minShares = '',
   }) async {
     _maybeFail();
-    deposits.add((pool: pool, assets: assets, receiver: receiver));
+    deposits.add((
+      pool: pool,
+      assets: assets,
+      receiver: receiver,
+      minShares: minShares,
+    ));
     return preparedTx;
   }
 
@@ -102,9 +110,15 @@ class FakeSocialTraderApi implements SocialTraderApi {
     required String pool,
     required String shares,
     required String receiver,
+    String minAssets = '',
   }) async {
     _maybeFail();
-    redeems.add((pool: pool, shares: shares, receiver: receiver));
+    redeems.add((
+      pool: pool,
+      shares: shares,
+      receiver: receiver,
+      minAssets: minAssets,
+    ));
     return preparedTx;
   }
 

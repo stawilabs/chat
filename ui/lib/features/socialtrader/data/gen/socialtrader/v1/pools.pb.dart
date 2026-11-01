@@ -41,6 +41,7 @@ class Pool extends $pb.GeneratedMessage {
     $core.bool? paused,
     $fixnum.Int64? asOfBlock,
     $core.String? tier,
+    $core.String? mark,
   }) {
     final result = Pool._();
     if (address != null) result.address = address;
@@ -57,6 +58,7 @@ class Pool extends $pb.GeneratedMessage {
     if (paused != null) result.paused = paused;
     if (asOfBlock != null) result.asOfBlock = asOfBlock;
     if (tier != null) result.tier = tier;
+    if (mark != null) result.mark = mark;
     return result;
   }
 
@@ -93,6 +95,7 @@ class Pool extends $pb.GeneratedMessage {
         13, _omitFieldNames ? '' : 'asOfBlock', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(14, _omitFieldNames ? '' : 'tier')
+    ..aOS(15, _omitFieldNames ? '' : 'mark')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -240,6 +243,16 @@ class Pool extends $pb.GeneratedMessage {
   $core.bool hasTier() => $_has(13);
   @$pb.TagNumber(14)
   void clearTier() => $_clearField(14);
+
+  /// The pool's bounded mark (quote per 1e18 base) at the latest snapshot.
+  @$pb.TagNumber(15)
+  $core.String get mark => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set mark($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasMark() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearMark() => $_clearField(15);
 }
 
 class ListPoolsRequest extends $pb.GeneratedMessage {
@@ -1135,12 +1148,14 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
     $core.String? assets,
     $core.String? receiver,
     Permit? permit,
+    $core.String? minShares,
   }) {
     final result = PreparePoolDepositRequest._();
     if (pool != null) result.pool = pool;
     if (assets != null) result.assets = assets;
     if (receiver != null) result.receiver = receiver;
     if (permit != null) result.permit = permit;
+    if (minShares != null) result.minShares = minShares;
     return result;
   }
 
@@ -1163,6 +1178,7 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'receiver')
     ..aOM<Permit>(4, _omitFieldNames ? '' : 'permit',
         subBuilder: Permit.$_createMessage)
+    ..aOS(5, _omitFieldNames ? '' : 'minShares')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1228,6 +1244,16 @@ class PreparePoolDepositRequest extends $pb.GeneratedMessage {
   void clearPermit() => $_clearField(4);
   @$pb.TagNumber(4)
   Permit ensurePermit() => $_ensure(3);
+
+  /// Slippage floor: the deposit reverts if it would mint fewer shares. Default "0".
+  @$pb.TagNumber(5)
+  $core.String get minShares => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set minShares($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMinShares() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMinShares() => $_clearField(5);
 }
 
 class PreparePoolRedeemRequest extends $pb.GeneratedMessage {
@@ -1235,11 +1261,13 @@ class PreparePoolRedeemRequest extends $pb.GeneratedMessage {
     $core.String? pool,
     $core.String? shares,
     $core.String? receiver,
+    $core.String? minAssets,
   }) {
     final result = PreparePoolRedeemRequest._();
     if (pool != null) result.pool = pool;
     if (shares != null) result.shares = shares;
     if (receiver != null) result.receiver = receiver;
+    if (minAssets != null) result.minAssets = minAssets;
     return result;
   }
 
@@ -1260,6 +1288,7 @@ class PreparePoolRedeemRequest extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'pool')
     ..aOS(2, _omitFieldNames ? '' : 'shares')
     ..aOS(3, _omitFieldNames ? '' : 'receiver')
+    ..aOS(4, _omitFieldNames ? '' : 'minAssets')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1313,6 +1342,16 @@ class PreparePoolRedeemRequest extends $pb.GeneratedMessage {
   $core.bool hasReceiver() => $_has(2);
   @$pb.TagNumber(3)
   void clearReceiver() => $_clearField(3);
+
+  /// Slippage floor: the redeem reverts if it would pay fewer assets. Default "0".
+  @$pb.TagNumber(4)
+  $core.String get minAssets => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set minAssets($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMinAssets() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMinAssets() => $_clearField(4);
 }
 
 class PrepareLeaderOrderRequest extends $pb.GeneratedMessage {

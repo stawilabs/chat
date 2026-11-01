@@ -6,6 +6,7 @@ import '../data/pool_membership.dart';
 import '../data/socialtrader_api.dart';
 import '../data/wallet_service.dart';
 import '../domain/pool_models.dart';
+import '../domain/slippage.dart';
 import 'join_pool_sheet.dart'
     show CommitDone, CommitIdle, CommitPreparing, CommitSigning, CommitState;
 
@@ -18,7 +19,7 @@ class LeavePoolController extends _$LeavePoolController {
   @override
   CommitState build(String pool) => const CommitIdle();
 
-  Future<void> redeem(String shares) async {
+  Future<void> redeem(String shares, {String previewAssets = ''}) async {
     final wallet = ref.read(walletControllerProvider);
     final receiver = wallet.address;
     if (receiver == null || !wallet.canSign) {
@@ -27,9 +28,15 @@ class LeavePoolController extends _$LeavePoolController {
     }
     state = const CommitPreparing();
     try {
+      // The floor: 99% of what the service previewed the shares to pay now.
       final tx = await ref
           .read(socialTraderApiProvider)
-          .prepareRedeem(pool: pool, shares: shares, receiver: receiver);
+          .prepareRedeem(
+            pool: pool,
+            shares: shares,
+            receiver: receiver,
+            minAssets: minimumWithSlippage(previewAssets),
+          );
       if (!ref.mounted) return;
       state = const CommitSigning();
       final hash = await ref
@@ -148,7 +155,10 @@ class LeavePoolSheet extends ConsumerWidget {
                               leavePoolControllerProvider(pool.address)
                                   .notifier,
                             )
-                            .redeem(membership.shares),
+                            .redeem(
+                              membership.shares,
+                              previewAssets: membership.previewAssets,
+                            ),
                   child: Text(switch (state) {
                     CommitPreparing() => 'Preparing…',
                     CommitSigning() => 'Waiting for your wallet…',

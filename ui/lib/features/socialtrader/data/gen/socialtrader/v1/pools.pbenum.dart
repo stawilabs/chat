@@ -35,6 +35,16 @@ class PrepareLeaderOrderRequest_Kind extends $pb.ProtobufEnum {
       PrepareLeaderOrderRequest_Kind._(
           6, _omitEnumNames ? '' : 'KIND_SETTLE_QUEUE');
 
+  /// cancelForRedeems(orderId) is permissionless while redeems are queued.
+  static const PrepareLeaderOrderRequest_Kind KIND_CANCEL_FOR_REDEEMS =
+      PrepareLeaderOrderRequest_Kind._(
+          7, _omitEnumNames ? '' : 'KIND_CANCEL_FOR_REDEEMS');
+
+  /// crystallizeFee() is permissionless.
+  static const PrepareLeaderOrderRequest_Kind KIND_CRYSTALLIZE_FEE =
+      PrepareLeaderOrderRequest_Kind._(
+          8, _omitEnumNames ? '' : 'KIND_CRYSTALLIZE_FEE');
+
   static const $core.List<PrepareLeaderOrderRequest_Kind> values =
       <PrepareLeaderOrderRequest_Kind>[
     KIND_UNSPECIFIED,
@@ -44,10 +54,12 @@ class PrepareLeaderOrderRequest_Kind extends $pb.ProtobufEnum {
     KIND_CLAIM,
     KIND_SELL_FOR_REDEEMS,
     KIND_SETTLE_QUEUE,
+    KIND_CANCEL_FOR_REDEEMS,
+    KIND_CRYSTALLIZE_FEE,
   ];
 
   static final $core.List<PrepareLeaderOrderRequest_Kind?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 6);
+      $pb.ProtobufEnum.$_initByValueList(values, 8);
   static PrepareLeaderOrderRequest_Kind? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 
