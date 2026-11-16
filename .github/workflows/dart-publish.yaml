@@ -31,6 +31,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1.8.1
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1.8.2
     with:
       working-directory: ${{ needs.resolve.outputs.working_dir }}
